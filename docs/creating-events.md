@@ -18,10 +18,10 @@
 4. The events should now be visible in the dashboard.
 
 > :warning: __Important!__  \
-> The Facebook and YouTube destinations should only be added for the main service. Do __not__ add them for the kids gathering.
+> The Facebook and YouTube destinations should only be added for the main service. Do ___not___ add them for the kids gathering.
 
 > :warning: __Important!__  \
-> Do __not__ check the "Enable Live-Only" box when creating the main service. This will prevent BoxCast from recording the event and make setting up rebroadcasts much slower.
+> Do ___not___ check the "Enable Live-Only" box when creating the main service. If you enable that option, BoxCast will not record the event and it will take much longer to set up the rebroadcasts.
 
 ## Church Online Platform
 1. Go to the "Services" section in admin mode (the one on the left, not on top).
