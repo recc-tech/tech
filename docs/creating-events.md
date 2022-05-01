@@ -1,4 +1,4 @@
-# BoxCast and Church Online Platform Events
+# Creating BoxCast and Church Online Platform Events
 
 ## BoxCast
 1. Go to the "New Broadcast" section.
