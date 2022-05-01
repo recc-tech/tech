@@ -1,13 +1,14 @@
 # Post-Gathering Checklist
 
+## BoxCast
+- [ ] Stop the broadcast
+- [ ] Create a new event for each rebroadcast (11:45, 13:00, 15:00, 17:00)
+- [ ] Upload recording to Vimeo
+
 ## vMix
 - [ ] Save preset as a new file
 	- Click "Save As"
 	- Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
-
-## BoxCast
-- [ ] Create a new event for each rebroadcast (11:45, 13:00, 15:00, 17:00)
-- [ ] Upload recording to Vimeo
 
 ## Other
 - [ ] Bring back kids tech
