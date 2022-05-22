@@ -1,4 +1,6 @@
-# Creating BoxCast and Church Online Platform Events
+# Creating BoxCast and Church Online Platform Events (LIVE)
+
+This guide is meant to structure the creation of new events on the BoxCast and Church Online Platform. If you would like to create new events for rebroadcast events, click [here]().
 
 ## BoxCast
 1. Go to the "New Broadcast" section.
@@ -32,11 +34,14 @@
 
 ![COP Interface 2](https://user-images.githubusercontent.com/43655839/169703130-37db37ff-af65-4b74-a223-7fab03b37859.png)
 
-3. Create a new event starting at 10:05 and ending at 11:30.
-4. Click "Add Content."
-5. Set the event to open 5 minutes before the beginning.
-6. Allow viewers to chat 5 minutes before and after the event.
-7. Set the embed code.
+3. Create a new event starting at 10:05. Define the date and how the event should repeat. 
+4. Once the event is created, click on "edit content."
+5. First, give the event a title. Then, define an appropriate duration, ensure public chat is active, 
+--- WIP
+5. Click "Add Content."
+6. Set the event to open 5 minutes before the beginning.
+7. Allow viewers to chat 5 minutes before and after the event.
+8. Set the embed code.
 	1. Go to the "Embed Media" section on BoxCast.
 	2. Select "JavaScript" and "Player."
 	3. Copy the embed code.
