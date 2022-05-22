@@ -5,7 +5,8 @@
 	- Go to Settings > Integrations and press "re-link integration" for each platform
 
 ## Planning Center Online
-- [ ] Download kids video and bumper videos (if they're new) and move to `D:\Users\Tech\Documents\vMix Assets\By Service`
+- [ ] Download kids video and move to `D:\Users\Tech\Documents\vMix Assets\By Service`
+- [ ] Download bumper videos if they're new (just in case) and move to `D:\Users\Tech\Documents\vMix Assets\By Service`
 - [ ] Download sermon notes (if they're present)
 
 ## Church Online Platform
