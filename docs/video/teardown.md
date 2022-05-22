@@ -10,6 +10,8 @@
 	- [ ] Correct low-confidence captions
 - [ ] Create a new event for each rebroadcast (11:45, 13:00, 15:00, 17:00)
 - [ ] Upload recording to Vimeo
+	- [ ] On the original broadcast, go to Download or Export Recording > Vimeo
+	- [ ] Go to Vimeo and rename the recording
 
 ## vMix
 - [ ] Save preset as a new file
