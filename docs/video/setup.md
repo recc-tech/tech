@@ -2,7 +2,8 @@
 
 ## BoxCast
 - [ ] Re-link Facebook and YouTube integrations
-	- Go to Settings > Integrations and press "re-link integration" for each platform
+	- [ ] Go to Settings > Integrations and press "re-link integration" for each platform
+	- _The expiry dates no longer appear in BoxCast, so this may not be necessary anymore_
 
 ## Planning Center Online
 - [ ] Download kids video and move to `D:\Users\Tech\Documents\vMix Assets\By Service`
@@ -28,5 +29,6 @@
 ## Other
 - [ ] Set up the kids tech
 	- [ ] Copy the kids video to a USB
-	- [ ] Copy the video from the USB to the laptop and then put the USB back at the sound station
-	- [ ] Once the kids broadcast starts, bring the equipment to the Annex and set things up
+	- [ ] Copy the video from the USB to the laptop's desktop and then put the USB back at the sound station
+	- [ ] Once the kids broadcast starts, bring the equipment to the Annex (upstairs, first room on the left)
+	- [ ] Set up the laptop, screen, projector, and speakers
