@@ -9,7 +9,7 @@
 	- [ ] Remove captions during worship
 	- [ ] Correct low-confidence captions
 		- _NOTE:_ It would be nice to include foreign-language text, but it's not necessary
-- [ ] Create a new event for each rebroadcast (11:45, 13:00, 15:00, 17:00)
+- [ ] Create a new event for each rebroadcast (13:00, 15:00, 17:00)
 - [ ] Upload recording to Vimeo
 	- [ ] On the original broadcast, go to Download or Export Recording > Vimeo
 	- [ ] Go to Vimeo and rename the recording
