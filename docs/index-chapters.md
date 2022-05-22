@@ -1,13 +1,8 @@
+# Recording Index Chapters
 1. Event Start
-
 2. Host Intro
-
 3. Worship
-
 4. Announcements
-
 5. Message
-
 6. Reprise
-
 7. Host Goodbye
