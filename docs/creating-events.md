@@ -41,14 +41,26 @@ This guide is meant to structure the creation of new events on the BoxCast and C
 ![COP Interface 3](https://user-images.githubusercontent.com/43655839/169707820-96886f13-1a9b-4f94-8bae-fb1123e2b963.png)
 
 > :warning: __Important!__  \
-> When you define before and after event times for active chat, those values shift the start and end time of the event by the value defined. So, when we define 5 minutes of active chat for both parameters ...
+> When you define before and after event times for when public chat is active, those values shift the start and end time of the event by the value defined. For example, a 10:05 start time becomes 10:00. 
 
+6. Define the event's video source. Ensure the "embed code" radio button is active. 
 
---- WIP
-5. Click "Add Content."
-6. Set the event to open 5 minutes before the beginning.
-7. Allow viewers to chat 5 minutes before and after the event.
-8. Set the embed code.
+![COP Interface 4](https://user-images.githubusercontent.com/43655839/169722573-7c5ad75b-f8d5-4e32-9050-fbe466458326.jpg)
+
+Currently, the global embed code for all events received and transcoded by BoxCast is the following:
+
+`<div id="boxcast-widget-dihucxlq2coankbx2iko"></div><script type="text/javascript" charset="utf-8">(function(d, s, c, o) {var js = d.createElement(s), fjs = d.getElementsByTagName(s)[0];var h = (('https:' == document.location.protocol) ? 'https:' : 'http:');js.src = h + '//js.boxcast.com/v3.min.js';js.onload = function() { boxcast.noConflict()('#boxcast-widget-'+c).loadChannel(c, o); };js.charset = 'utf-8';fjs.parentNode.insertBefore(js, fjs);}(document, 'script', 'dihucxlq2coankbx2iko', {"showTitle":0,"showDescription":0,"showHighlights":0,"showRelated":false,"defaultVideo":"next","market":"unknown","showDocuments":false,"showIndex":false,"showDonations":false}));</script>`
+
+This global embed code can be found on the BoxCast platform:
+
 	1. Go to the "Embed Media" section on BoxCast.
 	2. Select "JavaScript" and "Player."
 	3. Copy the embed code.
+
+> :warning: __Important!__  \
+> Also, ensure that the video starts at least 5 minutes before the service begins. This is so that the five minute countdown is streamed to end users, and so that those who attend the online event early have something to watch. Even if no content is being actively received and transcoded by boxcast, the embed code is dynamic and will inform users that the stream has not yet started, but will momentarily. 
+
+For our purposes, the event has been sufficiently configured. At the scheduled time, the event will "open" and will pass through the embedded live stream to viewers. Only those viewers who have made an account on the platform will be able to participate in the event's public chat. 
+
+If you would like to learn more about the other configuration options available on the platform, please click [here](https://support.online.church/l/en) and reference their support documentation. 
+
