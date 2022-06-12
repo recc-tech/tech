@@ -1,11 +1,12 @@
 from __future__ import annotations
 from datetime import datetime
+from logging import Logger
 from typing import Callable
 
 
 def _assert(cond: bool, msg: str) -> None:
     if not cond:
-        raise ValueError(msg)
+        Logger.error(msg)
 
 
 class Caption:
@@ -49,6 +50,9 @@ class WebVTT:
 
     @staticmethod
     def read(filename: str) -> WebVTT:
+        if not filename:
+            raise ValueError("A filename is required to read a VTT file.")
+        _assert(filename.endswith(".vtt"), f"Invalid file extension. Expected VTT file but received '{filename}'.")
         with open(filename, "r") as f:
             file_contents = f.read().strip()
             chunks = file_contents.split("\n\n")
