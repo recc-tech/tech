@@ -65,7 +65,7 @@ class WebVTT:
     def remove(self, segment: Segment) -> WebVTT:
         new_captions = []
         for c in self.captions:
-            if not (segment.start_time <= c.start_time <= segment.end_time):
+            if not (segment.start_time <= c.start_time.replace(microsecond=0) <= segment.end_time):
                 new_captions.append(c)
         self.captions = new_captions
     
@@ -81,13 +81,15 @@ class WebVTT:
 
 
 if __name__ == "__main__":
-    vtt = WebVTT.read(r"..\..\test\ifdfesuosrz3ld1hsdnj_captions.vtt")
+    import os
+    directory = os.path.dirname(os.path.realpath(__file__))
+    vtt = WebVTT.read(os.path.join(directory, r"..\..\test\test.vtt"))
 
-    start_time = datetime.strptime("00:07:58.640", "%H:%M:%S.%f")
-    end_time = datetime.strptime("00:08:25.920", "%H:%M:%S.%f")
+    start_time = datetime.strptime("00:07:51", "%H:%M:%S")
+    end_time = datetime.strptime("00:07:58", "%H:%M:%S")
     segment = Segment(start_time, end_time)
     vtt.remove(segment)
 
     vtt.apply_to_text(lambda x: x.replace("morning", "Morning"))
 
-    vtt.save(r"..\..\test\out.vtt")
+    vtt.save(os.path.join(directory, r"..\..\test\out.vtt"))
