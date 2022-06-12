@@ -1,12 +1,13 @@
 from ctypes import windll
 from datetime import datetime
 from logging import Logger
-from tkinter.filedialog import askopenfilename
 from webvtt import Segment, WebVTT
 
 import csv
 import inspect
 import os
+import tkinter as tk
+import tkinter.filedialog as filedialog
 
 
 def _remind_to_review_low_confidence() -> None:
@@ -16,12 +17,17 @@ def _remind_to_review_low_confidence() -> None:
 
 
 def _get_captions_filename() -> str:
+    # Ensure image quality is decent
     windll.shcore.SetProcessDpiAwareness(1)
-    filename = askopenfilename()
+    root = tk.Tk()
+    # Ensure the file dialog opens in front
+    root.lift()
+    root.withdraw()
+    filename = filedialog.askopenfilename(title="Select VTT file")
     if filename:
         return filename
     else:
-        Logger.error("Select the file with the captions.")
+        Logger.error("Select the VTT file with the captions.")
 
 
 def _read_time(message: str, allow_empty: bool = False) -> datetime:
