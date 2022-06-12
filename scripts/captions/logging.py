@@ -1,20 +1,22 @@
 import sys
 
 
-class Logger:
+class Colour:
     GREY = "\u001b[30;1m"
     YELLOW = "\u001b[33;1m"
     RED = "\u001b[31;1m"
     RESET = "\u001b[0m"
 
+
+class Logger:
     @staticmethod
     def info(message: str) -> None:
-        print(f"{Logger.GREY}{message}{Logger.RESET}")
+        print(f"{Colour.GREY}{message}{Colour.RESET}")
 
     @staticmethod
     def warn(message: str) -> None:
-        print(f"{Logger.YELLOW}{message}{Logger.RESET}")
+        print(f"{Colour.YELLOW}{message}{Colour.RESET}")
 
     @staticmethod
     def error(message: str) -> None:
-        sys.exit(f"{Logger.RED}{message}{Logger.RESET}")
+        sys.exit(f"{Colour.RED}{message}{Colour.RESET}")
