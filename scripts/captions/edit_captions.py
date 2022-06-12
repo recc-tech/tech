@@ -1,29 +1,16 @@
-from colorama import Fore, Style
 from ctypes import windll
 from datetime import datetime
+from logging import Logger
 from tkinter.filedialog import askopenfilename
 from webvtt import Segment, WebVTT
 
 import csv
 import inspect
 import os
-import sys
-
-
-def _info(message: str) -> None:
-    print(f"{Fore.LIGHTBLACK_EX}{message}{Style.RESET_ALL}")
-
-
-def _warn(message: str) -> None:
-    print(f"{Fore.LIGHTYELLOW_EX}{message}{Style.RESET_ALL}")
-
-
-def _error(message: str) -> None:
-    sys.exit(f"{Fore.RED}{message}{Style.RESET_ALL}")
 
 
 def _remind_to_review_low_confidence() -> None:
-    _info(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
+    Logger.info(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
         Press ENTER to continue..."""))
     input()
 
@@ -34,7 +21,7 @@ def _get_captions_filename() -> str:
     if filename:
         return filename
     else:
-        _error("Select the file with the captions.")
+        Logger.error("Select the file with the captions.")
 
 
 def _read_time(message: str, allow_empty: bool = False) -> datetime:
@@ -103,7 +90,7 @@ def main() -> None:
         segments.append(segment)
         i += 1
     if len(segments) == 0:
-        _warn("No captions removed.")
+        Logger.warn("No captions removed.")
     for s in segments:
         vtt.remove(s)
     # Do substitutions
