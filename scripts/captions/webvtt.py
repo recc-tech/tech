@@ -62,10 +62,15 @@ class WebVTT:
             captions = [Caption.parse(c) for c in chunks]
         return WebVTT(captions)
     
+    def captions_starting_at(self, dt: datetime) -> list[Caption]:
+        # Ignore milliseconds
+        dt = dt.replace(microsecond=0)
+        return [c for c in self.captions if c.start_time.replace(microsecond=0) == dt]
+    
     def remove(self, segment: Segment) -> WebVTT:
         new_captions = []
         for c in self.captions:
-            if not (segment.start_time <= c.start_time.replace(microsecond=0) <= segment.end_time):
+            if not (segment.start_time <= c.start_time <= segment.end_time):
                 new_captions.append(c)
         self.captions = new_captions
     

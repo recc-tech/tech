@@ -1,7 +1,7 @@
 from ctypes import windll
 from datetime import datetime
 from logging import Logger
-from webvtt import Segment, WebVTT
+from webvtt import Caption, Segment, WebVTT
 
 import csv
 import inspect
@@ -30,41 +30,61 @@ def _get_captions_filename() -> str:
         Logger.error("Select the VTT file with the captions.")
 
 
-def _read_time(message: str, allow_empty: bool = False) -> datetime:
+def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
     while True:
         time_str = input(message)
-        # Blank value
-        if not time_str:
-            if allow_empty:
-                return None
-            else:
-                print("Blank values are not allowed. ", end="")
-                continue
-        # Try to parse with milliseconds
-        try:
-            time = datetime.strptime(time_str, "%H:%M:%S.%f")
-            return time
-        except ValueError:
-            pass
-        # Try to parse without milliseconds
+        # Allow blank values only if this is the beginning of the segment to cut
+        if not time_str and start:
+            return None
+        elif not time_str and not start:
+            print("Blank values are not allowed. ", end="")
+            continue
+        # Parse time
         try:
             time = datetime.strptime(time_str, "%H:%M:%S")
-            return time
         except ValueError:
-            pass
-        print("Invalid value. ", end="")
+            print("Invalid value. ", end="")
+            continue
+        # Check that at least one caption has a matching start time
+        captions = vtt.captions_starting_at(time)
+        if not captions:
+            print(f"No caption found which starts at '{time_str}'. ", end="")
+            continue
+        elif len(captions) >= 2:
+            Logger.warn(f"Found {len(captions)} captions starting at '{time_str}'.")
+        # If this is the beginning of the segment to cut, take the latest caption. Otherwise, take the earliest one.
+        captions.sort(key = lambda x: x.start_time)
+        if start:
+            return captions[-1].start_time
+        else:
+            return captions[0].start_time
 
 
-def _read_segment() -> Segment:
-    start_time = _read_time("Enter the start time of the first caption to cut.\n>> ", True)
+def _read_segment(vtt: WebVTT) -> Segment:
+    start_time = _read_time("Enter the start time of the first caption to cut.\n>> ", vtt, True)
     if not start_time:
         return None
-    end_time = _read_time("Enter the start time of the last caption to cut.\n>> ", False)
+    end_time = _read_time("Enter the start time of the last caption to cut.\n>> ", vtt, False)
     return Segment(start_time, end_time)
 
 
+def _read_segments(vtt: WebVTT) -> list[Segment]:
+    segments = []
+    i = 1
+    while True:
+        print(f"SEGMENT {i}")
+        segment = _read_segment(vtt)
+        print()
+        if segment is None:
+            break
+        segments.append(segment)
+        i += 1
+    return segments
+
+
 def _read_substitutions() -> list[tuple[str, str]]:
-    filename = "substitutions.csv"
+    directory = os.path.dirname(os.path.realpath(__file__))
+    filename = os.path.join(directory, "substitutions.csv")
     substitutions = []
     with open(filename, "r", newline="") as f:
         reader = csv.reader(f)
@@ -85,17 +105,8 @@ def main() -> None:
     filename = _get_captions_filename()
     vtt = WebVTT.read(filename)
     # Remove captions
-    segments = []
-    i = 1
-    while True:
-        print(f"SEGMENT {i}")
-        segment = _read_segment()
-        print()
-        if segment is None:
-            break
-        segments.append(segment)
-        i += 1
-    if len(segments) == 0:
+    segments = _read_segments(vtt)
+    if not segments:
         Logger.warn("No captions removed.")
     for s in segments:
         vtt.remove(s)
