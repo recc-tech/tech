@@ -1,6 +1,6 @@
 from ctypes import windll
 from datetime import datetime
-from messaging import Messenger
+from messaging import Colour, Messenger
 from webvtt import Caption, Segment, WebVTT
 
 import csv
@@ -32,7 +32,10 @@ def _get_captions_filename() -> str:
 
 def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
     while True:
-        time_str = input(message)
+        print(message)
+        # Show expected format
+        print("   " + Messenger.colour("HH:MM:SS", Colour.GREY), end="\r")
+        time_str = input(">> ")
         # Allow blank values only if this is the beginning of the segment to cut
         if not time_str and start:
             return None
@@ -61,10 +64,10 @@ def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
 
 
 def _read_segment(vtt: WebVTT) -> Segment:
-    start_time = _read_time("Enter the start time of the first caption to cut.\n>> ", vtt, True)
+    start_time = _read_time("Enter the start time of the first caption to cut.", vtt, True)
     if not start_time:
         return None
-    end_time = _read_time("Enter the start time of the last caption to cut.\n>> ", vtt, False)
+    end_time = _read_time("Enter the start time of the last caption to cut.", vtt, False)
     return Segment(start_time, end_time)
 
 
