@@ -57,10 +57,7 @@ def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
             Messenger.warn(f"Found {len(captions)} captions starting at '{time_str}'.")
         # If this is the beginning of the segment to cut, take the latest caption. Otherwise, take the earliest one.
         captions.sort(key = lambda x: x.start_time)
-        if start:
-            return captions[-1].start_time
-        else:
-            return captions[0].start_time
+        return captions[-1].start_time if start else captions[0].start_time
 
 
 def _read_segment(vtt: WebVTT) -> Segment:
