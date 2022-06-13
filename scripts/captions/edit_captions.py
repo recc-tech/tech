@@ -111,12 +111,13 @@ def main() -> None:
     for s in segments:
         vtt.remove(s)
     # Do substitutions
+    print()
     substitutions = _read_substitutions()
-    def f(x: str) -> str:
-        for (old_word, new_word) in substitutions:
-            x = x.replace(old_word, new_word)
-        return x
-    vtt.apply_to_text(f)
+    old_width = max([len(x[0]) for x in substitutions])
+    new_width = max([len(x[1]) for x in substitutions])
+    for (old_text, new_text) in substitutions:
+        occurrences = vtt.replace(old_text, new_text)
+        Messenger.info(f"{old_text.rjust(old_width)} --> {new_text.rjust(new_width)}: {occurrences} occurrences")
     # Save file
     directory = os.path.dirname(filename)
     now = datetime.now().strftime("%Y-%m-%d_%H%M%S")

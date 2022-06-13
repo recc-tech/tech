@@ -74,9 +74,12 @@ class WebVTT:
                 new_captions.append(c)
         self.captions = new_captions
     
-    def apply_to_text(self, f: Callable[[str], str]) -> None:
+    def replace(self, old_text: str, new_text: str) -> int:
+        occurrences = 0
         for c in self.captions:
-            c.text = f(c.text)
+            occurrences += c.text.count(old_text)
+            c.text = c.text.replace(old_text, new_text)
+        return occurrences
     
     def save(self, filename: str) -> WebVTT:
         with open(filename, "w") as f:
