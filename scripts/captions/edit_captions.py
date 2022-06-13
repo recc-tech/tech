@@ -1,6 +1,6 @@
 from ctypes import windll
 from datetime import datetime
-from logging import Logger
+from messaging import Messenger
 from webvtt import Caption, Segment, WebVTT
 
 import csv
@@ -11,7 +11,7 @@ import tkinter.filedialog as filedialog
 
 
 def _remind_to_review_low_confidence() -> None:
-    Logger.info(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
+    Messenger.info(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
         Press ENTER to continue..."""))
     input()
 
@@ -27,7 +27,7 @@ def _get_captions_filename() -> str:
     if filename:
         return filename
     else:
-        Logger.error("Select the VTT file with the captions.")
+        Messenger.fatal("Select the VTT file with the captions.")
 
 
 def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
@@ -37,21 +37,21 @@ def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
         if not time_str and start:
             return None
         elif not time_str and not start:
-            print("Blank values are not allowed. ", end="")
+            Messenger.error("Blank values are not allowed. ", end="")
             continue
         # Parse time
         try:
             time = datetime.strptime(time_str, "%H:%M:%S")
         except ValueError:
-            print("Invalid value. ", end="")
+            Messenger.error("Invalid value. ", end="")
             continue
         # Check that at least one caption has a matching start time
         captions = vtt.captions_starting_at(time)
         if not captions:
-            print(f"No caption found which starts at '{time_str}'. ", end="")
+            Messenger.error(f"No caption found which starts at '{time_str}'. ", end="")
             continue
         elif len(captions) >= 2:
-            Logger.warn(f"Found {len(captions)} captions starting at '{time_str}'.")
+            Messenger.warn(f"Found {len(captions)} captions starting at '{time_str}'.")
         # If this is the beginning of the segment to cut, take the latest caption. Otherwise, take the earliest one.
         captions.sort(key = lambda x: x.start_time)
         if start:
@@ -107,7 +107,7 @@ def main() -> None:
     # Remove captions
     segments = _read_segments(vtt)
     if not segments:
-        Logger.warn("No captions removed.")
+        Messenger.warn("No captions removed.")
     for s in segments:
         vtt.remove(s)
     # Do substitutions
