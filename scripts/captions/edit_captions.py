@@ -1,7 +1,7 @@
 from ctypes import windll
 from datetime import datetime
 from messaging import Colour, Messenger
-from webvtt import Caption, Segment, WebVTT
+from webvtt import Segment, WebVTT
 
 import csv
 import inspect
@@ -11,7 +11,7 @@ import tkinter.filedialog as filedialog
 
 
 def _remind_to_review_low_confidence() -> None:
-    Messenger.info(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
+    print(inspect.cleandoc("""Don't forget to review low-confidence cues on BoxCast before running this script.
         Press ENTER to continue..."""))
     input()
 
@@ -121,7 +121,7 @@ def main() -> None:
     new_width = max([len(x[1]) for x in substitutions])
     for (old_text, new_text) in substitutions:
         occurrences = vtt.replace(old_text, new_text)
-        Messenger.info(f"{old_text.rjust(old_width)} --> {new_text.rjust(new_width)}: {occurrences} occurrences")
+        print(f"{old_text.rjust(old_width)} --> {new_text.rjust(new_width)}: {occurrences} occurrences")
     # Save file
     directory = os.path.dirname(filename)
     now = datetime.now().strftime("%Y-%m-%d_%H%M%S")

@@ -16,10 +16,6 @@ class Messenger:
         return f"{col.value}{message}{Colour.RESET.value}"
 
     @classmethod
-    def info(cls, message: str, end: str = "\n") -> None:
-        print(cls.colour(message, Colour.GREY), end=end)
-
-    @classmethod
     def warn(cls, message: str, end: str = "\n") -> None:
         print(cls.colour(message, Colour.YELLOW), end=end)
 
