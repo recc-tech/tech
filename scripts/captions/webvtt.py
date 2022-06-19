@@ -50,7 +50,7 @@ class Segment:
 
 class WebVTT:
     def __init__(self, captions: list[Caption]) -> WebVTT:
-        self.captions = captions
+        self.captions = sorted(captions, key = lambda c: c.start_time)
 
     @staticmethod
     def read(filename: str) -> WebVTT:
@@ -70,7 +70,13 @@ class WebVTT:
         # Ignore milliseconds
         dt = _round_time(dt)
         return [c for c in self.captions if _round_time(c.start_time) == dt]
+
+    def earliest_caption(self) -> Caption:
+        return self.captions[0]
     
+    def latest_caption(self) -> Caption:
+        return self.captions[-1]
+
     def remove(self, segment: Segment) -> WebVTT:
         new_captions = []
         for c in self.captions:

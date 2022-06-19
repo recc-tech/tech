@@ -30,18 +30,22 @@ def _get_captions_filename() -> str:
         Messenger.fatal("Select the VTT file with the captions.")
 
 
-def _read_time(message: str, vtt: WebVTT, start: bool) -> list[Caption]:
+def _read_time(message: str, vtt: WebVTT, start: bool) -> datetime:
     while True:
         print(message)
         # Show expected format
-        print("   " + Messenger.colour("HH:MM:SS", Colour.GREY), end="\r")
-        time_str = input(">> ")
+        time_str = input(Messenger.colour('(HH:MM:SS) ', Colour.GREY))
         # Allow blank values only if this is the beginning of the segment to cut
         if not time_str and start:
             return None
         elif not time_str and not start:
             Messenger.error("Blank values are not allowed. ", end="")
             continue
+        # Check for special values
+        if time_str == "start":
+            return vtt.earliest_caption().start_time
+        elif time_str == "end":
+            return vtt.latest_caption().start_time
         # Parse time
         try:
             time = datetime.strptime(time_str, "%H:%M:%S")
