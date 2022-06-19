@@ -1,12 +1,16 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import Logger
-from typing import Callable
 
 
 def _assert(cond: bool, msg: str) -> None:
     if not cond:
         Logger.error(msg)
+
+
+def _round_time(dt: datetime) -> datetime:
+    millis = dt.microsecond // 1000
+    return dt if millis < 500 else dt.replace(microsecond=0) + timedelta(seconds=1)
 
 
 class Caption:
@@ -64,8 +68,8 @@ class WebVTT:
     
     def captions_starting_at(self, dt: datetime) -> list[Caption]:
         # Ignore milliseconds
-        dt = dt.replace(microsecond=0)
-        return [c for c in self.captions if c.start_time.replace(microsecond=0) == dt]
+        dt = _round_time(dt)
+        return [c for c in self.captions if _round_time(c.start_time) == dt]
     
     def remove(self, segment: Segment) -> WebVTT:
         new_captions = []
