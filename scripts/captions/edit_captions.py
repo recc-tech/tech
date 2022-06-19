@@ -73,6 +73,10 @@ def _read_segment(vtt: WebVTT) -> Segment:
 
 
 def _read_segments(vtt: WebVTT) -> list[Segment]:
+    print(inspect.cleandoc("""Choose the captions to be cut.
+        To stop selecting captions, leave the input blank and press ENTER.
+        You can enter 'start' to select the earliest caption and 'end' to select the latest caption."""))
+    print()
     segments = []
     i = 1
     while True:
