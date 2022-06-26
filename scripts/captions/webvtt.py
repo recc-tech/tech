@@ -10,7 +10,7 @@ def _assert(cond: bool, msg: str) -> None:
 
 def _round_time(dt: datetime) -> datetime:
     millis = dt.microsecond // 1000
-    return dt if millis < 500 else dt.replace(microsecond=0) + timedelta(seconds=1)
+    return dt.replace(microsecond=0) if millis < 500 else dt.replace(microsecond=0) + timedelta(seconds=1)
 
 
 class Caption:
