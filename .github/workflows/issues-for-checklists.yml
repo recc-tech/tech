@@ -1,0 +1,20 @@
+on:
+  # 
+  schedule:
+    # https://crontab.guru/#15_1_*_*_SUN
+    - cron: '15 1 * * SUN'
+  workflow_dispatch:
+name: Create issues for setup and teardown checklists
+permissions:
+  contents: read
+  issues: write
+jobs:
+  checklists:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: JasonEtco/create-an-issue@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          filename: https://github.com/recc-tech/tech/wiki/Video-Setup-Checklist
