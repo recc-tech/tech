@@ -16,4 +16,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          filename: https://github.com/recc-tech/tech/wiki/Video-Setup-Checklist
+          filename: checklists/mcr-video-setup.md
