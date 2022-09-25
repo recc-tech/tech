@@ -1,5 +1,4 @@
 on:
-  # 
   schedule:
     # https://crontab.guru/#15_1_*_*_SUN
     - cron: '15 1 * * SUN'
