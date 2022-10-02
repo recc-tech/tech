@@ -33,6 +33,11 @@ assignees: recc-tech
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
 
-# Other
-- [ ] Set up the kids tech
-    - See the [[kids AV setup checklist|Kids AV Setup]]
+# Kids AV
+- [ ] Copy the kids video to a USB
+    - You can use the USB from the MCR sound station
+- [ ] Copy the video from the USB to the laptop's desktop and then put the USB back at the sound station
+- [ ] Once the kids broadcast starts, bring the equipment to the Annex
+    - As of 2022/08/21, the Kids Connection gathering takes place upstairs, in the first room on the left
+- [ ] Set up the laptop, screen, projector, and speakers
+    - Use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
