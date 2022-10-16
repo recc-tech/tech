@@ -34,10 +34,10 @@ assignees: recc-tech
         - Unplug the sound USB cable and plug it back in
 
 # Kids AV
-- [ ] Copy the kids video to a USB
-    - You can use the USB from the MCR sound station
-- [ ] Copy the video from the USB to the laptop's desktop and then put the USB back at the sound station
+- [ ] Copy the kids video to the laptop's Desktop
+    - You can use the USB from the MCR sound station. Put the USB back at the sound station when you're done.
 - [ ] Once the kids broadcast starts, bring the equipment to the Annex
     - As of 2022/08/21, the Kids Connection gathering takes place upstairs, in the first room on the left
 - [ ] Set up the laptop, screen, projector, and speakers
-    - Use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
+    - On the old Dell Latitude, you should be able to log in to the account `David Reader` without a password.
+    - On the old Dell Inspiron, use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
