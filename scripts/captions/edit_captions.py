@@ -125,7 +125,8 @@ def main() -> None:
     new_width = max([len(x[1]) for x in substitutions])
     for (old_text, new_text) in substitutions:
         occurrences = vtt.replace(old_text, new_text)
-        print(f"{old_text.rjust(old_width)} --> {new_text.rjust(new_width)}: {occurrences} occurrences")
+        if occurrences > 0:
+            print(f"{old_text.rjust(old_width)} --> {new_text.rjust(new_width)}: {occurrences} occurrences")
     # Save file
     directory = os.path.dirname(filename)
     now = datetime.now().strftime("%Y-%m-%d_%H%M%S")
