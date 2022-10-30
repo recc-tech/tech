@@ -30,6 +30,7 @@ assignees: recc-tech
 - [ ] Check cameras and frame shots
 - [ ] Check sound
     - If there is no sound:
+        - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
 
