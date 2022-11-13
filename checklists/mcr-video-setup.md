@@ -17,6 +17,7 @@ assignees: recc-tech
 # vMix
 - [ ] Open last week's preset
 - [ ] Turn on both monitors and turn on the external output
+    - You may need to turn off the external output and turn it back on if it doesn't work the first time
 - [ ] Update titles
 - [ ] Import videos and close the previous week's kids video
     - You can drag the videos directly from File Explorer into the "Videos" category
