@@ -21,7 +21,7 @@ assignees: recc-tech
 - [ ] Update titles
 - [ ] Import videos and close the previous week's kids video
     - You can drag the videos directly from File Explorer into the "Videos" category
-- [ ] Set up and test triggers for kids countdown and video
+- Set up and test triggers for kids countdown and video
     - [ ] Set up a trigger on the kids countdown loop that fades to the kids video for this week
     - [ ] Set up a trigger on the kids video that fades to the pre-stream title loop
     - [ ] Test the triggers by playing the countdown loop (skip to a few seconds before the end)
