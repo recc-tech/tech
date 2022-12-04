@@ -13,6 +13,11 @@ assignees: recc-tech
     > :warning: Pay attention to the "Additional Services" section at the end.
     > - For the main event, uncheck every other service.
     > - For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
+- [ ] Check that all the services have been created and have content
+
+# BoxCast
+- _NOTE:_ If you are asked to log in, refresh the page first (there may be an error if you don't)
+- [ ] Check that the events have been created
 
 # vMix
 - [ ] Open last week's preset
