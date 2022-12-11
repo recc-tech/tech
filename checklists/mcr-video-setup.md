@@ -35,6 +35,7 @@ assignees: recc-tech
     - Do this _after_ testing the triggers so that you don't forget to reset those videos
 - [ ] Check cameras and frame shots
 - [ ] Check sound
+    - Do this _after_ the kids broadcast so that we don't forget to unmute LR
     - If there is no sound:
         - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
