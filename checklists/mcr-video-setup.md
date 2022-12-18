@@ -23,7 +23,6 @@ assignees: recc-tech
 - [ ] Open last week's preset
 - [ ] Turn on both monitors and turn on the external output
     - You may need to turn off the external output and turn it back on if it doesn't work the first time
-- [ ] Update titles
 - [ ] Import videos and close the previous week's kids video
     - You can drag the videos directly from File Explorer into the "Videos" category
 - Set up and test triggers for kids countdown and video
@@ -33,6 +32,7 @@ assignees: recc-tech
     - Once the triggers are set up and tested, you'll be able to set up the kids tech while the videos are being broadcast
 - [ ] Restart all videos and loops
     - Do this _after_ testing the triggers so that you don't forget to reset those videos
+- [ ] Update titles
 - [ ] Check cameras and frame shots
 - [ ] Check sound
     - Do this _after_ the kids broadcast so that we don't forget to unmute LR
