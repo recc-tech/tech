@@ -25,9 +25,7 @@ assignees: recc-tech
     - [ ] Upload the captions to Vimeo _and enable them_
 
 # vMix
-- [ ] Save preset as a new file
-    - Click "Save As"
-    - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
+- [ ] Save the preset
 
 # Other
 - [ ] Bring back kids tech
