@@ -33,6 +33,9 @@ assignees: recc-tech
 - [ ] Restart all videos and loops
     - Do this _after_ testing the triggers so that you don't forget to reset those videos
 - [ ] Update titles
+- [ ] Save preset as a new file
+    - Click "Save As"
+    - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
 - [ ] Check cameras and frame shots
 - [ ] Check sound
     - Do this _after_ the kids broadcast so that we don't forget to unmute LR
