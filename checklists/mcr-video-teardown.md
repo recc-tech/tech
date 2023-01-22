@@ -28,6 +28,9 @@ assignees: recc-tech
 - [ ] Save the preset
 
 # Other
-- [ ] Bring back kids tech
-- [ ] Check for updates on the computer
-    - If there is an error, run the update troubleshooter and try again
+- [ ] Bring back kids laptop and charger
+- Check for updates. (If there is an error, run the update troubleshooter and try again.)
+    - [ ] MCR video computer
+    - [ ] MCR sound video
+    - [ ] Teleprompter laptop
+    - [ ] Kids laptop
