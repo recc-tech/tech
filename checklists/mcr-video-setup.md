@@ -45,14 +45,14 @@ assignees: recc-tech
         - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
-- [ ] Once it's time for the Kids Connection broadcast, play the 5 minute countdown _and start the stream_
+- [ ] Once it's time for the Kids Connection broadcast, mute LR on the sound laptop, play the 5 minute countdown _and start the stream_
 
 ## Kids AV
 - [ ] Copy the kids video to the laptop's Desktop
     - You can use the USB from the MCR sound station. Put the USB back at the sound station when you're done.
 - [ ] Once the kids broadcast starts, bring the equipment to the Annex
     - As of 2022/08/21, the Kids Connection gathering takes place upstairs, in the first room on the left
-- [ ] Set up the laptop, screen, projector, and speakers
+- [ ] Set up the laptop, and TV
     - On the old Dell Latitude, you should be able to log in to the account `David Reader` without a password.
     - On the old Dell Inspiron, use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
 
