@@ -3,23 +3,25 @@ title: MCR Video Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
 ---
 
-# Planning Center Online
+# MCR Setup Checklist
+
+## Planning Center Online
 - [ ] Download kids video
 - [ ] Download sermon notes (if they're present)
 - [ ] Move the downloaded files to `D:\Users\Tech\Documents\vMix Assets\By Service\YYYY-MM-DD`, where `YYYY-MM-DD` is the current date
 
-# Church Online Platform
+## Church Online Platform
 - [ ] Copy the sermon notes to the event (if they were on Planning Center Online)
     > :warning: Pay attention to the "Additional Services" section at the end.
     > - For the main event, uncheck every other service.
     > - For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
 - [ ] Check that all the services have been created and have content
 
-# BoxCast
+## BoxCast
 - _NOTE:_ If you are asked to log in, refresh the page first (there may be an error if you don't)
 - [ ] Check that the events have been created
 
-# vMix
+## vMix
 - [ ] Open last week's preset
 - [ ] Turn on both monitors and turn on the external output
     - You may need to turn off the external output and turn it back on if it doesn't work the first time
@@ -45,7 +47,7 @@ assignees: recc-tech
         - Unplug the sound USB cable and plug it back in
 - [ ] Once it's time for the Kids Connection broadcast, play the 5 minute countdown _and start the stream_
 
-# Kids AV
+## Kids AV
 - [ ] Copy the kids video to the laptop's Desktop
     - You can use the USB from the MCR sound station. Put the USB back at the sound station when you're done.
 - [ ] Once the kids broadcast starts, bring the equipment to the Annex
@@ -53,3 +55,8 @@ assignees: recc-tech
 - [ ] Set up the laptop, screen, projector, and speakers
     - On the old Dell Latitude, you should be able to log in to the account `David Reader` without a password.
     - On the old Dell Inspiron, use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
+
+## General Reminders
+- At each scene change (e.g., from worship to announcements):
+    - Put up the person's title up
+    - Check the sound level
