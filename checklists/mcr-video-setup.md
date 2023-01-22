@@ -43,6 +43,7 @@ assignees: recc-tech
         - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
+- [ ] Once it's time for the Kids Connection broadcast, play the 5 minute countdown _and start the stream_
 
 # Kids AV
 - [ ] Copy the kids video to the laptop's Desktop
