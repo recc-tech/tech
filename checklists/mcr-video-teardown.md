@@ -4,7 +4,7 @@ assignees: recc-tech
 ---
 
 # BoxCast
-- [ ] Stop the broadcast
+- [ ] Stop the broadcast (on BoxCast and in vMix)
 - [ ] Start generating captions
 - [ ] Upload recording to Vimeo
     - On the original broadcast, go to Download or Export Recording > Vimeo
