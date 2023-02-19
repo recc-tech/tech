@@ -39,13 +39,13 @@ assignees: recc-tech
     - Click "Save As"
     - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
 - [ ] Check cameras and frame shots
+- [ ] Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown _and start the stream_. Check on Church Online Platform that the stream is working.
 - [ ] Check sound
     - Do this _after_ the kids broadcast so that we don't forget to unmute LR
     - If there is no sound:
         - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
-- [ ] Once it's time for the Kids Connection broadcast, mute LR on the sound laptop, play the 5 minute countdown _and start the stream_. Check on Church Online Platform that the stream is working.
 
 ## Kids AV
 - [ ] Copy the kids video to the laptop's Desktop
