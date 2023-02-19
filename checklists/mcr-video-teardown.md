@@ -31,6 +31,6 @@ assignees: recc-tech
 - [ ] Bring back kids laptop and charger
 - Check for updates. (If there is an error, run the update troubleshooter and try again.)
     - [ ] MCR video computer
-    - [ ] MCR sound video
+    - [ ] MCR sound computer
     - [ ] Teleprompter laptop
     - [ ] Kids laptop
