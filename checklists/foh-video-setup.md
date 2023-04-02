@@ -1,4 +1,9 @@
-# FOH Video Setup
+---
+title: FOH Video Setup ({{ date | date('dddd, MMMM Do') }})
+assignees: recc-tech
+---
+
+# FOH Setup Checklist
 
 For more details, see the [ProPresenter quick start guide](https://github.com/recc-tech/tech/wiki/ProPresenter-Quick-Start-Guide).
 
