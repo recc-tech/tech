@@ -19,6 +19,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 - [ ] Check that all slides look good on the projector and on NDI.
 - [ ] Check that the walk-in slides have their "Go to Next Timer" set to five seconds and that the last one loops back to the beginning.
 - [ ] Check that the MC announcement slides do _not_ have a "Go to Next Timer."
+- [ ] Check that the verses have the right translation.
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
 
 ## General Reminders
