@@ -1,8 +1,11 @@
+# This workflow generates an issue for each markdown file in the /checklists/ directory.
+# This allows us to check off the checkboxes and keep track of what steps are done.
+
 on:
   schedule:
     # https://crontab.guru/#15_1_*_*_SUN
     - cron: '15 1 * * SUN'
-  # Let people trigger the workflow manually for testing purposes
+  # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
   workflow_dispatch:
 
 name: Create issues for setup and teardown checklists
