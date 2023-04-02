@@ -1,6 +1,6 @@
 # FOH Video Setup
 
-For more details, see the [ProPresenter quick start](https://github.com/recc-tech/tech/wiki/ProPresenter-Quick-Start-Guide).
+For more details, see the [ProPresenter quick start guide](https://github.com/recc-tech/tech/wiki/ProPresenter-Quick-Start-Guide).
 
 ## Setup
 
