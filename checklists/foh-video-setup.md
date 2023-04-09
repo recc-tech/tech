@@ -26,6 +26,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 - [ ] Check that the MC announcement slides do _not_ have a "Go to Next Timer."
 - [ ] Check that the verses have the right translation.
 - [ ] Check that lyrics slides have the hotkeys set up properly (e.g., the hotkey for the first verse should be on the first lyrics slide, not on the media slide).
+- [ ] If you have time, remove walk-in slides and MC announcements that are definitely outdated.
 - [ ] Check that the red light is off and the stage lights are on.
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
 
