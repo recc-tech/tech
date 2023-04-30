@@ -17,7 +17,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - [ ] MC welcome, announcements, and goodbye slides
     - [ ] Worship and reprise
     - [ ] Message
-- [ ] Look for special requests (e.g., lyrics, scripture before worship) at tech@riversedge.life.
+- [ ] Look for special requests (e.g., custom lyrics, scripture before worship) at tech@riversedge.life.
 
 ## Checks
 
