@@ -39,6 +39,7 @@ assignees: recc-tech
     - Click "Save As"
     - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
 - [ ] Check cameras and frame shots
+    - [ ] If any of the band members are in a bad position (e.g., blocking someone else), let them know
 - [ ] Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown _and start the stream_. Check on Church Online Platform that the stream is working.
 - [ ] Check sound
     - Do this _after_ the kids broadcast so that we don't forget to unmute LR
