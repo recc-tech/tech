@@ -10,7 +10,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 ## Setup
 
 - [ ] Copy the previous week's playlist and rename it.
-- [ ] Download any new media from Planning Center Online.
+- [ ] Download any new media from Planning Center Online. Move the files to `/Users/visuals/Documents/ProPresenter Assets`.
 - [ ] Set up the playlist according to the plan on Planning Center Online.
     - [ ] Walk-in slides
     - [ ] Videos
