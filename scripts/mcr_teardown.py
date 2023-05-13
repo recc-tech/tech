@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-import logging as log
 from datetime import datetime
+from logging import DEBUG, INFO
+from messenger import Messenger
 from threading import Thread
 from typing import Callable, List
 
 # TODO: Split MCR teardown checklist into manual and automated tasks. In the automated tasks section, add a reminder that, if someone changes the checklist, they should also create an issue to update the script (ideally make the change in the manual section at first?)
 # TODO: Save progress in a file in case the script needs to be stopped and restarted? It would probably be nice to create one or more classes to encapsulate this. Watch out for race conditions if only one class is used (maybe better to have one class per thread).
-# TODO: Set timeouts for tasks?
+# TODO: Make it easier to kill the program
 
 
 LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
 # LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
 
+messenger: Messenger
 
-# region Threads
+
+# region Thread and task classes
 
 
 class Task:
@@ -37,16 +40,19 @@ class Task:
         self._fallback_message = fallback_message
 
     def run(self):
-        log.debug(f"Running task '{self._run.__name__}'.")
+        messenger.log(DEBUG, f"Running task '{self._run.__name__}'.")
         try:
             self._run()
-            log.info(f"Task '{self._run.__name__}' completed successfully.")
+            messenger.log(INFO, f"Task '{self._run.__name__}' completed successfully.")
         except Exception as e:
-            log.debug(f"Task '{self._run.__name__}' failed with an exception: {e}")
+            messenger.log(
+                DEBUG,
+                f"Task '{self._run.__name__}' failed with an exception: {e}",
+            )
             message = f"{self._fallback_message} When you are done, press ENTER."
             if not isinstance(e, NotImplementedError):
                 message = f"Task '{self._run.__name__}' encountered an error. {message}"
-            input(message)
+            messenger.wait_for_input(message)
 
 
 class TaskThread(Thread):
@@ -74,42 +80,6 @@ class TaskThread(Thread):
         # Run tasks
         for t in self.tasks:
             t.run()
-
-
-# endregion
-
-
-# region Logging
-
-
-def configure_logging():
-    # Send detailed debug messages to the log file.
-    date = datetime.now().strftime("%Y-%m-%d")
-    time = datetime.now().strftime("%H-%M-%S")
-    log_file = f"{LOG_DIRECTORY}\\{date} {time} mcr_teardown.log"
-    file_handler = log.FileHandler(log_file)
-    file_handler.setLevel(log.DEBUG)
-    file_handler.setFormatter(
-        log.Formatter(
-            "[%(levelname)-8s] [%(threadName)-13s] [%(asctime)s] %(message)s",
-            datefmt="%H:%M:%S",
-        ),
-    )
-
-    # Send concise info messages to the console.
-    console_handler = log.StreamHandler()
-    console_handler.setLevel(log.INFO)
-    console_handler.setFormatter(
-        log.Formatter(
-            "[%(levelname)-8s] [%(asctime)s] %(message)s",
-            datefmt="%H:%M:%S",
-        )
-    )
-
-    root_logger = log.getLogger()
-    root_logger.setLevel(log.DEBUG)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
 
 
 # endregion
@@ -190,11 +160,16 @@ def upload_captions_to_vimeo():
 # endregion
 
 
-# region main
+# region Main
 
 
 def main():
-    configure_logging()
+    global messenger
+
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H-%M-%S")
+    log_file = f"{LOG_DIRECTORY}\\{current_date} {current_time} mcr_teardown.log"
+    messenger = Messenger(log_file)
 
     rebroadcasts_thread = TaskThread(
         name="Rebroadcasts",

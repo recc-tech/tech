@@ -1,0 +1,110 @@
+import logging
+from collections import deque
+from logging import Logger, FileHandler, Handler, StreamHandler
+from threading import Lock, Semaphore, Thread
+from typing import Any, Callable, Deque
+
+
+class Messenger:
+    """
+    Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
+    """
+
+    file_logger: Logger
+    console_logger: Logger
+
+    file_queue: Deque[Callable[[], Any]]
+    file_semaphore: Semaphore
+
+    console_queue: Deque[Callable[[], Any]]
+    console_semaphore: Semaphore
+
+    def __init__(self, log_file: str):
+        # Send detailed debug messages to the log file
+        self.file_logger = Messenger._initialize_logger(
+            name="file_messenger",
+            handler=FileHandler(log_file),
+            level=logging.DEBUG,
+            log_format="[%(levelname)-8s] [%(threadName)-16s] [%(asctime)s] %(message)s",
+            date_format="%H:%M:%S",
+        )
+
+        # Send concise info messages to the console.
+        self.console_logger = Messenger._initialize_logger(
+            name="console_messenger",
+            handler=StreamHandler(),
+            level=logging.INFO,
+            log_format="[%(levelname)-8s] [%(asctime)s] %(message)s",
+            date_format="%H:%M:%S",
+        )
+
+        # Push tasks to queues and have dedicated threads handle those operations
+        self.file_queue = deque()
+        self.file_semaphore = Semaphore(0)
+        Messenger._start_thread(
+            name="FileMessenger", semaphore=self.file_semaphore, queue=self.file_queue
+        )
+
+        self.console_queue = deque()
+        self.console_semaphore = Semaphore(0)
+        Messenger._start_thread(
+            name="ConsoleMessenger",
+            semaphore=self.console_semaphore,
+            queue=self.console_queue,
+        )
+
+    def log(self, level: int, message: str):
+        self.file_queue.append(lambda: self.file_logger.log(level=level, msg=message))
+        # Signal that there is a task in the queue
+        self.file_semaphore.release()
+
+        self.console_queue.append(
+            lambda: self.console_logger.log(level=level, msg=message)
+        )
+        # Signal that there is a task in the queue
+        self.console_semaphore.release()
+
+    def wait_for_input(self, prompt: str):
+        # TODO: Implement a mechanism for returning the user input (maybe via an instance variable?)
+        # Use a lock so that this function blocks until the task has run
+        lock = Lock()
+        lock.acquire()
+
+        def input_task():
+            input(prompt)
+            lock.release()
+
+        self.console_queue.append(input_task)
+        # Signal that there is a task in the queue
+        self.console_semaphore.release()
+
+        # Wait for the task to be done
+        lock.acquire()
+
+    @staticmethod
+    def _initialize_logger(
+        name: str, handler: Handler, level: int, log_format: str, date_format: str
+    ):
+        handler.setLevel(level)
+        handler.setFormatter(
+            logging.Formatter(
+                fmt=log_format,
+                datefmt=date_format,
+            ),
+        )
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        logger.addHandler(handler)
+        return logger
+
+    @staticmethod
+    def _start_thread(name: str, semaphore: Semaphore, queue: Deque[Callable[[], Any]]):
+        def console_tasks_thread():
+            while True:
+                # Wait for there to be an action in the queue
+                semaphore.acquire()
+
+                task = queue.popleft()
+                task()
+
+        Thread(target=console_tasks_thread, name=name).start()
