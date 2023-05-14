@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
 from logging import DEBUG, INFO, WARN
 from messenger import Messenger
+from pathlib import Path
 from threading import Thread
 from typing import Callable, List
 
@@ -10,9 +12,6 @@ from typing import Callable, List
 # TODO: Save progress in a file in case the script needs to be stopped and restarted? It would probably be nice to create one or more classes to encapsulate this. Watch out for race conditions if only one class is used (maybe better to have one class per thread).
 # TODO: Make it easier to kill the program
 
-
-LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
-# LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
 
 messenger: Messenger
 
@@ -124,17 +123,23 @@ def rename_video_on_vimeo():
 
 def start_generating_captions():
     # TODO: Press the button to start generating captions (if it hasn't already started)
-    # raise NotImplementedError("Starting to generate captions is not yet implemented.")
-    # TODO: Test
-    pass
+    raise NotImplementedError("Starting to generate captions is not yet implemented.")
 
 
 def publish_and_download_captions():
     # TODO: Record low-confidence cues (save to file)
     # TODO: Publish captions
-    # TODO: Download VTT file
-    # TODO: Test
-    raise RuntimeError("Publishing and downloading captions is not yet implemented.")
+    # TODO: Download VTT file to original.vtt
+    raise NotImplementedError(
+        "Publishing and downloading captions is not yet implemented."
+    )
+
+
+def copy_captions():
+    # TODO: Copy original.vtt to without_worship.vtt
+    raise NotImplementedError(
+        "Copying captions file to 'without_worship.vtt' is not yet implemented."
+    )
 
 
 def remove_worship_captions():
@@ -146,6 +151,7 @@ def remove_worship_captions():
 
 def spell_check_captions():
     # TODO: Spell check captions (Whisper API?)
+    # TODO: Save results in final.vtt
     raise NotImplementedError("Spell check is not yet implemented.")
 
 
@@ -174,16 +180,16 @@ def upload_captions_to_vimeo():
 def main():
     global messenger
 
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    current_time = datetime.now().strftime("%H-%M-%S")
-    log_file = f"{LOG_DIRECTORY}\\{current_date} {current_time} mcr_teardown.log"
-    messenger = Messenger(log_file)
+    args = _parse_args()
+
+    messenger = _create_messenger(args.log_dir)
 
     rebroadcasts_thread = TaskThread(
         name="Rebroadcasts",
         tasks=[
             Task(
-                create_rebroadcasts, "Create rebroadcasts titled '<TITLE>' at <TIMES>."
+                create_rebroadcasts,
+                f"Create rebroadcasts titled '{_get_rebroadcast_title()}' at {_join_list(_get_rebroadcast_times())}.",
             )
         ],
     )
@@ -191,7 +197,10 @@ def main():
         name="Vimeo",
         tasks=[
             Task(export_to_vimeo, "On BoxCast, export the recording to Vimeo."),
-            Task(rename_video_on_vimeo, "On Vimeo, rename the new video to '<TITLE>'."),
+            Task(
+                rename_video_on_vimeo,
+                f"On Vimeo, rename the video to '{_get_vimeo_video_title(args.message_series, args.message_title)}'.",
+            ),
         ],
     )
     captions_thread = TaskThread(
@@ -203,7 +212,7 @@ def main():
             ),
             Task(
                 publish_and_download_captions,
-                "On BoxCast, review low-confidence cues and publish the captions. Then download the captions and save them in a file called '<FILE>'.",
+                f"On BoxCast, review low-confidence cues and publish the captions. Then download the captions and save them in '{_get_original_captions_filename()}'.",
             ),
             Task(remove_worship_captions, "Remove captions during worship."),
             Task(
@@ -234,6 +243,84 @@ def main():
     # No need to wait for captions thread or Vimeo thread, since they are prerequisites
 
     messenger.close()
+
+
+def _create_messenger(log_directory: Path) -> Messenger:
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H-%M-%S")
+    log_file = f"{log_directory}\\{current_date} {current_time} mcr_teardown.log"
+    return Messenger(log_file)
+
+
+def _parse_args() -> Namespace:
+    parser = ArgumentParser(
+        description="Script to guide and automate the teardown process in the MCR."
+    )
+
+    # TODO: Check whether the values are the same as in the previous week?
+    parser.add_argument(
+        "-s",
+        "--message-series",
+        required=True,
+        help="Name of the series to which today's sermon belongs.",
+    )
+    parser.add_argument(
+        "-t", "--message-title", required=True, help="Title of today's sermon."
+    )
+    parser.add_argument(
+        "-l",
+        "--log-dir",
+        type=_parse_directory,
+        default="D:\\Users\\Tech\\Documents\\Logs",
+    )
+
+    args = parser.parse_args()
+
+    if not args.log_dir.exists():
+        raise ValueError()
+
+    return args
+
+
+def _parse_directory(path_str: str) -> Path:
+    path = Path(path_str)
+
+    if not path.exists():
+        raise ArgumentTypeError(f"Path '{path_str}' does not exist.")
+    if not path.is_dir():
+        raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
+    # TODO: Check whether the path is accessible?
+
+    path = path.resolve()
+    return path
+
+
+def _get_rebroadcast_title() -> str:
+    current_date = datetime.now().strftime("%B %d, %Y")
+    return f"Sunday Gathering Rebroadcast: {current_date}"
+
+
+def _get_rebroadcast_times() -> List[str]:
+    return ["1:00 PM", "5:00 PM", "7:00 PM"]
+
+
+def _get_vimeo_video_title(message_series: str, message_title: str) -> str:
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    return f"{current_date} | {message_series} | {message_title}"
+
+
+def _join_list(items: List[str]) -> str:
+    if len(items) <= 1:
+        return "".join(items)
+    elif len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    else:
+        return f"{', '.join(items[:-1])}, and {items[-1]}"
+
+
+def _get_original_captions_filename():
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    return f"D:\\Users\\Tech\\Documents\\Captions\\{current_date}\\original.vtt"
 
 
 if __name__ == "__main__":
