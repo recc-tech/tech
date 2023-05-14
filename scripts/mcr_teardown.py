@@ -56,8 +56,6 @@ class Task:
                 )
 
             message = f"{self._fallback_message} When you are done, press ENTER."
-            if not isinstance(e, NotImplementedError):
-                message = f"Task '{self._run.__name__}' encountered an error. {message}"
             messenger.wait_for_input(message)
 
 
