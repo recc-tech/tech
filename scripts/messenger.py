@@ -15,9 +15,6 @@ class Messenger:
     file_logger: Logger
     console_logger: Logger
 
-    file_queue: Deque[Callable[[], Any]]
-    file_semaphore: Semaphore
-
     console_queue: Deque[Callable[[], Any]]
     console_semaphore: Semaphore
 
@@ -42,13 +39,7 @@ class Messenger:
             date_format="%H:%M:%S",
         )
 
-        # Push tasks to queues and have dedicated threads handle those operations
-        self.file_queue = deque()
-        self.file_semaphore = Semaphore(0)
-        self._start_thread(
-            name="FileMessenger", semaphore=self.file_semaphore, queue=self.file_queue
-        )
-
+        # Push tasks to a queue and have a dedicated thread handle those operations
         self.console_queue = deque()
         self.console_semaphore = Semaphore(0)
         self._start_thread(
@@ -58,9 +49,7 @@ class Messenger:
         )
 
     def log(self, level: int, message: str):
-        self.file_queue.append(lambda: self.file_logger.log(level=level, msg=message))
-        # Signal that there is a task in the queue
-        self.file_semaphore.release()
+        self.file_logger.log(level=level, msg=message)
 
         self.console_queue.append(
             lambda: self.console_logger.log(level=level, msg=message)
@@ -88,7 +77,6 @@ class Messenger:
     def close(self):
         self.should_exit = True
         # Pretend there's one more entry in each queue to get the threads to exit
-        self.file_semaphore.release()
         self.console_semaphore.release()
 
     @staticmethod
