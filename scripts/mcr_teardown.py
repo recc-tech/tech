@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from logging import DEBUG, INFO
+from logging import DEBUG, INFO, WARN
 from messenger import Messenger
 from threading import Thread
 from typing import Callable, List
@@ -11,8 +11,8 @@ from typing import Callable, List
 # TODO: Make it easier to kill the program
 
 
-# LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
-LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
+LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
+# LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
 
 messenger: Messenger
 
@@ -45,10 +45,17 @@ class Task:
             self._run()
             messenger.log(INFO, f"Task '{self._run.__name__}' completed successfully.")
         except Exception as e:
-            messenger.log(
-                DEBUG,
-                f"Task '{self._run.__name__}' failed with an exception: {e}",
-            )
+            if isinstance(e, NotImplementedError):
+                messenger.log(
+                    DEBUG,
+                    f"Task '{self._run.__name__}' is not yet implemented. Requesting user input.",
+                )
+            else:
+                messenger.log(
+                    WARN,
+                    f"Task '{self._run.__name__}' failed with an exception: {e}",
+                )
+
             message = f"{self._fallback_message} When you are done, press ENTER."
             if not isinstance(e, NotImplementedError):
                 message = f"Task '{self._run.__name__}' encountered an error. {message}"
@@ -117,16 +124,17 @@ def rename_video_on_vimeo():
 
 def start_generating_captions():
     # TODO: Press the button to start generating captions (if it hasn't already started)
-    raise NotImplementedError("Starting to generate captions is not yet implemented.")
+    # raise NotImplementedError("Starting to generate captions is not yet implemented.")
+    # TODO: Test
+    pass
 
 
 def publish_and_download_captions():
     # TODO: Record low-confidence cues (save to file)
     # TODO: Publish captions
     # TODO: Download VTT file
-    raise NotImplementedError(
-        "Publishing and downloading captions is not yet implemented."
-    )
+    # TODO: Test
+    raise RuntimeError("Publishing and downloading captions is not yet implemented.")
 
 
 def remove_worship_captions():
