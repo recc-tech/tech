@@ -9,6 +9,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 ## Setup
 
+- [ ] Turn on both projectors and make sure ProPresenter has the audience screen activated.
 - [ ] Copy the previous week's playlist and rename it.
 - [ ] Download any new media from Planning Center Online. Move the files to `/Users/visuals/Documents/ProPresenter Assets`.
 - [ ] Set up the playlist according to the plan on Planning Center Online.
@@ -17,6 +18,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - [ ] MC welcome, announcements, and goodbye slides
     - [ ] Worship and reprise
     - [ ] Message
+- [ ] Look for special events on Church Online Platform.
 - [ ] Look for special requests (e.g., custom lyrics, scripture before worship) at tech@riversedge.life.
 
 ## Checks
