@@ -10,6 +10,8 @@ class Messenger:
     Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
     """
 
+    should_exit: bool
+
     file_logger: Logger
     console_logger: Logger
 
@@ -20,6 +22,8 @@ class Messenger:
     console_semaphore: Semaphore
 
     def __init__(self, log_file: str):
+        self.should_exit = False
+
         # Send detailed debug messages to the log file
         self.file_logger = Messenger._initialize_logger(
             name="file_messenger",
@@ -41,13 +45,13 @@ class Messenger:
         # Push tasks to queues and have dedicated threads handle those operations
         self.file_queue = deque()
         self.file_semaphore = Semaphore(0)
-        Messenger._start_thread(
+        self._start_thread(
             name="FileMessenger", semaphore=self.file_semaphore, queue=self.file_queue
         )
 
         self.console_queue = deque()
         self.console_semaphore = Semaphore(0)
-        Messenger._start_thread(
+        self._start_thread(
             name="ConsoleMessenger",
             semaphore=self.console_semaphore,
             queue=self.console_queue,
@@ -81,6 +85,12 @@ class Messenger:
         # Wait for the task to be done
         lock.acquire()
 
+    def close(self):
+        self.should_exit = True
+        # Pretend there's one more entry in each queue to get the threads to exit
+        self.file_semaphore.release()
+        self.console_semaphore.release()
+
     @staticmethod
     def _initialize_logger(
         name: str, handler: Handler, level: int, log_format: str, date_format: str
@@ -97,12 +107,17 @@ class Messenger:
         logger.addHandler(handler)
         return logger
 
-    @staticmethod
-    def _start_thread(name: str, semaphore: Semaphore, queue: Deque[Callable[[], Any]]):
+    def _start_thread(
+        self, name: str, semaphore: Semaphore, queue: Deque[Callable[[], Any]]
+    ):
         def console_tasks_thread():
             while True:
-                # Wait for there to be an action in the queue
+                # Wait for there to be a task in the queue
                 semaphore.acquire()
+
+                # Exit only once the queue is empty
+                if self.should_exit and len(queue) == 0:
+                    return
 
                 task = queue.popleft()
                 task()

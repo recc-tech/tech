@@ -11,8 +11,8 @@ from typing import Callable, List
 # TODO: Make it easier to kill the program
 
 
-LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
-# LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
+# LOG_DIRECTORY = "D:\\Users\\Tech\\Documents\\Logs"
+LOG_DIRECTORY = "C:\\Users\\louis\\Projects\\Church\\recc-tech\\logs"
 
 messenger: Messenger
 
@@ -220,6 +220,12 @@ def main():
     captions_thread.start()
     vimeo_thread.start()
     vimeo_captions_thread.start()
+
+    rebroadcasts_thread.join()
+    vimeo_captions_thread.join()
+    # No need to wait for captions thread or Vimeo thread, since they are prerequisites
+
+    messenger.close()
 
 
 if __name__ == "__main__":
