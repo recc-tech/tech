@@ -1,0 +1,76 @@
+{
+	"_comment": "For more information about the format of this file, see [TODO: make wiki page and put link here]",
+	"tasks": [
+		{
+			"name": "create_rebroadcasts",
+			"description": "Create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm, 5:00 pm, and 7:00 pm.",
+			"depends_on": []
+		},
+		{
+			"name": "export_to_vimeo",
+			"description": "On BoxCast, export the recording to Vimeo.",
+			"depends_on": []
+		},
+		{
+			"name": "rename_video_on_vimeo",
+			"description": "On Vimeo, rename the video to '%{DATE_YMD}% | %{MESSAGE_SERIES}% | %{MESSAGE_TITLE}%'.",
+			"depends_on": [
+				"export_to_vimeo"
+			]
+		},
+		{
+			"name": "start_generating_captions",
+			"description": "On BoxCast, press the button to start generating captions.",
+			"depends_on": []
+		},
+		{
+			"name": "publish_and_download_captions",
+			"description": "On BoxCast, review low-confidence cues and publish the captions. Then download the captions and save them in '%{CAPTIONS_DIR}%\\original.vtt'.",
+			"depends_on": [
+				"start_generating_captions"
+			]
+		},
+		{
+			"name": "copy_captions_original_to_without_worship",
+			"description": "Copy '%{CAPTIONS_DIR}%\\original.vtt' to '%{CAPTIONS_DIR}%\\without_worship.vtt'.",
+			"depends_on": [
+				"publish_and_download_captions"
+			]
+		},
+		{
+			"name": "remove_worship_captions",
+			"description": "In '%{CAPTIONS_DIR}%\\without_worship.vtt', remove the worship captions.",
+			"depends_on": [
+				"copy_captions_original_to_without_worship"
+			]
+		},
+		{
+			"name": "copy_captions_without_worship_to_final",
+			"description": "Copy '%{CAPTIONS_DIR}%\\without_worship.vtt' to '%{CAPTIONS_DIR}%\\final.vtt'.",
+			"depends_on": [
+				"remove_worship_captions"
+			]
+		},
+		{
+			"name": "review_captions",
+			"description": "If the worship captions were removed automatically, double-check that it was done properly. See %{CAPTIONS_DIR}%\\final.vtt.",
+			"depends_on": [
+				"copy_captions_without_worship_to_final"
+			]
+		},
+		{
+			"name": "upload_captions_to_boxcast",
+			"description": "Upload the captions to BoxCast.",
+			"depends_on": [
+				"review_captions"
+			]
+		},
+		{
+			"name": "upload_captions_to_vimeo",
+			"description": "Upload the captions to Vimeo and make sure they are enabled.",
+			"depends_on": [
+				"review_captions"
+			]
+		}
+	]
+}

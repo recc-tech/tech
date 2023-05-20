@@ -26,7 +26,7 @@ class Messenger:
             name="file_messenger",
             handler=FileHandler(log_file),
             level=logging.DEBUG,
-            log_format="[%(levelname)-8s] [%(threadName)-16s] [%(asctime)s] %(message)s",
+            log_format="[%(levelname)-8s] [%(threadName)s] [%(asctime)s] %(message)s",
             date_format="%H:%M:%S",
         )
 
