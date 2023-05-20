@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import json
-from datetime import datetime
+import logging
+from inspect import Parameter, Signature
 from logging import DEBUG, INFO, WARN
 from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, List, Set, Tuple
 
+from config import Config
 from messenger import Messenger
 
 
@@ -103,9 +106,7 @@ class TaskGraph:
         self._threads = threads
 
     @staticmethod
-    def load(
-        task_file: Path, message_series: str, message_title: str, messenger: Messenger
-    ) -> TaskGraph:
+    def load(task_file: Path, config: Config, messenger: Messenger) -> TaskGraph:
         with open(task_file, "r") as f:
             tasks: List[Dict[str, Any]] = json.load(f)["tasks"]
 
@@ -116,11 +117,7 @@ class TaskGraph:
         # Use a dictionary for fast access to tasks by name
         task_index: Dict[str, Tuple[str, List[str], List[str]]] = dict()
         for t in tasks:
-            description = TaskGraph._fill_placeholders(
-                t["description"],
-                message_series=message_series,
-                message_title=message_title,
-            )
+            description = config.fill_placeholders(t["description"])
             task_index[t["name"]] = (description, t["depends_on"], [])
 
         # Add backwards links for convenience
@@ -134,7 +131,7 @@ class TaskGraph:
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
         threads = TaskGraph._create_and_combine_threads(
-            sorted_task_names, task_index, task_file, messenger
+            sorted_task_names, task_index, task_file, messenger, config
         )
 
         return TaskGraph(threads)
@@ -188,21 +185,6 @@ class TaskGraph:
                     raise ValueError(f'Unrecognized dependency "{p}".')
 
     @staticmethod
-    def _fill_placeholders(s: str, message_series: str, message_title: str) -> str:
-        date_ymd = datetime.now().strftime("%Y-%m-%d")
-        s = (
-            s.replace("%{DATE_MDY}%", datetime.now().strftime("%B %d, %Y"))
-            .replace("%{DATE_YMD}%", date_ymd)
-            .replace("%{MESSAGE_SERIES}%", message_series)
-            .replace("%{MESSAGE_TITLE}%", message_title)
-            .replace(
-                "%{CAPTIONS_DIR}%", f"D:\\Users\\Tech\\Documents\\Captions\\{date_ymd}"
-            )
-        )
-        # TODO: Check if s still contains '%{' or '}%'
-        return s
-
-    @staticmethod
     def _topological_sort(
         task_names: Set[str], task_index: Dict[str, Tuple[str, List[str], List[str]]]
     ) -> List[str]:
@@ -232,6 +214,7 @@ class TaskGraph:
         task_index: Dict[str, Tuple[str, List[str], List[str]]],
         task_filename: Path,
         messenger: Messenger,
+        config: Config,
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
@@ -243,7 +226,7 @@ class TaskGraph:
             while True:
                 # Look for functions in a Python module with the same name as the task list
                 module_name = task_filename.with_suffix("").name
-                f = TaskGraph._find_function(module_name, task_name)
+                f = TaskGraph._find_function(module_name, task_name, config, messenger)
                 task_obj = Task(
                     func=f,
                     fallback_message=description,
@@ -297,14 +280,53 @@ class TaskGraph:
         return "".join(capitalized_words)
 
     @staticmethod
-    def _find_function(module_name: str, function_name: str) -> Callable[[], None]:
+    def _find_function(
+        module_name: str, task_name: str, config: Config, messenger: Messenger
+    ) -> Callable[[], None]:
+        # Locate the function
         module = importlib.import_module(module_name)
         try:
-            function = getattr(module, function_name)
-            # TODO: Check that the function has the right signature? Try using inspect.signature()
+            function: Callable[..., None] = getattr(module, task_name)
+            messenger.log(
+                logging.DEBUG, f"Found implementation for task '{task_name}'."
+            )
         except AttributeError:
+            # TODO: Just return None instead of a fake function here?
             function = TaskGraph._unimplemented_task
-        return function
+            messenger.log(
+                logging.DEBUG, f"No implementation found for task '{task_name}'."
+            )
+
+        # Pass the right arguments to the function
+        signature = inspect.signature(function)
+        inputs = {}
+        for param in signature.parameters.values():
+            if param.annotation == Config or (
+                param.annotation == Parameter.empty and param.name == "config"
+            ):
+                inputs[param.name] = config
+            elif param.annotation == Messenger or (
+                param.annotation == Parameter.empty and param.name == "messenger"
+            ):
+                inputs[param.name] = messenger
+            else:
+                raise ValueError(
+                    f"Function for task '{task_name}' expects an unknown argument '{param.name}'."
+                )
+        function_with_args = lambda: function(**inputs)
+
+        # Check that the function returns nothing
+        if (
+            signature.return_annotation is not None
+            and signature.return_annotation != "None"
+            and signature.return_annotation != Signature.empty
+        ):
+            messenger.log(
+                logging.WARN,
+                f"The function for task '{task_name}' should return nothing, but claims to have a return value.",
+            )
+
+        return function_with_args
 
     @staticmethod
     def _unimplemented_task() -> None:

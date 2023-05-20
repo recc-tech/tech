@@ -5,6 +5,7 @@ from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
 from pathlib import Path
 
+from config import Config
 from messenger import Messenger
 from task import TaskGraph
 
@@ -22,14 +23,19 @@ from task import TaskGraph
 def main():
     args = _parse_args()
 
-    messenger = _create_messenger(args.log_dir)
+    config = Config(
+        home_dir=args.home_dir,
+        message_series=args.message_series,
+        message_title=args.message_title,
+    )
+
+    messenger = _create_messenger(config.log_dir)
 
     try:
         task_file = Path(__file__).parent.joinpath("mcr_teardown_tasks.json")
         task_graph = TaskGraph.load(
             task_file=task_file,
-            message_series=args.message_series,
-            message_title=args.message_title,
+            config=config,
             messenger=messenger,
         )
     except Exception as e:
@@ -49,7 +55,7 @@ def main():
 def _create_messenger(log_directory: Path) -> Messenger:
     current_date = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
-    log_file = f"{log_directory}\\{current_date} {current_time} mcr_teardown.log"
+    log_file = log_directory.joinpath(f"{current_date} {current_time} mcr_teardown.log")
     return Messenger(log_file)
 
 
@@ -69,18 +75,13 @@ def _parse_args() -> Namespace:
         "-t", "--message-title", required=True, help="Title of today's sermon."
     )
     parser.add_argument(
-        "-l",
-        "--log-dir",
+        "-d",
+        "--home-dir",
         type=_parse_directory,
-        default="D:\\Users\\Tech\\Documents\\Logs",
+        default="D:\\Users\\Tech\\Documents",
     )
 
-    args = parser.parse_args()
-
-    if not args.log_dir.exists():
-        raise ValueError()
-
-    return args
+    return parser.parse_args()
 
 
 def _parse_directory(path_str: str) -> Path:

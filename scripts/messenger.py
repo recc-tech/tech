@@ -1,6 +1,7 @@
 import logging
 from collections import deque
-from logging import Logger, FileHandler, Handler, StreamHandler
+from logging import FileHandler, Handler, Logger, StreamHandler
+from pathlib import Path
 from threading import Lock, Semaphore, Thread
 from typing import Any, Callable, Deque
 
@@ -18,8 +19,11 @@ class Messenger:
     console_queue: Deque[Callable[[], Any]]
     console_semaphore: Semaphore
 
-    def __init__(self, log_file: str):
+    def __init__(self, log_file: Path):
         self.should_exit = False
+
+        if not log_file.exists():
+            log_file.parent.mkdir(exist_ok=True, parents=True)
 
         # Send detailed debug messages to the log file
         self.file_logger = Messenger._initialize_logger(
