@@ -67,7 +67,7 @@ class Task:
                     WARN, f"Task '{self._name}' failed with an exception: {e}"
                 )
 
-            message = f"{self._fallback_message} When you are done, press ENTER."
+            message = f"- {self._fallback_message} When you are done, press ENTER."
             self._messenger.wait_for_input(message)
 
 
