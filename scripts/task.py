@@ -31,30 +31,37 @@ class Task:
     Messenger to use for logging and input.
     """
 
+    _name: str
+    """
+    Name of the task.
+    """
+
     def __init__(
-        self, func: Callable[[], None], fallback_message: str, messenger: Messenger
+        self,
+        func: Callable[[], None],
+        fallback_message: str,
+        messenger: Messenger,
+        name: str,
     ):
         self._run = func
         self._fallback_message = fallback_message
         self._messenger = messenger
+        self._name = name
 
     def run(self):
-        self._messenger.log(DEBUG, f"Running task '{self._run.__name__}'.")
+        self._messenger.log(DEBUG, f"Running task '{self._name}'.")
         try:
             self._run()
-            self._messenger.log(
-                INFO, f"Task '{self._run.__name__}' completed successfully."
-            )
+            self._messenger.log(INFO, f"Task '{self._name}' completed successfully.")
         except Exception as e:
             if isinstance(e, NotImplementedError):
                 self._messenger.log(
                     DEBUG,
-                    f"Task '{self._run.__name__}' is not yet implemented. Requesting user input.",
+                    f"Task '{self._name}' is not yet implemented. Requesting user input.",
                 )
             else:
                 self._messenger.log(
-                    WARN,
-                    f"Task '{self._run.__name__}' failed with an exception: {e}",
+                    WARN, f"Task '{self._name}' failed with an exception: {e}"
                 )
 
             message = f"{self._fallback_message} When you are done, press ENTER."
@@ -238,7 +245,10 @@ class TaskGraph:
                 module_name = task_filename.with_suffix("").name
                 f = TaskGraph._find_function(module_name, task_name)
                 task_obj = Task(
-                    func=f, fallback_message=description, messenger=messenger
+                    func=f,
+                    fallback_message=description,
+                    messenger=messenger,
+                    name=task_name,
                 )
                 thread.tasks.append(task_obj)
 
