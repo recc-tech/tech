@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"name": "create_rebroadcasts",
-			"description": "Create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm, 5:00 pm, and 7:00 pm.",
+			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm, 5:00 pm, and 7:00 pm.",
 			"depends_on": []
 		},
 		{
@@ -24,17 +24,24 @@
 			"depends_on": []
 		},
 		{
-			"name": "publish_and_download_captions",
-			"description": "On BoxCast, review low-confidence cues and publish the captions. Then download the captions and save them in '%{CAPTIONS_DIR}%\\original.vtt'.",
+			"name": "review_and_publish_captions",
+			"description": "On BoxCast, review low-confidence cues and publish the captions.",
 			"depends_on": [
 				"start_generating_captions"
+			]
+		},
+		{
+			"name": "download_captions",
+			"description": "On BoxCast, download the captions and save them in '%{CAPTIONS_DIR}%\\original.vtt'.",
+			"depends_on": [
+				"review_and_publish_captions"
 			]
 		},
 		{
 			"name": "copy_captions_original_to_without_worship",
 			"description": "Copy '%{CAPTIONS_DIR}%\\original.vtt' to '%{CAPTIONS_DIR}%\\without_worship.vtt'.",
 			"depends_on": [
-				"publish_and_download_captions"
+				"download_captions"
 			]
 		},
 		{
@@ -53,21 +60,21 @@
 		},
 		{
 			"name": "review_captions",
-			"description": "If the worship captions were removed automatically, double-check that it was done properly. See %{CAPTIONS_DIR}%\\final.vtt.",
+			"description": "In %{CAPTIONS_DIR}%\\final.vtt, double-check that the worship captions were removed properly (if it was done automatically).",
 			"depends_on": [
 				"copy_captions_without_worship_to_final"
 			]
 		},
 		{
 			"name": "upload_captions_to_boxcast",
-			"description": "Upload the captions to BoxCast.",
+			"description": "On BoxCast, upload the captions.",
 			"depends_on": [
 				"review_captions"
 			]
 		},
 		{
 			"name": "upload_captions_to_vimeo",
-			"description": "Upload the captions to Vimeo and make sure they are enabled.",
+			"description": "On Vimeo, upload the captions and make sure they are enabled.",
 			"depends_on": [
 				"review_captions"
 			]
