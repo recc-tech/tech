@@ -18,6 +18,7 @@ from task import TaskGraph
 # TODO: Use ANSI escape sequences to move the cursor around, show status of all threads. Or would it be better to use the terminal only for input and output current status of each thread in a file?
 # TODO: Make Messenger methods static so I can access them from anywhere without needing to pass the object around?
 # TODO: Close down Messenger properly in the event of an exception
+# TODO: Make console output coloured to better highlight warnings?
 
 
 def main():
