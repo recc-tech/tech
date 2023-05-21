@@ -2,14 +2,79 @@
 	"_comment": "For more information about the format of this file, see [TODO: make wiki page and put link here]",
 	"tasks": [
 		{
-			"name": "create_rebroadcasts",
-			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm, 5:00 pm, and 7:00 pm.",
+			"name": "stop_broadcast",
+			"description": "If you have not already done so, stop the broadcast in vMix and on BoxCast.",
 			"depends_on": []
+		},
+		{
+			"name": "save_vmix_preset",
+			"description": "In vMix, save the preset.",
+			"depends_on": [
+				"stop_broadcast"
+			]
+		},
+		{
+			"name": "update_video_computer",
+			"description": "Check for updates on the MCR video computer.",
+			"depends_on": [
+				"stop_broadcast"
+			]
+		},
+		{
+			"name": "update_sound_computer",
+			"description": "Check for updates on the MCR sound computer.",
+			"depends_on": [
+				"update_video_computer"
+			]
+		},
+		{
+			"name": "bring_back_kids_laptop",
+			"description": "Go to the Annex and bring back the Kids Connection laptop and charger.",
+			"depends_on": [
+				"update_sound_computer"
+			]
+		},
+		{
+			"name": "update_kids_laptop",
+			"description": "Check for updates on the Kids Connection laptop.",
+			"depends_on": [
+				"bring_back_kids_laptop"
+			]
+		},
+		{
+			"name": "update_teleprompter_laptop",
+			"description": "Check for updates on the teleprompter laptop.",
+			"depends_on": [
+				"update_kids_laptop"
+			]
+		},
+		{
+			"name": "create_rebroadcast_1pm",
+			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm.",
+			"depends_on": [
+				"stop_broadcast"
+			]
+		},
+		{
+			"name": "create_rebroadcast_5pm",
+			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 5:00 pm.",
+			"depends_on": [
+				"create_rebroadcast_1pm"
+			]
+		},
+		{
+			"name": "create_rebroadcast_7pm",
+			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 7:00 pm.",
+			"depends_on": [
+				"create_rebroadcast_5pm"
+			]
 		},
 		{
 			"name": "export_to_vimeo",
 			"description": "On BoxCast, export the recording to Vimeo.",
-			"depends_on": []
+			"depends_on": [
+				"stop_broadcast"
+			]
 		},
 		{
 			"name": "get_vimeo_video_data",
@@ -26,9 +91,18 @@
 			]
 		},
 		{
+			"name": "index_recording",
+			"description": "On BoxCast, index the recording. See https://github.com/recc-tech/tech/wiki/Index-Chapters for the list of chapters.",
+			"depends_on": [
+				"stop_broadcast"
+			]
+		},
+		{
 			"name": "start_generating_captions",
 			"description": "On BoxCast, press the button to start generating captions.",
-			"depends_on": []
+			"depends_on": [
+				"stop_broadcast"
+			]
 		},
 		{
 			"name": "review_and_publish_captions",
@@ -69,7 +143,8 @@
 			"name": "review_captions",
 			"description": "In %{CAPTIONS_DIR}%\\final.vtt, double-check that the worship captions were removed properly (if it was done automatically).",
 			"depends_on": [
-				"copy_captions_without_worship_to_final"
+				"copy_captions_without_worship_to_final",
+				"index_recording"
 			]
 		},
 		{
