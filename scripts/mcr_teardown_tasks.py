@@ -172,11 +172,13 @@ def _get_vimeo_texttrack_upload_link(
 
 def _upload_texttrack(upload_link: str, config: Config, vimeo_client: VimeoClient):
     # Read the captions from final.vtt
+    # If you don't set the encoding to UTF-8, then Unicode characters get mangled
     with open(config.captions_dir.joinpath("final.vtt"), "r", encoding="utf-8") as f:
         vtt = f.read()
 
-    # TODO: Check that the encoding is right here
-    response = vimeo_client.put(upload_link, data=vtt)  # type: ignore
+    # If you don't encode the VTT file as UTF-8, then for some reason some characters get dropped at the end of the
+    # file (if there are Unicode characters)
+    response = vimeo_client.put(upload_link, data=vtt.encode("utf-8"))  # type: ignore
 
     status_code = response.status_code
     if status_code != 200:
