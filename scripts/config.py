@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 
 class Config:
@@ -17,6 +18,9 @@ class Config:
         date_ymd = datetime.now().strftime("%Y-%m-%d")
         self.captions_dir = self.home_dir.joinpath("Captions").joinpath(date_ymd)
         self.log_dir = self.home_dir.joinpath("Logs")
+
+        self.vimeo_video_uri: Union[str, None] = None
+        self.vimeo_video_texttracks_uri: Union[str, None] = None
 
     def fill_placeholders(self, text: str) -> str:
         text = (

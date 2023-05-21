@@ -12,10 +12,17 @@
 			"depends_on": []
 		},
 		{
+			"name": "get_vimeo_video_data",
+			"description": "The Vimeo video data could not be retrieved automatically. See the logs for details.",
+			"depends_on": [
+				"export_to_vimeo"
+			]
+		},
+		{
 			"name": "rename_video_on_vimeo",
 			"description": "On Vimeo, rename the video to '%{DATE_YMD}% | %{MESSAGE_SERIES}% | %{MESSAGE_TITLE}%'.",
 			"depends_on": [
-				"export_to_vimeo"
+				"get_vimeo_video_data"
 			]
 		},
 		{
@@ -76,7 +83,8 @@
 			"name": "upload_captions_to_vimeo",
 			"description": "On Vimeo, upload the captions and make sure they are enabled.",
 			"depends_on": [
-				"review_captions"
+				"review_captions",
+				"get_vimeo_video_data"
 			]
 		}
 	]
