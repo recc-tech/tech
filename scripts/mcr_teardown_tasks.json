@@ -7,13 +7,6 @@
 			"depends_on": []
 		},
 		{
-			"name": "save_vmix_preset",
-			"description": "In vMix, save the preset.",
-			"depends_on": [
-				"stop_broadcast"
-			]
-		},
-		{
 			"name": "update_video_computer",
 			"description": "Check for updates on the MCR video computer.",
 			"depends_on": [
@@ -160,6 +153,20 @@
 			"depends_on": [
 				"review_captions",
 				"get_vimeo_video_data"
+			]
+		},
+		{
+			"name": "close_vmix",
+			"description": "Save this week's preset and close vMix.",
+			"depends_on": [
+				"stop_broadcast"
+			]
+		},
+		{
+			"name": "turn_off_monitors",
+			"description": "Turn off both monitors in the MCR.",
+			"depends_on": [
+				"close_vmix"
 			]
 		}
 	]
