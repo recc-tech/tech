@@ -133,10 +133,6 @@ def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messeng
     if not source.exists():
         raise ValueError(f"File '{source}' does not exist.")
 
-    # Mark the original file as read-only
-    source.chmod(stat.S_IREAD)
-    messenger.log(logging.DEBUG, f"Marked '{source}' as read-only.")
-
     if destination.exists():
         messenger.log(
             logging.WARN,
@@ -146,6 +142,10 @@ def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messeng
     # Copy the file
     shutil.copy(src=source, dst=destination)
     messenger.log(logging.DEBUG, f"Copied '{source}' to '{destination}'.")
+
+    # Mark the original file as read-only
+    source.chmod(stat.S_IREAD)
+    messenger.log(logging.DEBUG, f"Marked '{source}' as read-only.")
 
 
 def _get_vimeo_texttrack_upload_link(
