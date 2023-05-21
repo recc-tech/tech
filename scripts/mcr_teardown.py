@@ -3,7 +3,11 @@ from __future__ import annotations
 import logging
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
+from getpass import getpass
 from pathlib import Path
+
+import keyring
+from vimeo import VimeoClient
 
 from config import Config
 from messenger import Messenger
@@ -32,12 +36,15 @@ def main():
 
     messenger = _create_messenger(config.log_dir)
 
+    vimeo_client = _create_vimeo_client(config.KEYRING_APP_NAME, messenger)
+
     try:
         task_file = Path(__file__).parent.joinpath("mcr_teardown_tasks.json")
         task_graph = TaskGraph.load(
             task_file=task_file,
             config=config,
             messenger=messenger,
+            vimeo_client=vimeo_client,
         )
     except Exception as e:
         messenger.log(logging.FATAL, f"Failed to load task graph: {e}")
@@ -58,6 +65,76 @@ def _create_messenger(log_directory: Path) -> Messenger:
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_directory.joinpath(f"{current_date} {current_time} mcr_teardown.log")
     return Messenger(log_file)
+
+
+def _create_vimeo_client(app_name: str, messenger: Messenger) -> VimeoClient:
+    first_attempt = True
+
+    while True:
+        token = _get_credential(
+            app_name,
+            "vimeo_access_token",
+            "Vimeo access token",
+            force_user_input=not first_attempt,
+        )
+        client_id = _get_credential(
+            app_name,
+            "vimeo_client_id",
+            "Vimeo client ID",
+            force_user_input=not first_attempt,
+        )
+        client_secret = _get_credential(
+            app_name,
+            "vimeo_client_secret",
+            "Vimeo client secret",
+            force_user_input=not first_attempt,
+        )
+
+        client = VimeoClient(
+            token=token,
+            key=client_id,
+            secret=client_secret,
+        )
+
+        # Test the client
+        response = client.get("/tutorial")  # type: ignore
+        if response.status_code == 200:
+            messenger.log(
+                logging.DEBUG, f"Vimeo client is able to access GET /tutorial endpoint."
+            )
+            return client
+        else:
+            messenger.log(
+                logging.WARN,
+                f"Vimeo client test request failed (HTTP status {response.status_code}).",
+            )
+            first_attempt = False
+            # TODO: Give the user the option to decide whether or not they want to try again If they don't, return None
+            # instead and have every step that requires the Vimeo client request user intervention.
+
+
+def _get_credential(
+    app_name: str,
+    credential_username: str,
+    credential_display_name: str,
+    force_user_input: bool = False,
+) -> str:
+    if not force_user_input:
+        value = keyring.get_password(app_name, credential_username)
+        if value:
+            return value
+
+    while True:
+        value = getpass(f"Enter {credential_display_name}: ")
+        if not value:
+            print("You just entered a blank value. Please try again.")
+        elif value.upper() == "^V":
+            print("You just entered the value '^V'. Try right-clicking to paste.")
+        else:
+            break
+
+    keyring.set_password(app_name, credential_username, value)
+    return value
 
 
 def _parse_args() -> Namespace:

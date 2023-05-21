@@ -10,6 +10,8 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, List, Set, Tuple
 
+from vimeo import VimeoClient
+
 from config import Config
 from messenger import Messenger
 
@@ -106,7 +108,9 @@ class TaskGraph:
         self._threads = threads
 
     @staticmethod
-    def load(task_file: Path, config: Config, messenger: Messenger) -> TaskGraph:
+    def load(
+        task_file: Path, config: Config, messenger: Messenger, vimeo_client: VimeoClient
+    ) -> TaskGraph:
         with open(task_file, "r") as f:
             tasks: List[Dict[str, Any]] = json.load(f)["tasks"]
 
@@ -131,7 +135,7 @@ class TaskGraph:
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
         threads = TaskGraph._create_and_combine_threads(
-            sorted_task_names, task_index, task_file, messenger, config
+            sorted_task_names, task_index, task_file, messenger, config, vimeo_client
         )
 
         return TaskGraph(threads)
@@ -215,6 +219,7 @@ class TaskGraph:
         task_filename: Path,
         messenger: Messenger,
         config: Config,
+        vimeo_client: VimeoClient,
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
@@ -226,7 +231,9 @@ class TaskGraph:
             while True:
                 # Look for functions in a Python module with the same name as the task list
                 module_name = task_filename.with_suffix("").name
-                f = TaskGraph._find_function(module_name, task_name, config, messenger)
+                f = TaskGraph._find_function(
+                    module_name, task_name, config, messenger, vimeo_client
+                )
                 task_obj = Task(
                     func=f,
                     fallback_message=description,
@@ -281,7 +288,11 @@ class TaskGraph:
 
     @staticmethod
     def _find_function(
-        module_name: str, task_name: str, config: Config, messenger: Messenger
+        module_name: str,
+        task_name: str,
+        config: Config,
+        messenger: Messenger,
+        vimeo_client: VimeoClient,
     ) -> Callable[[], None]:
         # Locate the function
         module = importlib.import_module(module_name)
@@ -309,6 +320,10 @@ class TaskGraph:
                 param.annotation == Parameter.empty and param.name == "messenger"
             ):
                 inputs[param.name] = messenger
+            elif param.annotation == VimeoClient or (
+                param.annotation == Parameter.empty and param.name == "vimeo_client"
+            ):
+                inputs[param.name] = vimeo_client
             else:
                 raise ValueError(
                     f"Function for task '{task_name}' expects an unknown argument '{param.name}'."

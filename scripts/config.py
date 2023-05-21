@@ -7,15 +7,16 @@ class Config:
     Central location for configuration information.
     """
 
+    KEYRING_APP_NAME = "recc_tech_mcr_teardown"
+
     def __init__(self, home_dir: Path, message_series: str, message_title: str):
         self.home_dir = home_dir.resolve()
         self.message_series = message_series.strip()
         self.message_title = message_title.strip()
 
+        date_ymd = datetime.now().strftime("%Y-%m-%d")
+        self.captions_dir = self.home_dir.joinpath("Captions").joinpath(date_ymd)
         self.log_dir = self.home_dir.joinpath("Logs")
-        self.captions_dir = self.home_dir.joinpath("Captions").joinpath(
-            datetime.now().strftime("%Y-%m-%d")
-        )
 
     def fill_placeholders(self, text: str) -> str:
         text = (
