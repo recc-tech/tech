@@ -1,39 +1,34 @@
 import logging
-import shutil
-import stat
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Tuple
 
-from vimeo import VimeoClient
-
-from config import Config
 from messenger import Messenger
+from vimeo import VimeoClient  # type: ignore
 
-VIMEO_NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
+
+NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
 """
 Maximum time elapsed since today's video was uploaded.
 """
 
-VIMEO_RETRY_SECONDS = 60
+RETRY_SECONDS = 60
 """
 Number of seconds to wait between checks for the new video on Vimeo.
 """
 
-VIMEO_CAPTIONS_TYPE = "subtitles"
+CAPTIONS_TYPE = "subtitles"
 
-VIMEO_CAPTIONS_LANGUAGE = "en-CA"
+CAPTIONS_LANGUAGE = "en-CA"
 
-VIMEO_CAPTIONS_NAME = "English (Canada)"
+CAPTIONS_NAME = "English (Canada)"
 
 
-def get_vimeo_video_data(
-    messenger: Messenger, vimeo_client: VimeoClient, config: Config
-):
+def get_video_data(messenger: Messenger, client: VimeoClient) -> Tuple[str, str]:
     # Wait for the video to be posted
     while True:
-        response = vimeo_client.get(  # type: ignore
+        response = client.get(  # type: ignore
             "/me/videos",
             params={
                 "fields": "created_time,uri,metadata.connections.texttracks.uri",
@@ -55,13 +50,13 @@ def get_vimeo_video_data(
             # TODO: double-check that we have the right video by also looking at the name or something?
             datetime.now(timezone.utc)
             - datetime.fromisoformat(response_data["created_time"])  # type: ignore
-            > VIMEO_NEW_VIDEO_TIMEDELTA
+            > NEW_VIDEO_TIMEDELTA
         ):
             messenger.log(
                 logging.DEBUG,
-                f"Video not yet found on Vimeo. Retrying in {VIMEO_RETRY_SECONDS} seconds.",
+                f"Video not yet found on Vimeo. Retrying in {RETRY_SECONDS} seconds.",
             )
-            time.sleep(VIMEO_RETRY_SECONDS)
+            time.sleep(RETRY_SECONDS)
         else:
             messenger.log(
                 logging.DEBUG,
@@ -69,18 +64,15 @@ def get_vimeo_video_data(
             )
             break
 
-    # Save data for use by later steps
-    config.vimeo_video_uri = response_data["uri"]
-    config.vimeo_video_texttracks_uri = response_data["metadata"]["connections"][
-        "texttracks"
-    ]["uri"]
+    video_uri = response_data["uri"]
+    texttrack_uri = response_data["metadata"]["connections"]["texttracks"]["uri"]
+    return (video_uri, texttrack_uri)
 
 
-def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
-    date_ymd = datetime.now().strftime("%Y-%m-%d")
-    response = vimeo_client.patch(  # type: ignore
-        config.vimeo_video_uri,
-        data={"name": f"{date_ymd} | {config.message_series} | {config.message_title}"},
+def rename_video(video_uri: str, new_title: str, client: VimeoClient):
+    response = client.patch(  # type: ignore
+        video_uri,
+        data={"name": new_title},
     )
     if response.status_code != 200:
         raise RuntimeError(
@@ -88,75 +80,43 @@ def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
         )
 
 
-def copy_captions_original_to_without_worship(messenger: Messenger, config: Config):
-    _mark_read_only_and_copy(
-        config.captions_dir.joinpath("original.vtt"),
-        config.captions_dir.joinpath("without_worship.vtt"),
-        messenger,
-    )
-
-
-def copy_captions_without_worship_to_final(messenger: Messenger, config: Config):
-    _mark_read_only_and_copy(
-        config.captions_dir.joinpath("without_worship.vtt"),
-        config.captions_dir.joinpath("final.vtt"),
-        messenger,
-    )
-
-
 def upload_captions_to_vimeo(
-    config: Config, messenger: Messenger, vimeo_client: VimeoClient
+    final_captions_file: Path,
+    texttrack_uri: str,
+    messenger: Messenger,
+    client: VimeoClient,
 ):
     # See https://developer.vimeo.com/api/upload/texttracks
 
     # (1) Get text track URI: done in get_vimeo_video_data()
 
     # (2) Get upload link for text track
-    (upload_link, uri) = _get_vimeo_texttrack_upload_link(config, vimeo_client)
+    (upload_link, uri) = _get_vimeo_texttrack_upload_link(texttrack_uri, client)
     messenger.log(
         logging.DEBUG,
         f"Got text track upload link and URI for Vimeo video: upload link '{upload_link}', URI '{uri}'.",
     )
 
     # (3) Upload text track
-    _upload_texttrack(upload_link, config, vimeo_client)
+    _upload_texttrack(final_captions_file, upload_link, client)
     messenger.log(logging.DEBUG, "Uploaded text track for Vimeo video.")
 
     # (4) Mark text track as active
-    _activate_texttrack(uri, vimeo_client)
+    _activate_texttrack(uri, client)
     messenger.log(
         logging.DEBUG, "Marked newly-uploaded text track for Vimeo video as active."
     )
 
 
-def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messenger):
-    if not source.exists():
-        raise ValueError(f"File '{source}' does not exist.")
-
-    if destination.exists():
-        messenger.log(
-            logging.WARN,
-            f"File '{destination}' already exists and will be overwritten.",
-        )
-
-    # Copy the file
-    shutil.copy(src=source, dst=destination)
-    messenger.log(logging.DEBUG, f"Copied '{source}' to '{destination}'.")
-
-    # Mark the original file as read-only
-    source.chmod(stat.S_IREAD)
-    messenger.log(logging.DEBUG, f"Marked '{source}' as read-only.")
-
-
 def _get_vimeo_texttrack_upload_link(
-    config: Config, vimeo_client: VimeoClient
+    texttrack_uri: str, client: VimeoClient
 ) -> Tuple[str, str]:
-    response = vimeo_client.post(  # type: ignore
-        config.vimeo_video_texttracks_uri,
+    response = client.post(  # type: ignore
+        texttrack_uri,
         data={
-            "type": VIMEO_CAPTIONS_TYPE,
-            "language": VIMEO_CAPTIONS_LANGUAGE,
-            "name": VIMEO_CAPTIONS_NAME,
+            "type": CAPTIONS_TYPE,
+            "language": CAPTIONS_LANGUAGE,
+            "name": CAPTIONS_NAME,
         },
     )
 
@@ -170,15 +130,19 @@ def _get_vimeo_texttrack_upload_link(
     return (response_body["link"], response_body["uri"])
 
 
-def _upload_texttrack(upload_link: str, config: Config, vimeo_client: VimeoClient):
+def _upload_texttrack(
+    final_captions_file: Path,
+    upload_link: str,
+    client: VimeoClient,
+):
     # Read the captions from final.vtt
     # If you don't set the encoding to UTF-8, then Unicode characters get mangled
-    with open(config.captions_dir.joinpath("final.vtt"), "r", encoding="utf-8") as f:
+    with open(final_captions_file, "r", encoding="utf-8") as f:
         vtt = f.read()
 
     # If you don't encode the VTT file as UTF-8, then for some reason some characters get dropped at the end of the
     # file (if there are Unicode characters)
-    response = vimeo_client.put(upload_link, data=vtt.encode("utf-8"))  # type: ignore
+    response = client.put(upload_link, data=vtt.encode("utf-8"))  # type: ignore
 
     status_code = response.status_code
     if status_code != 200:
@@ -187,8 +151,8 @@ def _upload_texttrack(upload_link: str, config: Config, vimeo_client: VimeoClien
         )
 
 
-def _activate_texttrack(texttrack_uri: str, vimeo_client: VimeoClient):
-    response = vimeo_client.patch(texttrack_uri, data={"active": True})  # type: ignore
+def _activate_texttrack(texttrack_uri: str, client: VimeoClient):
+    response = client.patch(texttrack_uri, data={"active": True})  # type: ignore
 
     status_code = response.status_code
     if status_code != 200:
