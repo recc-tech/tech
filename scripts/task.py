@@ -406,7 +406,36 @@ class TaskGraph:
 
         # Pass the right arguments to the function
         signature = inspect.signature(function)
-        inputs = {}
+        inputs = TaskGraph._resolve_arguments(
+            task_name,
+            signature,
+            config,
+            messenger,
+            vimeo_client,
+            boxcast_client_factory,
+        )
+        function_with_args = lambda: function(**inputs)
+
+        # Check that the function returns nothing
+        if signature.return_annotation not in [None, "None", Signature.empty]:
+            messenger.log(
+                logging.WARN,
+                f"The function for task '{task_name}' should return nothing, but claims to have a return value.",
+            )
+
+        return function_with_args
+
+    @staticmethod
+    def _resolve_arguments(
+        task_name: str,
+        signature: Signature,
+        config: Config,
+        messenger: Messenger,
+        vimeo_client: VimeoClient,
+        boxcast_client_factory: BoxCastClientFactory,
+    ) -> Dict[str, Any]:
+        inputs: Dict[str, Any] = {}
+        signature = inspect.signature(function)
         for param in signature.parameters.values():
             if param.annotation == Config or (
                 param.annotation == Parameter.empty and param.name == "config"
@@ -429,20 +458,7 @@ class TaskGraph:
                 raise ValueError(
                     f"Function for task '{task_name}' expects an unknown argument '{param.name}'."
                 )
-        function_with_args = lambda: function(**inputs)
-
-        # Check that the function returns nothing
-        if (
-            signature.return_annotation is not None
-            and signature.return_annotation != "None"
-            and signature.return_annotation != Signature.empty
-        ):
-            messenger.log(
-                logging.WARN,
-                f"The function for task '{task_name}' should return nothing, but claims to have a return value.",
-            )
-
-        return function_with_args
+        return inputs
 
     @staticmethod
     def _unimplemented_task() -> None:
