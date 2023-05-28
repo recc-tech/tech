@@ -134,13 +134,28 @@ class TaskGraph:
                 json_data["after"] if "after" in json_data else []
             )
 
+        # Look for functions in a Python module with the same name as the task list
+        # TODO: This seems pretty hacky :(
+        project_root = Path(__file__).parent
+        module_name = (
+            directory.joinpath("tasks")
+            .relative_to(project_root)
+            .as_posix()
+            .replace("/", ".")
+        )
+        module = TaskGraph._find_module(module_name, messenger)
+
+        if module is not None:
+            task_names = {t["name"] for t in tasks + before_tasks + after_tasks}
+            TaskGraph._find_unused_functions(module, task_names, messenger)
+
         graph = TaskGraph._load(
-            tasks, directory, config, messenger, vimeo_client, boxcast_client_factory
+            tasks, module, config, messenger, vimeo_client, boxcast_client_factory
         )
         if len(before_tasks) > 0:
             graph._before = TaskGraph._load(
                 before_tasks,
-                directory,
+                module,
                 config,
                 messenger,
                 vimeo_client,
@@ -149,7 +164,7 @@ class TaskGraph:
         if len(after_tasks) > 0:
             graph._after = TaskGraph._load(
                 after_tasks,
-                directory,
+                module,
                 config,
                 messenger,
                 vimeo_client,
@@ -186,7 +201,7 @@ class TaskGraph:
     @staticmethod
     def _load(
         tasks: List[Dict[str, Any]],
-        directory: Path,
+        module: Union[ModuleType, None],
         config: Config,
         messenger: Messenger,
         vimeo_client: VimeoClient,
@@ -215,7 +230,7 @@ class TaskGraph:
         threads = TaskGraph._create_and_combine_threads(
             sorted_task_names,
             task_index,
-            directory,
+            module,
             messenger,
             config,
             vimeo_client,
@@ -280,7 +295,7 @@ class TaskGraph:
     def _create_and_combine_threads(
         sorted_task_names: List[str],
         task_index: Dict[str, Tuple[str, List[str], List[str]]],
-        directory: Path,
+        module: Union[ModuleType, None],
         messenger: Messenger,
         config: Config,
         vimeo_client: VimeoClient,
@@ -288,17 +303,6 @@ class TaskGraph:
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
-
-        # Look for functions in a Python module with the same name as the task list
-        # TODO: This seems pretty hacky :(
-        project_root = Path(__file__).parent
-        module_name = (
-            directory.joinpath("tasks")
-            .relative_to(project_root)
-            .as_posix()
-            .replace("/", ".")
-        )
-        module = TaskGraph._find_module(module_name, messenger)
 
         while len(sorted_task_names) > 0:
             thread = TaskThread(name="", tasks=[], prerequisites=set())
@@ -378,6 +382,18 @@ class TaskGraph:
             return None
 
     @staticmethod
+    def _find_unused_functions(
+        module: ModuleType, task_names: Set[str], messenger: Messenger
+    ):
+        functions = inspect.getmembers(module, inspect.isfunction)
+        function_names = [name for (name, _) in functions]
+        unused_function_names = [
+            f for f in function_names if not f.startswith("_") and f not in task_names
+        ]
+        for f in unused_function_names:
+            messenger.log(logging.WARN, f"The function '{module.__name__}.{f}' does not match any task names.")
+
+    @staticmethod
     def _find_function(
         module: Union[ModuleType, None],
         task_name: str,
@@ -435,7 +451,6 @@ class TaskGraph:
         boxcast_client_factory: BoxCastClientFactory,
     ) -> Dict[str, Any]:
         inputs: Dict[str, Any] = {}
-        signature = inspect.signature(function)
         for param in signature.parameters.values():
             if param.annotation == Config or (
                 param.annotation == Parameter.empty and param.name == "config"
