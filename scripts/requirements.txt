@@ -1,2 +1,3 @@
 keyring==23.13.1
 PyVimeo==1.1.0
+selenium==4.9.1
