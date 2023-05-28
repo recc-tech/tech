@@ -51,14 +51,22 @@ def main():
             vimeo_client=vimeo_client,
             boxcast_client_factory=boxcast_client_factory,
         )
+        messenger.log(logging.INFO, "Successfully loaded the task graph.")
     except Exception as e:
         messenger.log(logging.FATAL, f"Failed to load task graph: {e}")
         messenger.close()
         return
 
     try:
-        task_graph.start()
-        task_graph.join()
+        if not args.no_run:
+            task_graph.start()
+            task_graph.join()
+            messenger.log(
+                logging.INFO,
+                "All tasks completed. Please double-check that everything is good using the checklist on GitHub.",
+            )
+            print()
+            print("Great work :)")
     except Exception as e:
         messenger.log(logging.FATAL, f"Failed to run task graph: {e}")
     finally:
@@ -136,6 +144,12 @@ def _parse_args() -> Namespace:
         type=_parse_directory,
         default="D:\\Users\\Tech\\Documents",
         help="Home directory.",
+    )
+    parser.add_argument(
+        "-n",
+        "--no-run",
+        action="store_true",
+        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
     )
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
