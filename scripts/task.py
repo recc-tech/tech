@@ -4,6 +4,7 @@ import importlib
 import inspect
 import json
 import logging
+import traceback
 from inspect import Parameter, Signature
 from logging import DEBUG, INFO, ERROR
 from pathlib import Path
@@ -66,8 +67,10 @@ class Task:
                     f"Task '{self._name}' is not yet implemented. Requesting user input.",
                 )
             else:
-                self._messenger.log(
-                    ERROR, f"Task '{self._name}' failed with an exception: {e}"
+                self._messenger.log_separate(
+                    ERROR,
+                    f"Task '{self._name}' failed with an exception: {e}",
+                    f"Task '{self._name}' failed with an exception:\n{traceback.format_exc()}",
                 )
 
             message = f"- {self._fallback_message} When you are done, press ENTER."

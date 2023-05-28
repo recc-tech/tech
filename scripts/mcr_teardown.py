@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
 from pathlib import Path
@@ -56,7 +57,7 @@ def main():
         messenger.log_separate(
             logging.FATAL,
             f"Failed to load task graph: {e}",
-            f"Failed to load task graph: {e.with_traceback()}",
+            f"Failed to load task graph:\n{traceback.format_exc()}",
         )
         messenger.close()
         return
@@ -72,7 +73,11 @@ def main():
             print()
             print("Great work :)")
     except Exception as e:
-        messenger.log(logging.FATAL, f"Failed to run task graph: {e}")
+        messenger.log_separate(
+            logging.FATAL,
+            f"Failed to run task graph: {e}",
+            f"Failed to run task graph: {traceback.format_exc()}",
+        )
     finally:
         messenger.close()
 

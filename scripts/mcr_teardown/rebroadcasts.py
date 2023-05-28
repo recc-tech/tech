@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 from datetime import datetime
 
 from boxcast_client import BoxCastClient
@@ -25,8 +26,10 @@ def create_rebroadcast(
     try:
         _select_quick_entry_mode(client, messenger)
     except Exception as e:
-        messenger.log(
-            logging.WARN, f"Failed to check that the entry mode is 'Quick Entry': {e}"
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to check that the entry mode is 'Quick Entry': {e}",
+            f"Failed to check that the entry mode is 'Quick Entry':\n{traceback.format_exc()}",
         )
 
     _set_event_name(rebroadcast_title, client)
@@ -34,46 +37,67 @@ def create_rebroadcast(
     try:
         _clear_event_description(client)
     except Exception as e:
-        messenger.log(logging.WARN, f"Failed to clear event description: {e}")
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to clear event description: {e}",
+            f"Failed to clear event description:\n{traceback.format_exc()}",
+        )
 
     try:
         _set_event_start_date(start_datetime.strftime("%m/%d/%Y"), client)
     except Exception as e:
-        messenger.log(logging.WARN, f"Failed to set event start date: {e}")
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to set event start date: {e}",
+            f"Failed to set event start date:\n{traceback.format_exc()}",
+        )
 
     _set_event_start_time(start_datetime.strftime("%H:%M"), client)
 
     try:
         _make_event_non_recurring(client)
     except Exception as e:
-        messenger.log(
-            logging.WARN, f"Failed to check that the rebroadcast is non-recurring: {e}"
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to check that the rebroadcast is non-recurring: {e}",
+            f"Failed to check that the rebroadcast is non-recurring:\n{traceback.format_exc()}",
         )
 
     try:
         _make_event_public(client)
     except Exception as e:
-        messenger.log(
-            logging.WARN, f"Failed to check that the rebroadcast is public: {e}"
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to check that the rebroadcast is public: {e}",
+            f"Failed to check that the rebroadcast is public:\n{traceback.format_exc()}",
         )
 
     try:
         _clear_broadcast_destinations(client)
     except Exception as e:
-        messenger.log(
+        messenger.log_separate(
             logging.WARN,
             f"Failed to check that there are no other destinations for this rebroadcast: {e}",
+            f"Failed to check that there are no other destinations for this rebroadcast:\n{traceback.format_exc()}",
         )
 
     try:
         _show_advanced_settings(client)
     except Exception as e:
-        messenger.log(logging.WARN, f"Failed to show the advanced settings: {e}")
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to show the advanced settings: {e}",
+            f"Failed to show the advanced settings:\n{traceback.format_exc()}",
+        )
 
     try:
         _make_event_not_recorded(client)
     except Exception as e:
-        messenger.log(logging.WARN, f"Failed to make rebroadcast not recorded: {e}")
+        messenger.log_separate(
+            logging.WARN,
+            f"Failed to make rebroadcast not recorded: {e}",
+            f"Failed to make rebroadcast not recorded:\n{traceback.format_exc()}",
+        )
 
     _press_schedule_broadcast_button(client)
 
