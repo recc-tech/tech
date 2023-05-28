@@ -9,6 +9,7 @@ from inspect import Parameter, Signature
 from logging import DEBUG, INFO, ERROR
 from pathlib import Path
 from threading import Thread
+from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from vimeo import VimeoClient  # type: ignore
@@ -287,23 +288,26 @@ class TaskGraph:
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
+
+        # Look for functions in a Python module with the same name as the task list
+        # TODO: This seems pretty hacky :(
+        project_root = Path(__file__).parent
+        module_name = (
+            directory.joinpath("tasks")
+            .relative_to(project_root)
+            .as_posix()
+            .replace("/", ".")
+        )
+        module = TaskGraph._find_module(module_name, messenger)
+
         while len(sorted_task_names) > 0:
             thread = TaskThread(name="", tasks=[], prerequisites=set())
 
             task_name = sorted_task_names.pop()
             (description, depends_on, prerequisite_of) = task_index[task_name]
             while True:
-                # Look for functions in a Python module with the same name as the task list
-                # TODO: This seems pretty hacky :(
-                project_root = Path(__file__).parent
-                module_name = (
-                    directory.joinpath("tasks")
-                    .relative_to(project_root)
-                    .as_posix()
-                    .replace("/", ".")
-                )
                 f = TaskGraph._find_function(
-                    module_name,
+                    module,
                     task_name,
                     config,
                     messenger,
@@ -363,8 +367,19 @@ class TaskGraph:
         return "".join(capitalized_words)
 
     @staticmethod
+    def _find_module(module_name: str, messenger: Messenger) -> Union[ModuleType, None]:
+        try:
+            return importlib.import_module(module_name)
+        except ModuleNotFoundError:
+            messenger.log(
+                logging.WARN,
+                f"The code to run tasks automatically could not be found because the module '{module_name}' does not exist.",
+            )
+            return None
+
+    @staticmethod
     def _find_function(
-        module_name: str,
+        module: Union[ModuleType, None],
         task_name: str,
         config: Config,
         messenger: Messenger,
@@ -373,8 +388,10 @@ class TaskGraph:
     ) -> Callable[[], None]:
         # TODO: Detect unused functions
 
+        if module is None:
+            return TaskGraph._unimplemented_task
+
         # Locate the function
-        module = importlib.import_module(module_name)
         try:
             function: Callable[..., None] = getattr(module, task_name)
             messenger.log(
