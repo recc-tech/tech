@@ -50,7 +50,7 @@ class BoxCastClient(WebDriver):
                 return
             except TimeoutException:
                 first_attempt = False
-                self._messenger.log(logging.WARN, "Failed to log into BoxCast.")
+                self._messenger.log(logging.ERROR, "Failed to log into BoxCast.")
 
     def find_single_element(self, by: str, value: str) -> WebElement:
         elements = self.find_elements(by, value)

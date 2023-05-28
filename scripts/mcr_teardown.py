@@ -115,7 +115,7 @@ def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
             return client
         else:
             messenger.log(
-                logging.WARN,
+                logging.ERROR,
                 f"Vimeo client test request failed (HTTP status {response.status_code}).",
             )
             first_attempt = False

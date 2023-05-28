@@ -5,7 +5,7 @@ import inspect
 import json
 import logging
 from inspect import Parameter, Signature
-from logging import DEBUG, INFO, WARN
+from logging import DEBUG, INFO, ERROR
 from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, List, Set, Tuple
@@ -67,7 +67,7 @@ class Task:
                 )
             else:
                 self._messenger.log(
-                    WARN, f"Task '{self._name}' failed with an exception: {e}"
+                    ERROR, f"Task '{self._name}' failed with an exception: {e}"
                 )
 
             message = f"- {self._fallback_message} When you are done, press ENTER."
