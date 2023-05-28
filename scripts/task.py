@@ -71,7 +71,7 @@ class Task:
                 )
 
             message = f"- {self._fallback_message} When you are done, press ENTER."
-            self._messenger.wait_for_input(message)
+            self._messenger.input(message)
 
 
 class TaskThread(Thread):

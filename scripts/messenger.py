@@ -1,5 +1,6 @@
 import logging
 from collections import deque
+from getpass import getpass
 from logging import FileHandler, Handler, Logger, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
@@ -18,6 +19,8 @@ class Messenger:
 
     console_queue: Deque[Callable[[], Any]]
     console_semaphore: Semaphore
+
+    input_value: str
 
     def __init__(self, log_file: Path):
         self.should_exit = False
@@ -52,23 +55,34 @@ class Messenger:
             queue=self.console_queue,
         )
 
+        # Use an instance variable to send user input between threads
+        self.input_value = ""
+
     def log(self, level: int, message: str):
-        self.file_logger.log(level=level, msg=message)
+        self.log_separate(level, message, message)
+
+    def log_separate(self, level: int, console_message: str, log_file_message: str):
+        self.file_logger.log(level=level, msg=log_file_message)
 
         self.console_queue.append(
-            lambda: self.console_logger.log(level=level, msg=message)
+            lambda: self.console_logger.log(level=level, msg=console_message)
         )
         # Signal that there is a task in the queue
         self.console_semaphore.release()
 
-    def wait_for_input(self, prompt: str):
-        # TODO: Implement a mechanism for returning the user input (maybe via an instance variable?)
+    def input(self, prompt: str) -> str:
+        return self._get_input(prompt, input)
+
+    def get_password(self, prompt: str) -> str:
+        return self._get_input(prompt, getpass)
+
+    def _get_input(self, prompt: str, input_func: Callable[[str], str]) -> str:
         # Use a lock so that this function blocks until the task has run
         lock = Lock()
         lock.acquire()
 
         def input_task():
-            input(prompt)
+            self.input_value = input_func(prompt)
             lock.release()
 
         self.console_queue.append(input_task)
@@ -77,6 +91,8 @@ class Messenger:
 
         # Wait for the task to be done
         lock.acquire()
+
+        return self.input_value
 
     def close(self):
         self.should_exit = True

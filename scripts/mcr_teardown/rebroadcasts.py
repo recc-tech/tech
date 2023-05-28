@@ -209,7 +209,8 @@ def _press_schedule_broadcast_button(client: BoxCastClient):
     submit_button = client.find_single_element(
         By.XPATH, "//button[contains(., 'Schedule Broadcast')]"
     )
-    submit_button.click()
+    print("Here's where the 'Schedule Broadcast' button would be pressed.")
+    # submit_button.click()
 
 
 def _set_checkbox_checked(checkbox: WebElement, should_check: bool):

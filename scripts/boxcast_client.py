@@ -20,11 +20,11 @@ class BoxCastClient(WebDriver):
     def get(self, url: str):
         super().get(url)
         wait = WebDriverWait(self, timeout=10)
-        wait.until(lambda driver: driver.current_url in [target_url, _LOGIN_URL])  # type: ignore
+        wait.until(lambda driver: driver.current_url in [url, _LOGIN_URL])  # type: ignore
 
         if self.current_url == _LOGIN_URL:
             self._login()
-            wait.until(lambda driver: driver.current_url == target_url)  # type: ignore
+            wait.until(lambda driver: driver.current_url == url)  # type: ignore
 
     def _login(self):
         first_attempt = True
@@ -34,7 +34,10 @@ class BoxCastClient(WebDriver):
 
             password_textbox = self.find_single_element(By.ID, "password")
             password = get_credential(
-                "boxcast_password", "BoxCast password", not first_attempt
+                "boxcast_password",
+                "BoxCast password",
+                not first_attempt,
+                self._messenger,
             )
             password_textbox.send_keys(password)  # type: ignore
 

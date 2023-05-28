@@ -53,7 +53,11 @@ def main():
         )
         messenger.log(logging.INFO, "Successfully loaded the task graph.")
     except Exception as e:
-        messenger.log(logging.FATAL, f"Failed to load task graph: {e}")
+        messenger.log_separate(
+            logging.FATAL,
+            f"Failed to load task graph: {e}",
+            f"Failed to load task graph: {e.with_traceback()}",
+        )
         messenger.close()
         return
 
@@ -85,19 +89,22 @@ def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
 
     while True:
         token = get_credential(
-            "vimeo_access_token",
-            "Vimeo access token",
+            credential_username="vimeo_access_token",
+            credential_display_name="Vimeo access token",
             force_user_input=not first_attempt,
+            messenger=messenger,
         )
         client_id = get_credential(
-            "vimeo_client_id",
-            "Vimeo client ID",
+            credential_username="vimeo_client_id",
+            credential_display_name="Vimeo client ID",
             force_user_input=not first_attempt,
+            messenger=messenger,
         )
         client_secret = get_credential(
-            "vimeo_client_secret",
-            "Vimeo client secret",
+            credential_username="vimeo_client_secret",
+            credential_display_name="Vimeo client secret",
             force_user_input=not first_attempt,
+            messenger=messenger,
         )
 
         client = VimeoClient(
