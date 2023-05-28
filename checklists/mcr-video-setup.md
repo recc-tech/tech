@@ -34,7 +34,11 @@ assignees: recc-tech
     - Once the triggers are set up and tested, you'll be able to set up the kids tech while the videos are being broadcast
 - [ ] Restart all videos and loops
     - Do this _after_ testing the triggers so that you don't forget to reset those videos
-- [ ] Update titles
+- Update titles
+    - [ ] Pre-stream title
+    - [ ] Host
+    - [ ] Speaker
+    - [ ] Special announcer(s), if any
 - [ ] Save preset as a new file
     - Click "Save As"
     - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
