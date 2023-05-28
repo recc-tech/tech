@@ -24,7 +24,6 @@ from vimeo import VimeoClient  # type: ignore
 # TODO: Make Messenger methods static so I can access them from anywhere without needing to pass the object around?
 # TODO: Close down Messenger properly in the event of an exception
 # TODO: Make console output coloured to better highlight warnings?
-# TODO: Add a reminder to check and close the checklist on GitHub? It would need to depend on all the previous tasks, which is a bit annoying. Can there be a built-in mechanism for this? Organize tasks into TaskGroups?
 
 
 def main():
