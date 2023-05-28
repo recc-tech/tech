@@ -4,10 +4,45 @@ import stat
 from datetime import datetime
 from pathlib import Path
 
+import mcr_teardown.rebroadcasts as rebroadcasts
 import mcr_teardown.vimeo as recc_vimeo
+from boxcast_client import BoxCastClientFactory
 from config import Config
 from messenger import Messenger
 from vimeo import VimeoClient  # type: ignore
+
+
+def create_rebroadcast_1pm(
+    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+):
+    source_broadcast_id = config.boxcast_event_id
+    start_datetime = datetime.now().replace(hour=13, minute=0, second=0)
+    client = boxcast_client_factory.get_client()
+    rebroadcasts.create_rebroadcast(
+        source_broadcast_id, start_datetime, client, messenger
+    )
+
+
+def create_rebroadcast_5pm(
+    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+):
+    source_broadcast_id = config.boxcast_event_id
+    start_datetime = datetime.now().replace(hour=17, minute=0, second=0)
+    client = boxcast_client_factory.get_client()
+    rebroadcasts.create_rebroadcast(
+        source_broadcast_id, start_datetime, client, messenger
+    )
+
+
+def create_rebroadcast_7pm(
+    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+):
+    source_broadcast_id = config.boxcast_event_id
+    start_datetime = datetime.now().replace(hour=19, minute=0, second=0)
+    client = boxcast_client_factory.get_client()
+    rebroadcasts.create_rebroadcast(
+        source_broadcast_id, start_datetime, client, messenger
+    )
 
 
 def get_vimeo_video_data(

@@ -10,8 +10,9 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, List, Set, Tuple
 
-from vimeo import VimeoClient
+from vimeo import VimeoClient  # type: ignore
 
+from boxcast_client import BoxCastClientFactory
 from config import Config
 from messenger import Messenger
 
@@ -109,9 +110,13 @@ class TaskGraph:
 
     @staticmethod
     def load(
-        task_file: Path, config: Config, messenger: Messenger, vimeo_client: VimeoClient
+        directory: Path,
+        config: Config,
+        messenger: Messenger,
+        vimeo_client: VimeoClient,
+        boxcast_client_factory: BoxCastClientFactory,
     ) -> TaskGraph:
-        with open(task_file, "r") as f:
+        with open(directory.joinpath("tasks.json"), "r") as f:
             tasks: List[Dict[str, Any]] = json.load(f)["tasks"]
 
         unsorted_task_names: Set[str] = {t["name"] for t in tasks}
@@ -135,7 +140,13 @@ class TaskGraph:
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
         threads = TaskGraph._create_and_combine_threads(
-            sorted_task_names, task_index, task_file, messenger, config, vimeo_client
+            sorted_task_names,
+            task_index,
+            directory,
+            messenger,
+            config,
+            vimeo_client,
+            boxcast_client_factory,
         )
 
         return TaskGraph(threads)
@@ -216,10 +227,11 @@ class TaskGraph:
     def _create_and_combine_threads(
         sorted_task_names: List[str],
         task_index: Dict[str, Tuple[str, List[str], List[str]]],
-        task_filename: Path,
+        directory: Path,
         messenger: Messenger,
         config: Config,
         vimeo_client: VimeoClient,
+        boxcast_client_factory: BoxCastClientFactory,
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
@@ -230,9 +242,21 @@ class TaskGraph:
             (description, depends_on, prerequisite_of) = task_index[task_name]
             while True:
                 # Look for functions in a Python module with the same name as the task list
-                module_name = task_filename.with_suffix("").name
+                # TODO: This seems pretty hacky :(
+                project_root = Path(__file__).parent
+                module_name = (
+                    directory.joinpath("tasks")
+                    .relative_to(project_root)
+                    .as_posix()
+                    .replace("/", ".")
+                )
                 f = TaskGraph._find_function(
-                    module_name, task_name, config, messenger, vimeo_client
+                    module_name,
+                    task_name,
+                    config,
+                    messenger,
+                    vimeo_client,
+                    boxcast_client_factory,
                 )
                 task_obj = Task(
                     func=f,
@@ -293,6 +317,7 @@ class TaskGraph:
         config: Config,
         messenger: Messenger,
         vimeo_client: VimeoClient,
+        boxcast_client_factory: BoxCastClientFactory,
     ) -> Callable[[], None]:
         # Locate the function
         module = importlib.import_module(module_name)
@@ -324,6 +349,11 @@ class TaskGraph:
                 param.annotation == Parameter.empty and param.name == "vimeo_client"
             ):
                 inputs[param.name] = vimeo_client
+            elif param.annotation == BoxCastClientFactory or (
+                param.annotation == Parameter.empty
+                and param.name == "boxcast_client_factory"
+            ):
+                inputs[param.name] = boxcast_client_factory
             else:
                 raise ValueError(
                     f"Function for task '{task_name}' expects an unknown argument '{param.name}'."

@@ -8,12 +8,17 @@ class Config:
     Central location for configuration information.
     """
 
-    KEYRING_APP_NAME = "recc_tech_mcr_teardown"
-
-    def __init__(self, home_dir: Path, message_series: str, message_title: str):
+    def __init__(
+        self,
+        home_dir: Path,
+        message_series: str,
+        message_title: str,
+        boxcast_event_id: str,
+    ):
         self.home_dir = home_dir.resolve()
         self.message_series = message_series.strip()
         self.message_title = message_title.strip()
+        self.boxcast_event_id = boxcast_event_id
 
         date_ymd = datetime.now().strftime("%Y-%m-%d")
         self.captions_dir = self.home_dir.joinpath("Captions").joinpath(date_ymd)

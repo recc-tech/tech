@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import logging
+import re
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
-from getpass import getpass
 from pathlib import Path
 
-import keyring
-from vimeo import VimeoClient
-
+from boxcast_client import BoxCastClientFactory
 from config import Config
+from credentials import get_credential
 from messenger import Messenger
 from task import TaskGraph
+from vimeo import VimeoClient  # type: ignore
 
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
 # TODO: Split MCR teardown checklist into manual and automated tasks. In the automated tasks section, add a reminder that, if someone changes the checklist, they should also create an issue to update the script (ideally make the change in the manual section at first?) Alternatively, add the manual tasks to the script and go directly to the "fallback" message.
@@ -33,19 +33,23 @@ def main():
         home_dir=args.home_dir,
         message_series=args.message_series,
         message_title=args.message_title,
+        boxcast_event_id=args.boxcast_event_id,
     )
 
     messenger = _create_messenger(config.log_dir)
 
-    vimeo_client = _create_vimeo_client(config.KEYRING_APP_NAME, messenger)
+    vimeo_client = _create_vimeo_client(messenger)
+
+    boxcast_client_factory = BoxCastClientFactory(messenger)
 
     try:
-        task_file = Path(__file__).parent.joinpath("mcr_teardown_tasks.json")
+        mcr_teardown_dir = Path(__file__).parent.joinpath("mcr_teardown")
         task_graph = TaskGraph.load(
-            task_file=task_file,
+            directory=mcr_teardown_dir,
             config=config,
             messenger=messenger,
             vimeo_client=vimeo_client,
+            boxcast_client_factory=boxcast_client_factory,
         )
     except Exception as e:
         messenger.log(logging.FATAL, f"Failed to load task graph: {e}")
@@ -68,24 +72,21 @@ def _create_messenger(log_directory: Path) -> Messenger:
     return Messenger(log_file)
 
 
-def _create_vimeo_client(app_name: str, messenger: Messenger) -> VimeoClient:
+def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
     first_attempt = True
 
     while True:
-        token = _get_credential(
-            app_name,
+        token = get_credential(
             "vimeo_access_token",
             "Vimeo access token",
             force_user_input=not first_attempt,
         )
-        client_id = _get_credential(
-            app_name,
+        client_id = get_credential(
             "vimeo_client_id",
             "Vimeo client ID",
             force_user_input=not first_attempt,
         )
-        client_secret = _get_credential(
-            app_name,
+        client_secret = get_credential(
             "vimeo_client_secret",
             "Vimeo client secret",
             force_user_input=not first_attempt,
@@ -114,30 +115,6 @@ def _create_vimeo_client(app_name: str, messenger: Messenger) -> VimeoClient:
             # instead and have every step that requires the Vimeo client request user intervention.
 
 
-def _get_credential(
-    app_name: str,
-    credential_username: str,
-    credential_display_name: str,
-    force_user_input: bool = False,
-) -> str:
-    if not force_user_input:
-        value = keyring.get_password(app_name, credential_username)
-        if value:
-            return value
-
-    while True:
-        value = getpass(f"Enter {credential_display_name}: ")
-        if not value:
-            print("You just entered a blank value. Please try again.")
-        elif value.upper() == "^V":
-            print("You just entered the value '^V'. Try right-clicking to paste.")
-        else:
-            break
-
-    keyring.set_password(app_name, credential_username, value)
-    return value
-
-
 def _parse_args() -> Namespace:
     parser = ArgumentParser(
         description="Script to guide and automate the teardown process in the MCR."
@@ -158,9 +135,25 @@ def _parse_args() -> Namespace:
         "--home-dir",
         type=_parse_directory,
         default="D:\\Users\\Tech\\Documents",
+        help="Home directory.",
     )
 
-    return parser.parse_args()
+    boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
+    boxcast_event_id_group.add_argument(
+        "--boxcast-event-url",
+        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/#/events/guaquelanroojzs8fbd9.",
+    )
+    boxcast_event_id_group.add_argument(
+        "--boxcast-event-id",
+        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/#/events/guaquelanroojzs8fbd9, the event ID is "guaquelanroojzs8fbd9" (without the quotation marks).',
+    )
+
+    args = parser.parse_args()
+
+    if args.boxcast_event_url:
+        args.boxcast_event_id = _parse_boxcast_event_url(args.boxcast_event_url)
+
+    return args
 
 
 def _parse_directory(path_str: str) -> Path:
@@ -174,6 +167,26 @@ def _parse_directory(path_str: str) -> Path:
 
     path = path.resolve()
     return path
+
+
+def _parse_boxcast_event_url(event_url: str) -> str:
+    # The event URL should be in the form "https://dashboard.boxcast.com/#/events/<EVENT-ID>"
+    # Allow a trailing forward slash just in case
+    event_url = event_url.strip()
+    pattern = re.compile(
+        "^https://dashboard\\.boxcast\\.com/#/events/([a-zA-Z0-9]+)/?$"
+    )
+    regex_match = pattern.search(event_url)
+    if not regex_match:
+        raise ValueError(
+            f"Expected the BoxCast event URL to be in the form 'https://dashboard.boxcast.com/#/events/<EVENT-ID>', but received '{event_url}'."
+        )
+    event_id = regex_match.group(1)
+    if len(event_id) != 20:
+        raise ValueError(
+            f"Expected the BoxCast event ID to be 20 characters long, but '{event_id}' has a length of {len(event_id)} characters. Are you sure you copied the entire URL?"
+        )
+    return event_id
 
 
 if __name__ == "__main__":
