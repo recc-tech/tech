@@ -113,6 +113,9 @@ def _get_rebroadcast_page(
     """
     while True:
         client.get(rebroadcast_setup_url)
+        # Wait for page to fully load
+        # TODO: Use Selenium's waits?
+        time.sleep(5)
 
         source_broadcast_element = client.find_single_element(
             By.TAG_NAME, "recording-source-chooser"
@@ -233,8 +236,7 @@ def _press_schedule_broadcast_button(client: BoxCastClient):
     submit_button = client.find_single_element(
         By.XPATH, "//button[contains(., 'Schedule Broadcast')]"
     )
-    print("Here's where the 'Schedule Broadcast' button would be pressed.")
-    # submit_button.click()
+    submit_button.click()
 
 
 def _set_checkbox_checked(checkbox: WebElement, should_check: bool):

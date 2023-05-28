@@ -58,7 +58,9 @@ class BoxCastClient(WebDriver):
     def find_single_element(self, by: str, value: str) -> WebElement:
         elements = self.find_elements(by, value)
         if len(elements) == 0:
-            raise NoSuchElementException()
+            raise NoSuchElementException(
+                f"No element found for the given criteria (by = {by}, value = '{value}')"
+            )
         elif len(elements) == 1:
             return elements[0]
         else:
