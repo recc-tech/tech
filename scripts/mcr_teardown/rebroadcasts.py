@@ -199,8 +199,7 @@ def _set_event_start_time(time: str, client: BoxCastClient):
 def _make_event_non_recurring(client: BoxCastClient):
     recurring_broadcast_checkbox = client.find_single_element(
         By.XPATH,
-        # TODO: This selector is garbage
-        "//span[contains(., 'Make This a Recurring Broadcast')]/*[1]",
+        "//recurrence-pattern[contains(., 'Make This a Recurring Broadcast')]//i",
     )
     _set_checkbox_checked(recurring_broadcast_checkbox, False)
 
@@ -232,7 +231,7 @@ def _show_advanced_settings(client: BoxCastClient):
 
 def _make_event_not_recorded(client: BoxCastClient):
     record_broadcast_checkbox = client.find_single_element(
-        By.XPATH, "//label[contains(., 'Record Broadcast')]/*[1]"
+        By.XPATH, "//label[contains(., 'Record Broadcast')]//i"
     )
     _set_checkbox_checked(record_broadcast_checkbox, False)
 
