@@ -104,7 +104,7 @@ def create_rebroadcast(
 
     # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
     wait = WebDriverWait(client, timeout=10)
-    wait.until(lambda driver: driver.current_url.starts_with("https://dashboard.boxcast.com/#/events"))  # type: ignore
+    wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/#/events"))  # type: ignore
 
 
 def _get_rebroadcast_page(
@@ -231,7 +231,7 @@ def _show_advanced_settings(client: BoxCastClient):
 
 def _make_event_not_recorded(client: BoxCastClient):
     record_broadcast_checkbox = client.find_single_element(
-        By.XPATH, "//label[contains(., 'Record Broadcast')]//i"
+        By.XPATH, "//label[contains(., 'Record Broadcast')]//i[1]"
     )
     _set_checkbox_checked(record_broadcast_checkbox, False)
 
