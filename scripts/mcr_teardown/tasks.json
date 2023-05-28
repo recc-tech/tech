@@ -43,21 +43,21 @@
 		},
 		{
 			"name": "create_rebroadcast_1pm",
-			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 1:00 pm.",
+			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 1:00 pm.",
 			"depends_on": [
 				"stop_broadcast"
 			]
 		},
 		{
 			"name": "create_rebroadcast_5pm",
-			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 5:00 pm.",
+			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 5:00 pm.",
 			"depends_on": [
 				"create_rebroadcast_1pm"
 			]
 		},
 		{
 			"name": "create_rebroadcast_7pm",
-			"description": "On BoxCast, create rebroadcasts titled 'Sunday Gathering Rebroadcast: %{DATE_MDY}%' at 7:00 pm.",
+			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 7:00 pm.",
 			"depends_on": [
 				"create_rebroadcast_5pm"
 			]
@@ -78,7 +78,7 @@
 		},
 		{
 			"name": "rename_video_on_vimeo",
-			"description": "On Vimeo, rename the video to '%{DATE_YMD}% | %{MESSAGE_SERIES}% | %{MESSAGE_TITLE}%'.",
+			"description": "On Vimeo, rename the video to '%{LIVE_EVENT_TITLE}%'.",
 			"depends_on": [
 				"get_vimeo_video_data"
 			]
@@ -106,35 +106,35 @@
 		},
 		{
 			"name": "download_captions",
-			"description": "On BoxCast, download the captions and save them in '%{CAPTIONS_DIR}%\\original.vtt'.",
+			"description": "On BoxCast, download the captions and save them in %{ORIGINAL_CAPTIONS_PATH}%.",
 			"depends_on": [
 				"review_and_publish_captions"
 			]
 		},
 		{
 			"name": "copy_captions_original_to_without_worship",
-			"description": "Copy '%{CAPTIONS_DIR}%\\original.vtt' to '%{CAPTIONS_DIR}%\\without_worship.vtt'.",
+			"description": "Copy %{ORIGINAL_CAPTIONS_PATH}% to %{CAPTIONS_WITHOUT_WORSHIP_PATH}%.",
 			"depends_on": [
 				"download_captions"
 			]
 		},
 		{
 			"name": "remove_worship_captions",
-			"description": "In '%{CAPTIONS_DIR}%\\without_worship.vtt', remove the worship captions.",
+			"description": "In %{CAPTIONS_WITHOUT_WORSHIP_PATH}%, remove the worship captions.",
 			"depends_on": [
 				"copy_captions_original_to_without_worship"
 			]
 		},
 		{
 			"name": "copy_captions_without_worship_to_final",
-			"description": "Copy '%{CAPTIONS_DIR}%\\without_worship.vtt' to '%{CAPTIONS_DIR}%\\final.vtt'.",
+			"description": "Copy %{CAPTIONS_WITHOUT_WORSHIP_PATH}% to %{FINAL_CAPTIONS_PATH}%.",
 			"depends_on": [
 				"remove_worship_captions"
 			]
 		},
 		{
 			"name": "review_captions",
-			"description": "In %{CAPTIONS_DIR}%\\final.vtt, double-check that the worship captions were removed properly (if it was done automatically).",
+			"description": "In %{FINAL_CAPTIONS_PATH}%, double-check that the worship captions were removed properly (if it was done automatically).",
 			"depends_on": [
 				"copy_captions_without_worship_to_final",
 				"index_recording"

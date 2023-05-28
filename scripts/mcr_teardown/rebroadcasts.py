@@ -11,16 +11,16 @@ _RETRY_SECONDS = 60
 
 
 def create_rebroadcast(
-    source_broadcast_id: str,
+    rebroadcast_setup_url: str,
+    source_broadcast_title: str,
+    rebroadcast_title: str,
     start_datetime: datetime,
     client: BoxCastClient,
     messenger: Messenger,
 ):
-    # TODO: Get this (and other values) from Config instead
-    source_broadcast_name = (
-        f"Sunday Gathering LIVE: {start_datetime.strftime('%B %d, %Y')}"
+    _get_rebroadcast_page(
+        rebroadcast_setup_url, source_broadcast_title, client, messenger
     )
-    _get_rebroadcast_page(source_broadcast_id, source_broadcast_name, client, messenger)
 
     try:
         _select_quick_entry_mode(client, messenger)
@@ -29,10 +29,7 @@ def create_rebroadcast(
             logging.WARN, f"Failed to check that the entry mode is 'Quick Entry': {e}"
         )
 
-    rebroadcast_name = (
-        f"Sunday Gathering Rebroadcast: {start_datetime.strftime('%B %d, %Y')}"
-    )
-    _set_event_name(rebroadcast_name, client)
+    _set_event_name(rebroadcast_title, client)
 
     try:
         _clear_event_description(client)
@@ -82,7 +79,7 @@ def create_rebroadcast(
 
 
 def _get_rebroadcast_page(
-    source_broadcast_id: str,
+    rebroadcast_setup_url: str,
     expected_source_name: str,
     client: BoxCastClient,
     messenger: Messenger,
@@ -91,9 +88,7 @@ def _get_rebroadcast_page(
     Gets the rebroadcast page and waits until the source broadcast is available.
     """
     while True:
-        client.get(
-            f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={source_broadcast_id}"
-        )
+        client.get(rebroadcast_setup_url)
 
         source_broadcast_element = client.find_single_element(
             By.TAG_NAME, "recording-source-chooser"
@@ -112,7 +107,7 @@ def _get_rebroadcast_page(
             return
         else:
             raise ValueError(
-                "Unable to determine whether the source broadcast is correct."
+                "Unable to determine whether the source broadcast is available."
             )
 
 

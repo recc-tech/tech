@@ -15,33 +15,39 @@ from vimeo import VimeoClient  # type: ignore
 def create_rebroadcast_1pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    source_broadcast_id = config.boxcast_event_id
-    start_datetime = datetime.now().replace(hour=13, minute=0, second=0)
-    client = boxcast_client_factory.get_client()
     rebroadcasts.create_rebroadcast(
-        source_broadcast_id, start_datetime, client, messenger
+        rebroadcast_setup_url=config.rebroadcast_setup_url,
+        source_broadcast_title=config.live_event_title,
+        rebroadcast_title=config.rebroadcast_title,
+        start_datetime=datetime.now().replace(hour=13, minute=0, second=0),
+        client=boxcast_client_factory.get_client(),
+        messenger=messenger,
     )
 
 
 def create_rebroadcast_5pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    source_broadcast_id = config.boxcast_event_id
-    start_datetime = datetime.now().replace(hour=17, minute=0, second=0)
-    client = boxcast_client_factory.get_client()
     rebroadcasts.create_rebroadcast(
-        source_broadcast_id, start_datetime, client, messenger
+        rebroadcast_setup_url=config.rebroadcast_setup_url,
+        source_broadcast_title=config.live_event_title,
+        rebroadcast_title=config.rebroadcast_title,
+        start_datetime=datetime.now().replace(hour=17, minute=0, second=0),
+        client=boxcast_client_factory.get_client(),
+        messenger=messenger,
     )
 
 
 def create_rebroadcast_7pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    source_broadcast_id = config.boxcast_event_id
-    start_datetime = datetime.now().replace(hour=19, minute=0, second=0)
-    client = boxcast_client_factory.get_client()
     rebroadcasts.create_rebroadcast(
-        source_broadcast_id, start_datetime, client, messenger
+        rebroadcast_setup_url=config.rebroadcast_setup_url,
+        source_broadcast_title=config.live_event_title,
+        rebroadcast_title=config.rebroadcast_title,
+        start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
+        client=boxcast_client_factory.get_client(),
+        messenger=messenger,
     )
 
 
@@ -61,24 +67,21 @@ def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
             "The link to the Vimeo video is unknown (config.vimeo_video_uri was not set)."
         )
 
-    date_ymd = datetime.now().strftime("%Y-%m-%d")
-    new_title = f"{date_ymd} | {config.message_series} | {config.message_title}"
-
-    recc_vimeo.rename_video(video_uri, new_title, vimeo_client)
+    recc_vimeo.rename_video(video_uri, config.vimeo_video_title, vimeo_client)
 
 
 def copy_captions_original_to_without_worship(messenger: Messenger, config: Config):
     _mark_read_only_and_copy(
-        config.captions_dir.joinpath("original.vtt"),
-        config.captions_dir.joinpath("without_worship.vtt"),
+        config.original_captions_path,
+        config.captions_without_worship_path,
         messenger,
     )
 
 
 def copy_captions_without_worship_to_final(messenger: Messenger, config: Config):
     _mark_read_only_and_copy(
-        config.captions_dir.joinpath("without_worship.vtt"),
-        config.captions_dir.joinpath("final.vtt"),
+        config.captions_without_worship_path,
+        config.final_captions_path,
         messenger,
     )
 
@@ -86,7 +89,6 @@ def copy_captions_without_worship_to_final(messenger: Messenger, config: Config)
 def upload_captions_to_vimeo(
     config: Config, messenger: Messenger, vimeo_client: VimeoClient
 ):
-    final_captions_file = config.captions_dir.joinpath("final.vtt")
     texttrack_uri = config.vimeo_video_texttracks_uri
     if texttrack_uri is None:
         raise ValueError(
@@ -94,7 +96,7 @@ def upload_captions_to_vimeo(
         )
 
     recc_vimeo.upload_captions_to_vimeo(
-        final_captions_file, texttrack_uri, messenger, vimeo_client
+        config.final_captions_path, texttrack_uri, messenger, vimeo_client
     )
 
 

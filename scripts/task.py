@@ -319,6 +319,8 @@ class TaskGraph:
         vimeo_client: VimeoClient,
         boxcast_client_factory: BoxCastClientFactory,
     ) -> Callable[[], None]:
+        # TODO: Detect unused functions
+
         # Locate the function
         module = importlib.import_module(module_name)
         try:
