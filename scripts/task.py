@@ -9,7 +9,7 @@ from inspect import Parameter, Signature
 from logging import DEBUG, INFO, ERROR
 from pathlib import Path
 from threading import Thread
-from typing import Any, Callable, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from vimeo import VimeoClient  # type: ignore
 
@@ -106,10 +106,14 @@ class TaskThread(Thread):
 
 
 class TaskGraph:
+    _before: Union[TaskGraph, None]
     _threads: Set[TaskThread]
+    _after: Union[TaskGraph, None]
 
     def __init__(self, threads: Set[TaskThread]):
         self._threads = threads
+        self._before = None
+        self._after = None
 
     @staticmethod
     def load(
@@ -120,8 +124,73 @@ class TaskGraph:
         boxcast_client_factory: BoxCastClientFactory,
     ) -> TaskGraph:
         with open(directory.joinpath("tasks.json"), "r") as f:
-            tasks: List[Dict[str, Any]] = json.load(f)["tasks"]
+            json_data: Dict[str, Any] = json.load(f)
+            tasks: List[Dict[str, Any]] = json_data["tasks"]
+            before_tasks: List[Dict[str, Any]] = (
+                json_data["before"] if "before" in json_data else []
+            )
+            after_tasks: List[Dict[str, Any]] = (
+                json_data["after"] if "after" in json_data else []
+            )
 
+        graph = TaskGraph._load(
+            tasks, directory, config, messenger, vimeo_client, boxcast_client_factory
+        )
+        if len(before_tasks) > 0:
+            graph._before = TaskGraph._load(
+                before_tasks,
+                directory,
+                config,
+                messenger,
+                vimeo_client,
+                boxcast_client_factory,
+            )
+        if len(after_tasks) > 0:
+            graph._after = TaskGraph._load(
+                after_tasks,
+                directory,
+                config,
+                messenger,
+                vimeo_client,
+                boxcast_client_factory,
+            )
+        return graph
+
+    def run(self) -> None:
+        if self._before is not None:
+            self._before.run()
+
+        # Need to start threads in order because you cannot join a thread that has not yet started
+        started_thread_names: Set[str] = set()
+        unstarted_threads = {t for t in self._threads}
+        while len(unstarted_threads) > 0:
+            thread_to_start = None
+            for thread in unstarted_threads:
+                prerequisite_names = {t.name for t in thread.prerequisites}
+                if all([name in started_thread_names for name in prerequisite_names]):
+                    thread_to_start = thread
+            if thread_to_start is None:
+                raise RuntimeError("Circular dependency in TaskGraph object.")
+            thread_to_start.start()
+            started_thread_names.add(thread_to_start.name)
+            unstarted_threads.remove(thread_to_start)
+
+        # Wait for main tasks to finish
+        for thread in self._threads:
+            thread.join()
+
+        if self._after is not None:
+            self._after.run()
+
+    @staticmethod
+    def _load(
+        tasks: List[Dict[str, Any]],
+        directory: Path,
+        config: Config,
+        messenger: Messenger,
+        vimeo_client: VimeoClient,
+        boxcast_client_factory: BoxCastClientFactory,
+    ) -> TaskGraph:
         unsorted_task_names: Set[str] = {t["name"] for t in tasks}
 
         TaskGraph._validate_tasks(tasks)
@@ -153,26 +222,6 @@ class TaskGraph:
         )
 
         return TaskGraph(threads)
-
-    def start(self) -> None:
-        # Need to start threads in order because you cannot join a thread that has not yet started
-        started_thread_names: Set[str] = set()
-        unstarted_threads = {t for t in self._threads}
-        while len(unstarted_threads) > 0:
-            thread_to_start = None
-            for thread in unstarted_threads:
-                prerequisite_names = {t.name for t in thread.prerequisites}
-                if all([name in started_thread_names for name in prerequisite_names]):
-                    thread_to_start = thread
-            if thread_to_start is None:
-                raise RuntimeError("Circular dependency in TaskGraph object.")
-            thread_to_start.start()
-            started_thread_names.add(thread_to_start.name)
-            unstarted_threads.remove(thread_to_start)
-
-    def join(self) -> None:
-        for thread in self._threads:
-            thread.join()
 
     @staticmethod
     def _validate_tasks(tasks: List[Dict[str, Any]]):

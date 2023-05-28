@@ -1,17 +1,17 @@
 {
 	"_comment": "For more information about the format of this file, see [TODO: make wiki page and put link here]",
-	"tasks": [
+	"before": [
 		{
 			"name": "stop_broadcast",
 			"description": "If you have not already done so, stop the broadcast in vMix and on BoxCast.",
 			"depends_on": []
-		},
+		}
+	],
+	"tasks": [
 		{
 			"name": "update_video_computer",
 			"description": "Check for updates on the MCR video computer.",
-			"depends_on": [
-				"stop_broadcast"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "update_sound_computer",
@@ -44,9 +44,7 @@
 		{
 			"name": "create_rebroadcast_1pm",
 			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 1:00 pm.",
-			"depends_on": [
-				"stop_broadcast"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "create_rebroadcast_5pm",
@@ -65,9 +63,7 @@
 		{
 			"name": "export_to_vimeo",
 			"description": "On BoxCast, export the recording to Vimeo.",
-			"depends_on": [
-				"stop_broadcast"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "get_vimeo_video_data",
@@ -86,16 +82,12 @@
 		{
 			"name": "index_recording",
 			"description": "On BoxCast, index the recording. See https://github.com/recc-tech/tech/wiki/Index-Chapters for the list of chapters.",
-			"depends_on": [
-				"stop_broadcast"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "start_generating_captions",
 			"description": "On BoxCast, press the button to start generating captions.",
-			"depends_on": [
-				"stop_broadcast"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "review_and_publish_captions",
@@ -154,12 +146,19 @@
 				"review_captions",
 				"get_vimeo_video_data"
 			]
+		}
+	],
+	"after": [
+		{
+			"name": "check_github_checklist",
+			"description": "Double-check that all tasks (except the final shutdown tasks) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
+			"depends_on": []
 		},
 		{
 			"name": "close_vmix",
 			"description": "Save this week's preset and close vMix.",
 			"depends_on": [
-				"stop_broadcast"
+				"check_github_checklist"
 			]
 		},
 		{
@@ -167,6 +166,13 @@
 			"description": "Turn off both monitors in the MCR.",
 			"depends_on": [
 				"close_vmix"
+			]
+		},
+		{
+			"name": "shut_down_computers",
+			"description": "This is the final task. When this script exits, shut down (and update, if necessary) both MCR computers.",
+			"depends_on": [
+				"turn_off_monitors"
 			]
 		}
 	]

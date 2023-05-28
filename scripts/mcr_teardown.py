@@ -63,22 +63,18 @@ def main():
         return
 
     try:
-        if not args.no_run:
-            task_graph.start()
-            task_graph.join()
-            messenger.log(
-                logging.INFO,
-                "All tasks completed. Please double-check that everything is good using the checklist on GitHub.",
-            )
-            print()
-            print("Great work :)")
+        if args.no_run:
+            messenger.close()
+        else:
+            task_graph.run()
+            messenger.close()
+            print("\nGreat work :)\n")
     except Exception as e:
         messenger.log_separate(
             logging.FATAL,
             f"Failed to run task graph: {e}",
             f"Failed to run task graph: {traceback.format_exc()}",
         )
-    finally:
         messenger.close()
 
 
