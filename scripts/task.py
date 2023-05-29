@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import inspect
 import json
 import logging
@@ -14,7 +13,6 @@ from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from vimeo import VimeoClient  # type: ignore
 
-from boxcast_client import BoxCastClientFactory
 from config import Config
 from messenger import Messenger
 
@@ -116,62 +114,6 @@ class TaskGraph:
         self._before = None
         self._after = None
 
-    @staticmethod
-    def load(
-        directory: Path,
-        config: Config,
-        messenger: Messenger,
-        vimeo_client: VimeoClient,
-        boxcast_client_factory: BoxCastClientFactory,
-    ) -> TaskGraph:
-        with open(directory.joinpath("tasks.json"), "r") as f:
-            json_data: Dict[str, Any] = json.load(f)
-            tasks: List[Dict[str, Any]] = json_data["tasks"]
-            before_tasks: List[Dict[str, Any]] = (
-                json_data["before"] if "before" in json_data else []
-            )
-            after_tasks: List[Dict[str, Any]] = (
-                json_data["after"] if "after" in json_data else []
-            )
-
-        # Look for functions in a Python module with the same name as the task list
-        # TODO: This seems pretty hacky :(
-        project_root = Path(__file__).parent
-        module_name = (
-            directory.joinpath("tasks")
-            .relative_to(project_root)
-            .as_posix()
-            .replace("/", ".")
-        )
-        module = TaskGraph._find_module(module_name, messenger)
-
-        if module is not None:
-            task_names = {t["name"] for t in tasks + before_tasks + after_tasks}
-            TaskGraph._find_unused_functions(module, task_names, messenger)
-
-        graph = TaskGraph._load(
-            tasks, module, config, messenger, vimeo_client, boxcast_client_factory
-        )
-        if len(before_tasks) > 0:
-            graph._before = TaskGraph._load(
-                before_tasks,
-                module,
-                config,
-                messenger,
-                vimeo_client,
-                boxcast_client_factory,
-            )
-        if len(after_tasks) > 0:
-            graph._after = TaskGraph._load(
-                after_tasks,
-                module,
-                config,
-                messenger,
-                vimeo_client,
-                boxcast_client_factory,
-            )
-        return graph
-
     def run(self) -> None:
         if self._before is not None:
             self._before.run()
@@ -199,13 +141,44 @@ class TaskGraph:
             self._after.run()
 
     @staticmethod
+    def load(
+        task_list_file: Path,
+        function_finder: FunctionFinder,
+        messenger: Messenger,
+        config: Config,
+    ) -> TaskGraph:
+        with open(task_list_file, "r") as f:
+            json_data: Dict[str, Any] = json.load(f)
+            tasks: List[Dict[str, Any]] = json_data["tasks"]
+            before_tasks: List[Dict[str, Any]] = (
+                json_data["before"] if "before" in json_data else []
+            )
+            after_tasks: List[Dict[str, Any]] = (
+                json_data["after"] if "after" in json_data else []
+            )
+
+        all_task_names: List[str] = [
+            t["name"] for t in before_tasks + tasks + after_tasks
+        ]
+        function_index = function_finder.find_functions(all_task_names)
+
+        graph = TaskGraph._load(tasks, function_index, messenger, config)
+        if len(before_tasks) > 0:
+            graph._before = TaskGraph._load(
+                before_tasks, function_index, messenger, config
+            )
+        if len(after_tasks) > 0:
+            graph._after = TaskGraph._load(
+                after_tasks, function_index, messenger, config
+            )
+        return graph
+
+    @staticmethod
     def _load(
         tasks: List[Dict[str, Any]],
-        module: Union[ModuleType, None],
-        config: Config,
+        function_index: Dict[str, Callable[[], None]],
         messenger: Messenger,
-        vimeo_client: VimeoClient,
-        boxcast_client_factory: BoxCastClientFactory,
+        config: Config,
     ) -> TaskGraph:
         unsorted_task_names: Set[str] = {t["name"] for t in tasks}
 
@@ -228,13 +201,7 @@ class TaskGraph:
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
         threads = TaskGraph._create_and_combine_threads(
-            sorted_task_names,
-            task_index,
-            module,
-            messenger,
-            config,
-            vimeo_client,
-            boxcast_client_factory,
+            sorted_task_names, task_index, function_index, messenger
         )
 
         return TaskGraph(threads)
@@ -295,11 +262,8 @@ class TaskGraph:
     def _create_and_combine_threads(
         sorted_task_names: List[str],
         task_index: Dict[str, Tuple[str, List[str], List[str]]],
-        module: Union[ModuleType, None],
+        function_index: Dict[str, Callable[[], None]],
         messenger: Messenger,
-        config: Config,
-        vimeo_client: VimeoClient,
-        boxcast_client_factory: BoxCastClientFactory,
     ) -> Set[TaskThread]:
         thread_for_task: Dict[str, TaskThread] = {}
         threads: Set[TaskThread] = set()
@@ -310,16 +274,8 @@ class TaskGraph:
             task_name = sorted_task_names.pop()
             (description, depends_on, prerequisite_of) = task_index[task_name]
             while True:
-                f = TaskGraph._find_function(
-                    module,
-                    task_name,
-                    config,
-                    messenger,
-                    vimeo_client,
-                    boxcast_client_factory,
-                )
                 task_obj = Task(
-                    func=f,
+                    func=function_index[task_name],
                     fallback_message=description,
                     messenger=messenger,
                     name=task_name,
@@ -370,110 +326,86 @@ class TaskGraph:
         capitalized_words = [w[0].upper() + w[1:] for w in words]
         return "".join(capitalized_words)
 
-    @staticmethod
-    def _find_module(module_name: str, messenger: Messenger) -> Union[ModuleType, None]:
-        try:
-            return importlib.import_module(module_name)
-        except ModuleNotFoundError:
-            messenger.log(
+
+class FunctionFinder:
+    def __init__(self, module: ModuleType, arguments: Set[Any], messenger: Messenger):
+        self._module = module
+        self._arguments = arguments
+        self._messenger = messenger
+
+    def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
+        self._detect_unused_functions(names)
+        return {name: self._find_function_with_args(name) for name in names}
+
+    def _find_function_with_args(self, name: str) -> Callable[[], None]:
+        original_function = self._find_original_function(name)
+        if original_function is None:
+            # TODO: Just return None instead of a fake function here?
+            return FunctionFinder._unimplemented_task
+        signature = inspect.signature(original_function)
+
+        if signature.return_annotation not in [None, "None", Signature.empty]:
+            self._messenger.log(
                 logging.WARN,
-                f"The code to run tasks automatically could not be found because the module '{module_name}' does not exist.",
+                f"The function for task '{name}' should return nothing, but claims to have a return value.",
             )
-            return None
 
-    @staticmethod
-    def _find_unused_functions(
-        module: ModuleType, task_names: Set[str], messenger: Messenger
-    ):
-        functions = inspect.getmembers(module, inspect.isfunction)
-        function_names = [name for (name, _) in functions]
-        unused_function_names = [
-            f for f in function_names if not f.startswith("_") and f not in task_names
-        ]
-        for f in unused_function_names:
-            messenger.log(logging.WARN, f"The function '{module.__name__}.{f}' does not match any task names.")
-
-    @staticmethod
-    def _find_function(
-        module: Union[ModuleType, None],
-        task_name: str,
-        config: Config,
-        messenger: Messenger,
-        vimeo_client: VimeoClient,
-        boxcast_client_factory: BoxCastClientFactory,
-    ) -> Callable[[], None]:
-        # TODO: Detect unused functions
-
-        if module is None:
-            return TaskGraph._unimplemented_task
-
-        # Locate the function
         try:
-            function: Callable[..., None] = getattr(module, task_name)
-            messenger.log(
-                logging.DEBUG, f"Found implementation for task '{task_name}'."
+            inputs = self._find_arguments(signature)
+        except Exception as e:
+            raise ValueError(f"Failed to find arguments for function '{name}'.") from e
+
+        def f():
+            original_function(**inputs)
+
+        return f
+
+    def _find_original_function(self, name: str) -> Union[None, Callable[..., Any]]:
+        try:
+            function: Callable[..., None] = getattr(self._module, name)
+            self._messenger.log(
+                logging.DEBUG, f"Found implementation for task '{name}'."
             )
         except AttributeError:
-            # TODO: Just return None instead of a fake function here?
-            function = TaskGraph._unimplemented_task
-            messenger.log(
-                logging.DEBUG, f"No implementation found for task '{task_name}'."
+            self._messenger.log(
+                logging.DEBUG, f"No implementation found for task '{name}'."
             )
+            return None
+        return function
 
-        # Pass the right arguments to the function
-        signature = inspect.signature(function)
-        inputs = TaskGraph._resolve_arguments(
-            task_name,
-            signature,
-            config,
-            messenger,
-            vimeo_client,
-            boxcast_client_factory,
-        )
-        function_with_args = lambda: function(**inputs)
+    def _find_arguments(self, signature: Signature) -> Dict[str, Any]:
+        params = signature.parameters.values()
+        # TODO: Check for unused args
+        return {p.name: self._find_single_argument(p) for p in params}
 
-        # Check that the function returns nothing
-        if signature.return_annotation not in [None, "None", Signature.empty]:
-            messenger.log(
-                logging.WARN,
-                f"The function for task '{task_name}' should return nothing, but claims to have a return value.",
+    def _find_single_argument(self, param: Parameter) -> Any:
+        matching_args = [
+            a for a in self._arguments if issubclass(type(a), param.annotation)
+        ]
+        if len(matching_args) < 1:
+            raise ValueError(f"Parameter '{param.name}' is unknown.")
+        elif len(matching_args) > 1:
+            raise ValueError(
+                f"Parameter '{param.name}' is ambiguous - there are multiple arguments that could be assigned to it."
             )
+        else:
+            return matching_args[0]
 
-        return function_with_args
+    def _detect_unused_functions(self, used_function_names: List[str]):
+        all_functions = inspect.getmembers(self._module, inspect.isfunction)
+        all_public_function_names = {
+            name for (name, _) in all_functions if not name.startswith("_")
+        }
 
-    @staticmethod
-    def _resolve_arguments(
-        task_name: str,
-        signature: Signature,
-        config: Config,
-        messenger: Messenger,
-        vimeo_client: VimeoClient,
-        boxcast_client_factory: BoxCastClientFactory,
-    ) -> Dict[str, Any]:
-        inputs: Dict[str, Any] = {}
-        for param in signature.parameters.values():
-            if param.annotation == Config or (
-                param.annotation == Parameter.empty and param.name == "config"
-            ):
-                inputs[param.name] = config
-            elif param.annotation == Messenger or (
-                param.annotation == Parameter.empty and param.name == "messenger"
-            ):
-                inputs[param.name] = messenger
-            elif param.annotation == VimeoClient or (
-                param.annotation == Parameter.empty and param.name == "vimeo_client"
-            ):
-                inputs[param.name] = vimeo_client
-            elif param.annotation == BoxCastClientFactory or (
-                param.annotation == Parameter.empty
-                and param.name == "boxcast_client_factory"
-            ):
-                inputs[param.name] = boxcast_client_factory
-            else:
-                raise ValueError(
-                    f"Function for task '{task_name}' expects an unknown argument '{param.name}'."
-                )
-        return inputs
+        unused_function_names = {
+            name
+            for name in all_public_function_names
+            if name not in used_function_names
+        }
+        for name in unused_function_names:
+            self._messenger.log(
+                logging.WARN, f"Function '{name}' is not used by any task."
+            )
 
     @staticmethod
     def _unimplemented_task() -> None:

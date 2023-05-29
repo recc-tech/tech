@@ -11,8 +11,9 @@ from boxcast_client import BoxCastClientFactory
 from config import Config
 from credentials import get_credential
 from messenger import Messenger
-from task import TaskGraph
+from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
+import mcr_teardown.tasks
 
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
 # TODO: Split MCR teardown checklist into manual and automated tasks. In the automated tasks section, add a reminder that, if someone changes the checklist, they should also create an issue to update the script (ideally make the change in the manual section at first?) Alternatively, add the manual tasks to the script and go directly to the "fallback" message.
@@ -42,15 +43,17 @@ def main():
 
     boxcast_client_factory = BoxCastClientFactory(messenger)
 
+    function_finder = FunctionFinder(
+        module=mcr_teardown.tasks,
+        arguments={boxcast_client_factory, config, messenger, vimeo_client},
+        messenger=messenger,
+    )
+
     try:
-        mcr_teardown_dir = Path(__file__).parent.joinpath("mcr_teardown")
-        task_graph = TaskGraph.load(
-            directory=mcr_teardown_dir,
-            config=config,
-            messenger=messenger,
-            vimeo_client=vimeo_client,
-            boxcast_client_factory=boxcast_client_factory,
+        task_list_file = (
+            Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
+        task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
         messenger.log(logging.INFO, "Successfully loaded the task graph.")
     except Exception as e:
         messenger.log_separate(
