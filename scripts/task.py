@@ -328,12 +328,20 @@ class TaskGraph:
 
 
 class FunctionFinder:
-    def __init__(self, module: ModuleType, arguments: Set[Any], messenger: Messenger):
+    def __init__(
+        self, module: Union[ModuleType, None], arguments: Set[Any], messenger: Messenger
+    ):
         self._module = module
         self._arguments = arguments
         self._messenger = messenger
 
     def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
+        if self._module is None:
+            self._messenger.log(
+                logging.DEBUG, "No module with task implementations was provided."
+            )
+            return {f: FunctionFinder._unimplemented_task for f in names}
+
         self._detect_unused_functions(names)
         return {name: self._find_function_with_args(name) for name in names}
 

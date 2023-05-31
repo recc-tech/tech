@@ -45,7 +45,7 @@ def main():
     boxcast_client_factory = BoxCastClientFactory(messenger)
 
     function_finder = FunctionFinder(
-        module=mcr_teardown.tasks,
+        module=None if args.no_auto else mcr_teardown.tasks,
         arguments={boxcast_client_factory, config, messenger, vimeo_client},
         messenger=messenger,
     )
@@ -157,10 +157,14 @@ def _parse_args() -> Namespace:
         help="Home directory.",
     )
     parser.add_argument(
-        "-n",
         "--no-run",
         action="store_true",
         help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    parser.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
     )
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
