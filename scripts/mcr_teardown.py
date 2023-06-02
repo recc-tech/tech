@@ -10,7 +10,7 @@ from pathlib import Path
 from boxcast_client import BoxCastClientFactory
 from config import Config
 from credentials import get_credential
-from messenger import Messenger
+from messenger import ConsoleMessenger, FileMessenger, Messenger
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 import mcr_teardown.tasks
@@ -85,7 +85,11 @@ def _create_messenger(log_directory: Path) -> Messenger:
     current_date = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_directory.joinpath(f"{current_date} {current_time} mcr_teardown.log")
-    return Messenger(log_file)
+    file_messenger = FileMessenger(log_file)
+
+    console_messenger = ConsoleMessenger()
+
+    return Messenger(file_messenger=file_messenger, console_messenger=console_messenger)
 
 
 def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
