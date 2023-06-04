@@ -11,20 +11,28 @@ class Config:
     def __init__(
         self,
         home_dir: Path,
+        downloads_dir: Path,
         message_series: str,
         message_title: str,
         boxcast_event_id: str,
     ):
         self._home_dir = home_dir.resolve()
+        self._downloads_dir = downloads_dir.resolve()
         self._message_series = message_series.strip()
         self._message_title = message_title.strip()
         self._boxcast_event_id = boxcast_event_id
 
         date_mdy = datetime.now().strftime("%B %d, %Y")
         self.live_event_title = f"Sunday Gathering LIVE: {date_mdy}"
+        self.live_event_url = (
+            f"https://dashboard.boxcast.com/#/events/{self._boxcast_event_id}"
+        )
+        self.live_event_captions_tab_url = self.live_event_url + "?tab=captions"
+        self.captions_download_path = self._downloads_dir.joinpath(
+            f"{self._boxcast_event_id}_captions.vtt"
+        )
         self.rebroadcast_title = f"Sunday Gathering Rebroadcast: {date_mdy}"
         self.rebroadcast_setup_url = f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self._boxcast_event_id}"
-        self.live_event_url = f"https://dashboard.boxcast.com/#/events/{self._boxcast_event_id}"
 
         date_ymd = datetime.now().strftime("%Y-%m-%d")
         self.log_dir = self._home_dir.joinpath("Logs")

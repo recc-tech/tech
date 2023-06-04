@@ -1,7 +1,8 @@
 import logging
 import shutil
 import stat
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import mcr_teardown.rebroadcasts as rebroadcasts
@@ -82,6 +83,18 @@ def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
     recc_vimeo.rename_video(video_uri, config.vimeo_video_title, vimeo_client)
 
 
+def download_captions(
+    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+):
+    _download_captions(
+        client=boxcast_client_factory.get_client(),
+        captions_tab_url=config.live_event_captions_tab_url,
+        download_path=config.captions_download_path,
+        destination_path=config.original_captions_path,
+        messenger=messenger,
+    )
+
+
 def copy_captions_original_to_without_worship(messenger: Messenger, config: Config):
     _mark_read_only_and_copy(
         config.original_captions_path,
@@ -134,12 +147,14 @@ def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messeng
 def _export_to_vimeo(client: BoxCastClient, event_url: str):
     client.get(event_url)
 
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
     wait = WebDriverWait(client, 60 * SECONDS_PER_MINUTE)
+    xpath = "//button[contains(., 'Download or Export Recording')]"
     download_or_export_button = wait.until(  # type: ignore
-        EC.element_to_be_clickable(  # type: ignore
-            (By.XPATH, "//button[contains(., 'Download or Export Recording')]")
-        )
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
     )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     download_or_export_button.click()  # type: ignore
 
     vimeo_tab = client.find_single_element(
@@ -155,3 +170,64 @@ def _export_to_vimeo(client: BoxCastClient, event_url: str):
         By.XPATH, "//button[contains(., 'Export To Vimeo')]"
     )
     vimeo_export_button.click()
+
+
+def _download_captions(
+    client: BoxCastClient,
+    captions_tab_url: str,
+    download_path: Path,
+    destination_path: Path,
+    messenger: Messenger,
+):
+    _download_captions_to_downloads_folder(client, captions_tab_url)
+    _move_captions_to_captions_folder(download_path, destination_path, messenger)
+
+
+def _download_captions_to_downloads_folder(
+    client: BoxCastClient,
+    captions_tab_url: str,
+):
+    client.get(captions_tab_url)
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    wait = WebDriverWait(client, 60 * SECONDS_PER_MINUTE)
+    xpath = "//button[contains(., 'Download Captions')]"
+    download_captions_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    download_captions_button.click()  # type: ignore
+
+    vtt_download_link = client.find_single_element(
+        By.XPATH, "//a[contains(., 'VTT File (.vtt)')]"
+    )
+    vtt_download_link.click()
+
+
+def _move_captions_to_captions_folder(
+    download_path: Path,
+    destination_path: Path,
+    messenger: Messenger,
+):
+    _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
+
+    if destination_path.exists():
+        messenger.log(
+            logging.WARN,
+            f"File '{destination_path}' already exists and will be overwritten.",
+        )
+    else:
+        destination_path.parent.mkdir(exist_ok=True, parents=True)
+
+    shutil.move(download_path, destination_path)
+
+
+def _wait_for_file_to_exist(path: Path, timeout: timedelta):
+    wait_start = datetime.now()
+    while True:
+        if path.exists():
+            return
+        if datetime.now() - wait_start > timeout:
+            raise FileNotFoundError(f"Did not find file at '{path}' within {timeout}.")
+        time.sleep(1)

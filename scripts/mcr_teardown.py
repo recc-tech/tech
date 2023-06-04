@@ -33,6 +33,7 @@ def main():
 
     config = Config(
         home_dir=args.home_dir,
+        downloads_dir=args.downloads_dir,
         message_series=args.message_series,
         message_title=args.message_title,
         boxcast_event_id=args.boxcast_event_id,
@@ -154,11 +155,16 @@ def _parse_args() -> Namespace:
         "-t", "--message-title", required=True, help="Title of today's sermon."
     )
     parser.add_argument(
-        "-d",
         "--home-dir",
         type=_parse_directory,
         default="D:\\Users\\Tech\\Documents",
-        help="Home directory.",
+        help="The home directory.",
+    )
+    parser.add_argument(
+        "--downloads-dir",
+        type=_parse_directory,
+        default="D:\\Users\\Tech\\Downloads",
+        help="The downloads directory, where the browser automatically places files after downloading them.",
     )
     parser.add_argument(
         "--no-run",
