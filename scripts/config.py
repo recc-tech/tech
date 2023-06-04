@@ -24,6 +24,7 @@ class Config:
         self.live_event_title = f"Sunday Gathering LIVE: {date_mdy}"
         self.rebroadcast_title = f"Sunday Gathering Rebroadcast: {date_mdy}"
         self.rebroadcast_setup_url = f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self._boxcast_event_id}"
+        self.live_event_url = f"https://dashboard.boxcast.com/#/events/{self._boxcast_event_id}"
 
         date_ymd = datetime.now().strftime("%Y-%m-%d")
         self.log_dir = self._home_dir.joinpath("Logs")

@@ -6,10 +6,16 @@ from pathlib import Path
 
 import mcr_teardown.rebroadcasts as rebroadcasts
 import mcr_teardown.vimeo as recc_vimeo
-from boxcast_client import BoxCastClientFactory
+from boxcast_client import BoxCastClient, BoxCastClientFactory
 from config import Config
 from messenger import Messenger
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.select import Select
+from selenium.webdriver.support.wait import WebDriverWait
 from vimeo import VimeoClient  # type: ignore
+
+SECONDS_PER_MINUTE = 60
 
 
 def create_rebroadcast_1pm(
@@ -48,6 +54,12 @@ def create_rebroadcast_7pm(
         start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
         client=boxcast_client_factory.get_client(),
         messenger=messenger,
+    )
+
+
+def export_to_vimeo(boxcast_client_factory: BoxCastClientFactory, config: Config):
+    _export_to_vimeo(
+        client=boxcast_client_factory.get_client(), event_url=config.live_event_url
     )
 
 
@@ -117,3 +129,29 @@ def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messeng
     # Mark the original file as read-only
     source.chmod(stat.S_IREAD)
     messenger.log(logging.DEBUG, f"Marked '{source}' as read-only.")
+
+
+def _export_to_vimeo(client: BoxCastClient, event_url: str):
+    client.get(event_url)
+
+    wait = WebDriverWait(client, 60 * SECONDS_PER_MINUTE)
+    download_or_export_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable(  # type: ignore
+            (By.XPATH, "//button[contains(., 'Download or Export Recording')]")
+        )
+    )
+    download_or_export_button.click()  # type: ignore
+
+    vimeo_tab = client.find_single_element(
+        By.XPATH, "//div[contains(@class, 'modal-header')]/ol/li[contains(., 'Vimeo')]"
+    )
+    vimeo_tab.click()
+
+    user_dropdown = client.find_single_element(By.ID, "vimeo_user")
+    user_dropdown_select = Select(user_dropdown)
+    user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
+
+    vimeo_export_button = client.find_single_element(
+        By.XPATH, "//button[contains(., 'Export To Vimeo')]"
+    )
+    vimeo_export_button.click()
