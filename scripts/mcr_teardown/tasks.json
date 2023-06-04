@@ -43,19 +43,19 @@
 		},
 		{
 			"name": "create_rebroadcast_1pm",
-			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 1:00 pm.",
+			"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 1:00 pm.",
 			"depends_on": []
 		},
 		{
 			"name": "create_rebroadcast_5pm",
-			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 5:00 pm.",
+			"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 5:00 pm.",
 			"depends_on": [
 				"create_rebroadcast_1pm"
 			]
 		},
 		{
 			"name": "create_rebroadcast_7pm",
-			"description": "On BoxCast, create rebroadcasts titled '%{REBROADCAST_TITLE}%' at 7:00 pm.",
+			"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 7:00 pm.",
 			"depends_on": [
 				"create_rebroadcast_5pm"
 			]
@@ -169,10 +169,18 @@
 			]
 		},
 		{
+			"name": "turn_off_ndi_controller",
+			"description": "Turn off the NDI controller.",
+			"depends_on": [
+				"check_github_checklist"
+			]
+		},
+		{
 			"name": "shut_down_computers",
 			"description": "This is the final task. When this script exits, shut down (and update, if necessary) both MCR computers.",
 			"depends_on": [
-				"turn_off_monitors"
+				"turn_off_monitors",
+				"turn_off_ndi_controller"
 			]
 		}
 	]
