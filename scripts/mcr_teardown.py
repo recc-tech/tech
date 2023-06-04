@@ -173,12 +173,13 @@ def _parse_args() -> Namespace:
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
     boxcast_event_id_group.add_argument(
+        "-b",
         "--boxcast-event-url",
-        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/#/events/guaquelanroojzs8fbd9.",
+        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/#/events/abcdefghijklm0123456.",
     )
     boxcast_event_id_group.add_argument(
         "--boxcast-event-id",
-        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/#/events/guaquelanroojzs8fbd9, the event ID is "guaquelanroojzs8fbd9" (without the quotation marks).',
+        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/#/events/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
     )
 
     args = parser.parse_args()
