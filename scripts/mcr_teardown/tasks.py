@@ -111,6 +111,16 @@ def copy_captions_without_worship_to_final(messenger: Messenger, config: Config)
     )
 
 
+def upload_captions_to_boxcast(
+    boxcast_client_factory: BoxCastClientFactory, config: Config
+):
+    _upload_captions_to_boxcast(
+        client=boxcast_client_factory.get_client(),
+        url=config.boxcast_edit_captions_url,
+        file_path=config.final_captions_path,
+    )
+
+
 def upload_captions_to_vimeo(
     config: Config, messenger: Messenger, vimeo_client: VimeoClient
 ):
@@ -231,3 +241,35 @@ def _wait_for_file_to_exist(path: Path, timeout: timedelta):
         if datetime.now() - wait_start > timeout:
             raise FileNotFoundError(f"Did not find file at '{path}' within {timeout}.")
         time.sleep(1)
+
+
+def _upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
+    client.get(url)
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    wait = WebDriverWait(client, timeout=10)
+    # The id 'btn-append-to-body' is not unique on the page D:<<<
+    xpath = "//button[@id='btn-append-to-body'][@type='button']/i[contains(@class, 'fa-cog')]"
+    cog_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    cog_button.click()  # type: ignore
+
+    replace_captions_option = client.find_single_element(
+        By.XPATH, "//a[contains(., 'Replace Captions with WebVTT File')]"
+    )
+    replace_captions_option.click()
+
+    file_input = client.find_single_element(By.XPATH, "//input[@type='file']")
+    file_input.send_keys(str(file_path))  # type: ignore
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    xpath = "//button[contains(., 'Replace Captions with Upload')]"
+    submit_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    submit_button.click()  # type: ignore
