@@ -79,6 +79,4 @@ class BoxCastClientFactory:
         self._headless = headless
 
     def get_client(self):
-        # TODO: Allow this method to be called in a with statement, so that the driver can be closed after use
-        # TODO: Reuse drivers? where possible
         return BoxCastClient(messenger=self._messenger, headless=self._headless)

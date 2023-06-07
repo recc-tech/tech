@@ -22,46 +22,48 @@ SECONDS_PER_MINUTE = 60
 def create_rebroadcast_1pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    rebroadcasts.create_rebroadcast(
-        rebroadcast_setup_url=config.rebroadcast_setup_url,
-        source_broadcast_title=config.live_event_title,
-        rebroadcast_title=config.rebroadcast_title,
-        start_datetime=datetime.now().replace(hour=13, minute=0, second=0),
-        client=boxcast_client_factory.get_client(),
-        messenger=messenger,
-    )
+    with boxcast_client_factory.get_client() as client:
+        rebroadcasts.create_rebroadcast(
+            rebroadcast_setup_url=config.rebroadcast_setup_url,
+            source_broadcast_title=config.live_event_title,
+            rebroadcast_title=config.rebroadcast_title,
+            start_datetime=datetime.now().replace(hour=13, minute=0, second=0),
+            client=client,
+            messenger=messenger,
+        )
 
 
 def create_rebroadcast_5pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    rebroadcasts.create_rebroadcast(
-        rebroadcast_setup_url=config.rebroadcast_setup_url,
-        source_broadcast_title=config.live_event_title,
-        rebroadcast_title=config.rebroadcast_title,
-        start_datetime=datetime.now().replace(hour=17, minute=0, second=0),
-        client=boxcast_client_factory.get_client(),
-        messenger=messenger,
-    )
+    with boxcast_client_factory.get_client() as client:
+        rebroadcasts.create_rebroadcast(
+            rebroadcast_setup_url=config.rebroadcast_setup_url,
+            source_broadcast_title=config.live_event_title,
+            rebroadcast_title=config.rebroadcast_title,
+            start_datetime=datetime.now().replace(hour=17, minute=0, second=0),
+            client=client,
+            messenger=messenger,
+        )
 
 
 def create_rebroadcast_7pm(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    rebroadcasts.create_rebroadcast(
-        rebroadcast_setup_url=config.rebroadcast_setup_url,
-        source_broadcast_title=config.live_event_title,
-        rebroadcast_title=config.rebroadcast_title,
-        start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
-        client=boxcast_client_factory.get_client(),
-        messenger=messenger,
-    )
+    with boxcast_client_factory.get_client() as client:
+        rebroadcasts.create_rebroadcast(
+            rebroadcast_setup_url=config.rebroadcast_setup_url,
+            source_broadcast_title=config.live_event_title,
+            rebroadcast_title=config.rebroadcast_title,
+            start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
+            client=client,
+            messenger=messenger,
+        )
 
 
 def export_to_vimeo(boxcast_client_factory: BoxCastClientFactory, config: Config):
-    _export_to_vimeo(
-        client=boxcast_client_factory.get_client(), event_url=config.live_event_url
-    )
+    with boxcast_client_factory.get_client() as client:
+        _export_to_vimeo(client=client, event_url=config.live_event_url)
 
 
 def get_vimeo_video_data(
@@ -86,13 +88,14 @@ def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
 def download_captions(
     boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
 ):
-    _download_captions(
-        client=boxcast_client_factory.get_client(),
-        captions_tab_url=config.live_event_captions_tab_url,
-        download_path=config.captions_download_path,
-        destination_path=config.original_captions_path,
-        messenger=messenger,
-    )
+    with boxcast_client_factory.get_client() as client:
+        _download_captions(
+            client=client,
+            captions_tab_url=config.live_event_captions_tab_url,
+            download_path=config.captions_download_path,
+            destination_path=config.original_captions_path,
+            messenger=messenger,
+        )
 
 
 def copy_captions_original_to_without_worship(messenger: Messenger, config: Config):
@@ -114,11 +117,12 @@ def copy_captions_without_worship_to_final(messenger: Messenger, config: Config)
 def upload_captions_to_boxcast(
     boxcast_client_factory: BoxCastClientFactory, config: Config
 ):
-    _upload_captions_to_boxcast(
-        client=boxcast_client_factory.get_client(),
-        url=config.boxcast_edit_captions_url,
-        file_path=config.final_captions_path,
-    )
+    with boxcast_client_factory.get_client() as client:
+        _upload_captions_to_boxcast(
+            client=client,
+            url=config.boxcast_edit_captions_url,
+            file_path=config.final_captions_path,
+        )
 
 
 def upload_captions_to_vimeo(
