@@ -43,7 +43,7 @@ def main():
 
     vimeo_client = _create_vimeo_client(messenger)
 
-    boxcast_client_factory = BoxCastClientFactory(messenger)
+    boxcast_client_factory = BoxCastClientFactory(messenger=messenger, headless=not args.show_browser)
 
     function_finder = FunctionFinder(
         module=None if args.no_auto else mcr_teardown.tasks,
@@ -77,7 +77,7 @@ def main():
         messenger.log_separate(
             logging.FATAL,
             f"Failed to run task graph: {e}",
-            f"Failed to run task graph: {traceback.format_exc()}",
+            f"Failed to run task graph:\n{traceback.format_exc()}",
         )
         messenger.close()
 
@@ -175,6 +175,11 @@ def _parse_args() -> Namespace:
         "--no-auto",
         action="store_true",
         help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
+    )
+    parser.add_argument(
+        "--show-browser",
+        action="store_true",
+        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
     )
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)

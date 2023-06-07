@@ -4,6 +4,7 @@ from credentials import get_credential
 from messenger import Messenger
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
@@ -13,8 +14,11 @@ _USERNAME = "lorenzo@riversedge.life"
 
 
 class BoxCastClient(WebDriver):
-    def __init__(self, messenger: Messenger):
-        super().__init__()  # type: ignore
+    def __init__(self, messenger: Messenger, headless: bool = True):
+        options = Options()
+        if headless:
+            options.add_argument("-headless")  # type: ignore
+        super().__init__(options=options)  # type: ignore
         self._messenger = messenger
 
     def get(self, url: str):
@@ -70,9 +74,11 @@ class BoxCastClient(WebDriver):
 
 
 class BoxCastClientFactory:
-    def __init__(self, messenger: Messenger):
+    def __init__(self, messenger: Messenger, headless: bool):
         self._messenger = messenger
+        self._headless = headless
 
     def get_client(self):
-        # TODO: Reuse WebDrivers where possible
-        return BoxCastClient(self._messenger)
+        # TODO: Allow this method to be called in a with statement, so that the driver can be closed after use
+        # TODO: Reuse drivers? where possible
+        return BoxCastClient(messenger=self._messenger, headless=self._headless)
