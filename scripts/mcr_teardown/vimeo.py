@@ -7,7 +7,6 @@ from typing import Tuple
 from messenger import Messenger
 from vimeo import VimeoClient  # type: ignore
 
-
 NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
 """
 Maximum time elapsed since today's video was uploaded.

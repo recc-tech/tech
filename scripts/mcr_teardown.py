@@ -7,13 +7,13 @@ from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
 from pathlib import Path
 
+import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
 from config import Config
 from credentials import get_credential
 from messenger import ConsoleMessenger, FileMessenger, Messenger
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
-import mcr_teardown.tasks
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
@@ -43,7 +43,9 @@ def main():
 
     vimeo_client = _create_vimeo_client(messenger)
 
-    boxcast_client_factory = BoxCastClientFactory(messenger=messenger, headless=not args.show_browser)
+    boxcast_client_factory = BoxCastClientFactory(
+        messenger=messenger, headless=not args.show_browser
+    )
 
     function_finder = FunctionFinder(
         module=None if args.no_auto else mcr_teardown.tasks,

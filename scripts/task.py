@@ -5,13 +5,11 @@ import json
 import logging
 import traceback
 from inspect import Parameter, Signature
-from logging import DEBUG, INFO, ERROR
+from logging import DEBUG, ERROR, INFO
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
-
-from vimeo import VimeoClient  # type: ignore
 
 from config import Config
 from messenger import Messenger
