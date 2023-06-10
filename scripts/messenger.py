@@ -316,6 +316,9 @@ class TkMessenger(InputMessenger):
         if self._shutdown_requested:
             return
 
+        if not self._should_log(level):
+            return
+
         # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
         # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
         ident = threading.get_ident()
@@ -388,6 +391,12 @@ class TkMessenger(InputMessenger):
         frame = ThreadStatusFrame(self._root, threading.current_thread().name)
         frame.grid()
         return frame
+
+    def _should_log(self, level: LogLevel) -> bool:
+        """
+        Decide whether the given message should be displayed in the GUI.
+        """
+        return level.value >= LogLevel.INFO.value
 
 
 class Messenger:
