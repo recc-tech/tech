@@ -7,7 +7,7 @@ from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
-from tkinter import Misc, StringVar, Tk, messagebox, simpledialog
+from tkinter import Misc, StringVar, Text, Tk, messagebox, simpledialog
 from tkinter.ttk import Button, Frame, Label
 from typing import Any, Callable, Deque, Dict, Union
 
@@ -167,6 +167,41 @@ class ConsoleMessenger(InputMessenger):
         return self._input_value
 
 
+class CopyableText(Text):
+    """
+    Text widget that supports both text wrapping and copying its contents to the clipboard.
+    """
+
+    def __init__(self, parent: Misc, *args: Any, **kwargs: Any):
+        super().__init__(
+            parent,
+            height=1,
+            wrap="word",
+            state="disabled",
+            bg="#EEEEEE",
+            highlightthickness=0,
+            borderwidth=0,
+            *args,
+            **kwargs,
+        )
+
+    def set_text(self, text: str):
+        # If you don't call update_idletasks(), the GUI seems to be confused and rows added later will be all over
+        # the place
+        root = self.winfo_toplevel()
+        root.update_idletasks()
+
+        self.config(state="normal")
+        self.delete(1.0, "end")
+        self.insert(1.0, text)
+        self.config(state="disabled")
+
+        # Adjust the text box height
+        # https://stackoverflow.com/a/46100295
+        height = self.tk.call((self, "count", "-update", "-displaylines", "1.0", "end"))
+        self.configure(height=height)
+
+
 class ThreadStatusFrame(Frame):
     _WIDTH_TO_WRAPLENGTH = 6
 
@@ -211,20 +246,13 @@ class ThreadStatusFrame(Frame):
         )
         self._level_label.grid(row=0, column=3)
 
-        self._message_var = StringVar()
-        self._message_label = Label(
-            self,
-            textvariable=self._message_var,
-            width=200,
-            wraplength=200 * self._WIDTH_TO_WRAPLENGTH,
-        )
+        self._message_label = CopyableText(self, width=125)
         self._message_label.grid(row=0, column=4)
 
     def update_contents(self, time: datetime, level: LogLevel, message: str):
         self._time_var.set(time.strftime("%H:%M:%S"))
         self._level_var.set(str(level))
-        self._message_var.set(message)
-
+        self._message_label.set_text(message)
         self._level_label.config(foreground=self._log_level_colour(level))
 
     def enable_button(self, semaphore: Semaphore):
@@ -305,7 +333,7 @@ class TkMessenger(InputMessenger):
     def _run_gui(self, root_started: Semaphore):
         self._root = Tk()
         self._root.title("MCR Teardown")
-        self._root.geometry("1024x512+0+0")
+        self._root.geometry("1500x700")
         self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
 
         self._root.after(0, lambda: root_started.release())
