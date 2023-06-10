@@ -55,7 +55,7 @@ class Task:
         try:
             self._run()
             self._messenger.log(
-                LogLevel.INFO, f"Task '{self._name}' completed successfully."
+                LogLevel.INFO, f"Task '{self._name}' completed automatically."
             )
         except Exception as e:
             if isinstance(e, NotImplementedError):
@@ -71,6 +71,10 @@ class Task:
                 )
 
             self._messenger.wait(self._fallback_message)
+
+            self._messenger.log(
+                LogLevel.INFO, f"Task '{self._name}' completed manually."
+            )
 
 
 class TaskThread(Thread):
