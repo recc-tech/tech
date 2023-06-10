@@ -305,6 +305,7 @@ class TkMessenger(InputMessenger):
         # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
         ident = threading.get_ident()
         with self._lock:
+            # TODO: thread identifier can be reused, so either remove old threads or generate my own identifiers
             if ident not in self._thread_frame:
                 self._thread_frame[ident] = self._add_row()
             frame = self._thread_frame[ident]
