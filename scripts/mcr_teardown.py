@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
-from datetime import datetime
 from pathlib import Path
 
 import mcr_teardown.tasks
@@ -39,7 +38,7 @@ def main():
         boxcast_event_id=args.boxcast_event_id,
     )
 
-    messenger = _create_messenger(config.log_dir, args.text_ui)
+    messenger = _create_messenger(config.log_file, args.text_ui)
 
     vimeo_client = _create_vimeo_client(messenger)
 
@@ -84,14 +83,9 @@ def main():
         messenger.close()
 
 
-def _create_messenger(log_directory: Path, text_ui: bool) -> Messenger:
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    current_time = datetime.now().strftime("%H-%M-%S")
-    log_file = log_directory.joinpath(f"{current_date} {current_time} mcr_teardown.log")
+def _create_messenger(log_file: Path, text_ui: bool) -> Messenger:
     file_messenger = FileMessenger(log_file)
-
     input_messenger = ConsoleMessenger() if text_ui else TkMessenger()
-
     return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
 
 

@@ -37,8 +37,10 @@ class Config:
             f"https://dashboard.boxcast.com/#/caption-editor/{self._boxcast_event_id}"
         )
 
+        log_dir = self._home_dir.joinpath("Logs")
         date_ymd = datetime.now().strftime("%Y-%m-%d")
-        self.log_dir = self._home_dir.joinpath("Logs")
+        current_time = datetime.now().strftime("%H-%M-%S")
+        self.log_file = log_dir.joinpath(f"{date_ymd} {current_time} mcr_teardown.log")
 
         self._captions_dir = self._home_dir.joinpath("Captions").joinpath(date_ymd)
         self.original_captions_path = self._captions_dir.joinpath("original.vtt")
@@ -65,6 +67,7 @@ class Config:
                 self.captions_without_worship_path.as_posix(),
             )
             .replace("%{FINAL_CAPTIONS_PATH}%", self.final_captions_path.as_posix())
+            .replace("%{LOG_FILE}%", self.log_file.as_posix())
         )
 
         if "%{" in text or "}%" in text:

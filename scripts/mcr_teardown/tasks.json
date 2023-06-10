@@ -67,7 +67,7 @@
 		},
 		{
 			"name": "get_vimeo_video_data",
-			"description": "The Vimeo video data could not be retrieved automatically. See the logs for details.",
+			"description": "The Vimeo video data could not be retrieved automatically. See the logs for details (%{LOG_FILE}%).",
 			"depends_on": [
 				"export_to_vimeo"
 			]
