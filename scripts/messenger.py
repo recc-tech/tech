@@ -8,7 +8,7 @@ from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
 from tkinter import Misc, StringVar, Text, Tk, messagebox, simpledialog
-from tkinter.ttk import Button, Frame, Label
+from tkinter.ttk import Button, Frame, Label, Style
 from typing import Any, Callable, Deque, Dict, Union
 
 
@@ -203,14 +203,19 @@ class CopyableText(Text):
 
 
 class ThreadStatusFrame(Frame):
-    _WIDTH_TO_WRAPLENGTH = 6
+    _WIDTH_TO_WRAPLENGTH = 7.5
 
-    # TODO: Use an enum for log level?
+    _FONT = "Calibri 12"
+    _BOLD_FONT = f"{_FONT} bold"
+
     def __init__(self, parent: Misc, thread_name: str):
         super().__init__(parent, padding=5)
 
         self._name = thread_name
         self._semaphore: Semaphore
+
+        style = Style()
+        style.configure("TButton", font=self._FONT)  # type: ignore
 
         self._button = Button(
             self,
@@ -225,6 +230,7 @@ class ThreadStatusFrame(Frame):
             text=thread_name,
             width=30,
             wraplength=30 * self._WIDTH_TO_WRAPLENGTH,
+            font=self._FONT,
         )
         self._name_label.grid(row=0, column=1)
 
@@ -234,6 +240,7 @@ class ThreadStatusFrame(Frame):
             textvariable=self._time_var,
             width=10,
             wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
+            font=self._FONT,
         )
         self._time_label.grid(row=0, column=2)
 
@@ -243,10 +250,11 @@ class ThreadStatusFrame(Frame):
             textvariable=self._level_var,
             width=10,
             wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
+            font=self._BOLD_FONT,
         )
         self._level_label.grid(row=0, column=3)
 
-        self._message_label = CopyableText(self, width=125)
+        self._message_label = CopyableText(self, width=125, font=self._FONT)
         self._message_label.grid(row=0, column=4)
 
     def update_contents(self, time: datetime, level: LogLevel, message: str):
