@@ -294,7 +294,7 @@ class TkMessenger(InputMessenger):
 
         root_started = Semaphore(0)
         self._gui_thread = Thread(
-            name="GUI", target=lambda: self._run_gui(root_started), daemon=True
+            name="GUI", target=lambda: self._run_gui(root_started)
         )
         self._gui_thread.start()
         # Wait for the GUI to enter the main loop
@@ -335,9 +335,13 @@ class TkMessenger(InputMessenger):
             frame.disable_button()
 
     def close(self):
+        # Leave the GUI open until the user closes the window
+        pass
+
+    def _close(self):
         # TODO: Release waiting threads
-        # It seems the program will hang if root.destroy() is called from outside the GUI thread
-        self._root.after(0, self._root.destroy)
+        # For some reason, using destroy() instead of quit() causes an error
+        self._root.quit()
 
     def _run_gui(self, root_started: Semaphore):
         self._root = Tk()
@@ -353,7 +357,7 @@ class TkMessenger(InputMessenger):
             title="Confirm exit", message="Are you sure you want to exit?"
         )
         if should_exit:
-            self.close()
+            self._close()
 
     def _add_row(self) -> ThreadStatusFrame:
         frame = ThreadStatusFrame(self._root, threading.current_thread().name)
