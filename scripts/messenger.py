@@ -178,9 +178,11 @@ class ThreadStatusFrame(Frame):
         self._semaphore: Semaphore
 
         self._button = Button(
-            self, text="Done", command=lambda: self._semaphore.release()
+            self,
+            text="Done",
+            command=lambda: self._semaphore.release(),
+            state="disabled",
         )
-        self._button["state"] = "disabled"
         self._button.grid(row=0, column=0)
 
         self._name_label = Label(
@@ -227,10 +229,10 @@ class ThreadStatusFrame(Frame):
 
     def enable_button(self, semaphore: Semaphore):
         self._semaphore = semaphore
-        self._button["state"] = "enabled"
+        self._button.config(state="enabled")
 
     def disable_button(self):
-        self._button["state"] = "disabled"
+        self._button.config(state="disabled")
 
     @staticmethod
     def _log_level_colour(level: LogLevel) -> str:
