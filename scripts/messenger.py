@@ -275,13 +275,13 @@ class ThreadStatusFrame(Frame):
         if level == LogLevel.DEBUG:
             return "#888888"
         elif level == LogLevel.INFO:
-            return "#000000"
+            return "#0000FF"
         elif level == LogLevel.WARN:
             return "#FF8800"
         elif level == LogLevel.ERROR:
             return "#FF0000"
         elif level == LogLevel.FATAL:
-            return "#FF0000"
+            return "#880000"
         else:
             return "#000000"
 
