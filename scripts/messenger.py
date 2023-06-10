@@ -1,3 +1,4 @@
+import ctypes
 import logging
 import threading
 from collections import deque
@@ -7,8 +8,8 @@ from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
-from tkinter import Misc, StringVar, Text, Tk, messagebox, simpledialog
-from tkinter.ttk import Button, Frame, Label, Style
+from tkinter import Misc, Text, Tk, messagebox, simpledialog
+from tkinter.ttk import Button, Frame, Style
 from typing import Any, Callable, Deque, Dict, Union
 
 
@@ -242,43 +243,36 @@ class ThreadStatusFrame(Frame):
         )
         self._button.grid(row=0, column=0)
 
-        self._name_label = Label(
+        self._name_label = CopyableText(
             self,
-            text=thread_name,
-            width=30,
-            wraplength=30 * self._WIDTH_TO_WRAPLENGTH,
+            width=35,
             font=self._FONT,
         )
         self._name_label.grid(row=0, column=1)
+        self._name_label.set_text(thread_name)
 
-        self._time_var = StringVar()
-        self._time_label = Label(
+        self._time_label = CopyableText(
             self,
-            textvariable=self._time_var,
             width=10,
-            wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
             font=self._FONT,
         )
         self._time_label.grid(row=0, column=2)
 
-        self._level_var = StringVar()
-        self._level_label = Label(
+        self._level_label = CopyableText(
             self,
-            textvariable=self._level_var,
             width=10,
-            wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
             font=self._BOLD_FONT,
         )
         self._level_label.grid(row=0, column=3)
 
-        self._message_label = CopyableText(self, width=125, font=self._FONT)
+        self._message_label = CopyableText(self, width=100, font=self._FONT)
         self._message_label.grid(row=0, column=4)
 
     def update_contents(self, time: datetime, level: LogLevel, message: str):
-        self._time_var.set(time.strftime("%H:%M:%S"))
-        self._level_var.set(str(level))
-        self._message_label.set_text(message)
+        self._time_label.set_text(time.strftime("%H:%M:%S"))
+        self._level_label.set_text(str(level))
         self._level_label.config(foreground=self._log_level_colour(level))
+        self._message_label.set_text(message)
 
     def enable_button(self, semaphore: Semaphore):
         self._semaphore = semaphore
@@ -372,9 +366,12 @@ class TkMessenger(InputMessenger):
         self._root.quit()
 
     def _run_gui(self, root_started: Semaphore):
+        # Try to make the GUI less blurry
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
         self._root = Tk()
         self._root.title("MCR Teardown")
-        self._root.geometry("1500x700")
+        self._root.geometry("3500x1600+0+0")
         self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
 
         self._root.after(0, lambda: root_started.release())
