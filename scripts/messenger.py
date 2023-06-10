@@ -7,7 +7,7 @@ from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
-from tkinter import Misc, StringVar, Tk, simpledialog
+from tkinter import Misc, StringVar, Tk, messagebox, simpledialog
 from tkinter.ttk import Button, Frame, Label
 from typing import Any, Callable, Deque, Dict, Union
 
@@ -296,6 +296,7 @@ class TkMessenger(InputMessenger):
             frame.disable_button()
 
     def close(self):
+        # TODO: Release waiting threads
         # It seems the program will hang if root.destroy() is called from outside the GUI thread
         self._root.after(0, self._root.destroy)
 
@@ -303,9 +304,17 @@ class TkMessenger(InputMessenger):
         self._root = Tk()
         self._root.title("MCR Teardown")
         self._root.geometry("1024x512+0+0")
+        self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
 
         self._root.after(0, lambda: root_started.release())
         self._root.mainloop()
+
+    def _confirm_exit(self):
+        should_exit = messagebox.askyesno(  # type: ignore
+            title="Confirm exit", message="Are you sure you want to exit?"
+        )
+        if should_exit:
+            self.close()
 
     def _add_row(self) -> ThreadStatusFrame:
         frame = ThreadStatusFrame(self._root, threading.current_thread().name)
