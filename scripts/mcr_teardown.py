@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
@@ -11,7 +10,8 @@ import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
 from config import Config
 from credentials import get_credential
-from messenger import ConsoleMessenger, FileMessenger, Messenger, TkMessenger
+from messenger import (ConsoleMessenger, FileMessenger, LogLevel, Messenger,
+                       TkMessenger)
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
@@ -58,10 +58,10 @@ def main():
             Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
         task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
-        messenger.log(logging.INFO, "Successfully loaded the task graph.")
+        messenger.log(LogLevel.INFO, "Successfully loaded the task graph.")
     except Exception as e:
         messenger.log_separate(
-            logging.FATAL,
+            LogLevel.FATAL,
             f"Failed to load task graph: {e}",
             f"Failed to load task graph:\n{traceback.format_exc()}",
         )
@@ -77,7 +77,7 @@ def main():
             print("\nGreat work :)\n")
     except Exception as e:
         messenger.log_separate(
-            logging.FATAL,
+            LogLevel.FATAL,
             f"Failed to run task graph: {e}",
             f"Failed to run task graph:\n{traceback.format_exc()}",
         )
@@ -128,12 +128,13 @@ def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
         response = client.get("/tutorial")  # type: ignore
         if response.status_code == 200:
             messenger.log(
-                logging.DEBUG, f"Vimeo client is able to access GET /tutorial endpoint."
+                LogLevel.DEBUG,
+                f"Vimeo client is able to access GET /tutorial endpoint.",
             )
             return client
         else:
             messenger.log(
-                logging.ERROR,
+                LogLevel.ERROR,
                 f"Vimeo client test request failed (HTTP status {response.status_code}).",
             )
             first_attempt = False

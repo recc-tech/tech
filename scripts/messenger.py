@@ -2,6 +2,7 @@ import logging
 import threading
 from collections import deque
 from datetime import datetime
+from enum import Enum
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
@@ -11,8 +12,19 @@ from tkinter.ttk import Button, Frame, Label
 from typing import Any, Callable, Deque, Dict, Union
 
 
+class LogLevel(Enum):
+    DEBUG = logging.DEBUG
+    INFO = logging.INFO
+    WARN = logging.WARN
+    ERROR = logging.ERROR
+    FATAL = logging.FATAL
+
+    def __str__(self):
+        return self.name
+
+
 class BaseMessenger:
-    def log(self, level: int, message: str) -> None:
+    def log(self, level: LogLevel, message: str) -> None:
         """
         Logs the given message. For example, this might save the message to a file or display it in the console.
         """
@@ -54,8 +66,8 @@ class FileMessenger(BaseMessenger):
             date_format="%H:%M:%S",
         )
 
-    def log(self, level: int, message: str):
-        self.file_logger.log(level=level, msg=message)
+    def log(self, level: LogLevel, message: str):
+        self.file_logger.log(level=level.value, msg=message)
 
 
 class InputMessenger(BaseMessenger):
@@ -95,9 +107,9 @@ class ConsoleMessenger(InputMessenger):
         # Use an instance variable to send user input between threads
         self._input_value = ""
 
-    def log(self, level: int, message: str) -> None:
+    def log(self, level: LogLevel, message: str) -> None:
         self._console_queue.append(
-            lambda: self._console_logger.log(level=level, msg=message)
+            lambda: self._console_logger.log(level=level.value, msg=message)
         )
         # Signal that there is a task in the queue
         self._console_semaphore.release()
@@ -156,7 +168,6 @@ class ConsoleMessenger(InputMessenger):
 
 
 class ThreadStatusFrame(Frame):
-    # TODO: Use an enum for log level?
     _WIDTH_TO_WRAPLENGTH = 6
 
     # TODO: Use an enum for log level?
@@ -207,7 +218,7 @@ class ThreadStatusFrame(Frame):
         )
         self._message_label.grid(row=0, column=4)
 
-    def update_contents(self, time: datetime, level: int, message: str):
+    def update_contents(self, time: datetime, level: LogLevel, message: str):
         self._time_var.set(time.strftime("%H:%M:%S"))
         self._level_var.set(str(level))
         self._message_var.set(message)
@@ -234,7 +245,7 @@ class TkMessenger(InputMessenger):
         # Wait for the GUI to enter the main loop
         root_started.acquire()
 
-    def log(self, level: int, message: str):
+    def log(self, level: LogLevel, message: str):
         # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
         # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
         ident = threading.get_ident()
@@ -258,7 +269,7 @@ class TkMessenger(InputMessenger):
                 self._thread_frame[ident] = self._add_row()
             frame = self._thread_frame[ident]
         # TODO: Handle this better
-        frame.update_contents(datetime.now(), logging.INFO, prompt)
+        frame.update_contents(datetime.now(), LogLevel.INFO, prompt)
         frame.enable_button(semaphore)
 
         semaphore.acquire()
@@ -294,10 +305,12 @@ class Messenger:
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
 
-    def log(self, level: int, message: str):
+    def log(self, level: LogLevel, message: str):
         self.log_separate(level, message, message)
 
-    def log_separate(self, level: int, console_message: str, log_file_message: str):
+    def log_separate(
+        self, level: LogLevel, console_message: str, log_file_message: str
+    ):
         self._file_messenger.log(level, log_file_message)
         self._input_messenger.log(level, console_message)
 

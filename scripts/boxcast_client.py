@@ -1,7 +1,5 @@
-import logging
-
 from credentials import get_credential
-from messenger import Messenger
+from messenger import LogLevel, Messenger
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -53,11 +51,11 @@ class BoxCastClient(WebDriver):
             wait = WebDriverWait(self, timeout=5)
             try:
                 wait.until(lambda driver: driver.current_url != _LOGIN_URL)  # type: ignore
-                self._messenger.log(logging.DEBUG, "Successfully logged into BoxCast.")
+                self._messenger.log(LogLevel.DEBUG, "Successfully logged into BoxCast.")
                 return
             except TimeoutException:
                 first_attempt = False
-                self._messenger.log(logging.ERROR, "Failed to log into BoxCast.")
+                self._messenger.log(LogLevel.ERROR, "Failed to log into BoxCast.")
 
     def find_single_element(self, by: str, value: str) -> WebElement:
         elements = self.find_elements(by, value)

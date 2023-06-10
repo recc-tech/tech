@@ -1,4 +1,3 @@
-import logging
 import shutil
 import stat
 import time
@@ -9,7 +8,7 @@ import mcr_teardown.rebroadcasts as rebroadcasts
 import mcr_teardown.vimeo as recc_vimeo
 from boxcast_client import BoxCastClient, BoxCastClientFactory
 from config import Config
-from messenger import Messenger
+from messenger import LogLevel, Messenger
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
@@ -145,17 +144,17 @@ def _mark_read_only_and_copy(source: Path, destination: Path, messenger: Messeng
 
     if destination.exists():
         messenger.log(
-            logging.WARN,
+            LogLevel.WARN,
             f"File '{destination}' already exists and will be overwritten.",
         )
 
     # Copy the file
     shutil.copy(src=source, dst=destination)
-    messenger.log(logging.DEBUG, f"Copied '{source}' to '{destination}'.")
+    messenger.log(LogLevel.DEBUG, f"Copied '{source}' to '{destination}'.")
 
     # Mark the original file as read-only
     source.chmod(stat.S_IREAD)
-    messenger.log(logging.DEBUG, f"Marked '{source}' as read-only.")
+    messenger.log(LogLevel.DEBUG, f"Marked '{source}' as read-only.")
 
 
 def _export_to_vimeo(client: BoxCastClient, event_url: str):
@@ -228,7 +227,7 @@ def _move_captions_to_captions_folder(
 
     if destination_path.exists():
         messenger.log(
-            logging.WARN,
+            LogLevel.WARN,
             f"File '{destination_path}' already exists and will be overwritten.",
         )
     else:

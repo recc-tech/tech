@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import inspect
 import json
-import logging
 import traceback
 from inspect import Parameter, Signature
-from logging import DEBUG, ERROR, INFO
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from config import Config
-from messenger import Messenger
+from messenger import LogLevel, Messenger
 
 
 class Task:
@@ -53,19 +51,21 @@ class Task:
         self._name = name
 
     def run(self):
-        self._messenger.log(DEBUG, f"Running task '{self._name}'.")
+        self._messenger.log(LogLevel.DEBUG, f"Running task '{self._name}'.")
         try:
             self._run()
-            self._messenger.log(INFO, f"Task '{self._name}' completed successfully.")
+            self._messenger.log(
+                LogLevel.INFO, f"Task '{self._name}' completed successfully."
+            )
         except Exception as e:
             if isinstance(e, NotImplementedError):
                 self._messenger.log(
-                    DEBUG,
+                    LogLevel.DEBUG,
                     f"Task '{self._name}' is not yet implemented. Requesting user input.",
                 )
             else:
                 self._messenger.log_separate(
-                    ERROR,
+                    LogLevel.ERROR,
                     f"Task '{self._name}' failed with an exception: {e}",
                     f"Task '{self._name}' failed with an exception:\n{traceback.format_exc()}",
                 )
@@ -335,7 +335,7 @@ class FunctionFinder:
     def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
         if self._module is None:
             self._messenger.log(
-                logging.DEBUG, "No module with task implementations was provided."
+                LogLevel.DEBUG, "No module with task implementations was provided."
             )
             return {f: FunctionFinder._unimplemented_task for f in names}
 
@@ -351,7 +351,7 @@ class FunctionFinder:
 
         if signature.return_annotation not in [None, "None", Signature.empty]:
             self._messenger.log(
-                logging.WARN,
+                LogLevel.WARN,
                 f"The function for task '{name}' should return nothing, but claims to have a return value.",
             )
 
@@ -369,11 +369,11 @@ class FunctionFinder:
         try:
             function: Callable[..., None] = getattr(self._module, name)
             self._messenger.log(
-                logging.DEBUG, f"Found implementation for task '{name}'."
+                LogLevel.DEBUG, f"Found implementation for task '{name}'."
             )
         except AttributeError:
             self._messenger.log(
-                logging.DEBUG, f"No implementation found for task '{name}'."
+                LogLevel.DEBUG, f"No implementation found for task '{name}'."
             )
             return None
         return function
@@ -409,7 +409,7 @@ class FunctionFinder:
         }
         for name in unused_function_names:
             self._messenger.log(
-                logging.WARN, f"Function '{name}' is not used by any task."
+                LogLevel.WARN, f"Function '{name}' is not used by any task."
             )
 
     @staticmethod
