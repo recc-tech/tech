@@ -223,12 +223,29 @@ class ThreadStatusFrame(Frame):
         self._level_var.set(str(level))
         self._message_var.set(message)
 
+        self._level_label.config(foreground=self._log_level_colour(level))
+
     def enable_button(self, semaphore: Semaphore):
         self._semaphore = semaphore
         self._button["state"] = "enabled"
 
     def disable_button(self):
         self._button["state"] = "disabled"
+
+    @staticmethod
+    def _log_level_colour(level: LogLevel) -> str:
+        if level == LogLevel.DEBUG:
+            return "#888888"
+        elif level == LogLevel.INFO:
+            return "#000000"
+        elif level == LogLevel.WARN:
+            return "#FF8800"
+        elif level == LogLevel.ERROR:
+            return "#FF0000"
+        elif level == LogLevel.FATAL:
+            return "#FF0000"
+        else:
+            return "#000000"
 
 
 class TkMessenger(InputMessenger):
