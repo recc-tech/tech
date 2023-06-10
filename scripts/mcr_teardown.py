@@ -7,10 +7,9 @@ from pathlib import Path
 
 import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
-from config import Config
 from credentials import get_credential
-from messenger import (ConsoleMessenger, FileMessenger, LogLevel, Messenger,
-                       TkMessenger)
+from mcr_teardown.config import McrTeardownConfig
+from messenger import ConsoleMessenger, FileMessenger, LogLevel, Messenger, TkMessenger
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
@@ -30,7 +29,7 @@ from vimeo import VimeoClient  # type: ignore
 def main():
     args = _parse_args()
 
-    config = Config(
+    config = McrTeardownConfig(
         home_dir=args.home_dir,
         downloads_dir=args.downloads_dir,
         message_series=args.message_series,

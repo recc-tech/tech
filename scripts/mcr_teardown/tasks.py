@@ -7,7 +7,7 @@ from pathlib import Path
 import mcr_teardown.rebroadcasts as rebroadcasts
 import mcr_teardown.vimeo as recc_vimeo
 from boxcast_client import BoxCastClient, BoxCastClientFactory
-from config import Config
+from mcr_teardown.config import McrTeardownConfig
 from messenger import LogLevel, Messenger
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -19,7 +19,9 @@ SECONDS_PER_MINUTE = 60
 
 
 def create_rebroadcast_1pm(
-    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
     with boxcast_client_factory.get_client() as client:
         rebroadcasts.create_rebroadcast(
@@ -33,7 +35,9 @@ def create_rebroadcast_1pm(
 
 
 def create_rebroadcast_5pm(
-    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
     with boxcast_client_factory.get_client() as client:
         rebroadcasts.create_rebroadcast(
@@ -47,7 +51,9 @@ def create_rebroadcast_5pm(
 
 
 def create_rebroadcast_7pm(
-    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
     with boxcast_client_factory.get_client() as client:
         rebroadcasts.create_rebroadcast(
@@ -60,13 +66,15 @@ def create_rebroadcast_7pm(
         )
 
 
-def export_to_vimeo(boxcast_client_factory: BoxCastClientFactory, config: Config):
+def export_to_vimeo(
+    boxcast_client_factory: BoxCastClientFactory, config: McrTeardownConfig
+):
     with boxcast_client_factory.get_client() as client:
         _export_to_vimeo(client=client, event_url=config.live_event_url)
 
 
 def get_vimeo_video_data(
-    messenger: Messenger, vimeo_client: VimeoClient, config: Config
+    messenger: Messenger, vimeo_client: VimeoClient, config: McrTeardownConfig
 ):
     (video_uri, texttrack_uri) = recc_vimeo.get_video_data(messenger, vimeo_client)
 
@@ -74,7 +82,7 @@ def get_vimeo_video_data(
     config.vimeo_video_texttracks_uri = texttrack_uri
 
 
-def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
+def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: VimeoClient):
     video_uri = config.vimeo_video_uri
     if video_uri is None:
         raise ValueError(
@@ -85,7 +93,9 @@ def rename_video_on_vimeo(config: Config, vimeo_client: VimeoClient):
 
 
 def download_captions(
-    boxcast_client_factory: BoxCastClientFactory, config: Config, messenger: Messenger
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
     with boxcast_client_factory.get_client() as client:
         _download_captions(
@@ -97,7 +107,9 @@ def download_captions(
         )
 
 
-def copy_captions_original_to_without_worship(messenger: Messenger, config: Config):
+def copy_captions_original_to_without_worship(
+    messenger: Messenger, config: McrTeardownConfig
+):
     _mark_read_only_and_copy(
         config.original_captions_path,
         config.captions_without_worship_path,
@@ -105,7 +117,9 @@ def copy_captions_original_to_without_worship(messenger: Messenger, config: Conf
     )
 
 
-def copy_captions_without_worship_to_final(messenger: Messenger, config: Config):
+def copy_captions_without_worship_to_final(
+    messenger: Messenger, config: McrTeardownConfig
+):
     _mark_read_only_and_copy(
         config.captions_without_worship_path,
         config.final_captions_path,
@@ -114,7 +128,7 @@ def copy_captions_without_worship_to_final(messenger: Messenger, config: Config)
 
 
 def upload_captions_to_boxcast(
-    boxcast_client_factory: BoxCastClientFactory, config: Config
+    boxcast_client_factory: BoxCastClientFactory, config: McrTeardownConfig
 ):
     with boxcast_client_factory.get_client() as client:
         _upload_captions_to_boxcast(
@@ -125,7 +139,7 @@ def upload_captions_to_boxcast(
 
 
 def upload_captions_to_vimeo(
-    config: Config, messenger: Messenger, vimeo_client: VimeoClient
+    config: McrTeardownConfig, messenger: Messenger, vimeo_client: VimeoClient
 ):
     texttrack_uri = config.vimeo_video_texttracks_uri
     if texttrack_uri is None:

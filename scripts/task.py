@@ -9,7 +9,7 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
-from config import Config
+from base_config import BaseConfig
 from messenger import LogLevel, Messenger
 
 
@@ -146,7 +146,7 @@ class TaskGraph:
         task_list_file: Path,
         function_finder: FunctionFinder,
         messenger: Messenger,
-        config: Config,
+        config: BaseConfig,
     ) -> TaskGraph:
         with open(task_list_file, "r") as f:
             json_data: Dict[str, Any] = json.load(f)
@@ -179,7 +179,7 @@ class TaskGraph:
         tasks: List[Dict[str, Any]],
         function_index: Dict[str, Callable[[], None]],
         messenger: Messenger,
-        config: Config,
+        config: BaseConfig,
     ) -> TaskGraph:
         unsorted_task_names: Set[str] = {t["name"] for t in tasks}
 
