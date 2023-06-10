@@ -53,6 +53,23 @@ class BaseMessenger:
         return logger
 
 
+class InputMessenger(BaseMessenger):
+    def input(self, prompt: str) -> Union[str, None]:
+        raise NotImplementedError()
+
+    def input_password(self, prompt: str) -> Union[str, None]:
+        raise NotImplementedError()
+
+    def wait(self, prompt: str) -> None:
+        raise NotImplementedError()
+
+    def shutdown_requested(self) -> bool:
+        """
+        Whether the user wants to cancel the program (e.g., by closing the GUI or by hitting CTRL+C).
+        """
+        raise NotImplementedError()
+
+
 class FileMessenger(BaseMessenger):
     def __init__(self, log_file: Path):
         if not log_file.exists():
@@ -70,22 +87,12 @@ class FileMessenger(BaseMessenger):
         self.file_logger.log(level=level.value, msg=message)
 
 
-class InputMessenger(BaseMessenger):
-    def input(self, prompt: str) -> Union[str, None]:
-        raise NotImplementedError()
-
-    def input_password(self, prompt: str) -> Union[str, None]:
-        raise NotImplementedError()
-
-    def wait(self, prompt: str) -> None:
-        raise NotImplementedError()
-
-
 class ConsoleMessenger(InputMessenger):
     # TODO: Make the logs look nicer (e.g., only the latest message from each thread? add colour?)
 
     def __init__(self):
         self._should_exit = False
+        self._shutdown_requested = False
 
         self._console_logger = BaseMessenger._initialize_logger(
             name="console_messenger",
@@ -131,6 +138,9 @@ class ConsoleMessenger(InputMessenger):
         # Pretend there's one more entry in the queue to get the threads to exit
         self._console_semaphore.release()
 
+    def shutdown_requested(self) -> bool:
+        return self._shutdown_requested
+
     def _start_thread(
         self, name: str, semaphore: Semaphore, queue: Deque[Callable[[], Any]]
     ):
@@ -144,9 +154,16 @@ class ConsoleMessenger(InputMessenger):
                     return
 
                 task = queue.popleft()
-                task()
+                # CTRL+C causes an EOFError if the program was waiting for input
+                # The KeyboardInterrupt should also be raised in the main thread, so no need to display anything here
+                # TODO: Finish any remaining output tasks?
+                try:
+                    task()
+                except (EOFError, KeyboardInterrupt):
+                    self._shutdown_requested = True
+                    return
 
-        Thread(target=console_tasks_thread, name=name).start()
+        Thread(target=console_tasks_thread, name=name, daemon=True).start()
 
     def _input(self, prompt: str, input_func: Callable[[str], str]) -> str:
         # Use a lock so that this function blocks until the task has run
@@ -288,8 +305,8 @@ class ThreadStatusFrame(Frame):
 
 class TkMessenger(InputMessenger):
     def __init__(self):
+        self._shutdown_requested = False
         self._lock = Lock()
-
         self._thread_frame: Dict[int, ThreadStatusFrame] = {}
 
         root_started = Semaphore(0)
@@ -301,6 +318,10 @@ class TkMessenger(InputMessenger):
         root_started.acquire()
 
     def log(self, level: LogLevel, message: str):
+        # TODO: What if the shutdown happens while in the middle of logging something?
+        if self._shutdown_requested:
+            return
+
         # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
         # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
         ident = threading.get_ident()
@@ -318,6 +339,9 @@ class TkMessenger(InputMessenger):
         return simpledialog.askstring(title=title, prompt=prompt, show="*")
 
     def wait(self, prompt: str):
+        if self._shutdown_requested:
+            return
+
         semaphore = Semaphore(0)
         ident = threading.get_ident()
         with self._lock:
@@ -338,8 +362,12 @@ class TkMessenger(InputMessenger):
         # Leave the GUI open until the user closes the window
         pass
 
+    def shutdown_requested(self) -> bool:
+        return self._shutdown_requested
+
     def _close(self):
-        # TODO: Release waiting threads
+        # TODO: Release waiting threads?
+        self._shutdown_requested = True
         # For some reason, using destroy() instead of quit() causes an error
         self._root.quit()
 
@@ -393,5 +421,9 @@ class Messenger:
         self._input_messenger.wait(prompt)
 
     def close(self):
-        self._file_messenger.close()
+        # Close the input messenger first so that any new logs are still written to the file messenger
         self._input_messenger.close()
+        self._file_messenger.close()
+
+    def shutdown_requested(self) -> bool:
+        return self._input_messenger.shutdown_requested()

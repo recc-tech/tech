@@ -67,20 +67,24 @@ def main():
         messenger.close()
         return
 
+    success = False
     try:
-        if args.no_run:
-            messenger.close()
-        else:
+        if not args.no_run:
             task_graph.run()
-            messenger.close()
-            print("\nGreat work :)\n")
+            success = True
     except Exception as e:
         messenger.log_separate(
             LogLevel.FATAL,
             f"Failed to run task graph: {e}",
             f"Failed to run task graph:\n{traceback.format_exc()}",
         )
+    except KeyboardInterrupt as e:
+        messenger.log(LogLevel.FATAL, "Program cancelled by user.")
+    finally:
+        # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close()
+        if success:
+            print("\nGreat work :)\n")
 
 
 def _create_messenger(log_file: Path, text_ui: bool) -> Messenger:

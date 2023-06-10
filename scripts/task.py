@@ -93,7 +93,7 @@ class TaskThread(Thread):
         """
         self.tasks = tasks
         self.prerequisites = prerequisites
-        super().__init__(name=name)
+        super().__init__(name=name, daemon=True)
 
     def run(self):
         # Wait for prerequisites
@@ -110,10 +110,11 @@ class TaskGraph:
     _threads: Set[TaskThread]
     _after: Union[TaskGraph, None]
 
-    def __init__(self, threads: Set[TaskThread]):
+    def __init__(self, threads: Set[TaskThread], messenger: Messenger):
         self._threads = threads
         self._before = None
         self._after = None
+        self._messenger = messenger
 
     def run(self) -> None:
         if self._before is not None:
@@ -135,8 +136,13 @@ class TaskGraph:
             unstarted_threads.remove(thread_to_start)
 
         # Wait for main tasks to finish
+        # Periodically stop waiting for the thread to check whether the user wants to exit
         for thread in self._threads:
-            thread.join()
+            while thread.is_alive():
+                thread.join(timeout=1)
+                # If the messenger is shut down, it means the user wants to end the program
+                if self._messenger.shutdown_requested():
+                    raise KeyboardInterrupt()
 
         if self._after is not None:
             self._after.run()
@@ -205,7 +211,7 @@ class TaskGraph:
             sorted_task_names, task_index, function_index, messenger
         )
 
-        return TaskGraph(threads)
+        return TaskGraph(threads, messenger)
 
     @staticmethod
     def _validate_tasks(tasks: List[Dict[str, Any]]):
