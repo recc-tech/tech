@@ -15,12 +15,14 @@ def get_credential(
         if value:
             return value
 
+    base_prompt = f"Enter {credential_display_name}: "
+    prompt = base_prompt
     while True:
-        value = messenger.input_password(f"Enter {credential_display_name}: ")
+        value = messenger.input_password(prompt)
         if not value:
-            print("You just entered a blank value. Please try again.")
+            prompt = f"You just entered a blank value. Please try again. {base_prompt}"
         elif value.upper() == "^V":
-            print("You just entered the value '^V'. Try right-clicking to paste.")
+            prompt = f"You just entered the value '^V'. Try right-clicking to paste. {base_prompt}"
         else:
             keyring.set_password(_KEYRING_APP_NAME, credential_username, value)
             return value
