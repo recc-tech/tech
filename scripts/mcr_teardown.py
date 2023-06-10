@@ -9,7 +9,8 @@ import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
 from credentials import get_credential
 from mcr_teardown.config import McrTeardownConfig
-from messenger import ConsoleMessenger, FileMessenger, LogLevel, Messenger, TkMessenger
+from messenger import (ConsoleMessenger, FileMessenger, LogLevel, Messenger,
+                       TkMessenger)
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
@@ -150,38 +151,6 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-t", "--message-title", required=True, help="Title of today's sermon."
     )
-    parser.add_argument(
-        "--home-dir",
-        type=_parse_directory,
-        default="D:\\Users\\Tech\\Documents",
-        help="The home directory.",
-    )
-    parser.add_argument(
-        "--downloads-dir",
-        type=_parse_directory,
-        default="D:\\Users\\Tech\\Downloads",
-        help="The downloads directory, where the browser automatically places files after downloading them.",
-    )
-    parser.add_argument(
-        "--no-run",
-        action="store_true",
-        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
-    )
-    parser.add_argument(
-        "--no-auto",
-        action="store_true",
-        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
-    )
-    parser.add_argument(
-        "--show-browser",
-        action="store_true",
-        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
-    )
-    parser.add_argument(
-        "--text-ui",
-        action="store_true",
-        help="If this flag is povided, then user interactions will be performed via a simpler terminal-based UI.",
-    )
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
     boxcast_event_id_group.add_argument(
@@ -192,6 +161,40 @@ def _parse_args() -> Namespace:
     boxcast_event_id_group.add_argument(
         "--boxcast-event-id",
         help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/#/events/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
+    )
+
+    advanced_args = parser.add_argument_group("Advanced arguments")
+    advanced_args.add_argument(
+        "--home-dir",
+        type=_parse_directory,
+        default="D:\\Users\\Tech\\Documents",
+        help="The home directory.",
+    )
+    advanced_args.add_argument(
+        "--downloads-dir",
+        type=_parse_directory,
+        default="D:\\Users\\Tech\\Downloads",
+        help="The downloads directory, where the browser automatically places files after downloading them.",
+    )
+    advanced_args.add_argument(
+        "--no-run",
+        action="store_true",
+        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    advanced_args.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
+    )
+    advanced_args.add_argument(
+        "--show-browser",
+        action="store_true",
+        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
+    )
+    advanced_args.add_argument(
+        "--text-ui",
+        action="store_true",
+        help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
 
     args = parser.parse_args()
