@@ -157,47 +157,67 @@ class ConsoleMessenger(InputMessenger):
 
 class ThreadStatusFrame(Frame):
     # TODO: Use an enum for log level?
+    _WIDTH_TO_WRAPLENGTH = 6
+
+    # TODO: Use an enum for log level?
     def __init__(self, parent: Misc, thread_name: str):
         super().__init__(parent, padding=5)
 
         self._name = thread_name
-        self._name_label = Label(self, text=thread_name)
-        self._name_label.grid(row=0, column=0)
+        self._semaphore: Semaphore
+
+        self._button = Button(
+            self, text="Done", command=lambda: self._semaphore.release()
+        )
+        self._button["state"] = "disabled"
+        self._button.grid(row=0, column=0)
+
+        self._name_label = Label(
+            self,
+            text=thread_name,
+            width=30,
+            wraplength=30 * self._WIDTH_TO_WRAPLENGTH,
+        )
+        self._name_label.grid(row=0, column=1)
 
         self._time_var = StringVar()
-        self._time_label = Label(self, textvariable=self._time_var)
-        self._time_label.grid(row=0, column=1)
+        self._time_label = Label(
+            self,
+            textvariable=self._time_var,
+            width=10,
+            wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
+        )
+        self._time_label.grid(row=0, column=2)
 
         self._level_var = StringVar()
-        self._level_label = Label(self, textvariable=self._level_var)
-        self._level_label.grid(row=0, column=2)
+        self._level_label = Label(
+            self,
+            textvariable=self._level_var,
+            width=10,
+            wraplength=10 * self._WIDTH_TO_WRAPLENGTH,
+        )
+        self._level_label.grid(row=0, column=3)
 
         self._message_var = StringVar()
-        self._message_label = Label(self, textvariable=self._message_var)
-        self._message_label.grid(row=0, column=3)
-
-        self._button: Union[None, Button] = None
+        self._message_label = Label(
+            self,
+            textvariable=self._message_var,
+            width=200,
+            wraplength=200 * self._WIDTH_TO_WRAPLENGTH,
+        )
+        self._message_label.grid(row=0, column=4)
 
     def update_contents(self, time: datetime, level: int, message: str):
         self._time_var.set(time.strftime("%H:%M:%S"))
         self._level_var.set(str(level))
         self._message_var.set(message)
 
-    def add_button(self, text: str, command: Callable[[], None]):
-        if self._button is not None:
-            raise ValueError(
-                f"Cannot add button: there is already a button in the frame for thread '{self._name}'."
-            )
-        self._button = Button(self, text=text, command=command)
-        self._button.grid(row=0, column=4)
+    def enable_button(self, semaphore: Semaphore):
+        self._semaphore = semaphore
+        self._button["state"] = "enabled"
 
-    def remove_button(self):
-        if self._button is None:
-            raise ValueError(
-                f"Cannot remove button: there is no button in the frame for thread '{self._name}'."
-            )
-        self._button.destroy()
-        self._button = None
+    def disable_button(self):
+        self._button["state"] = "disabled"
 
 
 class TkMessenger(InputMessenger):
@@ -232,7 +252,6 @@ class TkMessenger(InputMessenger):
 
     def wait(self, prompt: str):
         semaphore = Semaphore(0)
-        command = lambda: semaphore.release()
         ident = threading.get_ident()
         with self._lock:
             if ident not in self._thread_frame:
@@ -240,13 +259,13 @@ class TkMessenger(InputMessenger):
             frame = self._thread_frame[ident]
         # TODO: Handle this better
         frame.update_contents(datetime.now(), logging.INFO, prompt)
-        frame.add_button(text="Done", command=command)
+        frame.enable_button(semaphore)
 
         semaphore.acquire()
 
         # TODO: What if another thread modifies the frame somehow in between these two locks?
         with self._lock:
-            frame.remove_button()
+            frame.disable_button()
 
     def close(self):
         # It seems the program will hang if root.destroy() is called from outside the GUI thread
@@ -261,10 +280,7 @@ class TkMessenger(InputMessenger):
         self._root.mainloop()
 
     def _add_row(self) -> ThreadStatusFrame:
-        frame = ThreadStatusFrame(
-            self._root,
-            threading.current_thread().name,
-        )
+        frame = ThreadStatusFrame(self._root, threading.current_thread().name)
         frame.grid()
         return frame
 
@@ -274,9 +290,7 @@ class Messenger:
     Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
     """
 
-    def __init__(
-        self, file_messenger: FileMessenger, input_messenger: InputMessenger
-    ):
+    def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
 
