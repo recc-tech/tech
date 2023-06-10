@@ -16,7 +16,7 @@ def get_credential(
             return value
 
     while True:
-        value = messenger.get_password(f"Enter {credential_display_name}: ")
+        value = messenger.input_password(f"Enter {credential_display_name}: ")
         if not value:
             print("You just entered a blank value. Please try again.")
         elif value.upper() == "^V":

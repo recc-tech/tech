@@ -11,7 +11,7 @@ import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
 from config import Config
 from credentials import get_credential
-from messenger import ConsoleMessenger, FileMessenger, Messenger
+from messenger import ConsoleMessenger, FileMessenger, Messenger, TkMessenger
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
@@ -39,7 +39,7 @@ def main():
         boxcast_event_id=args.boxcast_event_id,
     )
 
-    messenger = _create_messenger(config.log_dir)
+    messenger = _create_messenger(config.log_dir, args.text_ui)
 
     vimeo_client = _create_vimeo_client(messenger)
 
@@ -84,15 +84,15 @@ def main():
         messenger.close()
 
 
-def _create_messenger(log_directory: Path) -> Messenger:
+def _create_messenger(log_directory: Path, text_ui: bool) -> Messenger:
     current_date = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_directory.joinpath(f"{current_date} {current_time} mcr_teardown.log")
     file_messenger = FileMessenger(log_file)
 
-    console_messenger = ConsoleMessenger()
+    input_messenger = ConsoleMessenger() if text_ui else TkMessenger()
 
-    return Messenger(file_messenger=file_messenger, console_messenger=console_messenger)
+    return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
 
 
 def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
@@ -182,6 +182,11 @@ def _parse_args() -> Namespace:
         "--show-browser",
         action="store_true",
         help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
+    )
+    parser.add_argument(
+        "--text-ui",
+        action="store_true",
+        help="If this flag is povided, then user interactions will be performed via a simpler terminal-based UI.",
     )
 
     boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)

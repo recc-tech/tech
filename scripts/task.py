@@ -70,8 +70,7 @@ class Task:
                     f"Task '{self._name}' failed with an exception:\n{traceback.format_exc()}",
                 )
 
-            message = f"- {self._fallback_message} When you are done, press ENTER."
-            self._messenger.input(message)
+            self._messenger.wait(self._fallback_message)
 
 
 class TaskThread(Thread):

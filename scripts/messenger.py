@@ -1,10 +1,14 @@
 import logging
+import threading
 from collections import deque
+from datetime import datetime
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
-from typing import Any, Callable, Deque
+from tkinter import Misc, StringVar, Tk, simpledialog
+from tkinter.ttk import Button, Frame, Label
+from typing import Any, Callable, Deque, Dict, Union
 
 
 class BaseMessenger:
@@ -55,11 +59,13 @@ class FileMessenger(BaseMessenger):
 
 
 class InputMessenger(BaseMessenger):
-    def input(self, prompt: str, input_func: Callable[[str], str]) -> str:
-        """
-        Takes user input using the given function. For example, you can take regular input using `input_func=input`
-        and take passwords using `input_func=getpass`.
-        """
+    def input(self, prompt: str) -> Union[str, None]:
+        raise NotImplementedError()
+
+    def input_password(self, prompt: str) -> Union[str, None]:
+        raise NotImplementedError()
+
+    def wait(self, prompt: str) -> None:
         raise NotImplementedError()
 
 
@@ -96,23 +102,17 @@ class ConsoleMessenger(InputMessenger):
         # Signal that there is a task in the queue
         self._console_semaphore.release()
 
-    def input(self, prompt: str, input_func: Callable[[str], str]) -> str:
-        # Use a lock so that this function blocks until the task has run
-        lock = Lock()
-        lock.acquire()
+    def input(self, prompt: str) -> str:
+        return self._input(prompt, input)
 
-        def input_task():
-            self._input_value = input_func(prompt)
-            lock.release()
+    def input_password(self, prompt: str) -> str:
+        return self._input(prompt, getpass)
 
-        self._console_queue.append(input_task)
-        # Signal that there is a task in the queue
-        self._console_semaphore.release()
-
-        # Wait for the task to be done
-        lock.acquire()
-
-        return self._input_value
+    def wait(self, prompt: str):
+        prompt = prompt.strip()
+        prompt = prompt if prompt.endswith(".") else f"{prompt}."
+        prompt = f"- {prompt}"
+        self.input(f"{prompt} When you are done, press ENTER.")
 
     def close(self):
         self._should_exit = True
@@ -136,10 +136,137 @@ class ConsoleMessenger(InputMessenger):
 
         Thread(target=console_tasks_thread, name=name).start()
 
+    def _input(self, prompt: str, input_func: Callable[[str], str]) -> str:
+        # Use a lock so that this function blocks until the task has run
+        lock = Lock()
+        lock.acquire()
+
+        def input_task():
+            self._input_value = input_func(prompt)
+            lock.release()
+
+        self._console_queue.append(input_task)
+        # Signal that there is a task in the queue
+        self._console_semaphore.release()
+
+        # Wait for the task to be done
+        lock.acquire()
+
+        return self._input_value
+
+
+class ThreadStatusFrame(Frame):
+    # TODO: Use an enum for log level?
+    def __init__(self, parent: Misc, thread_name: str):
+        super().__init__(parent, padding=5)
+
+        self._name = thread_name
+        self._name_label = Label(self, text=thread_name)
+        self._name_label.grid(row=0, column=0)
+
+        self._time_var = StringVar()
+        self._time_label = Label(self, textvariable=self._time_var)
+        self._time_label.grid(row=0, column=1)
+
+        self._level_var = StringVar()
+        self._level_label = Label(self, textvariable=self._level_var)
+        self._level_label.grid(row=0, column=2)
+
+        self._message_var = StringVar()
+        self._message_label = Label(self, textvariable=self._message_var)
+        self._message_label.grid(row=0, column=3)
+
+        self._button: Union[None, Button] = None
+
+    def update_contents(self, time: datetime, level: int, message: str):
+        self._time_var.set(time.strftime("%H:%M:%S"))
+        self._level_var.set(str(level))
+        self._message_var.set(message)
+
+    def add_button(self, text: str, command: Callable[[], None]):
+        if self._button is not None:
+            raise ValueError(
+                f"Cannot add button: there is already a button in the frame for thread '{self._name}'."
+            )
+        self._button = Button(self, text=text, command=command)
+        self._button.grid(row=0, column=4)
+
+    def remove_button(self):
+        if self._button is None:
+            raise ValueError(
+                f"Cannot remove button: there is no button in the frame for thread '{self._name}'."
+            )
+        self._button.destroy()
+        self._button = None
+
 
 class TkMessenger(InputMessenger):
-    # TODO: Implement this as an alternative to the ConsoleMessenger
-    ...
+    def __init__(self):
+        self._lock = Lock()
+
+        self._thread_frame: Dict[int, ThreadStatusFrame] = {}
+
+        root_started = Semaphore(0)
+        self._gui_thread = Thread(
+            name="GUI", target=lambda: self._run_gui(root_started), daemon=True
+        )
+        self._gui_thread.start()
+        # Wait for the GUI to enter the main loop
+        root_started.acquire()
+
+    def log(self, level: int, message: str):
+        # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
+        # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
+        ident = threading.get_ident()
+        with self._lock:
+            if ident not in self._thread_frame:
+                self._thread_frame[ident] = self._add_row()
+            frame = self._thread_frame[ident]
+        frame.update_contents(datetime.now(), level, message)
+
+    def input(self, prompt: str, title: str = "") -> Union[str, None]:
+        return simpledialog.askstring(title=title, prompt=prompt, show="*")
+
+    def input_password(self, prompt: str, title: str = "") -> Union[str, None]:
+        return simpledialog.askstring(title=title, prompt=prompt, show="*")
+
+    def wait(self, prompt: str):
+        semaphore = Semaphore(0)
+        command = lambda: semaphore.release()
+        ident = threading.get_ident()
+        with self._lock:
+            if ident not in self._thread_frame:
+                self._thread_frame[ident] = self._add_row()
+            frame = self._thread_frame[ident]
+        # TODO: Handle this better
+        frame.update_contents(datetime.now(), logging.INFO, prompt)
+        frame.add_button(text="Done", command=command)
+
+        semaphore.acquire()
+
+        # TODO: What if another thread modifies the frame somehow in between these two locks?
+        with self._lock:
+            frame.remove_button()
+
+    def close(self):
+        # It seems the program will hang if root.destroy() is called from outside the GUI thread
+        self._root.after(0, self._root.destroy)
+
+    def _run_gui(self, root_started: Semaphore):
+        self._root = Tk()
+        self._root.title("MCR Teardown")
+        self._root.geometry("1024x512+0+0")
+
+        self._root.after(0, lambda: root_started.release())
+        self._root.mainloop()
+
+    def _add_row(self) -> ThreadStatusFrame:
+        frame = ThreadStatusFrame(
+            self._root,
+            threading.current_thread().name,
+        )
+        frame.grid()
+        return frame
 
 
 class Messenger:
@@ -148,24 +275,27 @@ class Messenger:
     """
 
     def __init__(
-        self, file_messenger: FileMessenger, console_messenger: ConsoleMessenger
+        self, file_messenger: FileMessenger, input_messenger: InputMessenger
     ):
         self._file_messenger = file_messenger
-        self._console_messenger = console_messenger
+        self._input_messenger = input_messenger
 
     def log(self, level: int, message: str):
         self.log_separate(level, message, message)
 
     def log_separate(self, level: int, console_message: str, log_file_message: str):
         self._file_messenger.log(level, log_file_message)
-        self._console_messenger.log(level, console_message)
+        self._input_messenger.log(level, console_message)
 
-    def input(self, prompt: str) -> str:
-        return self._console_messenger.input(prompt, input)
+    def input(self, prompt: str) -> Union[str, None]:
+        return self._input_messenger.input(prompt)
 
-    def get_password(self, prompt: str) -> str:
-        return self._console_messenger.input(prompt, getpass)
+    def input_password(self, prompt: str) -> Union[str, None]:
+        return self._input_messenger.input_password(prompt)
+
+    def wait(self, prompt: str):
+        self._input_messenger.wait(prompt)
 
     def close(self):
         self._file_messenger.close()
-        self._console_messenger.close()
+        self._input_messenger.close()
