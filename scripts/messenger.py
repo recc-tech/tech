@@ -199,7 +199,7 @@ class CopyableText(Text):
             wrap="word",
             state="disabled",
             highlightthickness=0,
-            borderwidth=1,
+            borderwidth=0,
             *args,
             **kwargs,
         )
@@ -222,7 +222,7 @@ class CopyableText(Text):
 
 
 class ThreadStatusFrame(Frame):
-    _PADX = 10
+    _PADX = 5
     _LOG_LEVEL_COLOUR = {
         LogLevel.DEBUG: "#888888",
         LogLevel.INFO: "#0000FF",  # "#0000FF"
@@ -378,7 +378,7 @@ class TkMessenger(InputMessenger):
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        goodbye_message_textbox.grid(sticky="W", pady=50)
+        goodbye_message_textbox.grid(sticky="W", pady=25)
         goodbye_message_textbox.set_text("All tasks are complete. Close this window to exit.")
 
     def shutdown_requested(self) -> bool:
@@ -396,7 +396,6 @@ class TkMessenger(InputMessenger):
 
         self._root = Tk()
         self._root.title("MCR Teardown")
-        self._root.geometry("3500x1700+0+0")
         self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._root.config(padx=25, pady=25, background=self._BACKGROUND_COLOUR)
 
@@ -419,7 +418,7 @@ class TkMessenger(InputMessenger):
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        description_textbox.grid(sticky="W", pady=50)
+        description_textbox.grid(sticky="W", pady=25)
         description_textbox.set_text(description)
 
         tasks_header = CopyableText(
@@ -446,7 +445,7 @@ class TkMessenger(InputMessenger):
             self._root,
             threading.current_thread().name,
             self._NORMAL_FONT,
-            padding=10,
+            padding=5,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
