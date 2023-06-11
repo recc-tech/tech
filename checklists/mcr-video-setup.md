@@ -39,6 +39,7 @@ assignees: recc-tech
     - [ ] Host
     - [ ] Speaker
     - [ ] Special announcer(s), if any
+    - [ ] Check that all the titles and the pre-stream title loop look good
 - [ ] Save preset as a new file
     - Click "Save As"
     - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
