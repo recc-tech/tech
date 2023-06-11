@@ -55,8 +55,7 @@ class McrTeardownConfig(BaseConfig):
 
     def fill_placeholders(self, text: str) -> str:
         text = (
-            text.replace("%{LIVE_EVENT_TITLE}%", self.live_event_title)
-            .replace("%{REBROADCAST_TITLE}%", self.rebroadcast_title)
+            text.replace("%{REBROADCAST_TITLE}%", self.rebroadcast_title)
             .replace(
                 "%{ORIGINAL_CAPTIONS_PATH}%", self.original_captions_path.as_posix()
             )
@@ -66,6 +65,7 @@ class McrTeardownConfig(BaseConfig):
             )
             .replace("%{FINAL_CAPTIONS_PATH}%", self.final_captions_path.as_posix())
             .replace("%{LOG_FILE}%", self.log_file.as_posix())
+            .replace("%{VIMEO_VIDEO_TITLE}%", self.vimeo_video_title)
         )
 
         # Call the superclass' method *after* the subclass' method so that the check for unknown placeholders happens
