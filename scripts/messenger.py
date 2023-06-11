@@ -8,8 +8,8 @@ from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Lock, Semaphore, Thread
-from tkinter import Misc, Text, Tk, messagebox, simpledialog
-from tkinter.ttk import Button, Frame, Style
+from tkinter import Canvas, Misc, Text, Tk, messagebox, simpledialog
+from tkinter.ttk import Button, Frame, Scrollbar, Style
 from typing import Any, Callable, Deque, Dict, Union
 
 
@@ -185,6 +185,42 @@ class ConsoleMessenger(InputMessenger):
         lock.acquire()
 
         return self._input_value
+
+
+class ScrollableFrame(Frame):
+    def __init__(self, parent: Misc, *args: Any, **kwargs: Any):
+        outer_frame = Frame(parent)
+        outer_frame.pack(fill="both", expand=1)
+
+        scrollbar = Scrollbar(outer_frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
+        self._canvas = Canvas(
+            outer_frame,
+            yscrollcommand=scrollbar.set,
+            borderwidth=0,
+            highlightthickness=0,
+        )
+        self._canvas.pack(side="left", fill="both", expand=1)
+        self._canvas.bind(
+            "<Configure>",
+            lambda e: self.update_scrollregion(),
+        )
+        scrollbar.config(command=self._canvas.yview)  # type: ignore
+
+        # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
+        root = parent.winfo_toplevel()
+        root.bind_all(
+            "<MouseWheel>",
+            lambda e: self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
+        )
+
+        if "padding" not in kwargs:
+            kwargs["padding"] = 25
+        super().__init__(self._canvas, *args, **kwargs)
+        self._canvas.create_window((0, 0), window=self, anchor="nw")
+
+    def update_scrollregion(self):
+        self._canvas.config(scrollregion=self._canvas.bbox("all"))
 
 
 class CopyableText(Text):
@@ -372,14 +408,17 @@ class TkMessenger(InputMessenger):
             return
 
         goodbye_message_textbox = CopyableText(
-            self._root,
+            self._root_frame,
             width=170,
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
         goodbye_message_textbox.grid(sticky="W", pady=25)
-        goodbye_message_textbox.set_text("All tasks are complete. Close this window to exit.")
+        goodbye_message_textbox.set_text(
+            "All tasks are complete. Close this window to exit."
+        )
+        self._root_frame.update_scrollregion()
 
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
@@ -388,16 +427,18 @@ class TkMessenger(InputMessenger):
         # TODO: Release waiting threads?
         self._shutdown_requested = True
         # For some reason, using destroy() instead of quit() causes an error
-        self._root.quit()
+        self._tk.quit()
 
     def _run_gui(self, root_started: Semaphore, description: str):
         # Try to make the GUI less blurry
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
-        self._root = Tk()
-        self._root.title("MCR Teardown")
-        self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
-        self._root.config(padx=25, pady=25, background=self._BACKGROUND_COLOUR)
+        self._tk = Tk()
+        self._tk.title("MCR Teardown")
+        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
+        self._tk.config(background=self._BACKGROUND_COLOUR)
+
+        self._root_frame = ScrollableFrame(self._tk)
 
         style = Style()
         # TODO: Change button background?
@@ -412,7 +453,7 @@ class TkMessenger(InputMessenger):
         )
 
         description_textbox = CopyableText(
-            self._root,
+            self._root_frame,
             width=170,
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
@@ -422,7 +463,7 @@ class TkMessenger(InputMessenger):
         description_textbox.set_text(description)
 
         tasks_header = CopyableText(
-            self._root,
+            self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
@@ -430,8 +471,8 @@ class TkMessenger(InputMessenger):
         tasks_header.grid(sticky="W", pady=25)
         tasks_header.set_text("Tasks")
 
-        self._root.after(0, lambda: root_started.release())
-        self._root.mainloop()
+        self._tk.after(0, lambda: root_started.release())
+        self._tk.mainloop()
 
     def _confirm_exit(self):
         should_exit = messagebox.askyesno(  # type: ignore
@@ -442,7 +483,7 @@ class TkMessenger(InputMessenger):
 
     def _add_row(self) -> ThreadStatusFrame:
         frame = ThreadStatusFrame(
-            self._root,
+            self._root_frame,
             threading.current_thread().name,
             self._NORMAL_FONT,
             padding=5,
@@ -450,6 +491,7 @@ class TkMessenger(InputMessenger):
             foreground=self._FOREGROUND_COLOUR,
         )
         frame.grid(sticky="W")
+        self._root_frame.update_scrollregion()
         return frame
 
     def _should_log(self, level: LogLevel) -> bool:
