@@ -196,7 +196,6 @@ class CopyableText(Text):
             height=1,
             wrap="word",
             state="disabled",
-            bg="#EEEEEE",
             highlightthickness=0,
             borderwidth=0,
             *args,
@@ -221,19 +220,29 @@ class CopyableText(Text):
 
 
 class ThreadStatusFrame(Frame):
-    _WIDTH_TO_WRAPLENGTH = 7.5
+    _PADX = 10
+    _LOG_LEVEL_COLOUR = {
+        LogLevel.DEBUG: "#888888",
+        LogLevel.INFO: "#0000FF",  # "#0000FF"
+        LogLevel.WARN: "#FF9900",
+        LogLevel.ERROR: "#FF0000",
+        LogLevel.FATAL: "#990000",
+    }
+    _DEFAULT_LOG_LEVEL_COLOUR = "#FFFFFF"
 
-    _FONT = "Calibri 12"
-    _BOLD_FONT = f"{_FONT} bold"
-
-    def __init__(self, parent: Misc, thread_name: str):
-        super().__init__(parent, padding=5)
+    def __init__(
+        self,
+        parent: Misc,
+        thread_name: str,
+        font: str,
+        padding: int,
+        background: str,
+        foreground: str,
+    ):
+        super().__init__(parent, padding=padding)
 
         self._name = thread_name
         self._semaphore: Semaphore
-
-        style = Style()
-        style.configure("TButton", font=self._FONT)  # type: ignore
 
         self._button = Button(
             self,
@@ -241,32 +250,28 @@ class ThreadStatusFrame(Frame):
             command=lambda: self._semaphore.release(),
             state="disabled",
         )
-        self._button.grid(row=0, column=0)
+        self._button.grid(row=0, column=0, padx=self._PADX)
 
         self._name_label = CopyableText(
-            self,
-            width=35,
-            font=self._FONT,
+            self, width=35, font=font, background=background, foreground=foreground
         )
-        self._name_label.grid(row=0, column=1)
+        self._name_label.grid(row=0, column=1, padx=self._PADX)
         self._name_label.set_text(thread_name)
 
         self._time_label = CopyableText(
-            self,
-            width=10,
-            font=self._FONT,
+            self, width=10, font=font, background=background, foreground=foreground
         )
-        self._time_label.grid(row=0, column=2)
+        self._time_label.grid(row=0, column=2, padx=self._PADX)
 
         self._level_label = CopyableText(
-            self,
-            width=10,
-            font=self._BOLD_FONT,
+            self, width=10, font=font, background=background, foreground=foreground
         )
-        self._level_label.grid(row=0, column=3)
+        self._level_label.grid(row=0, column=3, padx=self._PADX)
 
-        self._message_label = CopyableText(self, width=100, font=self._FONT)
-        self._message_label.grid(row=0, column=4)
+        self._message_label = CopyableText(
+            self, width=100, font=font, background=background, foreground=foreground
+        )
+        self._message_label.grid(row=0, column=4, padx=self._PADX)
 
     def update_contents(self, time: datetime, level: LogLevel, message: str):
         self._time_label.set_text(time.strftime("%H:%M:%S"))
@@ -283,21 +288,21 @@ class ThreadStatusFrame(Frame):
 
     @staticmethod
     def _log_level_colour(level: LogLevel) -> str:
-        if level == LogLevel.DEBUG:
-            return "#888888"
-        elif level == LogLevel.INFO:
-            return "#0000FF"
-        elif level == LogLevel.WARN:
-            return "#FF8800"
-        elif level == LogLevel.ERROR:
-            return "#FF0000"
-        elif level == LogLevel.FATAL:
-            return "#880000"
-        else:
-            return "#000000"
+        return (
+            ThreadStatusFrame._LOG_LEVEL_COLOUR[level]
+            if level in ThreadStatusFrame._LOG_LEVEL_COLOUR
+            else ThreadStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
+        )
 
 
 class TkMessenger(InputMessenger):
+    _BACKGROUND_COLOUR = "#EEEEEE"
+    _FOREGROUND_COLOUR = "#000000"
+
+    _NORMAL_FONT = "Calibri 12"
+    _BOLD_FONT = f"{_NORMAL_FONT} bold"
+    _H2_FONT = "Calibri 18 bold"
+
     def __init__(self):
         # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
 
@@ -378,6 +383,28 @@ class TkMessenger(InputMessenger):
         self._root.title("MCR Teardown")
         self._root.geometry("3500x1600+0+0")
         self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
+        self._root.config(padx=25, pady=25, background=self._BACKGROUND_COLOUR)
+
+        style = Style()
+        # TODO: Change button background?
+        style.configure(  # type: ignore
+            "TButton",
+            font=self._NORMAL_FONT,
+        )
+        style.configure(  # type: ignore
+            "TFrame",
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+
+        tasks_header = CopyableText(
+            self._root,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        tasks_header.grid(sticky="W", pady=25)
+        tasks_header.set_text("Tasks")
 
         self._root.after(0, lambda: root_started.release())
         self._root.mainloop()
@@ -390,7 +417,14 @@ class TkMessenger(InputMessenger):
             self._close()
 
     def _add_row(self) -> ThreadStatusFrame:
-        frame = ThreadStatusFrame(self._root, threading.current_thread().name)
+        frame = ThreadStatusFrame(
+            self._root,
+            threading.current_thread().name,
+            self._NORMAL_FONT,
+            padding=10,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
         frame.grid()
         return frame
 
