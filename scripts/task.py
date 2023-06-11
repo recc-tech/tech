@@ -51,7 +51,7 @@ class Task:
         self._name = name
 
     def run(self):
-        self._messenger.log(LogLevel.DEBUG, f"Running task '{self._name}'.")
+        self._messenger.log(LogLevel.INFO, f"Task '{self._name}' started.")
         try:
             self._run()
             self._messenger.log(
