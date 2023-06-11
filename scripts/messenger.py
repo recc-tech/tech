@@ -199,7 +199,7 @@ class CopyableText(Text):
             wrap="word",
             state="disabled",
             highlightthickness=0,
-            borderwidth=0,
+            borderwidth=1,
             *args,
             **kwargs,
         )
@@ -366,6 +366,10 @@ class TkMessenger(InputMessenger):
 
     def close(self):
         # Leave the GUI open until the user closes the window
+
+        # TODO: Skip all this if the window is already closed
+        if self._shutdown_requested:
+            return
 
         goodbye_message_textbox = CopyableText(
             self._root,
