@@ -9,8 +9,7 @@ import mcr_teardown.tasks
 from boxcast_client import BoxCastClientFactory
 from credentials import get_credential
 from mcr_teardown.config import McrTeardownConfig
-from messenger import (ConsoleMessenger, FileMessenger, LogLevel, Messenger,
-                       TkMessenger)
+from messenger import ConsoleMessenger, FileMessenger, LogLevel, Messenger, TkMessenger
 from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
@@ -18,7 +17,6 @@ from vimeo import VimeoClient  # type: ignore
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
 # TODO: Split MCR teardown checklist into manual and automated tasks. In the automated tasks section, add a reminder that, if someone changes the checklist, they should also create an issue to update the script (ideally make the change in the manual section at first?) Alternatively, add the manual tasks to the script and go directly to the "fallback" message.
 # TODO: Save progress in a file in case the script needs to be stopped and restarted? It would probably be nice to create one or more classes to encapsulate this. Watch out for race conditions if only one class is used (maybe better to have one class per thread).
-# TODO: Make it easier to kill the program
 # TODO: Let tasks optionally include a verifier method that checks whether the step was completed properly
 # TODO: Visualize task graph?
 # TODO: Use ANSI escape sequences to move the cursor around, show status of all threads. Or would it be better to use the terminal only for input and output current status of each thread in a file?

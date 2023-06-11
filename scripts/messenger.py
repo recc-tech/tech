@@ -299,6 +299,8 @@ class ThreadStatusFrame(Frame):
 
 class TkMessenger(InputMessenger):
     def __init__(self):
+        # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
+
         self._shutdown_requested = False
         self._lock = Lock()
         self._thread_frame: Dict[int, ThreadStatusFrame] = {}
