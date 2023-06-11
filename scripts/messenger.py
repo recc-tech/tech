@@ -280,13 +280,66 @@ class ThreadStatusFrame(Frame):
         super().__init__(parent, padding=padding)
 
         self._name = thread_name
-        self._semaphore: Semaphore
+
+        self._name_label = CopyableText(
+            self, width=35, font=font, background=background, foreground=foreground
+        )
+        self._name_label.grid(row=0, column=0, padx=self._PADX)
+        self._name_label.set_text(thread_name)
+
+        self._time_label = CopyableText(
+            self, width=10, font=font, background=background, foreground=foreground
+        )
+        self._time_label.grid(row=0, column=1, padx=self._PADX)
+
+        self._level_label = CopyableText(
+            self, width=10, font=font, background=background, foreground=foreground
+        )
+        self._level_label.grid(row=0, column=2, padx=self._PADX)
+
+        self._message_label = CopyableText(
+            self, width=100, font=font, background=background, foreground=foreground
+        )
+        self._message_label.grid(row=0, column=3, padx=self._PADX)
+
+    def update_contents(self, time: datetime, level: LogLevel, message: str):
+        self._time_label.set_text(time.strftime("%H:%M:%S"))
+        self._level_label.set_text(str(level))
+        self._level_label.config(foreground=self._log_level_colour(level))
+        self._message_label.set_text(message)
+
+    @staticmethod
+    def _log_level_colour(level: LogLevel) -> str:
+        return (
+            ThreadStatusFrame._LOG_LEVEL_COLOUR[level]
+            if level in ThreadStatusFrame._LOG_LEVEL_COLOUR
+            else ThreadStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
+        )
+
+
+class ActionItemFrame(Frame):
+    _PADX = 5
+
+    def __init__(
+        self,
+        parent: Misc,
+        thread_name: str,
+        prompt: str,
+        font: str,
+        background: str,
+        foreground: str,
+        **kwargs: Any,
+    ):
+        super().__init__(parent, **kwargs)
+
+        self._lock = Lock()
+        self._lock.acquire()
 
         self._button = Button(
             self,
             text="Done",
-            command=lambda: self._semaphore.release(),
-            state="disabled",
+            command=self._handle_click,
+            state="enabled",
         )
         self._button.grid(row=0, column=0, padx=self._PADX)
 
@@ -296,41 +349,18 @@ class ThreadStatusFrame(Frame):
         self._name_label.grid(row=0, column=1, padx=self._PADX)
         self._name_label.set_text(thread_name)
 
-        self._time_label = CopyableText(
-            self, width=10, font=font, background=background, foreground=foreground
-        )
-        self._time_label.grid(row=0, column=2, padx=self._PADX)
-
-        self._level_label = CopyableText(
-            self, width=10, font=font, background=background, foreground=foreground
-        )
-        self._level_label.grid(row=0, column=3, padx=self._PADX)
-
         self._message_label = CopyableText(
             self, width=100, font=font, background=background, foreground=foreground
         )
-        self._message_label.grid(row=0, column=4, padx=self._PADX)
+        self._message_label.grid(row=0, column=2, padx=self._PADX)
+        self._message_label.set_text(prompt)
 
-    def update_contents(self, time: datetime, level: LogLevel, message: str):
-        self._time_label.set_text(time.strftime("%H:%M:%S"))
-        self._level_label.set_text(str(level))
-        self._level_label.config(foreground=self._log_level_colour(level))
-        self._message_label.set_text(message)
+    def wait_for_click(self):
+        self._lock.acquire()
 
-    def enable_button(self, semaphore: Semaphore):
-        self._semaphore = semaphore
-        self._button.config(state="enabled")
-
-    def disable_button(self):
-        self._button.config(state="disabled")
-
-    @staticmethod
-    def _log_level_colour(level: LogLevel) -> str:
-        return (
-            ThreadStatusFrame._LOG_LEVEL_COLOUR[level]
-            if level in ThreadStatusFrame._LOG_LEVEL_COLOUR
-            else ThreadStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
-        )
+    def _handle_click(self):
+        self._lock.release()
+        self.destroy()
 
 
 class TkMessenger(InputMessenger):
@@ -384,21 +414,16 @@ class TkMessenger(InputMessenger):
         if self._shutdown_requested:
             return
 
-        semaphore = Semaphore(0)
-        ident = threading.get_ident()
-        with self._lock:
-            if ident not in self._thread_frame:
-                self._thread_frame[ident] = self._add_row()
-            frame = self._thread_frame[ident]
-        # TODO: Handle this better
-        frame.update_contents(datetime.now(), LogLevel.INFO, prompt)
-        frame.enable_button(semaphore)
-
-        semaphore.acquire()
-
-        # TODO: What if another thread modifies the frame somehow in between these two locks?
-        with self._lock:
-            frame.disable_button()
+        frame = ActionItemFrame(
+            self._action_items_frame,
+            thread_name=threading.current_thread().name,
+            prompt=prompt,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        frame.grid(sticky="w")
+        frame.wait_for_click()
 
     def close(self):
         # Leave the GUI open until the user closes the window
@@ -422,12 +447,6 @@ class TkMessenger(InputMessenger):
 
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
-
-    def _close(self):
-        # TODO: Release waiting threads?
-        self._shutdown_requested = True
-        # For some reason, using destroy() instead of quit() causes an error
-        self._tk.quit()
 
     def _run_gui(self, root_started: Semaphore, description: str):
         # Try to make the GUI less blurry
@@ -462,17 +481,60 @@ class TkMessenger(InputMessenger):
         description_textbox.grid(sticky="W", pady=25)
         description_textbox.set_text(description)
 
-        tasks_header = CopyableText(
+        action_items_header = CopyableText(
             self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        tasks_header.grid(sticky="W", pady=25)
-        tasks_header.set_text("Tasks")
+        action_items_header.grid(sticky="W", pady=25)
+        action_items_header.set_text("Action Items")
+
+        self._action_items_frame = Frame(self._root_frame)
+        self._action_items_frame.grid(sticky="W")
+
+        action_items_description = CopyableText(
+            self._action_items_frame,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        action_items_description.grid(sticky="W", pady=15)
+        action_items_description.set_text(
+            "Tasks that you must perform manually are listed here."
+        )
+
+        thread_statuses_header = CopyableText(
+            self._root_frame,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        thread_statuses_header.grid(sticky="W", pady=25)
+        thread_statuses_header.set_text("Thread Statuses")
+
+        self._thread_statuses_frame = Frame(self._root_frame)
+        self._thread_statuses_frame.grid(sticky="W")
+
+        thread_statuses_description = CopyableText(
+            self._thread_statuses_frame,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        thread_statuses_description.grid(sticky="W", pady=15)
+        thread_statuses_description.set_text(
+            "The status of all in-progress and completed threads are listed here."
+        )
 
         self._tk.after(0, lambda: root_started.release())
         self._tk.mainloop()
+
+    def _close(self):
+        # TODO: Release waiting threads?
+        self._shutdown_requested = True
+        # For some reason, using destroy() instead of quit() causes an error
+        self._tk.quit()
 
     def _confirm_exit(self):
         should_exit = messagebox.askyesno(  # type: ignore
@@ -483,7 +545,7 @@ class TkMessenger(InputMessenger):
 
     def _add_row(self) -> ThreadStatusFrame:
         frame = ThreadStatusFrame(
-            self._root_frame,
+            self._thread_statuses_frame,
             threading.current_thread().name,
             self._NORMAL_FONT,
             padding=5,
