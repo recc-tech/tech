@@ -91,7 +91,9 @@ class FileMessenger(BaseMessenger):
 class ConsoleMessenger(InputMessenger):
     # TODO: Make the logs look nicer (e.g., only the latest message from each thread? add colour?)
 
-    def __init__(self):
+    def __init__(self, description: str):
+        print(f"{description}\n\n")
+
         self._should_exit = False
         self._shutdown_requested = False
 
@@ -303,7 +305,7 @@ class TkMessenger(InputMessenger):
     _BOLD_FONT = f"{_NORMAL_FONT} bold"
     _H2_FONT = "Calibri 18 bold"
 
-    def __init__(self):
+    def __init__(self, description: str):
         # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
 
         self._shutdown_requested = False
@@ -312,7 +314,7 @@ class TkMessenger(InputMessenger):
 
         root_started = Semaphore(0)
         self._gui_thread = Thread(
-            name="GUI", target=lambda: self._run_gui(root_started)
+            name="GUI", target=lambda: self._run_gui(root_started, description)
         )
         self._gui_thread.start()
         # Wait for the GUI to enter the main loop
@@ -364,7 +366,16 @@ class TkMessenger(InputMessenger):
 
     def close(self):
         # Leave the GUI open until the user closes the window
-        pass
+
+        goodbye_message_textbox = CopyableText(
+            self._root,
+            width=170,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        goodbye_message_textbox.grid(sticky="W", pady=50)
+        goodbye_message_textbox.set_text("All tasks are complete. Close this window to exit.")
 
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
@@ -375,13 +386,13 @@ class TkMessenger(InputMessenger):
         # For some reason, using destroy() instead of quit() causes an error
         self._root.quit()
 
-    def _run_gui(self, root_started: Semaphore):
+    def _run_gui(self, root_started: Semaphore, description: str):
         # Try to make the GUI less blurry
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
         self._root = Tk()
         self._root.title("MCR Teardown")
-        self._root.geometry("3500x1600+0+0")
+        self._root.geometry("3500x1700+0+0")
         self._root.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._root.config(padx=25, pady=25, background=self._BACKGROUND_COLOUR)
 
@@ -396,6 +407,16 @@ class TkMessenger(InputMessenger):
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
+
+        description_textbox = CopyableText(
+            self._root,
+            width=170,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        description_textbox.grid(sticky="W", pady=50)
+        description_textbox.set_text(description)
 
         tasks_header = CopyableText(
             self._root,
@@ -425,7 +446,7 @@ class TkMessenger(InputMessenger):
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        frame.grid()
+        frame.grid(sticky="W")
         return frame
 
     def _should_log(self, level: LogLevel) -> bool:
