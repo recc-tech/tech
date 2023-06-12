@@ -12,6 +12,8 @@ _USERNAME = "lorenzo@riversedge.life"
 
 
 class BoxCastClient(WebDriver):
+    _TASK_NAME = "BOXCAST CLIENT"
+
     def __init__(self, messenger: Messenger, headless: bool = True):
         options = Options()
         if headless:
@@ -51,11 +53,15 @@ class BoxCastClient(WebDriver):
             wait = WebDriverWait(self, timeout=5)
             try:
                 wait.until(lambda driver: driver.current_url != _LOGIN_URL)  # type: ignore
-                self._messenger.log(LogLevel.DEBUG, "Successfully logged into BoxCast.")
+                self._messenger.log(
+                    self._TASK_NAME, LogLevel.DEBUG, "Successfully logged into BoxCast."
+                )
                 return
             except TimeoutException:
                 first_attempt = False
-                self._messenger.log(LogLevel.ERROR, "Failed to log into BoxCast.")
+                self._messenger.log(
+                    self._TASK_NAME, LogLevel.ERROR, "Failed to log into BoxCast."
+                )
 
     def find_single_element(self, by: str, value: str) -> WebElement:
         elements = self.find_elements(by, value)

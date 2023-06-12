@@ -1,6 +1,5 @@
 import ctypes
 import logging
-import threading
 from collections import deque
 from datetime import datetime
 from enum import Enum
@@ -24,8 +23,8 @@ class LogLevel(Enum):
         return self.name
 
 
-class BaseMessenger:
-    def log(self, level: LogLevel, message: str) -> None:
+class InputMessenger:
+    def log(self, task_name: str, level: LogLevel, message: str) -> None:
         """
         Logs the given message. For example, this might save the message to a file or display it in the console.
         """
@@ -37,31 +36,13 @@ class BaseMessenger:
         """
         pass
 
-    @staticmethod
-    def _initialize_logger(
-        name: str, handler: Handler, level: int, log_format: str, date_format: str
-    ):
-        handler.setLevel(level)
-        handler.setFormatter(
-            logging.Formatter(
-                fmt=log_format,
-                datefmt=date_format,
-            ),
-        )
-        logger = logging.getLogger(name)
-        logger.setLevel(level)
-        logger.addHandler(handler)
-        return logger
-
-
-class InputMessenger(BaseMessenger):
     def input(self, prompt: str) -> Union[str, None]:
         raise NotImplementedError()
 
     def input_password(self, prompt: str) -> Union[str, None]:
         raise NotImplementedError()
 
-    def wait(self, prompt: str) -> None:
+    def wait(self, task_name: str, prompt: str) -> None:
         raise NotImplementedError()
 
     def shutdown_requested(self) -> bool:
@@ -71,12 +52,12 @@ class InputMessenger(BaseMessenger):
         raise NotImplementedError()
 
 
-class FileMessenger(BaseMessenger):
+class FileMessenger:
     def __init__(self, log_file: Path):
         if not log_file.exists():
             log_file.parent.mkdir(exist_ok=True, parents=True)
 
-        self.file_logger = BaseMessenger._initialize_logger(
+        self.file_logger = _initialize_logger(
             name="file_messenger",
             handler=FileHandler(log_file),
             level=logging.DEBUG,
@@ -84,8 +65,8 @@ class FileMessenger(BaseMessenger):
             date_format="%H:%M:%S",
         )
 
-    def log(self, level: LogLevel, message: str):
-        self.file_logger.log(level=level.value, msg=message)
+    def log(self, task_name: str, level: LogLevel, message: str):
+        self.file_logger.log(level=level.value, msg=f"[{task_name}] {message}")
 
 
 class ConsoleMessenger(InputMessenger):
@@ -97,7 +78,7 @@ class ConsoleMessenger(InputMessenger):
         self._should_exit = False
         self._shutdown_requested = False
 
-        self._console_logger = BaseMessenger._initialize_logger(
+        self._console_logger = _initialize_logger(
             name="console_messenger",
             handler=StreamHandler(),
             level=logging.INFO,
@@ -117,9 +98,11 @@ class ConsoleMessenger(InputMessenger):
         # Use an instance variable to send user input between threads
         self._input_value = ""
 
-    def log(self, level: LogLevel, message: str) -> None:
+    def log(self, task_name: str, level: LogLevel, message: str) -> None:
         self._console_queue.append(
-            lambda: self._console_logger.log(level=level.value, msg=message)
+            lambda: self._console_logger.log(
+                level=level.value, msg=f"[{task_name}] message"
+            )
         )
         # Signal that there is a task in the queue
         self._console_semaphore.release()
@@ -130,10 +113,10 @@ class ConsoleMessenger(InputMessenger):
     def input_password(self, prompt: str) -> str:
         return self._input(prompt, getpass)
 
-    def wait(self, prompt: str):
+    def wait(self, task_name: str, prompt: str):
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
-        prompt = f"- {prompt}"
+        prompt = f"- [{task_name}] {prompt}"
         self.input(f"{prompt} When you are done, press ENTER.")
 
     def close(self):
@@ -189,6 +172,8 @@ class ConsoleMessenger(InputMessenger):
 
 class ScrollableFrame(Frame):
     def __init__(self, parent: Misc, *args: Any, **kwargs: Any):
+        # TODO: The fact that this widget places itself is pretty sketchy
+
         outer_frame = Frame(parent)
         outer_frame.pack(fill="both", expand=1)
 
@@ -257,7 +242,7 @@ class CopyableText(Text):
         self.configure(height=height)
 
 
-class ThreadStatusFrame(Frame):
+class TaskStatusFrame(Frame):
     _PADX = 5
     _LOG_LEVEL_COLOUR = {
         LogLevel.DEBUG: "#888888",
@@ -271,7 +256,10 @@ class ThreadStatusFrame(Frame):
     def __init__(
         self,
         parent: Misc,
-        thread_name: str,
+        task_name: str,
+        log_time: datetime,
+        level: LogLevel,
+        message: str,
         font: str,
         padding: int,
         background: str,
@@ -279,13 +267,13 @@ class ThreadStatusFrame(Frame):
     ):
         super().__init__(parent, padding=padding)
 
-        self._name = thread_name
+        self._name = task_name
 
         self._name_label = CopyableText(
             self, width=35, font=font, background=background, foreground=foreground
         )
         self._name_label.grid(row=0, column=0, padx=self._PADX)
-        self._name_label.set_text(thread_name)
+        self._name_label.set_text(task_name)
 
         self._time_label = CopyableText(
             self, width=10, font=font, background=background, foreground=foreground
@@ -302,6 +290,8 @@ class ThreadStatusFrame(Frame):
         )
         self._message_label.grid(row=0, column=3, padx=self._PADX)
 
+        self.update_contents(log_time, level, message)
+
     def update_contents(self, time: datetime, level: LogLevel, message: str):
         self._time_label.set_text(time.strftime("%H:%M:%S"))
         self._level_label.set_text(str(level))
@@ -311,9 +301,9 @@ class ThreadStatusFrame(Frame):
     @staticmethod
     def _log_level_colour(level: LogLevel) -> str:
         return (
-            ThreadStatusFrame._LOG_LEVEL_COLOUR[level]
-            if level in ThreadStatusFrame._LOG_LEVEL_COLOUR
-            else ThreadStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
+            TaskStatusFrame._LOG_LEVEL_COLOUR[level]
+            if level in TaskStatusFrame._LOG_LEVEL_COLOUR
+            else TaskStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
         )
 
 
@@ -323,7 +313,7 @@ class ActionItemFrame(Frame):
     def __init__(
         self,
         parent: Misc,
-        thread_name: str,
+        task_name: str,
         prompt: str,
         font: str,
         background: str,
@@ -347,7 +337,7 @@ class ActionItemFrame(Frame):
             self, width=35, font=font, background=background, foreground=foreground
         )
         self._name_label.grid(row=0, column=1, padx=self._PADX)
-        self._name_label.set_text(thread_name)
+        self._name_label.set_text(task_name)
 
         self._message_label = CopyableText(
             self, width=100, font=font, background=background, foreground=foreground
@@ -375,8 +365,7 @@ class TkMessenger(InputMessenger):
         # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
 
         self._shutdown_requested = False
-        self._lock = Lock()
-        self._thread_frame: Dict[int, ThreadStatusFrame] = {}
+        self._thread_frame: Dict[str, TaskStatusFrame] = {}
 
         root_started = Semaphore(0)
         self._gui_thread = Thread(
@@ -386,7 +375,7 @@ class TkMessenger(InputMessenger):
         # Wait for the GUI to enter the main loop
         root_started.acquire()
 
-    def log(self, level: LogLevel, message: str):
+    def log(self, task_name: str, level: LogLevel, message: str):
         # TODO: What if the shutdown happens while in the middle of logging something?
         if self._shutdown_requested:
             return
@@ -394,15 +383,15 @@ class TkMessenger(InputMessenger):
         if not self._should_log(level):
             return
 
+        log_time = datetime.now()
+
         # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
-        # The tkinter docs seem to imply it is: https://docs.python.org/3/library/tkinter.html#threading-model
-        ident = threading.get_ident()
-        with self._lock:
-            # TODO: thread identifier can be reused, so either remove old threads or generate my own identifiers
-            if ident not in self._thread_frame:
-                self._thread_frame[ident] = self._add_row()
-            frame = self._thread_frame[ident]
-        frame.update_contents(datetime.now(), level, message)
+        # The tkinter docs seem to imply it is safe: https://docs.python.org/3/library/tkinter.html#threading-model
+        if task_name not in self._thread_frame:
+            self._thread_frame[task_name] = self._add_row(task_name, log_time, level, message)
+        else:
+            frame = self._thread_frame[task_name]
+            frame.update_contents(datetime.now(), level, message)
 
     def input(self, prompt: str, title: str = "") -> Union[str, None]:
         return simpledialog.askstring(title=title, prompt=prompt, show="*")
@@ -410,13 +399,13 @@ class TkMessenger(InputMessenger):
     def input_password(self, prompt: str, title: str = "") -> Union[str, None]:
         return simpledialog.askstring(title=title, prompt=prompt, show="*")
 
-    def wait(self, prompt: str):
+    def wait(self, task_name: str, prompt: str):
         if self._shutdown_requested:
             return
 
         frame = ActionItemFrame(
             self._action_items_frame,
-            thread_name=threading.current_thread().name,
+            task_name=task_name,
             prompt=prompt,
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
@@ -543,11 +532,16 @@ class TkMessenger(InputMessenger):
         if should_exit:
             self._close()
 
-    def _add_row(self) -> ThreadStatusFrame:
-        frame = ThreadStatusFrame(
+    def _add_row(
+        self, task_name: str, log_time: datetime, level: LogLevel, message: str
+    ) -> TaskStatusFrame:
+        frame = TaskStatusFrame(
             self._thread_statuses_frame,
-            threading.current_thread().name,
-            self._NORMAL_FONT,
+            task_name,
+            datetime.now(),
+            level,
+            message,
+            font=self._NORMAL_FONT,
             padding=5,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
@@ -568,18 +562,24 @@ class Messenger:
     Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
     """
 
+    # TODO: Store the task name directly in the Messenger and give each task its own Messenger instance?
+
     def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
 
-    def log(self, level: LogLevel, message: str):
-        self.log_separate(level, message, message)
+    def log(self, task_name: str, level: LogLevel, message: str):
+        self.log_separate(task_name, level, message, message)
 
     def log_separate(
-        self, level: LogLevel, console_message: str, log_file_message: str
+        self,
+        task_name: str,
+        level: LogLevel,
+        console_message: str,
+        log_file_message: str,
     ):
-        self._file_messenger.log(level, log_file_message)
-        self._input_messenger.log(level, console_message)
+        self._file_messenger.log(task_name, level, log_file_message)
+        self._input_messenger.log(task_name, level, console_message)
 
     def input(self, prompt: str) -> Union[str, None]:
         return self._input_messenger.input(prompt)
@@ -587,13 +587,27 @@ class Messenger:
     def input_password(self, prompt: str) -> Union[str, None]:
         return self._input_messenger.input_password(prompt)
 
-    def wait(self, prompt: str):
-        self._input_messenger.wait(prompt)
+    def wait(self, task_name: str, prompt: str):
+        self._input_messenger.wait(task_name, prompt)
 
     def close(self):
-        # Close the input messenger first so that any new logs are still written to the file messenger
         self._input_messenger.close()
-        self._file_messenger.close()
 
     def shutdown_requested(self) -> bool:
         return self._input_messenger.shutdown_requested()
+
+
+def _initialize_logger(
+    name: str, handler: Handler, level: int, log_format: str, date_format: str
+):
+    handler.setLevel(level)
+    handler.setFormatter(
+        logging.Formatter(
+            fmt=log_format,
+            datefmt=date_format,
+        ),
+    )
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    return logger

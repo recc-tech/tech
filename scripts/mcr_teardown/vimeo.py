@@ -23,7 +23,9 @@ CAPTIONS_LANGUAGE = "en-CA"
 CAPTIONS_NAME = "English (Canada)"
 
 
-def get_video_data(messenger: Messenger, client: VimeoClient) -> Tuple[str, str]:
+def get_video_data(
+    messenger: Messenger, client: VimeoClient, task_name: str
+) -> Tuple[str, str]:
     # Wait for the video to be posted
     while True:
         response = client.get(  # type: ignore
@@ -51,13 +53,15 @@ def get_video_data(messenger: Messenger, client: VimeoClient) -> Tuple[str, str]
             > NEW_VIDEO_TIMEDELTA
         ):
             messenger.log(
-                LogLevel.DEBUG,
+                task_name,
+                LogLevel.INFO,
                 f"Video not yet found on Vimeo. Retrying in {RETRY_SECONDS} seconds.",
             )
             time.sleep(RETRY_SECONDS)
         else:
             messenger.log(
-                LogLevel.DEBUG,
+                task_name,
+                LogLevel.INFO,
                 f"Found newly-uploaded Vimeo video at URI '{response_data['uri']}'.",
             )
             break
@@ -83,6 +87,7 @@ def upload_captions_to_vimeo(
     texttrack_uri: str,
     messenger: Messenger,
     client: VimeoClient,
+    task_name: str,
 ):
     # See https://developer.vimeo.com/api/upload/texttracks
 
@@ -91,18 +96,21 @@ def upload_captions_to_vimeo(
     # (2) Get upload link for text track
     (upload_link, uri) = _get_vimeo_texttrack_upload_link(texttrack_uri, client)
     messenger.log(
-        LogLevel.DEBUG,
+        task_name,
+        LogLevel.INFO,
         f"Got text track upload link and URI for Vimeo video: upload link '{upload_link}', URI '{uri}'.",
     )
 
     # (3) Upload text track
     _upload_texttrack(final_captions_file, upload_link, client)
-    messenger.log(LogLevel.DEBUG, "Uploaded text track for Vimeo video.")
+    messenger.log(task_name, LogLevel.INFO, "Uploaded text track for Vimeo video.")
 
     # (4) Mark text track as active
     _activate_texttrack(uri, client)
     messenger.log(
-        LogLevel.DEBUG, "Marked newly-uploaded text track for Vimeo video as active."
+        task_name,
+        LogLevel.INFO,
+        "Marked newly-uploaded text track for Vimeo video as active.",
     )
 
 

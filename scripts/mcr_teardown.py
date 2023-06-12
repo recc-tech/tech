@@ -24,6 +24,8 @@ from vimeo import VimeoClient  # type: ignore
 # TODO: Close down Messenger properly in the event of an exception
 # TODO: Make console output coloured to better highlight warnings?
 
+_TASK_NAME = "SCRIPT MAIN"
+
 
 def main():
     args = _parse_args()
@@ -55,9 +57,10 @@ def main():
             Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
         task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
-        messenger.log(LogLevel.INFO, "Successfully loaded the task graph.")
+        messenger.log(_TASK_NAME, LogLevel.INFO, "Successfully loaded the task graph.")
     except Exception as e:
         messenger.log_separate(
+            _TASK_NAME,
             LogLevel.FATAL,
             f"Failed to load task graph: {e}",
             f"Failed to load task graph:\n{traceback.format_exc()}",
@@ -72,12 +75,13 @@ def main():
             success = True
     except Exception as e:
         messenger.log_separate(
+            _TASK_NAME,
             LogLevel.FATAL,
             f"Failed to run task graph: {e}",
             f"Failed to run task graph:\n{traceback.format_exc()}",
         )
     except KeyboardInterrupt as e:
-        messenger.log(LogLevel.FATAL, "Program cancelled by user.")
+        messenger.log(_TASK_NAME, LogLevel.FATAL, "Program cancelled by user.")
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close()
@@ -133,12 +137,14 @@ def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
         response = client.get("/tutorial")  # type: ignore
         if response.status_code == 200:
             messenger.log(
+                _TASK_NAME,
                 LogLevel.DEBUG,
                 f"Vimeo client is able to access GET /tutorial endpoint.",
             )
             return client
         else:
             messenger.log(
+                _TASK_NAME,
                 LogLevel.ERROR,
                 f"Vimeo client test request failed (HTTP status {response.status_code}).",
             )

@@ -18,15 +18,17 @@ def create_rebroadcast(
     start_datetime: datetime,
     client: BoxCastClient,
     messenger: Messenger,
+    task_name: str,
 ):
     _get_rebroadcast_page(
-        rebroadcast_setup_url, source_broadcast_title, client, messenger
+        rebroadcast_setup_url, source_broadcast_title, client, messenger, task_name
     )
 
     try:
-        _select_quick_entry_mode(client, messenger)
+        _select_quick_entry_mode(client, messenger, task_name)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to check that the entry mode is 'Quick Entry': {e}",
             f"Failed to check that the entry mode is 'Quick Entry':\n{traceback.format_exc()}",
@@ -38,6 +40,7 @@ def create_rebroadcast(
         _clear_event_description(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to clear event description: {e}",
             f"Failed to clear event description:\n{traceback.format_exc()}",
@@ -47,6 +50,7 @@ def create_rebroadcast(
         _set_event_start_date(start_datetime.strftime("%m/%d/%Y"), client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to set event start date: {e}",
             f"Failed to set event start date:\n{traceback.format_exc()}",
@@ -58,6 +62,7 @@ def create_rebroadcast(
         _make_event_non_recurring(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to check that the rebroadcast is non-recurring: {e}",
             f"Failed to check that the rebroadcast is non-recurring:\n{traceback.format_exc()}",
@@ -67,6 +72,7 @@ def create_rebroadcast(
         _make_event_public(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to check that the rebroadcast is public: {e}",
             f"Failed to check that the rebroadcast is public:\n{traceback.format_exc()}",
@@ -76,6 +82,7 @@ def create_rebroadcast(
         _clear_broadcast_destinations(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to check that there are no other destinations for this rebroadcast: {e}",
             f"Failed to check that there are no other destinations for this rebroadcast:\n{traceback.format_exc()}",
@@ -85,6 +92,7 @@ def create_rebroadcast(
         _show_advanced_settings(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to show the advanced settings: {e}",
             f"Failed to show the advanced settings:\n{traceback.format_exc()}",
@@ -94,6 +102,7 @@ def create_rebroadcast(
         _make_event_not_recorded(client)
     except Exception as e:
         messenger.log_separate(
+            task_name,
             LogLevel.WARN,
             f"Failed to make rebroadcast not recorded: {e}",
             f"Failed to make rebroadcast not recorded:\n{traceback.format_exc()}",
@@ -111,6 +120,7 @@ def _get_rebroadcast_page(
     expected_source_name: str,
     client: BoxCastClient,
     messenger: Messenger,
+    task_name: str,
 ):
     """
     Gets the rebroadcast page and waits until the source broadcast is available.
@@ -126,12 +136,14 @@ def _get_rebroadcast_page(
         )
         if "Source Broadcast Unavailable" in source_broadcast_element.text:
             messenger.log(
+                task_name,
                 LogLevel.DEBUG,
                 f"Source broadcast is not yet available. Retrying in {_RETRY_SECONDS} seconds.",
             )
             time.sleep(_RETRY_SECONDS)
         elif expected_source_name in source_broadcast_element.text:
             messenger.log(
+                task_name,
                 LogLevel.DEBUG,
                 "Rebroadcast page loaded: source broadcast is as expected.",
             )
@@ -142,16 +154,19 @@ def _get_rebroadcast_page(
             )
 
 
-def _select_quick_entry_mode(client: BoxCastClient, messenger: Messenger):
+def _select_quick_entry_mode(
+    client: BoxCastClient, messenger: Messenger, task_name: str
+):
     quick_entry_links = client.find_elements(
         By.XPATH, "//a[contains(., 'Quick Entry')]"
     )
     wizard_links = client.find_elements(By.XPATH, "//a[contains(., 'Wizard')]")
 
     if len(quick_entry_links) == 0 and len(wizard_links) == 1:
-        messenger.log(LogLevel.DEBUG, "Already in 'Quick Entry' mode.")
+        messenger.log(task_name, LogLevel.DEBUG, "Already in 'Quick Entry' mode.")
     elif len(quick_entry_links) == 1 and len(wizard_links) == 0:
         messenger.log(
+            task_name,
             LogLevel.DEBUG,
             "Currently in 'Wizard' mode. Switching to 'Quick Entry' mode.",
         )

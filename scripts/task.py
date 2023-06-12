@@ -51,30 +51,32 @@ class Task:
         self._name = name
 
     def run(self):
-        self._messenger.log(LogLevel.INFO, f"Task '{self._name}' started.")
+        self._messenger.log(self._name, LogLevel.INFO, f"Task started.")
         try:
             self._run()
             self._messenger.log(
-                LogLevel.INFO, f"Task '{self._name}' completed automatically."
+                self._name,
+                LogLevel.INFO,
+                f"Task completed automatically.",
             )
         except Exception as e:
             if isinstance(e, NotImplementedError):
                 self._messenger.log(
+                    self._name,
                     LogLevel.DEBUG,
-                    f"Task '{self._name}' is not yet implemented. Requesting user input.",
+                    f"Task is not yet implemented. Requesting user input.",
                 )
             else:
                 self._messenger.log_separate(
+                    self._name,
                     LogLevel.ERROR,
-                    f"Task '{self._name}' failed with an exception: {e}",
-                    f"Task '{self._name}' failed with an exception:\n{traceback.format_exc()}",
+                    f"Task failed with an exception: {e}",
+                    f"Task failed with an exception:\n{traceback.format_exc()}",
                 )
 
-            self._messenger.wait(self._fallback_message)
+            self._messenger.wait(self._name, self._fallback_message)
 
-            self._messenger.log(
-                LogLevel.INFO, f"Task '{self._name}' completed manually."
-            )
+            self._messenger.log(self._name, LogLevel.INFO, f"Task completed manually.")
 
 
 class TaskThread(Thread):
@@ -335,6 +337,8 @@ class TaskGraph:
 
 
 class FunctionFinder:
+    _TASK_NAME = "FUNCTION FINDER"
+
     def __init__(
         self, module: Union[ModuleType, None], arguments: Set[Any], messenger: Messenger
     ):
@@ -345,7 +349,9 @@ class FunctionFinder:
     def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
         if self._module is None:
             self._messenger.log(
-                LogLevel.DEBUG, "No module with task implementations was provided."
+                self._TASK_NAME,
+                LogLevel.DEBUG,
+                "No module with task implementations was provided.",
             )
             return {f: FunctionFinder._unimplemented_task for f in names}
 
@@ -361,12 +367,13 @@ class FunctionFinder:
 
         if signature.return_annotation not in [None, "None", Signature.empty]:
             self._messenger.log(
+                self._TASK_NAME,
                 LogLevel.WARN,
                 f"The function for task '{name}' should return nothing, but claims to have a return value.",
             )
 
         try:
-            inputs = self._find_arguments(signature)
+            inputs = self._find_arguments(signature, name)
         except Exception as e:
             raise ValueError(f"Failed to find arguments for function '{name}'.") from e
 
@@ -379,21 +386,28 @@ class FunctionFinder:
         try:
             function: Callable[..., None] = getattr(self._module, name)
             self._messenger.log(
-                LogLevel.DEBUG, f"Found implementation for task '{name}'."
+                self._TASK_NAME,
+                LogLevel.DEBUG,
+                f"Found implementation for task '{name}'.",
             )
         except AttributeError:
             self._messenger.log(
-                LogLevel.DEBUG, f"No implementation found for task '{name}'."
+                self._TASK_NAME,
+                LogLevel.DEBUG,
+                f"No implementation found for task '{name}'.",
             )
             return None
         return function
 
-    def _find_arguments(self, signature: Signature) -> Dict[str, Any]:
+    def _find_arguments(self, signature: Signature, task_name: str) -> Dict[str, Any]:
         params = signature.parameters.values()
         # TODO: Check for unused args
-        return {p.name: self._find_single_argument(p) for p in params}
+        return {p.name: self._find_single_argument(p, task_name) for p in params}
 
-    def _find_single_argument(self, param: Parameter) -> Any:
+    def _find_single_argument(self, param: Parameter, task_name: str) -> Any:
+        if param.name == "task_name" and param.annotation == str:
+            return task_name
+
         matching_args = [
             a for a in self._arguments if issubclass(type(a), param.annotation)
         ]
@@ -419,7 +433,9 @@ class FunctionFinder:
         }
         for name in unused_function_names:
             self._messenger.log(
-                LogLevel.WARN, f"Function '{name}' is not used by any task."
+                self._TASK_NAME,
+                LogLevel.WARN,
+                f"Function '{name}' is not used by any task.",
             )
 
     @staticmethod
