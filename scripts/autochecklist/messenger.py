@@ -269,21 +269,21 @@ class TaskStatusFrame(Frame):
 
         self._name = task_name
 
-        self._name_label = CopyableText(
-            self, width=35, font=font, background=background, foreground=foreground
+        self._level_label = CopyableText(
+            self, width=10, font=font, background=background, foreground=foreground
         )
-        self._name_label.grid(row=0, column=0, padx=self._PADX)
-        self._name_label.set_text(task_name)
+        self._level_label.grid(row=0, column=0, padx=self._PADX)
 
         self._time_label = CopyableText(
             self, width=10, font=font, background=background, foreground=foreground
         )
         self._time_label.grid(row=0, column=1, padx=self._PADX)
 
-        self._level_label = CopyableText(
-            self, width=10, font=font, background=background, foreground=foreground
+        self._name_label = CopyableText(
+            self, width=35, font=font, background=background, foreground=foreground
         )
-        self._level_label.grid(row=0, column=2, padx=self._PADX)
+        self._name_label.grid(row=0, column=2, padx=self._PADX)
+        self._name_label.set_text(task_name)
 
         self._message_label = CopyableText(
             self, width=100, font=font, background=background, foreground=foreground
