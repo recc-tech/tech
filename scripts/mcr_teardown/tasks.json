@@ -104,7 +104,7 @@
 			]
 		},
 		{
-			"name": "copy_captions_original_to_without_worship",
+			"name": "copy_captions_to_without_worship",
 			"description": "Copy %{ORIGINAL_CAPTIONS_PATH}% to %{CAPTIONS_WITHOUT_WORSHIP_PATH}%.",
 			"depends_on": [
 				"download_captions"
@@ -114,11 +114,11 @@
 			"name": "remove_worship_captions",
 			"description": "In %{CAPTIONS_WITHOUT_WORSHIP_PATH}%, remove the worship captions.",
 			"depends_on": [
-				"copy_captions_original_to_without_worship"
+				"copy_captions_to_without_worship"
 			]
 		},
 		{
-			"name": "copy_captions_without_worship_to_final",
+			"name": "copy_captions_to_final",
 			"description": "Copy %{CAPTIONS_WITHOUT_WORSHIP_PATH}% to %{FINAL_CAPTIONS_PATH}%.",
 			"depends_on": [
 				"remove_worship_captions"
@@ -128,7 +128,7 @@
 			"name": "review_captions",
 			"description": "In %{FINAL_CAPTIONS_PATH}%, double-check that the worship captions were removed properly (if it was done automatically).",
 			"depends_on": [
-				"copy_captions_without_worship_to_final",
+				"copy_captions_to_final",
 				"index_recording"
 			]
 		},

@@ -61,12 +61,12 @@ class FileMessenger:
             name="file_messenger",
             handler=FileHandler(log_file),
             level=logging.DEBUG,
-            log_format="[%(levelname)-8s] [%(threadName)-25s] [%(asctime)s] %(message)s",
+            log_format="[%(levelname)-8s] [%(asctime)s] %(message)s",
             date_format="%H:%M:%S",
         )
 
     def log(self, task_name: str, level: LogLevel, message: str):
-        self.file_logger.log(level=level.value, msg=f"[{task_name}] {message}")
+        self.file_logger.log(level=level.value, msg=f"[{task_name:<35}] {message}")
 
 
 class ConsoleMessenger(InputMessenger):

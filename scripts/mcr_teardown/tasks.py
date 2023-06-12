@@ -120,7 +120,7 @@ def download_captions(
         )
 
 
-def copy_captions_original_to_without_worship(
+def copy_captions_to_without_worship(
     config: McrTeardownConfig, messenger: Messenger, task_name: str
 ):
     _mark_read_only_and_copy(
@@ -131,7 +131,7 @@ def copy_captions_original_to_without_worship(
     )
 
 
-def copy_captions_without_worship_to_final(
+def copy_captions_to_final(
     config: McrTeardownConfig, messenger: Messenger, task_name: str
 ):
     _mark_read_only_and_copy(
