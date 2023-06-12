@@ -6,11 +6,12 @@ from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from pathlib import Path
 
 import mcr_teardown.tasks
-from boxcast_client import BoxCastClientFactory
-from credentials import get_credential
+from autochecklist.credentials import get_credential
+from autochecklist.messenger import (ConsoleMessenger, FileMessenger, LogLevel,
+                                     Messenger, TkMessenger)
+from autochecklist.task import FunctionFinder, TaskGraph
+from mcr_teardown.boxcast_client import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
-from messenger import ConsoleMessenger, FileMessenger, LogLevel, Messenger, TkMessenger
-from task import FunctionFinder, TaskGraph
 from vimeo import VimeoClient  # type: ignore
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.

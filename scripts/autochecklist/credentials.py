@@ -1,5 +1,5 @@
 import keyring
-from messenger import Messenger
+from autochecklist.messenger import Messenger
 
 _KEYRING_APP_NAME = "recc_tech_mcr_teardown"
 

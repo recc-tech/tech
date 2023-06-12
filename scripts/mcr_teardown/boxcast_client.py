@@ -1,5 +1,5 @@
-from credentials import get_credential
-from messenger import LogLevel, Messenger
+from autochecklist.credentials import get_credential
+from autochecklist.messenger import LogLevel, Messenger
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options

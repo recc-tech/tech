@@ -9,8 +9,8 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
-from base_config import BaseConfig
-from messenger import LogLevel, Messenger
+from autochecklist.base_config import BaseConfig
+from autochecklist.messenger import LogLevel, Messenger
 
 
 class Task:

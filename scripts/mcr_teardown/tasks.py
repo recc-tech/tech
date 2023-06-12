@@ -6,9 +6,9 @@ from pathlib import Path
 
 import mcr_teardown.rebroadcasts as rebroadcasts
 import mcr_teardown.vimeo as recc_vimeo
-from boxcast_client import BoxCastClient, BoxCastClientFactory
+from autochecklist.messenger import LogLevel, Messenger
+from mcr_teardown.boxcast_client import BoxCastClient, BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
-from messenger import LogLevel, Messenger
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select

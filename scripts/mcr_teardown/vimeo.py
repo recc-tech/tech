@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Tuple
 
-from messenger import LogLevel, Messenger
+from autochecklist.messenger import LogLevel, Messenger
 from vimeo import VimeoClient  # type: ignore
 
 NEW_VIDEO_TIMEDELTA = timedelta(hours=3)

@@ -2,8 +2,8 @@ import time
 import traceback
 from datetime import datetime
 
-from boxcast_client import BoxCastClient
-from messenger import LogLevel, Messenger
+from autochecklist.messenger import LogLevel, Messenger
+from mcr_teardown.boxcast_client import BoxCastClient
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
