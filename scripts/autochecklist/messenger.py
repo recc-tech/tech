@@ -336,9 +336,10 @@ class ActionItemFrame(Frame):
         font: str,
         background: str,
         foreground: str,
+        padding: int,
         **kwargs: Any,
     ):
-        super().__init__(parent, **kwargs)
+        super().__init__(parent, padding=padding, **kwargs)
 
         self._lock = Lock()
         self._lock.acquire()
@@ -430,6 +431,7 @@ class TkMessenger(InputMessenger):
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
+            padding=5
         )
         frame.grid(sticky="w")
         self._root_frame.update_scrollregion()
