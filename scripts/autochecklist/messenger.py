@@ -463,6 +463,8 @@ class TkMessenger(InputMessenger):
         return self._shutdown_requested
 
     def _run_gui(self, root_started: Semaphore, description: str):
+        # TODO: Make the GUI responsive
+
         # Try to make the GUI less blurry
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
