@@ -6,7 +6,7 @@ from enum import Enum
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
-from threading import Lock, Semaphore, Thread
+from threading import Event, Lock, Semaphore, Thread
 from tkinter import Canvas, Misc, Text, Tk, messagebox, simpledialog
 from tkinter.ttk import Button, Frame, Scrollbar, Style
 from typing import Any, Callable, Deque, Dict, Union
@@ -193,8 +193,8 @@ class ScrollableFrame(Frame):
         scrollbar.config(command=self._canvas.yview)  # type: ignore
 
         # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
-        root = parent.winfo_toplevel()
-        root.bind_all(
+        self._root = parent.winfo_toplevel()
+        self._root.bind_all(
             "<MouseWheel>",
             lambda e: self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
         )
@@ -204,8 +204,26 @@ class ScrollableFrame(Frame):
         super().__init__(self._canvas, *args, **kwargs)
         self._canvas.create_window((0, 0), window=self, anchor="nw")
 
+        # To avoid race conditions, use a separate thread to update the scroll region
+        self._update_scrollregion = Event()
+        scrollregion_updates_thread = Thread(
+            name="ScrollregionUpdates",
+            target=self._run_scrollregion_updates_thread,
+            daemon=True,
+        )
+        scrollregion_updates_thread.start()
+
     def update_scrollregion(self):
-        self._canvas.config(scrollregion=self._canvas.bbox("all"))
+        self._update_scrollregion.set()
+
+    def _run_scrollregion_updates_thread(self):
+        while True:
+            self._update_scrollregion.wait()
+            self._update_scrollregion.clear()
+            # Make sure the display has updated before recomputing the scrollregion size
+            self._root.update_idletasks()
+            region = self._canvas.bbox("all")
+            self._canvas.config(scrollregion=region)
 
 
 class CopyableText(Text):
@@ -388,7 +406,9 @@ class TkMessenger(InputMessenger):
         # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
         # The tkinter docs seem to imply it is safe: https://docs.python.org/3/library/tkinter.html#threading-model
         if task_name not in self._thread_frame:
-            self._thread_frame[task_name] = self._add_row(task_name, log_time, level, message)
+            self._thread_frame[task_name] = self._add_row(
+                task_name, log_time, level, message
+            )
         else:
             frame = self._thread_frame[task_name]
             frame.update_contents(datetime.now(), level, message)
@@ -412,7 +432,10 @@ class TkMessenger(InputMessenger):
             foreground=self._FOREGROUND_COLOUR,
         )
         frame.grid(sticky="w")
+        self._root_frame.update_scrollregion()
         frame.wait_for_click()
+        # Update the scrollregion again in case it got smaller
+        self._root_frame.update_scrollregion()
 
     def close(self):
         # Leave the GUI open until the user closes the window
