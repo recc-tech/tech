@@ -52,6 +52,7 @@ assignees: recc-tech
         - Check that the sound station is sending sound (look at the LR level)
         - Reset the "Audio IN 1-2" input
         - Unplug the sound USB cable and plug it back in
+- [ ] After the Kids Connection broadcast, start recording
 
 ## Kids AV
 - [ ] Copy the kids video to the laptop's Desktop
