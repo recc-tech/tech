@@ -23,7 +23,7 @@ class McrTeardownConfig(BaseConfig):
         date_mdy = BaseConfig._date_mdy(datetime.now())
         self.live_event_title = f"Sunday Gathering LIVE: {date_mdy}"
         self.live_event_url = (
-            f"https://dashboard.boxcast.com/#/events/{self._boxcast_event_id}"
+            f"https://dashboard.boxcast.com/broadcasts/{self._boxcast_event_id}"
         )
         self.live_event_captions_tab_url = self.live_event_url + "?tab=captions"
         self.captions_download_path = self._downloads_dir.joinpath(

@@ -174,11 +174,11 @@ def _parse_args() -> Namespace:
     boxcast_event_id_group.add_argument(
         "-b",
         "--boxcast-event-url",
-        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/#/events/abcdefghijklm0123456.",
+        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
     )
     boxcast_event_id_group.add_argument(
         "--boxcast-event-id",
-        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/#/events/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
+        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
     )
 
     advanced_args = parser.add_argument_group("Advanced arguments")
@@ -237,16 +237,16 @@ def _parse_directory(path_str: str) -> Path:
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:
-    # The event URL should be in the form "https://dashboard.boxcast.com/#/events/<EVENT-ID>"
+    # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
     # Allow a trailing forward slash just in case
     event_url = event_url.strip()
     pattern = re.compile(
-        "^https://dashboard\\.boxcast\\.com/#/events/([a-zA-Z0-9]+)/?$"
+        "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]+)/?$"
     )
     regex_match = pattern.search(event_url)
     if not regex_match:
         raise ValueError(
-            f"Expected the BoxCast event URL to be in the form 'https://dashboard.boxcast.com/#/events/<EVENT-ID>', but received '{event_url}'."
+            f"Expected the BoxCast event URL to be in the form 'https://dashboard.boxcast.com/broadcasts/<EVENT-ID>', but received '{event_url}'."
         )
     event_id = regex_match.group(1)
     if len(event_id) != 20:

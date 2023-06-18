@@ -206,11 +206,11 @@ def _export_to_vimeo(client: BoxCastClient, event_url: str):
     download_or_export_button.click()  # type: ignore
 
     vimeo_tab = client.find_single_element(
-        By.XPATH, "//div[contains(@class, 'modal-header')]/ol/li[contains(., 'Vimeo')]"
+        By.XPATH, "//div[@id='headlessui-portal-root']//a[contains(., 'Vimeo')]"
     )
     vimeo_tab.click()
 
-    user_dropdown = client.find_single_element(By.ID, "vimeo_user")
+    user_dropdown = client.find_single_element(By.TAG_NAME, "select")
     user_dropdown_select = Select(user_dropdown)
     user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
 

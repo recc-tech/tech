@@ -112,7 +112,7 @@ def create_rebroadcast(
 
     # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
     wait = WebDriverWait(client, timeout=10)
-    wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/#/events"))  # type: ignore
+    wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/broadcasts"))  # type: ignore
 
 
 def _get_rebroadcast_page(
