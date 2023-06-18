@@ -93,7 +93,8 @@ def main():
 def _create_messenger(log_file: Path, text_ui: bool) -> Messenger:
     file_messenger = FileMessenger(log_file)
 
-    description = "This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
+    log_file_txt = log_file.resolve().as_posix()
+    description = f"This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues).\n\nIf you need to debug the program, see the log file at {log_file_txt}."
     input_messenger = (
         ConsoleMessenger(
             f"{description}\n\nPress CTRL+C at any time to stop the script."
