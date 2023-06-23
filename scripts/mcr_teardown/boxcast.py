@@ -1,14 +1,92 @@
+import shutil
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
 
 from autochecklist.messenger import LogLevel, Messenger
 from mcr_teardown.boxcast_client import BoxCastClient
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
 _RETRY_SECONDS = 60
+_SECONDS_PER_MINUTE = 60
+
+
+def export_to_vimeo(client: BoxCastClient, event_url: str):
+    client.get(event_url)
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    wait = WebDriverWait(client, 60 * _SECONDS_PER_MINUTE)
+    xpath = "//button[contains(., 'Download or Export Recording')]"
+    download_or_export_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    download_or_export_button.click()  # type: ignore
+
+    vimeo_tab = client.find_single_element(
+        By.XPATH, "//div[@id='headlessui-portal-root']//a[contains(., 'Vimeo')]"
+    )
+    vimeo_tab.click()
+
+    user_dropdown = client.find_single_element(By.TAG_NAME, "select")
+    user_dropdown_select = Select(user_dropdown)
+    user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
+
+    vimeo_export_button = client.find_single_element(
+        By.XPATH, "//button[contains(., 'Export To Vimeo')]"
+    )
+    vimeo_export_button.click()
+
+
+def download_captions(
+    client: BoxCastClient,
+    captions_tab_url: str,
+    download_path: Path,
+    destination_path: Path,
+    messenger: Messenger,
+    task_name: str,
+):
+    _download_captions_to_downloads_folder(client, captions_tab_url)
+    _move_captions_to_captions_folder(
+        download_path, destination_path, messenger, task_name
+    )
+
+
+def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
+    client.get(url)
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    wait = WebDriverWait(client, timeout=10)
+    # The id 'btn-append-to-body' is not unique on the page D:<<<
+    xpath = "//button[@id='btn-append-to-body'][@type='button']/i[contains(@class, 'fa-cog')]"
+    cog_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    cog_button.click()  # type: ignore
+
+    replace_captions_option = client.find_single_element(
+        By.XPATH, "//a[contains(., 'Replace Captions with WebVTT File')]"
+    )
+    replace_captions_option.click()
+
+    file_input = client.find_single_element(By.XPATH, "//input[@type='file']")
+    file_input.send_keys(str(file_path))  # type: ignore
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    xpath = "//button[contains(., 'Replace Captions with Upload')]"
+    submit_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    submit_button.click()  # type: ignore
 
 
 def create_rebroadcast(
@@ -113,6 +191,55 @@ def create_rebroadcast(
     # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
     wait = WebDriverWait(client, timeout=10)
     wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/broadcasts"))  # type: ignore
+
+
+def _download_captions_to_downloads_folder(
+    client: BoxCastClient,
+    captions_tab_url: str,
+):
+    client.get(captions_tab_url)
+
+    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    wait = WebDriverWait(client, 60 * _SECONDS_PER_MINUTE)
+    xpath = "//button[contains(., 'Download Captions')]"
+    download_captions_button = wait.until(  # type: ignore
+        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    )
+    if len(client.find_elements(By.XPATH, xpath)) > 1:
+        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
+    download_captions_button.click()  # type: ignore
+
+    vtt_download_link = client.find_single_element(
+        By.XPATH, "//a[contains(., 'VTT File (.vtt)')]"
+    )
+    vtt_download_link.click()
+
+
+def _move_captions_to_captions_folder(
+    download_path: Path, destination_path: Path, messenger: Messenger, task_name: str
+):
+    _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
+
+    if destination_path.exists():
+        messenger.log(
+            task_name,
+            LogLevel.WARN,
+            f"File '{destination_path}' already exists and will be overwritten.",
+        )
+    else:
+        destination_path.parent.mkdir(exist_ok=True, parents=True)
+
+    shutil.move(download_path, destination_path)
+
+
+def _wait_for_file_to_exist(path: Path, timeout: timedelta):
+    wait_start = datetime.now()
+    while True:
+        if path.exists():
+            return
+        if datetime.now() - wait_start > timeout:
+            raise FileNotFoundError(f"Did not find file at '{path}' within {timeout}.")
+        time.sleep(1)
 
 
 def _get_rebroadcast_page(
