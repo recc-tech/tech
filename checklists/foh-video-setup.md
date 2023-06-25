@@ -34,6 +34,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 - [ ] If you have time, remove walk-in slides and MC announcements that are definitely outdated.
 - [ ] Check that the red light is off and the stage lights are on.
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
+- [ ] Check that the screens are level and that the projectors are lined up properly.
 
 ## Start
 
