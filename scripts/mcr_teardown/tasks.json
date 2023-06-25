@@ -81,7 +81,7 @@
 		},
 		{
 			"name": "index_recording",
-			"description": "On BoxCast, index the recording. See https://github.com/recc-tech/tech/wiki/Index-Chapters for the list of chapters.",
+			"description": "On BoxCast, index the recording. See https://github.com/recc-tech/tech/wiki/Video-Markers for the list of chapters.",
 			"depends_on": []
 		},
 		{
