@@ -80,6 +80,7 @@ def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path)
     file_input.send_keys(str(file_path))  # type: ignore
 
     # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
+    # TODO: The button in the new UI says "Save Uploaded Caption File"
     xpath = "//button[contains(., 'Replace Captions with Upload')]"
     submit_button = wait.until(  # type: ignore
         EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
