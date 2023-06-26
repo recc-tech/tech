@@ -241,19 +241,14 @@ def _parse_boxcast_event_url(event_url: str) -> str:
     # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
     # Allow a trailing forward slash just in case
     event_url = event_url.strip()
-    pattern = re.compile(
-        "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]+)/?$"
-    )
+    regex = "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]{20,20})/?(?:\\?.*)?$"
+    pattern = re.compile(regex)
     regex_match = pattern.search(event_url)
     if not regex_match:
         raise ValueError(
-            f"Expected the BoxCast event URL to be in the form 'https://dashboard.boxcast.com/broadcasts/<EVENT-ID>', but received '{event_url}'."
+            f"Expected the BoxCast event URL to match the regular expression '{regex}', but received '{event_url}'. Are you sure you copied the URL correctly? If you think there is a problem with the script, try entering the BoxCast event ID directly instead."
         )
     event_id = regex_match.group(1)
-    if len(event_id) != 20:
-        raise ValueError(
-            f"Expected the BoxCast event ID to be 20 characters long, but '{event_id}' has a length of {len(event_id)} characters. Are you sure you copied the entire URL?"
-        )
     return event_id
 
 
