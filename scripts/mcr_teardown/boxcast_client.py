@@ -31,6 +31,7 @@ class BoxCastClient(WebDriver):
             wait.until(lambda driver: driver.current_url == url)  # type: ignore
 
     def _login(self):
+        # TODO: Sometimes the login just fails and we get redirected to an error page. Reproduce that error and find a way to prevent it or to detect it and retry.
         first_attempt = True
         while True:
             email_textbox = self.find_single_element(By.ID, "email")
