@@ -8,6 +8,7 @@ from autochecklist.messenger import LogLevel, Messenger
 from mcr_teardown.boxcast_client import BoxCastClient
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -210,10 +211,10 @@ def _download_captions_to_downloads_folder(
         raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     download_captions_button.click()  # type: ignore
 
-    vtt_download_link = client.find_single_element(
-        By.XPATH, "//a[contains(., 'VTT File (.vtt)')]"
+    vtt_download_button = client.find_single_element(
+        By.XPATH, "//button[contains(., 'WebVTT File (.vtt)')]"
     )
-    vtt_download_link.click()
+    vtt_download_button.click()
 
 
 def _move_captions_to_captions_folder(
