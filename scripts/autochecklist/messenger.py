@@ -101,7 +101,7 @@ class ConsoleMessenger(InputMessenger):
     def log(self, task_name: str, level: LogLevel, message: str) -> None:
         self._console_queue.append(
             lambda: self._console_logger.log(
-                level=level.value, msg=f"[{task_name}] message"
+                level=level.value, msg=f"[{task_name}] {message}"
             )
         )
         # Signal that there is a task in the queue
