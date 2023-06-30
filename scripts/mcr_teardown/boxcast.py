@@ -34,7 +34,7 @@ class BoxCastClient(WebDriver):
     def get(self, url: str):
         super().get(url)
         wait = WebDriverWait(self, timeout=10)
-        wait.until(lambda driver: driver.current_url in [url, _LOGIN_URL])  # type: ignore
+        wait.until(lambda driver: driver.current_url in [url, BoxCastClient._LOGIN_URL])  # type: ignore
 
         if self.current_url == BoxCastClient._LOGIN_URL:
             self._login()
@@ -45,7 +45,7 @@ class BoxCastClient(WebDriver):
         first_attempt = True
         while True:
             email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
-            email_textbox.send_keys(_USERNAME)  # type: ignore
+            email_textbox.send_keys(BoxCastClient._USERNAME)  # type: ignore
 
             password_textbox = self.wait_for_single_element(By.ID, "password")
             password = get_credential(
@@ -65,7 +65,7 @@ class BoxCastClient(WebDriver):
             wait = WebDriverWait(self, timeout=redirect_timeout)
             try:
                 wait.until(  # type: ignore
-                    lambda driver: driver.current_url != _LOGIN_URL,  # type: ignore
+                    lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
                     message=f"Did not get redirected to the expected URL ({BoxCastClient._LOGIN_URL}) within {redirect_timeout} seconds.",
                 )
                 self._messenger.log(
@@ -117,6 +117,7 @@ class BoxCastClientFactory:
         return BoxCastClient(messenger=self._messenger, headless=self._headless)
 
 
+# TODO: Use the new BoxCast UI
 def export_to_vimeo(client: BoxCastClient, event_url: str):
     client.get(event_url)
 
@@ -142,6 +143,7 @@ def export_to_vimeo(client: BoxCastClient, event_url: str):
     vimeo_export_button.click()
 
 
+# TODO: Use the new BoxCast UI
 def download_captions(
     client: BoxCastClient,
     captions_tab_url: str,
@@ -156,6 +158,7 @@ def download_captions(
     )
 
 
+# TODO: Use the new BoxCast UI
 def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
     client.get(url)
 
@@ -182,6 +185,7 @@ def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path)
     submit_button.click()  # type: ignore
 
 
+# TODO: Use the new BoxCast UI
 def create_rebroadcast(
     rebroadcast_setup_url: str,
     source_broadcast_title: str,
@@ -286,6 +290,7 @@ def create_rebroadcast(
     wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/broadcasts"))  # type: ignore
 
 
+# TODO: Use the new BoxCast UI
 def _download_captions_to_downloads_folder(
     client: BoxCastClient,
     captions_tab_url: str,
