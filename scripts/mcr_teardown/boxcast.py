@@ -8,7 +8,6 @@ from autochecklist.messenger import LogLevel, Messenger
 from mcr_teardown.boxcast_client import BoxCastClient
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 
@@ -19,26 +18,23 @@ _SECONDS_PER_MINUTE = 60
 def export_to_vimeo(client: BoxCastClient, event_url: str):
     client.get(event_url)
 
-    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
-    wait = WebDriverWait(client, 60 * _SECONDS_PER_MINUTE)
-    xpath = "//button[contains(., 'Download or Export Recording')]"
-    download_or_export_button = wait.until(  # type: ignore
-        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    download_or_export_button = client.wait_for_single_element(
+        By.XPATH,
+        "//button[contains(., 'Download or Export Recording')]",
+        timeout=60 * _SECONDS_PER_MINUTE,
     )
-    if len(client.find_elements(By.XPATH, xpath)) > 1:
-        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     download_or_export_button.click()  # type: ignore
 
-    vimeo_tab = client.find_single_element(
+    vimeo_tab = client.wait_for_single_element(
         By.XPATH, "//div[@id='headlessui-portal-root']//a[contains(., 'Vimeo')]"
     )
     vimeo_tab.click()
 
-    user_dropdown = client.find_single_element(By.TAG_NAME, "select")
+    user_dropdown = client.wait_for_single_element(By.TAG_NAME, "select")
     user_dropdown_select = Select(user_dropdown)
     user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
 
-    vimeo_export_button = client.find_single_element(
+    vimeo_export_button = client.wait_for_single_element(
         By.XPATH, "//button[contains(., 'Export To Vimeo')]"
     )
     vimeo_export_button.click()
@@ -61,33 +57,26 @@ def download_captions(
 def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
     client.get(url)
 
-    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
-    wait = WebDriverWait(client, timeout=10)
     # The id 'btn-append-to-body' is not unique on the page D:<<<
-    xpath = "//button[@id='btn-append-to-body'][@type='button']/i[contains(@class, 'fa-cog')]"
-    cog_button = wait.until(  # type: ignore
-        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    cog_button = client.wait_for_single_element(
+        By.XPATH,
+        "//button[@id='btn-append-to-body'][@type='button']/i[contains(@class, 'fa-cog')]",
+        timeout=10,
     )
-    if len(client.find_elements(By.XPATH, xpath)) > 1:
-        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     cog_button.click()  # type: ignore
 
-    replace_captions_option = client.find_single_element(
+    replace_captions_option = client.wait_for_single_element(
         By.XPATH, "//a[contains(., 'Replace Captions with WebVTT File')]"
     )
     replace_captions_option.click()
 
-    file_input = client.find_single_element(By.XPATH, "//input[@type='file']")
+    file_input = client.wait_for_single_element(By.XPATH, "//input[@type='file']")
     file_input.send_keys(str(file_path))  # type: ignore
 
-    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
     # TODO: The button in the new UI says "Save Uploaded Caption File"
-    xpath = "//button[contains(., 'Replace Captions with Upload')]"
-    submit_button = wait.until(  # type: ignore
-        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    submit_button = client.wait_for_single_element(
+        By.XPATH, "//button[contains(., 'Replace Captions with Upload')]", timeout=10
     )
-    if len(client.find_elements(By.XPATH, xpath)) > 1:
-        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     submit_button.click()  # type: ignore
 
 
@@ -201,18 +190,15 @@ def _download_captions_to_downloads_folder(
 ):
     client.get(captions_tab_url)
 
-    # TODO: Add this to the BoxCastClient so that we can be sure that there's only one matching element
-    wait = WebDriverWait(client, 60 * _SECONDS_PER_MINUTE)
-    xpath = "//button[contains(., 'Download Captions')]"
-    download_captions_button = wait.until(  # type: ignore
-        EC.element_to_be_clickable((By.XPATH, xpath))  # type: ignore
+    download_captions_button = client.wait_for_single_element(
+        By.XPATH,
+        "//button[contains(., 'Download Captions')]",
+        timeout=60 * _SECONDS_PER_MINUTE,
     )
-    if len(client.find_elements(By.XPATH, xpath)) > 1:
-        raise ValueError(f"Multiple elements match XPATH '{xpath}'.")
     download_captions_button.click()  # type: ignore
 
-    vtt_download_button = client.find_single_element(
-        By.XPATH, "//button[contains(., 'WebVTT File (.vtt)')]"
+    vtt_download_button = client.wait_for_single_element(
+        By.XPATH, "//button[contains(., 'WebVTT File (.vtt)')]", timeout=1
     )
     vtt_download_button.click()
 
@@ -252,16 +238,13 @@ def _get_rebroadcast_page(
     task_name: str,
 ):
     """
-    Gets the rebroadcast page and waits until the source broadcast is available.
+    Get the rebroadcast page and wait until the source broadcast is available.
     """
     while True:
         client.get(rebroadcast_setup_url)
-        # Wait for page to fully load
-        # TODO: Use Selenium's waits?
-        time.sleep(5)
 
-        source_broadcast_element = client.find_single_element(
-            By.TAG_NAME, "recording-source-chooser"
+        source_broadcast_element = client.wait_for_single_element(
+            By.TAG_NAME, "recording-source-chooser", timeout=10
         )
         if "Source Broadcast Unavailable" in source_broadcast_element.text:
             messenger.log(
@@ -313,18 +296,18 @@ def _select_quick_entry_mode(
 
 
 def _set_event_name(name: str, client: BoxCastClient):
-    broadcast_name_textbox = client.find_single_element(By.ID, "eventName")
+    broadcast_name_textbox = client.wait_for_single_element(By.ID, "eventName")
     broadcast_name_textbox.clear()
     broadcast_name_textbox.send_keys(name)  # type: ignore
 
 
 def _clear_event_description(client: BoxCastClient):
-    description_textbox = client.find_single_element(By.ID, "eventDescription")
+    description_textbox = client.wait_for_single_element(By.ID, "eventDescription")
     description_textbox.clear()
 
 
 def _set_event_start_date(date: str, client: BoxCastClient):
-    start_date_input = client.find_single_element(
+    start_date_input = client.wait_for_single_element(
         By.XPATH, "//label[contains(., 'Start Date')]/..//input"
     )
     start_date_input.clear()
@@ -332,7 +315,7 @@ def _set_event_start_date(date: str, client: BoxCastClient):
 
 
 def _set_event_start_time(time: str, client: BoxCastClient):
-    start_time_input = client.find_single_element(
+    start_time_input = client.wait_for_single_element(
         By.XPATH, "//label[contains(., 'Start Time')]/..//input"
     )
     start_time_input.clear()
@@ -340,7 +323,7 @@ def _set_event_start_time(time: str, client: BoxCastClient):
 
 
 def _make_event_non_recurring(client: BoxCastClient):
-    recurring_broadcast_checkbox = client.find_single_element(
+    recurring_broadcast_checkbox = client.wait_for_single_element(
         By.XPATH,
         "//recurrence-pattern[contains(., 'Make This a Recurring Broadcast')]//i",
     )
@@ -348,7 +331,7 @@ def _make_event_non_recurring(client: BoxCastClient):
 
 
 def _make_event_public(client: BoxCastClient):
-    broadcast_public_button = client.find_single_element(
+    broadcast_public_button = client.wait_for_single_element(
         By.XPATH,
         "//label[contains(text(), 'Broadcast Type')]/..//label[contains(., 'Public')]",
     )
@@ -361,7 +344,7 @@ def _clear_broadcast_destinations(client: BoxCastClient):
 
 
 def _show_advanced_settings(client: BoxCastClient):
-    advanced_settings_elem = client.find_single_element(
+    advanced_settings_elem = client.wait_for_single_element(
         By.XPATH, "//a[contains(., 'Advanced Settings')]"
     )
     if "Show Advanced Settings" in advanced_settings_elem.text:
@@ -373,14 +356,14 @@ def _show_advanced_settings(client: BoxCastClient):
 
 
 def _make_event_not_recorded(client: BoxCastClient):
-    record_broadcast_checkbox = client.find_single_element(
+    record_broadcast_checkbox = client.wait_for_single_element(
         By.XPATH, "//label[contains(., 'Record Broadcast')]//i[1]"
     )
     _set_checkbox_checked(record_broadcast_checkbox, False)
 
 
 def _press_schedule_broadcast_button(client: BoxCastClient):
-    submit_button = client.find_single_element(
+    submit_button = client.wait_for_single_element(
         By.XPATH, "//button[contains(., 'Schedule Broadcast')]"
     )
     submit_button.click()
