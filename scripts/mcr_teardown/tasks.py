@@ -5,7 +5,7 @@ from datetime import datetime
 import mcr_teardown.boxcast as boxcast_tasks
 import mcr_teardown.vimeo as vimeo_tasks
 from autochecklist.messenger import LogLevel, Messenger
-from mcr_teardown.boxcast_client import BoxCastClientFactory
+from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
 from vimeo import VimeoClient  # type: ignore
 

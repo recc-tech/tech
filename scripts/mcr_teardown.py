@@ -10,7 +10,7 @@ from autochecklist.credentials import get_credential
 from autochecklist.messenger import (ConsoleMessenger, FileMessenger, LogLevel,
                                      Messenger, TkMessenger)
 from autochecklist.task import FunctionFinder, TaskGraph
-from mcr_teardown.boxcast_client import BoxCastClientFactory
+from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
 from vimeo import VimeoClient  # type: ignore
 
