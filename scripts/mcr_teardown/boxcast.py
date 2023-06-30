@@ -41,71 +41,55 @@ class BoxCastClient(WebDriver):
         )
 
         if self.current_url.startswith(BoxCastClient._LOGIN_URL):
-            self._login_with_retry(url)
+            self._login_with_retries(url, max_attempts=4)
 
-    def _login_with_retry(self, url: str, max_attempts: int = 2):
-        redirect_timeout = 10
-        wait = WebDriverWait(self, timeout=redirect_timeout)
+    def _login_with_retries(self, target_url: str, max_attempts: int):
+        max_seconds_to_redirect = 10
+        wait = WebDriverWait(self, timeout=max_seconds_to_redirect)
+        for attempt_num in range(1, max_attempts + 1):
+            # For some reason, the login often fails if we try going to the target page and are redirected to the login
+            # page. On the other hand, going to the login page, logging in, and only then going to the target page
+            # seems to work.
+            super().get(BoxCastClient._LOGIN_URL)
+            password = get_credential(
+                credential_username="boxcast_password",
+                credential_display_name="BoxCast password",
+                force_user_input=attempt_num > 1,
+                messenger=self._messenger,
+            )
+            self._complete_login_form(password)
 
-        for i in range(1, max_attempts):
             try:
-                self._login()
                 wait.until(  # type: ignore
-                    lambda driver: driver.current_url == url,  # type: ignore
-                    message=f"After login, did not get redirected to the target page ({url}) within {redirect_timeout} seconds. (Attempt {i}/{max_attempts}.)",
+                    lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
+                    message=f"Login failed: still on the login page after {max_seconds_to_redirect} seconds.",
+                )
+                super().get(target_url)
+                wait.until(  # type: ignore
+                    lambda driver: driver.current_url == target_url,  # type: ignore
+                    message=f"Could not get target page ({target_url}) within {max_seconds_to_redirect} seconds.",
                 )
                 return
             except TimeoutException:
                 self._messenger.log_separate(
                     self._TASK_NAME,
                     LogLevel.WARN,
-                    f"Failed to log in (attempt {i}/{max_attempts}).",
-                    f"Failed to log in (attempt {i}/{max_attempts}).\n{traceback.format_exc()}",
+                    f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).",
+                    f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).\n{traceback.format_exc()}",
                 )
+        raise RuntimeError(f"Failed to log in to BoxCast ({max_attempts} attempts).")
 
-        self._login()
-        wait.until(  # type: ignore
-            lambda driver: driver.current_url == url,  # type: ignore
-            message=f"After login, did not get redirected to the target page ({url}) within {redirect_timeout} seconds. (attempt {max_attempts}/{max_attempts}.)",
+    def _complete_login_form(self, password: str):
+        email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
+        email_textbox.send_keys(BoxCastClient._USERNAME)  # type: ignore
+
+        password_textbox = self.wait_for_single_element(By.ID, "password")
+        password_textbox.send_keys(password)  # type: ignore
+
+        login_button = self.wait_for_single_element(
+            By.XPATH, "//input[@value='Log In'][@type='submit']"
         )
-
-    def _login(self):
-        # TODO: Sometimes the login just fails and we get redirected to an error page. Reproduce that error and find a way to prevent it.
-        first_attempt = True
-        while True:
-            email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
-            email_textbox.send_keys(BoxCastClient._USERNAME)  # type: ignore
-
-            password_textbox = self.wait_for_single_element(By.ID, "password")
-            password = get_credential(
-                "boxcast_password",
-                "BoxCast password",
-                not first_attempt,
-                self._messenger,
-            )
-            password_textbox.send_keys(password)  # type: ignore
-
-            login_button = self.wait_for_single_element(
-                By.XPATH, "//input[@value='Log In'][@type='submit']"
-            )
-            login_button.click()
-
-            redirect_timeout = 10  # seconds
-            wait = WebDriverWait(self, timeout=redirect_timeout)
-            try:
-                wait.until(  # type: ignore
-                    lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
-                    message=f"Did not get redirected to the expected URL ({BoxCastClient._LOGIN_URL}) within {redirect_timeout} seconds.",
-                )
-                self._messenger.log(
-                    self._TASK_NAME, LogLevel.DEBUG, "Successfully logged into BoxCast."
-                )
-                return
-            except TimeoutException:
-                first_attempt = False
-                self._messenger.log(
-                    self._TASK_NAME, LogLevel.ERROR, "Failed to log into BoxCast."
-                )
+        login_button.click()
 
     def wait_for_single_element(
         self,
