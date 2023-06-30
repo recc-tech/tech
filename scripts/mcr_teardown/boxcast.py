@@ -98,15 +98,19 @@ class BoxCastClient(WebDriver):
         # This seems like a reasonably safe amount of time to wait if you expect the element to already be loaded,
         # but potentially be obscured by another element (e.g., a dropdown menu)
         timeout: float = 5,
+        # Whether the element needs to be clickable
+        clickable: bool = True,
     ) -> WebElement:
+        ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))  # type: ignore
+
         wait = WebDriverWait(self, timeout=timeout)
         wait.until(  # type: ignore
-            EC.element_to_be_clickable((by, value)),  # type: ignore
+            ec,
             message=f"No element found for the given criteria (by = {by}, value = '{value}').",
         )
 
         # Wait to see if duplicate elements appear
-        time.sleep(0.5)
+        time.sleep(1)
 
         elements = self.find_elements(by, value)
         if len(elements) == 0:
@@ -170,29 +174,31 @@ def download_captions(
     )
 
 
-# TODO: Use the new BoxCast UI
 def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
     client.get(url)
 
-    # The id 'btn-append-to-body' is not unique on the page D:<<<
-    cog_button = client.wait_for_single_element(
+    # There is also a settings "button" in the sidebar, but it is represented
+    # with an <a> tag rather than a <button> tag. Just in case, check that the
+    # button selected here is not in the sidebar.
+    settings_button = client.wait_for_single_element(
         By.XPATH,
-        "//button[@id='btn-append-to-body'][@type='button']/i[contains(@class, 'fa-cog')]",
+        "//button[contains(., 'Settings')][not(ancestor::nav)]",
         timeout=10,
     )
-    cog_button.click()  # type: ignore
+    settings_button.click()  # type: ignore
 
     replace_captions_option = client.wait_for_single_element(
-        By.XPATH, "//a[contains(., 'Replace Captions with WebVTT File')]"
+        By.XPATH, "//button[contains(., 'Replace Captions with WebVTT File')]"
     )
     replace_captions_option.click()
 
-    file_input = client.wait_for_single_element(By.XPATH, "//input[@type='file']")
+    file_input = client.wait_for_single_element(
+        By.XPATH, "//input[@type='file'][contains(@accept, '.vtt')]", clickable=False
+    )
     file_input.send_keys(str(file_path))  # type: ignore
 
-    # TODO: The button in the new UI says "Save Uploaded Caption File"
     submit_button = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'Replace Captions with Upload')]", timeout=10
+        By.XPATH, "//button[contains(., 'Save Uploaded Caption File')]", timeout=10
     )
     submit_button.click()  # type: ignore
 

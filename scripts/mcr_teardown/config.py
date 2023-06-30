@@ -31,9 +31,7 @@ class McrTeardownConfig(BaseConfig):
         )
         self.rebroadcast_title = f"Sunday Gathering Rebroadcast: {date_mdy}"
         self.rebroadcast_setup_url = f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self._boxcast_event_id}"
-        self.boxcast_edit_captions_url = (
-            f"https://dashboard.boxcast.com/#/caption-editor/{self._boxcast_event_id}"
-        )
+        self.boxcast_edit_captions_url = f"https://dashboard.boxcast.com/broadcasts/{self._boxcast_event_id}/edit-captions"
 
         log_dir = self._home_dir.joinpath("Logs")
         date_ymd = datetime.now().strftime("%Y-%m-%d")
