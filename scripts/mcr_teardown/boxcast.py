@@ -32,16 +32,45 @@ class BoxCastClient(WebDriver):
         self._messenger = messenger
 
     def get(self, url: str):
+        redirect_timeout = 10
         super().get(url)
-        wait = WebDriverWait(self, timeout=10)
-        wait.until(lambda driver: driver.current_url in [url, BoxCastClient._LOGIN_URL])  # type: ignore
+        wait = WebDriverWait(self, timeout=redirect_timeout)
+        wait.until(  # type: ignore
+            lambda driver: driver.current_url in [url, BoxCastClient._LOGIN_URL],  # type: ignore
+            message=f"Did not get redirected to the target page ({url}) or to the login page within {redirect_timeout} seconds.",
+        )
 
-        if self.current_url == BoxCastClient._LOGIN_URL:
-            self._login()
-            wait.until(lambda driver: driver.current_url == url)  # type: ignore
+        if self.current_url.startswith(BoxCastClient._LOGIN_URL):
+            self._login_with_retry(url)
+
+    def _login_with_retry(self, url: str, max_attempts: int = 2):
+        redirect_timeout = 10
+        wait = WebDriverWait(self, timeout=redirect_timeout)
+
+        for i in range(1, max_attempts):
+            try:
+                self._login()
+                wait.until(  # type: ignore
+                    lambda driver: driver.current_url == url,  # type: ignore
+                    message=f"After login, did not get redirected to the target page ({url}) within {redirect_timeout} seconds. (Attempt {i}/{max_attempts}.)",
+                )
+                return
+            except TimeoutException:
+                self._messenger.log_separate(
+                    self._TASK_NAME,
+                    LogLevel.WARN,
+                    f"Failed to log in (attempt {i}/{max_attempts}).",
+                    f"Failed to log in (attempt {i}/{max_attempts}).\n{traceback.format_exc()}",
+                )
+
+        self._login()
+        wait.until(  # type: ignore
+            lambda driver: driver.current_url == url,  # type: ignore
+            message=f"After login, did not get redirected to the target page ({url}) within {redirect_timeout} seconds. (attempt {max_attempts}/{max_attempts}.)",
+        )
 
     def _login(self):
-        # TODO: Sometimes the login just fails and we get redirected to an error page. Reproduce that error and find a way to prevent it or to detect it and retry.
+        # TODO: Sometimes the login just fails and we get redirected to an error page. Reproduce that error and find a way to prevent it.
         first_attempt = True
         while True:
             email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
@@ -89,7 +118,7 @@ class BoxCastClient(WebDriver):
         wait = WebDriverWait(self, timeout=timeout)
         wait.until(  # type: ignore
             EC.element_to_be_clickable((by, value)),  # type: ignore
-            message=f"No element found for the given criteria (by = {by}, value = '{value}')",
+            message=f"No element found for the given criteria (by = {by}, value = '{value}').",
         )
 
         # Wait to see if duplicate elements appear
@@ -98,7 +127,7 @@ class BoxCastClient(WebDriver):
         elements = self.find_elements(by, value)
         if len(elements) == 0:
             raise NoSuchElementException(
-                f"No element found for the given criteria (by = {by}, value = '{value}')"
+                f"No element found for the given criteria (by = {by}, value = '{value}')."
             )
         elif len(elements) == 1:
             return elements[0]
@@ -143,7 +172,6 @@ def export_to_vimeo(client: BoxCastClient, event_url: str):
     vimeo_export_button.click()
 
 
-# TODO: Use the new BoxCast UI
 def download_captions(
     client: BoxCastClient,
     captions_tab_url: str,
@@ -286,11 +314,15 @@ def create_rebroadcast(
     _press_schedule_broadcast_button(client)
 
     # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
-    wait = WebDriverWait(client, timeout=10)
-    wait.until(lambda driver: driver.current_url.startswith("https://dashboard.boxcast.com/broadcasts"))  # type: ignore
+    expected_prefix = "https://dashboard.boxcast.com/broadcasts"
+    redirect_timeout = 10
+    wait = WebDriverWait(client, timeout=redirect_timeout)
+    wait.until(  # type: ignore
+        lambda driver: driver.current_url.startswith(expected_prefix),  # type: ignore
+        message=f"Did not get redirected to the expected page (starting with {expected_prefix}) within {redirect_timeout} seconds.",
+    )
 
 
-# TODO: Use the new BoxCast UI
 def _download_captions_to_downloads_folder(
     client: BoxCastClient,
     captions_tab_url: str,
