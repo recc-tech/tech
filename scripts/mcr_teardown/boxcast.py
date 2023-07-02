@@ -64,6 +64,7 @@ class BoxCastClient(WebDriver):
                     lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
                     message=f"Login failed: still on the login page after {max_seconds_to_redirect} seconds.",
                 )
+                # TODO: This seems to fail when it comes to the rebroadcasts. The driver just stays on the home page
                 super().get(target_url)
                 wait.until(  # type: ignore
                     lambda driver: driver.current_url == target_url,  # type: ignore
@@ -104,6 +105,7 @@ class BoxCastClient(WebDriver):
         ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))  # type: ignore
 
         wait = WebDriverWait(self, timeout=timeout)
+        # TODO: This might fail because there are no matches, but it could also fail because there are multiple matches but the first one isn't clickable!
         wait.until(  # type: ignore
             ec,
             message=f"No element found for the given criteria (by = {by}, value = '{value}').",
@@ -150,6 +152,7 @@ def export_to_vimeo(client: BoxCastClient, event_url: str):
     )
     vimeo_tab.click()
 
+    # TODO: Not specific enough!
     user_dropdown = client.wait_for_single_element(By.TAG_NAME, "select")
     user_dropdown_select = Select(user_dropdown)
     user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
