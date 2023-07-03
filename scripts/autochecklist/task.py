@@ -9,8 +9,7 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
-from autochecklist.base_config import BaseConfig
-from autochecklist.messenger import LogLevel, Messenger
+from autochecklist import BaseConfig, LogLevel, Messenger
 
 
 class Task:
@@ -383,6 +382,7 @@ class FunctionFinder:
         return f
 
     def _find_original_function(self, name: str) -> Union[None, Callable[..., Any]]:
+        # TODO: Instead of one log per function, log one message with all the missing functions?
         try:
             function: Callable[..., None] = getattr(self._module, name)
             self._messenger.log(
