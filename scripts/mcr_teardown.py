@@ -14,9 +14,13 @@ from autochecklist import (
     Messenger,
     TaskGraph,
     TkMessenger,
-    get_credential,
 )
-from mcr_teardown import BoxCastClientFactory, McrTeardownConfig
+from mcr_teardown import (
+    BoxCastClientFactory,
+    Credential,
+    CredentialStore,
+    McrTeardownConfig,
+)
 from vimeo import VimeoClient  # type: ignore
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.
@@ -46,10 +50,16 @@ def main():
 
     messenger = _create_messenger(config.log_file, args.text_ui)
 
-    vimeo_client = _create_vimeo_client(messenger)
+    credential_store = CredentialStore(messenger=messenger)
+
+    vimeo_client = _create_vimeo_client(
+        messenger=messenger, credential_store=credential_store
+    )
 
     boxcast_client_factory = BoxCastClientFactory(
-        messenger=messenger, headless=not args.show_browser
+        messenger=messenger,
+        credential_store=credential_store,
+        headless=not args.show_browser,
     )
 
     function_finder = FunctionFinder(
@@ -111,27 +121,25 @@ def _create_messenger(log_file: Path, text_ui: bool) -> Messenger:
     return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
 
 
-def _create_vimeo_client(messenger: Messenger) -> VimeoClient:
+# TODO: Move this to an ReccVimeoClient class, similar to BoxCastClient?
+# TODO: Lazily test the credentials (so that the connection isn't tested unless necessary)? Put this behind a command-line flag
+def _create_vimeo_client(
+    messenger: Messenger, credential_store: CredentialStore
+) -> VimeoClient:
     first_attempt = True
 
     while True:
-        token = get_credential(
-            credential_username="vimeo_access_token",
-            credential_display_name="Vimeo access token",
+        token = credential_store.get(
+            Credential.VIMEO_ACCESS_TOKEN,
             force_user_input=not first_attempt,
-            messenger=messenger,
         )
-        client_id = get_credential(
-            credential_username="vimeo_client_id",
-            credential_display_name="Vimeo client ID",
+        client_id = credential_store.get(
+            Credential.VIMEO_CLIENT_ID,
             force_user_input=not first_attempt,
-            messenger=messenger,
         )
-        client_secret = get_credential(
-            credential_username="vimeo_client_secret",
-            credential_display_name="Vimeo client secret",
+        client_secret = credential_store.get(
+            Credential.VIMEO_CLIENT_SECRET,
             force_user_input=not first_attempt,
-            messenger=messenger,
         )
 
         client = VimeoClient(

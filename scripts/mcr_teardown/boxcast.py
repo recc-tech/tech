@@ -4,7 +4,8 @@ import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from autochecklist import LogLevel, Messenger, get_credential
+from autochecklist import LogLevel, Messenger
+from mcr_teardown.credentials import Credential, CredentialStore
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -23,12 +24,19 @@ class BoxCastClient(WebDriver):
     _LOGIN_URL = "https://login.boxcast.com/login"
     _USERNAME = "lorenzo@riversedge.life"
 
-    def __init__(self, messenger: Messenger, headless: bool = True):
+    def __init__(
+        self,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        headless: bool = True,
+    ):
         options = Options()
         if headless:
             options.add_argument("-headless")  # type: ignore
         super().__init__(options=options)  # type: ignore
+
         self._messenger = messenger
+        self._credential_store = credential_store
 
     def get(self, url: str):
         redirect_timeout = 10
@@ -50,11 +58,9 @@ class BoxCastClient(WebDriver):
             # page. On the other hand, going to the login page, logging in, and only then going to the target page
             # seems to work.
             super().get(BoxCastClient._LOGIN_URL)
-            password = get_credential(
-                credential_username="boxcast_password",
-                credential_display_name="BoxCast password",
+            password = self._credential_store.get(
+                Credential.BOXCAST_PASSWORD,
                 force_user_input=attempt_num > 1,
-                messenger=self._messenger,
             )
             self._complete_login_form(password)
 
@@ -127,12 +133,19 @@ class BoxCastClient(WebDriver):
 
 
 class BoxCastClientFactory:
-    def __init__(self, messenger: Messenger, headless: bool):
+    def __init__(
+        self, messenger: Messenger, credential_store: CredentialStore, headless: bool
+    ):
         self._messenger = messenger
+        self._credential_store = credential_store
         self._headless = headless
 
     def get_client(self):
-        return BoxCastClient(messenger=self._messenger, headless=self._headless)
+        return BoxCastClient(
+            messenger=self._messenger,
+            credential_store=self._credential_store,
+            headless=self._headless,
+        )
 
 
 # TODO: Use the new BoxCast UI

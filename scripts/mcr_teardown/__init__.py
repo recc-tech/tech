@@ -7,3 +7,4 @@ Code specific to the MCR teardown process.
 
 from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
+from mcr_teardown.credentials import Credential, CredentialStore
