@@ -177,22 +177,27 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-s",
         "--message-series",
-        required=True,
+        type=_parse_non_empty_string,
         help="Name of the series to which today's sermon belongs.",
     )
     parser.add_argument(
-        "-t", "--message-title", required=True, help="Title of today's sermon."
+        "-t",
+        "--message-title",
+        type=_parse_non_empty_string,
+        help="Title of today's sermon.",
     )
 
-    boxcast_event_id_group = parser.add_mutually_exclusive_group(required=True)
+    boxcast_event_id_group = parser.add_mutually_exclusive_group()
     boxcast_event_id_group.add_argument(
         "-b",
         "--boxcast-event-url",
-        help="URL of the event in BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
+        type=_parse_boxcast_event_url,
+        help="URL of today's live event on BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
     )
     boxcast_event_id_group.add_argument(
         "--boxcast-event-id",
-        help='ID of the event in BoxCast. For example, in the URL https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
+        type=_parse_non_empty_string,
+        help='ID of today\'s live event on BoxCast. For example, in the URL https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
     )
 
     advanced_args = parser.add_argument_group("Advanced arguments")
@@ -231,10 +236,60 @@ def _parse_args() -> Namespace:
 
     args = parser.parse_args()
 
-    if args.boxcast_event_url:
-        args.boxcast_event_id = _parse_boxcast_event_url(args.boxcast_event_url)
+    # TODO: Add this to the UI?
+    if not args.message_series:
+        args.message_series = _get_message_series()
+
+    if not args.message_title:
+        args.message_title = _get_message_title()
+
+    if not args.boxcast_event_url and not args.boxcast_event_id:
+        args.boxcast_event_id = _get_boxcast_event_id()
+    elif args.boxcast_event_url:
+        args.boxcast_event_id = args.boxcast_event_url
+    # For some reason Pylance complains about the del keyword but not delattr
+    delattr(args, "boxcast_event_url")
 
     return args
+
+
+def _get_message_series():
+    while True:
+        raw_input = input("Enter the series to which today's message belongs:\n> ")
+        try:
+            output = _parse_non_empty_string(raw_input)
+            print()
+            return output
+        except ArgumentTypeError as e:
+            print(e)
+
+
+def _get_message_title():
+    while True:
+        raw_input = input("Enter the title of today's message:\n> ")
+        try:
+            output = _parse_non_empty_string(raw_input)
+            print()
+            return output
+        except ArgumentTypeError as e:
+            print(e)
+
+
+def _get_boxcast_event_id():
+    while True:
+        raw_input = input("Enter the URL of today's live event on BoxCast:\n> ")
+        try:
+            output = _parse_boxcast_event_url(raw_input)
+            print()
+            return output
+        except ArgumentTypeError as e:
+            print(e)
+
+
+def _parse_non_empty_string(raw_input: str) -> str:
+    if not raw_input or not raw_input.strip():
+        raise ArgumentTypeError("The value cannot be empty.")
+    return raw_input.strip()
 
 
 def _parse_directory(path_str: str) -> Path:
@@ -251,6 +306,12 @@ def _parse_directory(path_str: str) -> Path:
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:
+    if event_url == "\x16":
+        # TODO: Make this same check everywhere? Write a custom input() function that adds this check?
+        raise ArgumentTypeError(
+            "You entered the value CTRL+V, which is not a valid event URL. Try right-clicking to paste."
+        )
+
     # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
     # Allow a trailing forward slash just in case
     event_url = event_url.strip()
@@ -258,7 +319,7 @@ def _parse_boxcast_event_url(event_url: str) -> str:
     pattern = re.compile(regex)
     regex_match = pattern.search(event_url)
     if not regex_match:
-        raise ValueError(
+        raise ArgumentTypeError(
             f"Expected the BoxCast event URL to match the regular expression '{regex}', but received '{event_url}'. Are you sure you copied the URL correctly? If you think there is a problem with the script, try entering the BoxCast event ID directly instead."
         )
     event_id = regex_match.group(1)

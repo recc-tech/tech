@@ -38,8 +38,8 @@ class CredentialStore:
                 prompt = (
                     f"You just entered a blank value. Please try again. {base_prompt}"
                 )
-            elif value.upper() == "^V":
-                prompt = f"You just entered the value '^V'. Try right-clicking to paste. {base_prompt}"
+            elif value.upper() == "\x16":
+                prompt = f"You just entered the value CTRL+V. Try right-clicking to paste. {base_prompt}"
             else:
                 keyring.set_password(CredentialStore._KEYRING_APP_NAME, name, value)
                 return value
