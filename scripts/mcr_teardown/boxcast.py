@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from autochecklist import LogLevel, Messenger
-from mcr_teardown.credentials import Credential, CredentialStore
+from credentials import Credential, CredentialStore
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -22,7 +22,6 @@ _SECONDS_PER_MINUTE = 60
 class BoxCastClient(WebDriver):
     _TASK_NAME = "BOXCAST CLIENT"
     _LOGIN_URL = "https://login.boxcast.com/login"
-    _USERNAME = "lorenzo@riversedge.life"
 
     def __init__(
         self,
@@ -38,6 +37,10 @@ class BoxCastClient(WebDriver):
         self._messenger = messenger
         self._credential_store = credential_store
 
+        self._login_with_retries(
+            target_url="https://dashboard.boxcast.com/broadcasts", max_attempts=3
+        )
+
     def get(self, url: str):
         redirect_timeout = 10
         super().get(url)
@@ -48,7 +51,7 @@ class BoxCastClient(WebDriver):
         )
 
         if self.current_url.startswith(BoxCastClient._LOGIN_URL):
-            self._login_with_retries(url, max_attempts=4)
+            self._login_with_retries(target_url=url, max_attempts=3)
 
     def _login_with_retries(self, target_url: str, max_attempts: int):
         max_seconds_to_redirect = 10
@@ -58,11 +61,14 @@ class BoxCastClient(WebDriver):
             # page. On the other hand, going to the login page, logging in, and only then going to the target page
             # seems to work.
             super().get(BoxCastClient._LOGIN_URL)
+            username = self._credential_store.get(
+                Credential.BOXCAST_USERNAME, force_user_input=attempt_num > 1
+            )
             password = self._credential_store.get(
                 Credential.BOXCAST_PASSWORD,
                 force_user_input=attempt_num > 1,
             )
-            self._complete_login_form(password)
+            self._complete_login_form(username, password)
 
             try:
                 wait.until(  # type: ignore
@@ -85,9 +91,9 @@ class BoxCastClient(WebDriver):
                 )
         raise RuntimeError(f"Failed to log in to BoxCast ({max_attempts} attempts).")
 
-    def _complete_login_form(self, password: str):
+    def _complete_login_form(self, username: str, password: str):
         email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
-        email_textbox.send_keys(BoxCastClient._USERNAME)  # type: ignore
+        email_textbox.send_keys(username)  # type: ignore
 
         password_textbox = self.wait_for_single_element(By.ID, "password")
         password_textbox.send_keys(password)  # type: ignore

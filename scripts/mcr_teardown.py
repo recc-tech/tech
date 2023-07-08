@@ -15,13 +15,8 @@ from autochecklist import (
     TaskGraph,
     TkMessenger,
 )
-from mcr_teardown import (
-    BoxCastClientFactory,
-    Credential,
-    CredentialStore,
-    McrTeardownConfig,
-)
-from vimeo import VimeoClient  # type: ignore
+from credentials import CredentialStore
+from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
@@ -48,11 +43,20 @@ def main():
         boxcast_event_id=args.boxcast_event_id,
     )
 
-    messenger = _create_messenger(config.log_file, args.text_ui)
+    file_messenger = FileMessenger(config.log_file)
+    description = f"This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues).\n\nIf you need to debug the program, see the log file at {config.log_file.resolve().as_posix()}."
+    input_messenger = (
+        ConsoleMessenger(
+            f"{description}\n\nPress CTRL+C at any time to stop the script."
+        )
+        if args.text_ui
+        else TkMessenger(description)
+    )
+    messenger = Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
 
     credential_store = CredentialStore(messenger=messenger)
 
-    vimeo_client = _create_vimeo_client(
+    vimeo_client = ReccVimeoClient(
         messenger=messenger, credential_store=credential_store
     )
 
@@ -103,69 +107,6 @@ def main():
         messenger.close()
         if success:
             print("\nGreat work :)\n")
-
-
-def _create_messenger(log_file: Path, text_ui: bool) -> Messenger:
-    file_messenger = FileMessenger(log_file)
-
-    log_file_txt = log_file.resolve().as_posix()
-    description = f"This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues).\n\nIf you need to debug the program, see the log file at {log_file_txt}."
-    input_messenger = (
-        ConsoleMessenger(
-            f"{description}\n\nPress CTRL+C at any time to stop the script."
-        )
-        if text_ui
-        else TkMessenger(description)
-    )
-
-    return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
-
-
-# TODO: Move this to an ReccVimeoClient class, similar to BoxCastClient?
-# TODO: Lazily test the credentials (so that the connection isn't tested unless necessary)? Put this behind a command-line flag
-def _create_vimeo_client(
-    messenger: Messenger, credential_store: CredentialStore
-) -> VimeoClient:
-    first_attempt = True
-
-    while True:
-        token = credential_store.get(
-            Credential.VIMEO_ACCESS_TOKEN,
-            force_user_input=not first_attempt,
-        )
-        client_id = credential_store.get(
-            Credential.VIMEO_CLIENT_ID,
-            force_user_input=not first_attempt,
-        )
-        client_secret = credential_store.get(
-            Credential.VIMEO_CLIENT_SECRET,
-            force_user_input=not first_attempt,
-        )
-
-        client = VimeoClient(
-            token=token,
-            key=client_id,
-            secret=client_secret,
-        )
-
-        # Test the client
-        response = client.get("/tutorial")  # type: ignore
-        if response.status_code == 200:
-            messenger.log(
-                _TASK_NAME,
-                LogLevel.DEBUG,
-                f"Vimeo client is able to access GET /tutorial endpoint.",
-            )
-            return client
-        else:
-            messenger.log(
-                _TASK_NAME,
-                LogLevel.ERROR,
-                f"Vimeo client test request failed (HTTP status {response.status_code}).",
-            )
-            first_attempt = False
-            # TODO: Give the user the option to decide whether or not they want to try again If they don't, return None
-            # instead and have every step that requires the Vimeo client request user intervention.
 
 
 def _parse_args() -> Namespace:

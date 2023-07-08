@@ -7,7 +7,7 @@ import mcr_teardown.vimeo as vimeo_tasks
 from autochecklist import LogLevel, Messenger
 from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
-from vimeo import VimeoClient  # type: ignore
+from mcr_teardown.vimeo import ReccVimeoClient
 
 
 def create_rebroadcast_1pm(
@@ -73,7 +73,7 @@ def export_to_vimeo(
 
 def get_vimeo_video_data(
     messenger: Messenger,
-    vimeo_client: VimeoClient,
+    vimeo_client: ReccVimeoClient,
     config: McrTeardownConfig,
     task_name: str,
 ):
@@ -85,7 +85,7 @@ def get_vimeo_video_data(
     config.vimeo_video_texttracks_uri = texttrack_uri
 
 
-def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: VimeoClient):
+def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClient):
     video_uri = config.vimeo_video_uri
     if video_uri is None:
         raise ValueError(
@@ -169,7 +169,7 @@ def upload_captions_to_boxcast(
 
 def upload_captions_to_vimeo(
     config: McrTeardownConfig,
-    vimeo_client: VimeoClient,
+    vimeo_client: ReccVimeoClient,
     messenger: Messenger,
     task_name: str,
 ):

@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple, Union
 
 from autochecklist import LogLevel, Messenger
+from credentials import Credential, CredentialStore
+from requests import Response
 from vimeo import VimeoClient  # type: ignore
 
 NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
@@ -23,12 +27,78 @@ CAPTIONS_LANGUAGE = "en-CA"
 CAPTIONS_NAME = "English (Canada)"
 
 
+class ReccVimeoClient:
+    _TASK_NAME = "VIMEO CLIENT"
+
+    def __init__(self, messenger: Messenger, credential_store: CredentialStore):
+        self._messenger = messenger
+        self._credential_store = credential_store
+
+        self._client = self._login_with_retries(max_attempts=3)
+
+    # TODO: Try logging in again if the response comes back as 401 or 403?
+    def get(self, url: str, params: Dict[str, Any]) -> Response:
+        return self._client.get(url, params=params)  # type: ignore
+
+    def post(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
+        return self._client.post(url, data=data)  # type: ignore
+
+    def put(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
+        return self._client.put(url, data=data)  # type: ignore
+
+    def patch(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
+        return self._client.patch(url, data=data)  # type: ignore
+
+    def _login_with_retries(self, max_attempts: int) -> VimeoClient:
+        for attempt_num in range(1, max_attempts + 1):
+            access_token = self._credential_store.get(
+                Credential.VIMEO_ACCESS_TOKEN,
+                force_user_input=attempt_num > 1,
+            )
+            client_id = self._credential_store.get(
+                Credential.VIMEO_CLIENT_ID,
+                force_user_input=attempt_num > 1,
+            )
+            client_secret = self._credential_store.get(
+                Credential.VIMEO_CLIENT_SECRET,
+                force_user_input=attempt_num > 1,
+            )
+            client = VimeoClient(
+                token=access_token,
+                key=client_id,
+                secret=client_secret,
+            )
+            # TODO: Lazily test the credentials (so that the connection isn't tested unless necessary)? Put this behind a command-line flag
+            if self._is_connection_valid(client):
+                return client
+        raise RuntimeError(
+            f"Failed to connect to the Vimeo API ({max_attempts} attempts)"
+        )
+
+    def _is_connection_valid(self, client: VimeoClient) -> bool:
+        response: Response = client.get("/tutorial")  # type: ignore
+        if response.status_code == 200:
+            self._messenger.log(
+                ReccVimeoClient._TASK_NAME,
+                LogLevel.INFO,
+                f"Successfully connected to the Vimeo API.",
+            )
+            return True
+        else:
+            self._messenger.log(
+                ReccVimeoClient._TASK_NAME,
+                LogLevel.ERROR,
+                f"Vimeo client test request failed (HTTP status {response.status_code}).",
+            )
+            return False
+
+
 def get_video_data(
-    messenger: Messenger, client: VimeoClient, task_name: str
+    messenger: Messenger, client: ReccVimeoClient, task_name: str
 ) -> Tuple[str, str]:
     # Wait for the video to be posted
     while True:
-        response = client.get(  # type: ignore
+        response = client.get(
             "/me/videos",
             params={
                 "fields": "created_time,uri,metadata.connections.texttracks.uri",
@@ -38,18 +108,17 @@ def get_video_data(
             },
         )
 
-        status_code: int = response.status_code  # type: ignore
-        if status_code != 200:
+        if response.status_code != 200:
             raise RuntimeError(
-                f"Vimeo client failed to access GET /videos (HTTP status {status_code})."
+                f"Vimeo client failed to access GET /videos (HTTP status {response.status_code})."
             )
 
-        response_body = response.json()  # type: ignore
-        response_data = response.json()["data"][0]  # type: ignore
+        response_body = response.json()
+        response_data = response.json()["data"][0]
         if response_body["total"] < 1 or (
             # TODO: double-check that we have the right video by also looking at the name or something?
             datetime.now(timezone.utc)
-            - datetime.fromisoformat(response_data["created_time"])  # type: ignore
+            - datetime.fromisoformat(response_data["created_time"])
             > NEW_VIDEO_TIMEDELTA
         ):
             messenger.log(
@@ -71,8 +140,8 @@ def get_video_data(
     return (video_uri, texttrack_uri)
 
 
-def rename_video(video_uri: str, new_title: str, client: VimeoClient):
-    response = client.patch(  # type: ignore
+def rename_video(video_uri: str, new_title: str, client: ReccVimeoClient):
+    response = client.patch(
         video_uri,
         data={"name": new_title},
     )
@@ -86,7 +155,7 @@ def upload_captions_to_vimeo(
     final_captions_file: Path,
     texttrack_uri: str,
     messenger: Messenger,
-    client: VimeoClient,
+    client: ReccVimeoClient,
     task_name: str,
 ):
     # See https://developer.vimeo.com/api/upload/texttracks
@@ -115,9 +184,9 @@ def upload_captions_to_vimeo(
 
 
 def _get_vimeo_texttrack_upload_link(
-    texttrack_uri: str, client: VimeoClient
+    texttrack_uri: str, client: ReccVimeoClient
 ) -> Tuple[str, str]:
-    response = client.post(  # type: ignore
+    response = client.post(
         texttrack_uri,
         data={
             "type": CAPTIONS_TYPE,
@@ -126,20 +195,20 @@ def _get_vimeo_texttrack_upload_link(
         },
     )
 
-    status_code = response.status_code  # type: ignore
+    status_code = response.status_code
     if status_code != 201:
         raise RuntimeError(
             f"Failed to get text track upload link for Vimeo video (HTTP status {status_code})."
         )
 
-    response_body = response.json()  # type: ignore
+    response_body = response.json()
     return (response_body["link"], response_body["uri"])
 
 
 def _upload_texttrack(
     final_captions_file: Path,
     upload_link: str,
-    client: VimeoClient,
+    client: ReccVimeoClient,
 ):
     # Read the captions from final.vtt
     # If you don't set the encoding to UTF-8, then Unicode characters get mangled
@@ -148,7 +217,7 @@ def _upload_texttrack(
 
     # If you don't encode the VTT file as UTF-8, then for some reason some characters get dropped at the end of the
     # file (if there are Unicode characters)
-    response = client.put(upload_link, data=vtt.encode("utf-8"))  # type: ignore
+    response = client.put(upload_link, data=vtt.encode("utf-8"))
 
     status_code = response.status_code
     if status_code != 200:
@@ -157,8 +226,8 @@ def _upload_texttrack(
         )
 
 
-def _activate_texttrack(texttrack_uri: str, client: VimeoClient):
-    response = client.patch(texttrack_uri, data={"active": True})  # type: ignore
+def _activate_texttrack(texttrack_uri: str, client: ReccVimeoClient):
+    response = client.patch(texttrack_uri, data={"active": True})
 
     status_code = response.status_code
     if status_code != 200:
