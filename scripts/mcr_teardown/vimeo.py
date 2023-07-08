@@ -113,6 +113,7 @@ def get_video_data(
                 f"Vimeo client failed to access GET /videos (HTTP status {response.status_code})."
             )
 
+        # TODO: Implement a mechanism for tasking manual control of tasks in case something is wrong and the video can't be found automatically?
         response_body = response.json()
         response_data = response.json()["data"][0]
         if response_body["total"] < 1 or (
