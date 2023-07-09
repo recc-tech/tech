@@ -116,11 +116,25 @@ class BoxCastClient(WebDriver):
         ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))  # type: ignore
 
         wait = WebDriverWait(self, timeout=timeout)
-        # TODO: This might fail because there are no matches, but it could also fail because there are multiple matches but the first one isn't clickable!
-        wait.until(  # type: ignore
-            ec,
-            message=f"No element found for the given criteria (by = {by}, value = '{value}').",
-        )
+        try:
+            wait.until(  # type: ignore
+                ec,
+            )
+        except TimeoutException:
+            # The error might be because there are no matches, but it could also be because there are multiple matches and the first one isn't clickable!
+            elements = self.find_elements(by, value)
+            if len(elements) == 0:
+                raise NoSuchElementException(
+                    f"No element found for the given criteria (by = {by}, value = '{value}')."
+                )
+            elif len(elements) == 1:
+                raise ValueError(
+                    f"An element was found for the given criteria (by = {by}, value = '{value}'), but it does not seem to be clickable."
+                )
+            else:
+                raise ValueError(
+                    f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
+                )
 
         # Wait to see if duplicate elements appear
         time.sleep(1)
@@ -134,7 +148,7 @@ class BoxCastClient(WebDriver):
             return elements[0]
         else:
             raise ValueError(
-                f"Expected to find one matching element, but found {len(elements)}."
+                f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
             )
 
 
