@@ -170,8 +170,14 @@ def export_to_vimeo(client: BoxCastClient, event_url: str):
     )
     vimeo_tab.click()
 
-    # TODO: Not specific enough!
-    user_dropdown = client.wait_for_single_element(By.TAG_NAME, "select")
+    user_dropdown_label = client.wait_for_single_element(
+        By.XPATH, "//label[contains(., 'Export as User')]"
+    )
+    user_dropdown_id = user_dropdown_label.get_attribute("for")  # type: ignore
+
+    user_dropdown = client.wait_for_single_element(
+        By.XPATH, f"//select[@id='{user_dropdown_id}']"
+    )
     user_dropdown_select = Select(user_dropdown)
     user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
 
