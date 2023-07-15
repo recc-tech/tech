@@ -20,7 +20,7 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=console_messenger
     )
-    credential_store = CredentialStore(messenger=messenger)
+    credential_store = CredentialStore(messenger=messenger, force_user_input=args.force_input)
 
     _check_mcr_teardown_credentials(
         messenger=messenger,
@@ -56,6 +56,11 @@ def _parse_args() -> Namespace:
         description="Script to test credentials and get or correct them if necessary."
     )
 
+    parser.add_argument(
+        "--force-input",
+        action="store_true",
+        help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
+    )
     parser.add_argument(
         "--home-dir",
         type=_parse_directory,

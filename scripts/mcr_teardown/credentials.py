@@ -4,29 +4,32 @@ import keyring
 from autochecklist import Messenger
 
 
-# It's useful for testing purposes to keep a central list of passwords.
 class Credential(Enum):
-    BOXCAST_PASSWORD = ("boxcast_password", "BoxCast password")
-    BOXCAST_USERNAME = ("boxcast_username", "BoxCast username")
-    VIMEO_ACCESS_TOKEN = ("vimeo_access_token", "Vimeo access token")
-    VIMEO_CLIENT_ID = ("vimeo_client_id", "Vimeo client ID")
-    VIMEO_CLIENT_SECRET = ("vimeo_client_secret", "Vimeo client secret")
+    # The values are in the format (name, display_name, is_secret)
+    BOXCAST_PASSWORD = ("boxcast_password", "BoxCast password", True)
+    BOXCAST_USERNAME = ("boxcast_username", "BoxCast username", False)
+    VIMEO_ACCESS_TOKEN = ("vimeo_access_token", "Vimeo access token", True)
+    VIMEO_CLIENT_ID = ("vimeo_client_id", "Vimeo client ID", True)
+    VIMEO_CLIENT_SECRET = ("vimeo_client_secret", "Vimeo client secret", True)
 
 
 class CredentialStore:
     _KEYRING_APP_NAME = "recc_tech_mcr_teardown"
 
-    def __init__(self, messenger: Messenger):
+    def __init__(self, messenger: Messenger, force_user_input: bool = False):
         self._messenger = messenger
+        self._force_user_input = force_user_input
 
     def get(
         self,
         credential: Credential,
         force_user_input: bool,
     ) -> str:
-        (name, display_name) = credential.value
+        force = force_user_input or self._force_user_input
 
-        if not force_user_input:
+        (name, display_name, is_secret) = credential.value
+
+        if not force:
             value = keyring.get_password(CredentialStore._KEYRING_APP_NAME, name)
             if value:
                 return value
@@ -34,7 +37,11 @@ class CredentialStore:
         base_prompt = f"Enter {display_name}: "
         prompt = base_prompt
         while True:
-            value = self._messenger.input_password(prompt)
+            value = (
+                self._messenger.input_password(prompt)
+                if is_secret
+                else self._messenger.input(prompt)
+            )
             if not value:
                 prompt = (
                     f"You just entered a blank value. Please try again. {base_prompt}"
