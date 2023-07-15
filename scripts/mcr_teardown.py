@@ -15,8 +15,12 @@ from autochecklist import (
     TaskGraph,
     TkMessenger,
 )
-from credentials import CredentialStore
-from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
+from mcr_teardown import (
+    BoxCastClientFactory,
+    CredentialStore,
+    McrTeardownConfig,
+    ReccVimeoClient,
+)
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)

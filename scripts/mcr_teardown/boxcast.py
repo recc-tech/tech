@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from autochecklist import LogLevel, Messenger
-from credentials import Credential, CredentialStore
+from mcr_teardown.credentials import Credential, CredentialStore
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options

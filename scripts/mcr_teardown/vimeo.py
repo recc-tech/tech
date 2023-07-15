@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
 from autochecklist import LogLevel, Messenger
-from credentials import Credential, CredentialStore
+from mcr_teardown.credentials import Credential, CredentialStore
 from requests import Response
 from vimeo import VimeoClient  # type: ignore
 
