@@ -7,8 +7,8 @@ from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from threading import Event, Lock, Semaphore, Thread
-from tkinter import Canvas, Misc, Text, Tk, messagebox, simpledialog
-from tkinter.ttk import Button, Frame, Scrollbar, Style
+from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
+from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
 from typing import Any, Callable, Deque, Dict, Union
 
 
@@ -415,10 +415,10 @@ class TkMessenger(InputMessenger):
             frame.update_contents(datetime.now(), level, message)
 
     def input(self, prompt: str, title: str = "") -> Union[str, None]:
-        return simpledialog.askstring(title=title, prompt=prompt, show="*")
+        return self._input(prompt, title)
 
     def input_password(self, prompt: str, title: str = "") -> Union[str, None]:
-        return simpledialog.askstring(title=title, prompt=prompt, show="*")
+        return self._input(prompt, title, show="*")
 
     def wait(self, task_name: str, prompt: str):
         if self._shutdown_requested:
@@ -431,7 +431,7 @@ class TkMessenger(InputMessenger):
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
-            padding=5
+            padding=5,
         )
         frame.grid(sticky="w")
         self._root_frame.update_scrollregion()
@@ -582,6 +582,48 @@ class TkMessenger(InputMessenger):
         Decide whether the given message should be displayed in the GUI.
         """
         return level.value >= LogLevel.INFO.value
+
+    def _input(self, prompt: str, title: str, show: str = "") -> str:
+        # It would be nice to just use simpledialog.askstring, but that throws an exception each time :(
+        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
+        # TODO: Validate the input before returning, show error message if not valid?
+        # TODO: Let the user close the script even when there's an input box
+        w = Toplevel(self._tk, padx=10, pady=10)
+        w.title(title)
+        prompt_box = Label(w, text=prompt)
+        prompt_box.pack()
+        if show:
+            entry = Entry(w, show="*")
+        else:
+            entry = Entry(w)
+        entry.pack()
+        btn = Button(w, text="Done")
+        btn.pack()
+
+        value: str = ""
+        lock = Lock()
+        lock.acquire()
+
+        def handle_close(w: Toplevel, lock: Lock):
+            nonlocal value
+            value = ""
+            w.destroy()
+            lock.release()
+
+        def handle_submit(w: Toplevel, lock: Lock):
+            nonlocal value
+            value = entry.get()
+            w.destroy()
+            lock.release()
+
+        w.protocol("WM_DELETE_WINDOW", lambda: handle_close(w, lock))
+        btn.bind("<Button-1>", lambda _: handle_submit(w, lock))
+        w.bind("<Return>", lambda _: handle_submit(w, lock))
+
+        w.grab_set()
+        # Wait for the button to be pressed or for the window to be closed
+        lock.acquire()
+        return value
 
 
 class Messenger:
