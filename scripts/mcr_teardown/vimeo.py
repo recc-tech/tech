@@ -30,11 +30,17 @@ CAPTIONS_NAME = "English (Canada)"
 class ReccVimeoClient:
     _TASK_NAME = "VIMEO CLIENT"
 
-    def __init__(self, messenger: Messenger, credential_store: CredentialStore):
+    def __init__(
+        self,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        lazy_login: bool = False,
+    ):
         self._messenger = messenger
         self._credential_store = credential_store
 
-        self._client = self._login_with_retries(max_attempts=3)
+        if not lazy_login:
+            self._client = self._login_with_retries(max_attempts=3)
 
     # TODO: Try logging in again if the response comes back as 401 or 403?
     def get(self, url: str, params: Dict[str, Any]) -> Response:
@@ -50,6 +56,11 @@ class ReccVimeoClient:
         return self._client.patch(url, data=data)  # type: ignore
 
     def _login_with_retries(self, max_attempts: int) -> VimeoClient:
+        self._messenger.log(
+            ReccVimeoClient._TASK_NAME,
+            LogLevel.INFO,
+            f"Connecting to the Vimeo API...",
+        )
         for attempt_num in range(1, max_attempts + 1):
             access_token = self._credential_store.get(
                 Credential.VIMEO_ACCESS_TOKEN,

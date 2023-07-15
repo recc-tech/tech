@@ -52,18 +52,23 @@ def main():
         if args.text_ui
         else TkMessenger(description)
     )
-    messenger = Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
+    messenger = Messenger(
+        file_messenger=file_messenger, input_messenger=input_messenger
+    )
 
     credential_store = CredentialStore(messenger=messenger)
 
     vimeo_client = ReccVimeoClient(
-        messenger=messenger, credential_store=credential_store
+        messenger=messenger,
+        credential_store=credential_store,
+        lazy_login=args.lazy_login,
     )
 
     boxcast_client_factory = BoxCastClientFactory(
         messenger=messenger,
         credential_store=credential_store,
         headless=not args.show_browser,
+        lazy_login=args.lazy_login,
     )
 
     function_finder = FunctionFinder(
@@ -173,6 +178,11 @@ def _parse_args() -> Namespace:
         "--text-ui",
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
+    )
+    advanced_args.add_argument(
+        "--lazy-login",
+        action="store_true",
+        help="If this flag is provided, then the script will not immediately log in to services like Vimeo and BoxCast. Instead, it will wait until that particular service is specifically requested.",
     )
 
     args = parser.parse_args()

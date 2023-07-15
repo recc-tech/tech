@@ -20,6 +20,7 @@ _SECONDS_PER_MINUTE = 60
 
 
 class BoxCastClient(WebDriver):
+    # TODO: Use the name of the task that is using the client, rather than a generic task name?
     _TASK_NAME = "BOXCAST CLIENT"
     _LOGIN_URL = "https://login.boxcast.com/login"
 
@@ -28,6 +29,7 @@ class BoxCastClient(WebDriver):
         messenger: Messenger,
         credential_store: CredentialStore,
         headless: bool = True,
+        lazy_login: bool = False,
     ):
         options = Options()
         if headless:
@@ -37,9 +39,10 @@ class BoxCastClient(WebDriver):
         self._messenger = messenger
         self._credential_store = credential_store
 
-        self._login_with_retries(
-            target_url="https://dashboard.boxcast.com/broadcasts", max_attempts=3
-        )
+        if not lazy_login:
+            self._login_with_retries(
+                target_url="https://dashboard.boxcast.com/broadcasts", max_attempts=3
+            )
 
     def get(self, url: str):
         redirect_timeout = 10
@@ -54,6 +57,9 @@ class BoxCastClient(WebDriver):
             self._login_with_retries(target_url=url, max_attempts=3)
 
     def _login_with_retries(self, target_url: str, max_attempts: int):
+        self._messenger.log(
+            BoxCastClient._TASK_NAME, LogLevel.INFO, "Logging into BoxCast..."
+        )
         max_seconds_to_redirect = 10
         wait = WebDriverWait(self, timeout=max_seconds_to_redirect)
         for attempt_num in range(1, max_attempts + 1):
@@ -80,6 +86,11 @@ class BoxCastClient(WebDriver):
                 wait.until(  # type: ignore
                     lambda driver: driver.current_url == target_url,  # type: ignore
                     message=f"Could not get target page ({target_url}) within {max_seconds_to_redirect} seconds.",
+                )
+                self._messenger.log(
+                    BoxCastClient._TASK_NAME,
+                    LogLevel.INFO,
+                    "Successfully logged into BoxCast.",
                 )
                 return
             except TimeoutException:
@@ -153,12 +164,21 @@ class BoxCastClient(WebDriver):
 
 
 class BoxCastClientFactory:
+    _TASK_NAME = "BOXCAST CLIENT"
+
     def __init__(
-        self, messenger: Messenger, credential_store: CredentialStore, headless: bool
+        self,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        headless: bool = True,
+        lazy_login: bool = False,
     ):
         self._messenger = messenger
         self._credential_store = credential_store
         self._headless = headless
+
+        if not lazy_login:
+            self._test_login()
 
     def get_client(self):
         return BoxCastClient(
@@ -166,6 +186,11 @@ class BoxCastClientFactory:
             credential_store=self._credential_store,
             headless=self._headless,
         )
+
+    def _test_login(self):
+        # Get a page other than the landing page just to be sure that we're logged in
+        with self.get_client() as test_client:
+            test_client.get("https://dashboard.boxcast.com/schedule")
 
 
 # TODO: Use the new BoxCast UI
