@@ -9,7 +9,7 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
-from autochecklist import BaseConfig, LogLevel, Messenger
+from autochecklist import BaseConfig, Messenger, ProblemLevel, TaskStatus
 
 
 class Task:
@@ -50,32 +50,40 @@ class Task:
         self._name = name
 
     def run(self):
-        self._messenger.log(self._name, LogLevel.INFO, f"Task started.")
+        self._messenger.log_status(self._name, TaskStatus.RUNNING, f"Task started.")
         try:
             self._run()
-            self._messenger.log(
+            self._messenger.log_status(
                 self._name,
-                LogLevel.INFO,
+                TaskStatus.DONE,
                 f"Task completed automatically.",
             )
         except Exception as e:
+            # TODO: Just set _run to None for unimplemented tasks instead of throwing an exception?
             if isinstance(e, NotImplementedError):
-                self._messenger.log(
+                self._messenger.log_status(
                     self._name,
-                    LogLevel.DEBUG,
-                    f"Task is not yet implemented. Requesting user input.",
+                    TaskStatus.WAITING_FOR_USER,
+                    f"This task is not automated. Requesting user input.",
                 )
             else:
-                self._messenger.log_separate(
+                self._messenger.log_problem(
                     self._name,
-                    LogLevel.ERROR,
-                    f"Task failed with an exception: {e}",
-                    f"Task failed with an exception:\n{traceback.format_exc()}",
+                    ProblemLevel.ERROR,
+                    f"Task failed due to an exception: {e}.",
+                    stacktrace=traceback.format_exc(),
+                )
+                self._messenger.log_status(
+                    self._name,
+                    TaskStatus.WAITING_FOR_USER,
+                    f"Task failed. Requesting user input.",
                 )
 
             self._messenger.wait(self._name, self._fallback_message)
 
-            self._messenger.log(self._name, LogLevel.INFO, f"Task completed manually.")
+            self._messenger.log_status(
+                self._name, TaskStatus.DONE, f"Task completed manually."
+            )
 
 
 class TaskThread(Thread):
@@ -207,6 +215,9 @@ class TaskGraph:
                 task_index[prereq] = prereq_info
 
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
+
+        for task_name in sorted_task_names:
+            messenger.log_status(task_name, TaskStatus.NOT_STARTED, "This task has not yet started.")
 
         threads = TaskGraph._create_and_combine_threads(
             sorted_task_names, task_index, function_index, messenger
@@ -347,9 +358,8 @@ class FunctionFinder:
 
     def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
         if self._module is None:
-            self._messenger.log(
+            self._messenger.log_debug(
                 self._TASK_NAME,
-                LogLevel.DEBUG,
                 "No module with task implementations was provided.",
             )
             return {f: FunctionFinder._unimplemented_task for f in names}
@@ -365,9 +375,9 @@ class FunctionFinder:
         signature = inspect.signature(original_function)
 
         if signature.return_annotation not in [None, "None", Signature.empty]:
-            self._messenger.log(
+            self._messenger.log_problem(
                 self._TASK_NAME,
-                LogLevel.WARN,
+                ProblemLevel.WARN,
                 f"The function for task '{name}' should return nothing, but claims to have a return value.",
             )
 
@@ -385,15 +395,13 @@ class FunctionFinder:
         # TODO: Instead of one log per function, log one message with all the missing functions?
         try:
             function: Callable[..., None] = getattr(self._module, name)
-            self._messenger.log(
+            self._messenger.log_debug(
                 self._TASK_NAME,
-                LogLevel.DEBUG,
                 f"Found implementation for task '{name}'.",
             )
         except AttributeError:
-            self._messenger.log(
+            self._messenger.log_debug(
                 self._TASK_NAME,
-                LogLevel.DEBUG,
                 f"No implementation found for task '{name}'.",
             )
             return None
@@ -432,9 +440,9 @@ class FunctionFinder:
             if name not in used_function_names
         }
         for name in unused_function_names:
-            self._messenger.log(
+            self._messenger.log_problem(
                 self._TASK_NAME,
-                LogLevel.WARN,
+                ProblemLevel.WARN,
                 f"Function '{name}' is not used by any task.",
             )
 

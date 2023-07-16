@@ -1,8 +1,7 @@
 import ctypes
 import logging
 from collections import deque
-from datetime import datetime
-from enum import Enum
+from enum import Enum, auto
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
@@ -12,22 +11,63 @@ from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
 from typing import Any, Callable, Deque, Dict, Union
 
 
-class LogLevel(Enum):
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARN = logging.WARN
-    ERROR = logging.ERROR
-    FATAL = logging.FATAL
+class TaskStatus(Enum):
+    NOT_STARTED = auto()
+    """
+    The task has not yet started.
+    """
+    RUNNING = auto()
+    """
+    The automatic implementation of the task is running.
+    """
+    WAITING_FOR_USER = auto()
+    """
+    Waiting for user input.
+    """
+    DONE = auto()
+    """
+    Task completed, either manually or automatically.
+    """
+
+    def __str__(self):
+        return self.name
+
+
+# TODO: Review the use of the different problem levels
+class ProblemLevel(Enum):
+    WARN = auto()
+    """
+    Something that may or may not be a problem and does not stop a task from continuing.
+    """
+    ERROR = auto()
+    """
+    A problem that prevents the current task from completing successfully.
+    """
+    FATAL = auto()
+    """
+    A problem from which the program cannot recover.
+    """
+
+    def to_log_level(self) -> int:
+        if self == ProblemLevel.WARN:
+            return logging.WARN
+        elif self == ProblemLevel.ERROR:
+            return logging.ERROR
+        elif self == ProblemLevel.FATAL:
+            return logging.FATAL
+        else:
+            # This should never happen, but just in case
+            return logging.ERROR
 
     def __str__(self):
         return self.name
 
 
 class InputMessenger:
-    def log(self, task_name: str, level: LogLevel, message: str) -> None:
-        """
-        Logs the given message. For example, this might save the message to a file or display it in the console.
-        """
+    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
+        raise NotImplementedError()
+
+    def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         raise NotImplementedError()
 
     def close(self):
@@ -65,8 +105,8 @@ class FileMessenger:
             date_format="%H:%M:%S",
         )
 
-    def log(self, task_name: str, level: LogLevel, message: str):
-        self.file_logger.log(level=level.value, msg=f"[{task_name:<35}] {message}")
+    def log(self, task_name: str, level: int, message: str):
+        self.file_logger.log(level=level, msg=f"[{task_name:<35}] {message}")
 
 
 class ConsoleMessenger(InputMessenger):
@@ -98,10 +138,21 @@ class ConsoleMessenger(InputMessenger):
         # Use an instance variable to send user input between threads
         self._input_value = ""
 
-    def log(self, task_name: str, level: LogLevel, message: str) -> None:
+    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
         self._console_queue.append(
             lambda: self._console_logger.log(
-                level=level.value, msg=f"[{task_name}] {message}"
+                level=logging.INFO,
+                msg=f"[{task_name}] Task status: {status}. {message}",
+            )
+        )
+        # Signal that there is a task in the queue
+        self._console_semaphore.release()
+
+    def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
+        self._console_queue.append(
+            lambda: self._console_logger.log(
+                level=level.to_log_level(),
+                msg=f"[{task_name}] {message}",
             )
         )
         # Signal that there is a task in the queue
@@ -260,71 +311,6 @@ class CopyableText(Text):
         self.configure(height=height)
 
 
-class TaskStatusFrame(Frame):
-    _PADX = 5
-    _LOG_LEVEL_COLOUR = {
-        LogLevel.DEBUG: "#888888",
-        LogLevel.INFO: "#0000FF",  # "#0000FF"
-        LogLevel.WARN: "#FF9900",
-        LogLevel.ERROR: "#FF0000",
-        LogLevel.FATAL: "#990000",
-    }
-    _DEFAULT_LOG_LEVEL_COLOUR = "#FFFFFF"
-
-    def __init__(
-        self,
-        parent: Misc,
-        task_name: str,
-        log_time: datetime,
-        level: LogLevel,
-        message: str,
-        font: str,
-        padding: int,
-        background: str,
-        foreground: str,
-    ):
-        super().__init__(parent, padding=padding)
-
-        self._name = task_name
-
-        self._level_label = CopyableText(
-            self, width=10, font=font, background=background, foreground=foreground
-        )
-        self._level_label.grid(row=0, column=0, padx=self._PADX)
-
-        self._time_label = CopyableText(
-            self, width=10, font=font, background=background, foreground=foreground
-        )
-        self._time_label.grid(row=0, column=1, padx=self._PADX)
-
-        self._name_label = CopyableText(
-            self, width=35, font=font, background=background, foreground=foreground
-        )
-        self._name_label.grid(row=0, column=2, padx=self._PADX)
-        self._name_label.set_text(task_name)
-
-        self._message_label = CopyableText(
-            self, width=100, font=font, background=background, foreground=foreground
-        )
-        self._message_label.grid(row=0, column=3, padx=self._PADX)
-
-        self.update_contents(log_time, level, message)
-
-    def update_contents(self, time: datetime, level: LogLevel, message: str):
-        self._time_label.set_text(time.strftime("%H:%M:%S"))
-        self._level_label.set_text(str(level))
-        self._level_label.config(foreground=self._log_level_colour(level))
-        self._message_label.set_text(message)
-
-    @staticmethod
-    def _log_level_colour(level: LogLevel) -> str:
-        return (
-            TaskStatusFrame._LOG_LEVEL_COLOUR[level]
-            if level in TaskStatusFrame._LOG_LEVEL_COLOUR
-            else TaskStatusFrame._DEFAULT_LOG_LEVEL_COLOUR
-        )
-
-
 class ActionItemFrame(Frame):
     _PADX = 5
 
@@ -372,11 +358,109 @@ class ActionItemFrame(Frame):
         self.destroy()
 
 
+class TaskStatusFrame(Frame):
+    _PADX = 5
+
+    def __init__(
+        self,
+        parent: Misc,
+        task_name: str,
+        status: TaskStatus,
+        message: str,
+        font: str,
+        padding: int,
+        background: str,
+        foreground: str,
+    ):
+        super().__init__(parent, padding=padding)
+
+        self._name_label = CopyableText(
+            self, width=35, font=font, background=background, foreground=foreground
+        )
+        self._name_label.grid(row=0, column=0, padx=self._PADX)
+        self._name_label.set_text(task_name)
+
+        self._status_label = CopyableText(
+            self, width=20, font=font, background=background, foreground=foreground
+        )
+        self._status_label.grid(row=0, column=1, padx=self._PADX)
+
+        self._message_label = CopyableText(
+            self, width=100, font=font, background=background, foreground=foreground
+        )
+        self._message_label.grid(row=0, column=2, padx=self._PADX)
+
+        self.update_contents(status, message)
+
+    def update_contents(self, status: TaskStatus, message: str):
+        self._status_label.set_text(str(status))
+        self._status_label.config(foreground=TaskStatusFrame._status_colour(status))
+        self._message_label.set_text(message)
+
+    @staticmethod
+    def _status_colour(status: TaskStatus) -> str:
+        if status == TaskStatus.NOT_STARTED:
+            return "#888888"
+        elif status == TaskStatus.RUNNING:
+            return "#0000FF"
+        elif status == TaskStatus.WAITING_FOR_USER:
+            return "#FF7700"
+        elif status == TaskStatus.DONE:
+            return "#009020"
+
+
+class ProblemFrame(Frame):
+    _PADX = 5
+
+    def __init__(
+        self,
+        parent: Misc,
+        task_name: str,
+        level: ProblemLevel,
+        message: str,
+        font: str,
+        padding: int,
+        background: str,
+        foreground: str,
+    ):
+        super().__init__(parent, padding=padding)
+
+        self._name_label = CopyableText(
+            self, width=35, font=font, background=background, foreground=foreground
+        )
+        self._name_label.grid(row=0, column=0, padx=self._PADX)
+        self._name_label.set_text(task_name)
+
+        self._level_label = CopyableText(
+            self, width=20, font=font, background=background, foreground=ProblemFrame._level_colour(level)
+        )
+        self._level_label.grid(row=0, column=1, padx=self._PADX)
+        self._level_label.set_text(str(level))
+
+        self._message_label = CopyableText(
+            self, width=100, font=font, background=background, foreground=foreground
+        )
+        self._message_label.grid(row=0, column=2, padx=self._PADX)
+        self._message_label.set_text(message)
+
+    @staticmethod
+    def _level_colour(level: ProblemLevel) -> str:
+        if level == ProblemLevel.WARN:
+            return "#FF7700"
+        elif level == ProblemLevel.ERROR:
+            return "#FF0000"
+        elif level == ProblemLevel.FATAL:
+            return "#990000"
+        else:
+            return "#000000"
+
+
 class TkMessenger(InputMessenger):
     _BACKGROUND_COLOUR = "#EEEEEE"
     _FOREGROUND_COLOUR = "#000000"
 
     _NORMAL_FONT = "Calibri 12"
+    _ITALIC_FONT = f"{_NORMAL_FONT} italic"
     _BOLD_FONT = f"{_NORMAL_FONT} bold"
     _H2_FONT = "Calibri 18 bold"
 
@@ -384,7 +468,7 @@ class TkMessenger(InputMessenger):
         # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
 
         self._shutdown_requested = False
-        self._thread_frame: Dict[str, TaskStatusFrame] = {}
+        self._task_status_row: Dict[str, TaskStatusFrame] = {}
 
         root_started = Semaphore(0)
         self._gui_thread = Thread(
@@ -394,25 +478,44 @@ class TkMessenger(InputMessenger):
         # Wait for the GUI to enter the main loop
         root_started.acquire()
 
-    def log(self, task_name: str, level: LogLevel, message: str):
+    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
         # TODO: What if the shutdown happens while in the middle of logging something?
         if self._shutdown_requested:
             return
 
-        if not self._should_log(level):
+        if task_name in self._task_status_row:
+            self._task_status_row[task_name].update_contents(status, message)
+        else:
+            frame = TaskStatusFrame(
+                self._task_statuses_container,
+                task_name=task_name,
+                status=status,
+                message=message,
+                font=self._NORMAL_FONT,
+                background=self._BACKGROUND_COLOUR,
+                foreground=self._FOREGROUND_COLOUR,
+                padding=5,
+            )
+            frame.grid(sticky="W")
+            self._root_frame.update_scrollregion()
+            self._task_status_row[task_name] = frame
+
+    def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
+        if self._shutdown_requested:
             return
 
-        log_time = datetime.now()
-
-        # TODO: Is it safe to just update the GUI directly? Would it be better to use after()?
-        # The tkinter docs seem to imply it is safe: https://docs.python.org/3/library/tkinter.html#threading-model
-        if task_name not in self._thread_frame:
-            self._thread_frame[task_name] = self._add_row(
-                task_name, log_time, level, message
-            )
-        else:
-            frame = self._thread_frame[task_name]
-            frame.update_contents(datetime.now(), level, message)
+        frame = ProblemFrame(
+            self._problems_container,
+            task_name=task_name,
+            level=level,
+            message=message,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            padding=5,
+        )
+        frame.grid(sticky="W")
+        self._root_frame.update_scrollregion()
 
     def input(self, prompt: str, title: str = "") -> Union[str, None]:
         return self._input(prompt, title)
@@ -425,7 +528,7 @@ class TkMessenger(InputMessenger):
             return
 
         frame = ActionItemFrame(
-            self._action_items_frame,
+            self._action_items_container,
             task_name=task_name,
             prompt=prompt,
             font=self._NORMAL_FONT,
@@ -447,7 +550,7 @@ class TkMessenger(InputMessenger):
             return
 
         goodbye_message_textbox = CopyableText(
-            self._root_frame,
+            self._action_items_container,
             width=170,
             font=self._NORMAL_FONT,
             background=self._BACKGROUND_COLOUR,
@@ -490,7 +593,7 @@ class TkMessenger(InputMessenger):
         description_textbox = CopyableText(
             self._root_frame,
             width=170,
-            font=self._NORMAL_FONT,
+            font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
@@ -503,45 +606,64 @@ class TkMessenger(InputMessenger):
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        action_items_header.grid(sticky="W", pady=25)
+        action_items_header.grid(sticky="W", pady=(50, 0))
         action_items_header.set_text("Action Items")
 
-        self._action_items_frame = Frame(self._root_frame)
-        self._action_items_frame.grid(sticky="W")
+        self._action_items_container = Frame(self._root_frame)
+        self._action_items_container.grid(sticky="W")
 
         action_items_description = CopyableText(
-            self._action_items_frame,
-            font=self._NORMAL_FONT,
+            self._action_items_container,
+            font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        action_items_description.grid(sticky="W", pady=15)
+        action_items_description.grid(sticky="W", pady=25)
         action_items_description.set_text(
             "Tasks that you must perform manually are listed here."
         )
 
-        thread_statuses_header = CopyableText(
+        task_statuses_header = CopyableText(
             self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        thread_statuses_header.grid(sticky="W", pady=25)
-        thread_statuses_header.set_text("Thread Statuses")
+        task_statuses_header.grid(sticky="W", pady=(50, 0))
+        task_statuses_header.set_text("Thread Statuses")
 
-        self._thread_statuses_frame = Frame(self._root_frame)
-        self._thread_statuses_frame.grid(sticky="W")
+        self._task_statuses_container = Frame(self._root_frame)
+        self._task_statuses_container.grid(sticky="W")
 
-        thread_statuses_description = CopyableText(
-            self._thread_statuses_frame,
-            font=self._NORMAL_FONT,
+        task_statuses_description = CopyableText(
+            self._task_statuses_container,
+            font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        thread_statuses_description.grid(sticky="W", pady=15)
-        thread_statuses_description.set_text(
-            "The status of all in-progress and completed threads are listed here."
+        task_statuses_description.grid(sticky="W", pady=25)
+        task_statuses_description.set_text("The status of each task is listed here.")
+
+        problems_header = CopyableText(
+            self._root_frame,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
         )
+        problems_header.grid(sticky="W", pady=(50, 0))
+        problems_header.set_text("Problems")
+
+        self._problems_container = Frame(self._root_frame)
+        self._problems_container.grid(sticky="W")
+
+        problems_description = CopyableText(
+            self._problems_container,
+            font=self._ITALIC_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        problems_description.grid(sticky="W", pady=25)
+        problems_description.set_text("Potential problems are listed here.")
 
         self._tk.after(0, lambda: root_started.release())
         self._tk.mainloop()
@@ -558,30 +680,6 @@ class TkMessenger(InputMessenger):
         )
         if should_exit:
             self._close()
-
-    def _add_row(
-        self, task_name: str, log_time: datetime, level: LogLevel, message: str
-    ) -> TaskStatusFrame:
-        frame = TaskStatusFrame(
-            self._thread_statuses_frame,
-            task_name,
-            datetime.now(),
-            level,
-            message,
-            font=self._NORMAL_FONT,
-            padding=5,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        frame.grid(sticky="W")
-        self._root_frame.update_scrollregion()
-        return frame
-
-    def _should_log(self, level: LogLevel) -> bool:
-        """
-        Decide whether the given message should be displayed in the GUI.
-        """
-        return level.value >= LogLevel.INFO.value
 
     def _input(self, prompt: str, title: str, show: str = "") -> str:
         # It would be nice to just use simpledialog.askstring, but that throws an exception each time :(
@@ -637,18 +735,26 @@ class Messenger:
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
 
-    def log(self, task_name: str, level: LogLevel, message: str):
-        self.log_separate(task_name, level, message, message)
+    def log_debug(self, task_name: str, message: str):
+        self._file_messenger.log(task_name, logging.DEBUG, message)
 
-    def log_separate(
+    def log_status(self, task_name: str, status: TaskStatus, message: str):
+        self._input_messenger.log_status(task_name, status, message)
+
+        log_message = f"Task status: {status}. {message}"
+        self._file_messenger.log(task_name, logging.INFO, log_message)
+
+    def log_problem(
         self,
         task_name: str,
-        level: LogLevel,
-        console_message: str,
-        log_file_message: str,
+        level: ProblemLevel,
+        message: str,
+        stacktrace: str = "",
     ):
-        self._file_messenger.log(task_name, level, log_file_message)
-        self._input_messenger.log(task_name, level, console_message)
+        self._input_messenger.log_problem(task_name, level, message)
+
+        details = f"\n{stacktrace}" if stacktrace else ""
+        self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
 
     def input(self, prompt: str) -> Union[str, None]:
         return self._input_messenger.input(prompt)

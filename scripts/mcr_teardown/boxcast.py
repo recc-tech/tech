@@ -4,7 +4,7 @@ import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from autochecklist import LogLevel, Messenger
+from autochecklist import Messenger, ProblemLevel, TaskStatus
 from mcr_teardown.credentials import Credential, CredentialStore
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
@@ -20,7 +20,7 @@ _SECONDS_PER_MINUTE = 60
 
 
 class BoxCastClient(WebDriver):
-    # TODO: Use the name of the task that is using the client, rather than a generic task name?
+    # TODO: Use the name of the task that is using the client, rather than a generic task name? Would it be possible to provide a function current_task_name() that returns the task name (by getting the current thread) or None if it's not available?
     _TASK_NAME = "BOXCAST CLIENT"
     _LOGIN_URL = "https://login.boxcast.com/login"
 
@@ -57,8 +57,8 @@ class BoxCastClient(WebDriver):
             self._login_with_retries(target_url=url, max_attempts=3)
 
     def _login_with_retries(self, target_url: str, max_attempts: int):
-        self._messenger.log(
-            BoxCastClient._TASK_NAME, LogLevel.INFO, "Logging into BoxCast..."
+        self._messenger.log_status(
+            BoxCastClient._TASK_NAME, TaskStatus.RUNNING, "Logging into BoxCast..."
         )
         max_seconds_to_redirect = 10
         wait = WebDriverWait(self, timeout=max_seconds_to_redirect)
@@ -87,18 +87,18 @@ class BoxCastClient(WebDriver):
                     lambda driver: driver.current_url == target_url,  # type: ignore
                     message=f"Could not get target page ({target_url}) within {max_seconds_to_redirect} seconds.",
                 )
-                self._messenger.log(
+                self._messenger.log_status(
                     BoxCastClient._TASK_NAME,
-                    LogLevel.INFO,
+                    TaskStatus.RUNNING,
                     "Successfully logged into BoxCast.",
                 )
                 return
             except TimeoutException:
-                self._messenger.log_separate(
+                self._messenger.log_problem(
                     self._TASK_NAME,
-                    LogLevel.WARN,
+                    ProblemLevel.WARN,
                     f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).",
-                    f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).\n{traceback.format_exc()}",
+                    stacktrace=traceback.format_exc(),
                 )
         raise RuntimeError(f"Failed to log in to BoxCast ({max_attempts} attempts).")
 
@@ -286,11 +286,11 @@ def create_rebroadcast(
     try:
         _select_quick_entry_mode(client, messenger, task_name)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to check that the entry mode is 'Quick Entry': {e}",
-            f"Failed to check that the entry mode is 'Quick Entry':\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     _set_event_name(rebroadcast_title, client)
@@ -298,21 +298,21 @@ def create_rebroadcast(
     try:
         _clear_event_description(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to clear event description: {e}",
-            f"Failed to clear event description:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     try:
         _set_event_start_date(start_datetime.strftime("%m/%d/%Y"), client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to set event start date: {e}",
-            f"Failed to set event start date:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     _set_event_start_time(start_datetime.strftime("%H:%M"), client)
@@ -320,51 +320,51 @@ def create_rebroadcast(
     try:
         _make_event_non_recurring(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to check that the rebroadcast is non-recurring: {e}",
-            f"Failed to check that the rebroadcast is non-recurring:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     try:
         _make_event_public(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to check that the rebroadcast is public: {e}",
-            f"Failed to check that the rebroadcast is public:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     try:
         _clear_broadcast_destinations(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to check that there are no other destinations for this rebroadcast: {e}",
-            f"Failed to check that there are no other destinations for this rebroadcast:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     try:
         _show_advanced_settings(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to show the advanced settings: {e}",
-            f"Failed to show the advanced settings:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     try:
         _make_event_not_recorded(client)
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"Failed to make rebroadcast not recorded: {e}",
-            f"Failed to make rebroadcast not recorded:\n{traceback.format_exc()}",
+            stacktrace=traceback.format_exc(),
         )
 
     _press_schedule_broadcast_button(client)
@@ -404,9 +404,9 @@ def _move_captions_to_captions_folder(
     _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
 
     if destination_path.exists():
-        messenger.log(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"File '{destination_path}' already exists and will be overwritten.",
         )
     else:
@@ -442,16 +442,16 @@ def _get_rebroadcast_page(
             By.TAG_NAME, "recording-source-chooser", timeout=10
         )
         if "Source Broadcast Unavailable" in source_broadcast_element.text:
-            messenger.log(
+            messenger.log_status(
                 task_name,
-                LogLevel.DEBUG,
+                TaskStatus.RUNNING,
                 f"Source broadcast is not yet available. Retrying in {_RETRY_SECONDS} seconds.",
             )
             time.sleep(_RETRY_SECONDS)
         elif expected_source_name in source_broadcast_element.text:
-            messenger.log(
+            messenger.log_status(
                 task_name,
-                LogLevel.DEBUG,
+                TaskStatus.RUNNING,
                 "Rebroadcast page loaded: source broadcast is as expected.",
             )
             return
@@ -470,11 +470,10 @@ def _select_quick_entry_mode(
     wizard_links = client.find_elements(By.XPATH, "//a[contains(., 'Wizard')]")
 
     if len(quick_entry_links) == 0 and len(wizard_links) == 1:
-        messenger.log(task_name, LogLevel.DEBUG, "Already in 'Quick Entry' mode.")
+        messenger.log_debug(task_name, "Already in 'Quick Entry' mode.")
     elif len(quick_entry_links) == 1 and len(wizard_links) == 0:
-        messenger.log(
+        messenger.log_debug(
             task_name,
-            LogLevel.DEBUG,
             "Currently in 'Wizard' mode. Switching to 'Quick Entry' mode.",
         )
         quick_entry_links[0].click()

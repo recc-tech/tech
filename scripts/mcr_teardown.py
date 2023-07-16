@@ -10,9 +10,10 @@ from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
     FunctionFinder,
-    LogLevel,
     Messenger,
+    ProblemLevel,
     TaskGraph,
+    TaskStatus,
     TkMessenger,
 )
 from mcr_teardown import (
@@ -60,6 +61,8 @@ def main():
         file_messenger=file_messenger, input_messenger=input_messenger
     )
 
+    messenger.log_status(_TASK_NAME, TaskStatus.RUNNING, "Loading the script...")
+
     credential_store = CredentialStore(messenger=messenger)
 
     vimeo_client = ReccVimeoClient(
@@ -86,31 +89,45 @@ def main():
             Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
         task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
-        messenger.log(_TASK_NAME, LogLevel.INFO, "Successfully loaded the task graph.")
-    except Exception as e:
-        messenger.log_separate(
-            _TASK_NAME,
-            LogLevel.FATAL,
-            f"Failed to load task graph: {e}",
-            f"Failed to load task graph:\n{traceback.format_exc()}",
+        messenger.log_status(
+            _TASK_NAME, TaskStatus.RUNNING, "Successfully loaded the task graph."
         )
+    except Exception as e:
+        messenger.log_problem(
+            _TASK_NAME,
+            ProblemLevel.FATAL,
+            f"Failed to load the task graph: {e}.",
+            stacktrace=traceback.format_exc(),
+        )
+        messenger.log_status(_TASK_NAME, TaskStatus.DONE, "The script failed to start.")
         messenger.close()
         return
 
     success = False
     try:
         if not args.no_run:
+            messenger.log_status(_TASK_NAME, TaskStatus.RUNNING, "Running tasks.")
             task_graph.run()
+            messenger.log_status(_TASK_NAME, TaskStatus.DONE, "All tasks are done!")
             success = True
+        else:
+            messenger.log_status(
+                _TASK_NAME,
+                TaskStatus.DONE,
+                "No tasks were run because the --no-run flag was given.",
+            )
     except Exception as e:
-        messenger.log_separate(
+        messenger.log_problem(
             _TASK_NAME,
-            LogLevel.FATAL,
-            f"Failed to run task graph: {e}",
-            f"Failed to run task graph:\n{traceback.format_exc()}",
+            ProblemLevel.FATAL,
+            f"Failed to run the tasks: {e}.",
+            stacktrace=traceback.format_exc(),
         )
+        messenger.log_status(_TASK_NAME, TaskStatus.DONE, "The script failed.")
     except KeyboardInterrupt as e:
-        messenger.log(_TASK_NAME, LogLevel.FATAL, "Program cancelled by user.")
+        messenger.log_status(
+            _TASK_NAME, TaskStatus.DONE, "The script was cancelled by the user."
+        )
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close()

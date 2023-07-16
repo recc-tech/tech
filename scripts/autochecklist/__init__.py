@@ -9,8 +9,9 @@ from autochecklist.base_config import BaseConfig
 from autochecklist.messenger import (
     ConsoleMessenger,
     FileMessenger,
-    LogLevel,
     Messenger,
+    ProblemLevel,
+    TaskStatus,
     TkMessenger,
 )
 from autochecklist.task import FunctionFinder, TaskGraph

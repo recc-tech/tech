@@ -4,7 +4,7 @@ from datetime import datetime
 
 import mcr_teardown.boxcast as boxcast_tasks
 import mcr_teardown.vimeo as vimeo_tasks
-from autochecklist import LogLevel, Messenger
+from autochecklist import Messenger, ProblemLevel
 from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
 from mcr_teardown.vimeo import ReccVimeoClient
@@ -119,9 +119,9 @@ def copy_captions_to_without_worship(
         raise ValueError(f"File '{config.original_captions_path}' does not exist.")
 
     if config.captions_without_worship_path.exists():
-        messenger.log(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"File '{config.captions_without_worship_path}' already exists and will be overwritten.",
         )
 
@@ -142,9 +142,9 @@ def copy_captions_to_final(
         )
 
     if config.final_captions_path.exists():
-        messenger.log(
+        messenger.log_problem(
             task_name,
-            LogLevel.WARN,
+            ProblemLevel.WARN,
             f"File '{config.final_captions_path}' already exists and will be overwritten",
         )
 

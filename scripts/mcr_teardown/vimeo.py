@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
-from autochecklist import LogLevel, Messenger
+from autochecklist import Messenger, ProblemLevel, TaskStatus
 from mcr_teardown.credentials import Credential, CredentialStore
 from requests import Response
 from vimeo import VimeoClient  # type: ignore
@@ -56,9 +56,9 @@ class ReccVimeoClient:
         return self._client.patch(url, data=data)  # type: ignore
 
     def _login_with_retries(self, max_attempts: int) -> VimeoClient:
-        self._messenger.log(
+        self._messenger.log_status(
             ReccVimeoClient._TASK_NAME,
-            LogLevel.INFO,
+            TaskStatus.RUNNING,
             f"Connecting to the Vimeo API...",
         )
         for attempt_num in range(1, max_attempts + 1):
@@ -89,16 +89,16 @@ class ReccVimeoClient:
     def _is_connection_valid(self, client: VimeoClient) -> bool:
         response: Response = client.get("/tutorial")  # type: ignore
         if response.status_code == 200:
-            self._messenger.log(
+            self._messenger.log_status(
                 ReccVimeoClient._TASK_NAME,
-                LogLevel.INFO,
+                TaskStatus.RUNNING,
                 f"Successfully connected to the Vimeo API.",
             )
             return True
         else:
-            self._messenger.log(
+            self._messenger.log_problem(
                 ReccVimeoClient._TASK_NAME,
-                LogLevel.ERROR,
+                ProblemLevel.ERROR,
                 f"Vimeo client test request failed (HTTP status {response.status_code}).",
             )
             return False
@@ -133,16 +133,16 @@ def get_video_data(
             - datetime.fromisoformat(response_data["created_time"])
             > NEW_VIDEO_TIMEDELTA
         ):
-            messenger.log(
+            messenger.log_status(
                 task_name,
-                LogLevel.INFO,
+                TaskStatus.RUNNING,
                 f"Video not yet found on Vimeo. Retrying in {RETRY_SECONDS} seconds.",
             )
             time.sleep(RETRY_SECONDS)
         else:
-            messenger.log(
+            messenger.log_status(
                 task_name,
-                LogLevel.INFO,
+                TaskStatus.RUNNING,
                 f"Found newly-uploaded Vimeo video at URI '{response_data['uri']}'.",
             )
             break
@@ -176,22 +176,24 @@ def upload_captions_to_vimeo(
 
     # (2) Get upload link for text track
     (upload_link, uri) = _get_vimeo_texttrack_upload_link(texttrack_uri, client)
-    messenger.log(
+    messenger.log_status(
         task_name,
-        LogLevel.INFO,
-        f"Got text track upload link and URI for Vimeo video: upload link '{upload_link}', URI '{uri}'.",
+        TaskStatus.RUNNING,
+        f"Found the text track upload link and URI for the Vimeo video.",
     )
 
     # (3) Upload text track
     _upload_texttrack(final_captions_file, upload_link, client)
-    messenger.log(task_name, LogLevel.INFO, "Uploaded text track for Vimeo video.")
+    messenger.log_status(
+        task_name, TaskStatus.RUNNING, "Uploaded the text track for the Vimeo video."
+    )
 
     # (4) Mark text track as active
     _activate_texttrack(uri, client)
-    messenger.log(
+    messenger.log_status(
         task_name,
-        LogLevel.INFO,
-        "Marked newly-uploaded text track for Vimeo video as active.",
+        TaskStatus.RUNNING,
+        "Marked the newly-uploaded text track for the Vimeo video as active.",
     )
 
 
