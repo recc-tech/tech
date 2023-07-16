@@ -6,7 +6,9 @@
 :: problems because the Selenium Firefox web driver tries to write to
 :: geckodriver.log in the current working directory. Moving into the tech Git
 :: repo should avoid permission issues.
-CD %~dp0
+::
+:: You need to pass the /D flag because the MCR computer uses the D:/ drive.
+CD /D %~dp0
 
 python mcr_teardown.py
 
