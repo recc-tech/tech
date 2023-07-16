@@ -647,7 +647,7 @@ class TkMessenger(InputMessenger):
             foreground=self._FOREGROUND_COLOUR,
         )
         task_statuses_header.grid(sticky="W", pady=(50, 0))
-        task_statuses_header.set_text("Thread Statuses")
+        task_statuses_header.set_text("Task Statuses")
 
         self._task_statuses_container = Frame(self._root_frame)
         self._task_statuses_container.grid(sticky="W")
