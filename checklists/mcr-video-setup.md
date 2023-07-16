@@ -9,6 +9,7 @@ assignees: recc-tech
 - [ ] Download kids video
 - [ ] Download sermon notes (if they're present)
 - [ ] Move the downloaded files to `D:\Users\Tech\Documents\vMix Assets\By Service\YYYY-MM-DD`, where `YYYY-MM-DD` is the current date
+- [ ] Download any new assets (e.g., new bumper videos, new announcements) and move them to `D:\Users\Tech\Documents\vMix Assets\By Type\`
 
 ## Church Online Platform
 - [ ] Copy the sermon notes to the event (if they were on Planning Center Online)
