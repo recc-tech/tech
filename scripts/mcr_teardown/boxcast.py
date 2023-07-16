@@ -20,8 +20,6 @@ _SECONDS_PER_MINUTE = 60
 
 
 class BoxCastClient(WebDriver):
-    # TODO: Use the name of the task that is using the client, rather than a generic task name? Would it be possible to provide a function current_task_name() that returns the task name (by getting the current thread) or None if it's not available?
-    _TASK_NAME = "BOXCAST CLIENT"
     _LOGIN_URL = "https://login.boxcast.com/login"
 
     def __init__(
@@ -57,9 +55,7 @@ class BoxCastClient(WebDriver):
             self._login_with_retries(target_url=url, max_attempts=3)
 
     def _login_with_retries(self, target_url: str, max_attempts: int):
-        self._messenger.log_status(
-            BoxCastClient._TASK_NAME, TaskStatus.RUNNING, "Logging into BoxCast..."
-        )
+        self._messenger.log_status(TaskStatus.RUNNING, "Logging into BoxCast...")
         max_seconds_to_redirect = 10
         wait = WebDriverWait(self, timeout=max_seconds_to_redirect)
         for attempt_num in range(1, max_attempts + 1):
@@ -88,14 +84,12 @@ class BoxCastClient(WebDriver):
                     message=f"Could not get target page ({target_url}) within {max_seconds_to_redirect} seconds.",
                 )
                 self._messenger.log_status(
-                    BoxCastClient._TASK_NAME,
                     TaskStatus.RUNNING,
                     "Successfully logged into BoxCast.",
                 )
                 return
             except TimeoutException:
                 self._messenger.log_problem(
-                    self._TASK_NAME,
                     ProblemLevel.WARN,
                     f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).",
                     stacktrace=traceback.format_exc(),
@@ -164,8 +158,6 @@ class BoxCastClient(WebDriver):
 
 
 class BoxCastClientFactory:
-    _TASK_NAME = "BOXCAST CLIENT"
-
     def __init__(
         self,
         messenger: Messenger,
@@ -232,12 +224,9 @@ def download_captions(
     download_path: Path,
     destination_path: Path,
     messenger: Messenger,
-    task_name: str,
 ):
     _download_captions_to_downloads_folder(client, captions_tab_url)
-    _move_captions_to_captions_folder(
-        download_path, destination_path, messenger, task_name
-    )
+    _move_captions_to_captions_folder(download_path, destination_path, messenger)
 
 
 def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
@@ -277,17 +266,15 @@ def create_rebroadcast(
     start_datetime: datetime,
     client: BoxCastClient,
     messenger: Messenger,
-    task_name: str,
 ):
     _get_rebroadcast_page(
-        rebroadcast_setup_url, source_broadcast_title, client, messenger, task_name
+        rebroadcast_setup_url, source_broadcast_title, client, messenger
     )
 
     try:
-        _select_quick_entry_mode(client, messenger, task_name)
+        _select_quick_entry_mode(client, messenger)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to check that the entry mode is 'Quick Entry': {e}",
             stacktrace=traceback.format_exc(),
@@ -299,7 +286,6 @@ def create_rebroadcast(
         _clear_event_description(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to clear event description: {e}",
             stacktrace=traceback.format_exc(),
@@ -309,7 +295,6 @@ def create_rebroadcast(
         _set_event_start_date(start_datetime.strftime("%m/%d/%Y"), client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to set event start date: {e}",
             stacktrace=traceback.format_exc(),
@@ -321,7 +306,6 @@ def create_rebroadcast(
         _make_event_non_recurring(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to check that the rebroadcast is non-recurring: {e}",
             stacktrace=traceback.format_exc(),
@@ -331,7 +315,6 @@ def create_rebroadcast(
         _make_event_public(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to check that the rebroadcast is public: {e}",
             stacktrace=traceback.format_exc(),
@@ -341,7 +324,6 @@ def create_rebroadcast(
         _clear_broadcast_destinations(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to check that there are no other destinations for this rebroadcast: {e}",
             stacktrace=traceback.format_exc(),
@@ -351,7 +333,6 @@ def create_rebroadcast(
         _show_advanced_settings(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to show the advanced settings: {e}",
             stacktrace=traceback.format_exc(),
@@ -361,7 +342,6 @@ def create_rebroadcast(
         _make_event_not_recorded(client)
     except Exception as e:
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"Failed to make rebroadcast not recorded: {e}",
             stacktrace=traceback.format_exc(),
@@ -399,13 +379,12 @@ def _download_captions_to_downloads_folder(
 
 
 def _move_captions_to_captions_folder(
-    download_path: Path, destination_path: Path, messenger: Messenger, task_name: str
+    download_path: Path, destination_path: Path, messenger: Messenger
 ):
     _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
 
     if destination_path.exists():
         messenger.log_problem(
-            task_name,
             ProblemLevel.WARN,
             f"File '{destination_path}' already exists and will be overwritten.",
         )
@@ -430,7 +409,6 @@ def _get_rebroadcast_page(
     expected_source_name: str,
     client: BoxCastClient,
     messenger: Messenger,
-    task_name: str,
 ):
     """
     Get the rebroadcast page and wait until the source broadcast is available.
@@ -443,14 +421,12 @@ def _get_rebroadcast_page(
         )
         if "Source Broadcast Unavailable" in source_broadcast_element.text:
             messenger.log_status(
-                task_name,
                 TaskStatus.RUNNING,
                 f"Source broadcast is not yet available. Retrying in {_RETRY_SECONDS} seconds.",
             )
             time.sleep(_RETRY_SECONDS)
         elif expected_source_name in source_broadcast_element.text:
             messenger.log_status(
-                task_name,
                 TaskStatus.RUNNING,
                 "Rebroadcast page loaded: source broadcast is as expected.",
             )
@@ -461,19 +437,16 @@ def _get_rebroadcast_page(
             )
 
 
-def _select_quick_entry_mode(
-    client: BoxCastClient, messenger: Messenger, task_name: str
-):
+def _select_quick_entry_mode(client: BoxCastClient, messenger: Messenger):
     quick_entry_links = client.find_elements(
         By.XPATH, "//a[contains(., 'Quick Entry')]"
     )
     wizard_links = client.find_elements(By.XPATH, "//a[contains(., 'Wizard')]")
 
     if len(quick_entry_links) == 0 and len(wizard_links) == 1:
-        messenger.log_debug(task_name, "Already in 'Quick Entry' mode.")
+        messenger.log_debug("Already in 'Quick Entry' mode.")
     elif len(quick_entry_links) == 1 and len(wizard_links) == 0:
         messenger.log_debug(
-            task_name,
             "Currently in 'Wizard' mode. Switching to 'Quick Entry' mode.",
         )
         quick_entry_links[0].click()

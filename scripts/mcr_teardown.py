@@ -15,6 +15,7 @@ from autochecklist import (
     TaskGraph,
     TaskStatus,
     TkMessenger,
+    set_current_task_name,
 )
 from mcr_teardown import (
     BoxCastClientFactory,
@@ -34,11 +35,11 @@ from mcr_teardown import (
 # TODO: Close down Messenger properly in the event of an exception
 # TODO: Make console output coloured to better highlight warnings?
 
-_TASK_NAME = "SCRIPT MAIN"
-
 
 def main():
     args = _parse_args()
+
+    set_current_task_name("SCRIPT MAIN")
 
     config = McrTeardownConfig(
         home_dir=args.home_dir,
@@ -61,7 +62,7 @@ def main():
         file_messenger=file_messenger, input_messenger=input_messenger
     )
 
-    messenger.log_status(_TASK_NAME, TaskStatus.RUNNING, "Loading the script...")
+    messenger.log_status(TaskStatus.RUNNING, "Loading the script...")
 
     credential_store = CredentialStore(messenger=messenger)
 
@@ -88,51 +89,44 @@ def main():
         task_list_file = (
             Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
-        task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
         messenger.log_status(
-            _TASK_NAME, TaskStatus.RUNNING, "Successfully loaded the task graph."
+            TaskStatus.RUNNING,
+            f"Loading the task graph from {task_list_file.as_posix()}...",
         )
+        task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
+        messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
     except Exception as e:
         messenger.log_problem(
-            _TASK_NAME,
             ProblemLevel.FATAL,
             f"Failed to load the task graph: {e}.",
             stacktrace=traceback.format_exc(),
         )
-        messenger.log_status(_TASK_NAME, TaskStatus.DONE, "The script failed to start.")
+        messenger.log_status(TaskStatus.DONE, "The script failed to start.")
         messenger.close()
         return
 
-    success = False
     try:
         if not args.no_run:
-            messenger.log_status(_TASK_NAME, TaskStatus.RUNNING, "Running tasks.")
+            messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
             task_graph.run()
-            messenger.log_status(_TASK_NAME, TaskStatus.DONE, "All tasks are done!")
-            success = True
+            messenger.log_status(TaskStatus.DONE, "All tasks are done! Great work :)")
         else:
             messenger.log_status(
-                _TASK_NAME,
                 TaskStatus.DONE,
                 "No tasks were run because the --no-run flag was given.",
             )
     except Exception as e:
         messenger.log_problem(
-            _TASK_NAME,
             ProblemLevel.FATAL,
             f"Failed to run the tasks: {e}.",
             stacktrace=traceback.format_exc(),
         )
-        messenger.log_status(_TASK_NAME, TaskStatus.DONE, "The script failed.")
+        messenger.log_status(TaskStatus.DONE, "The script failed.")
     except KeyboardInterrupt as e:
-        messenger.log_status(
-            _TASK_NAME, TaskStatus.DONE, "The script was cancelled by the user."
-        )
+        messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close()
-        if success:
-            print("\nGreat work :)\n")
 
 
 def _parse_args() -> Namespace:

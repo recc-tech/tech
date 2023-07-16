@@ -5,10 +5,23 @@ from enum import Enum, auto
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
+from threading import Event, Lock, Semaphore, Thread, local
 from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
 from typing import Any, Callable, Deque, Dict, Union
+
+thread_local = local()
+thread_local.current_task_name = None
+
+
+def current_task_name() -> str:
+    return (
+        thread_local.current_task_name if thread_local.current_task_name else "UNKNOWN"
+    )
+
+
+def set_current_task_name(name: Union[str, None]):
+    thread_local.current_task_name = name
 
 
 class TaskStatus(Enum):
@@ -432,7 +445,11 @@ class ProblemFrame(Frame):
         self._name_label.set_text(task_name)
 
         self._level_label = CopyableText(
-            self, width=20, font=font, background=background, foreground=ProblemFrame._level_colour(level)
+            self,
+            width=20,
+            font=font,
+            background=background,
+            foreground=ProblemFrame._level_colour(level),
         )
         self._level_label.grid(row=0, column=1, padx=self._PADX)
         self._level_label.set_text(str(level))
@@ -729,16 +746,19 @@ class Messenger:
     Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
     """
 
-    # TODO: Store the task name directly in the Messenger and give each task its own Messenger instance?
-
     def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
 
-    def log_debug(self, task_name: str, message: str):
+    def log_debug(self, message: str, task_name: str = ""):
+        if not task_name:
+            task_name = current_task_name()
         self._file_messenger.log(task_name, logging.DEBUG, message)
 
-    def log_status(self, task_name: str, status: TaskStatus, message: str):
+    def log_status(self, status: TaskStatus, message: str, task_name: str = ""):
+        if not task_name:
+            task_name = current_task_name()
+
         self._input_messenger.log_status(task_name, status, message)
 
         log_message = f"Task status: {status}. {message}"
@@ -746,11 +766,14 @@ class Messenger:
 
     def log_problem(
         self,
-        task_name: str,
         level: ProblemLevel,
         message: str,
         stacktrace: str = "",
+        task_name: str = "",
     ):
+        if not task_name:
+            task_name = current_task_name()
+
         self._input_messenger.log_problem(task_name, level, message)
 
         details = f"\n{stacktrace}" if stacktrace else ""
@@ -762,7 +785,9 @@ class Messenger:
     def input_password(self, prompt: str) -> Union[str, None]:
         return self._input_messenger.input_password(prompt)
 
-    def wait(self, task_name: str, prompt: str):
+    def wait(self, prompt: str, task_name: str = ""):
+        if not task_name:
+            task_name = current_task_name()
         self._input_messenger.wait(task_name, prompt)
 
     def close(self):

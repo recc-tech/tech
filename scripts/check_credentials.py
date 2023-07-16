@@ -2,12 +2,20 @@ from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from datetime import datetime
 from pathlib import Path
 
-from autochecklist.messenger import ConsoleMessenger, FileMessenger, Messenger
+from autochecklist import (
+    ConsoleMessenger,
+    FileMessenger,
+    Messenger,
+    TaskStatus,
+    set_current_task_name,
+)
 from mcr_teardown import BoxCastClientFactory, CredentialStore, ReccVimeoClient
 
 
 def main():
     args = _parse_args()
+
+    set_current_task_name("SCRIPT MAIN")
 
     log_dir = args.home_dir.joinpath("Logs")
     date_ymd = datetime.now().strftime("%Y-%m-%d")
@@ -28,10 +36,8 @@ def main():
         headless=not args.show_browser,
     )
 
+    messenger.log_status(TaskStatus.DONE, "Everything looks good!")
     messenger.close()
-    print()
-    print("Everything looks good!")
-    print()
 
 
 def _check_mcr_teardown_credentials(

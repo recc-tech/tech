@@ -28,8 +28,6 @@ CAPTIONS_NAME = "English (Canada)"
 
 
 class ReccVimeoClient:
-    _TASK_NAME = "VIMEO CLIENT"
-
     def __init__(
         self,
         messenger: Messenger,
@@ -57,7 +55,6 @@ class ReccVimeoClient:
 
     def _login_with_retries(self, max_attempts: int) -> VimeoClient:
         self._messenger.log_status(
-            ReccVimeoClient._TASK_NAME,
             TaskStatus.RUNNING,
             f"Connecting to the Vimeo API...",
         )
@@ -90,23 +87,19 @@ class ReccVimeoClient:
         response: Response = client.get("/tutorial")  # type: ignore
         if response.status_code == 200:
             self._messenger.log_status(
-                ReccVimeoClient._TASK_NAME,
                 TaskStatus.RUNNING,
                 f"Successfully connected to the Vimeo API.",
             )
             return True
         else:
             self._messenger.log_problem(
-                ReccVimeoClient._TASK_NAME,
                 ProblemLevel.ERROR,
                 f"Vimeo client test request failed (HTTP status {response.status_code}).",
             )
             return False
 
 
-def get_video_data(
-    messenger: Messenger, client: ReccVimeoClient, task_name: str
-) -> Tuple[str, str]:
+def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, str]:
     # Wait for the video to be posted
     while True:
         response = client.get(
@@ -134,14 +127,12 @@ def get_video_data(
             > NEW_VIDEO_TIMEDELTA
         ):
             messenger.log_status(
-                task_name,
                 TaskStatus.RUNNING,
                 f"Video not yet found on Vimeo. Retrying in {RETRY_SECONDS} seconds.",
             )
             time.sleep(RETRY_SECONDS)
         else:
             messenger.log_status(
-                task_name,
                 TaskStatus.RUNNING,
                 f"Found newly-uploaded Vimeo video at URI '{response_data['uri']}'.",
             )
@@ -168,7 +159,6 @@ def upload_captions_to_vimeo(
     texttrack_uri: str,
     messenger: Messenger,
     client: ReccVimeoClient,
-    task_name: str,
 ):
     # See https://developer.vimeo.com/api/upload/texttracks
 
@@ -177,7 +167,6 @@ def upload_captions_to_vimeo(
     # (2) Get upload link for text track
     (upload_link, uri) = _get_vimeo_texttrack_upload_link(texttrack_uri, client)
     messenger.log_status(
-        task_name,
         TaskStatus.RUNNING,
         f"Found the text track upload link and URI for the Vimeo video.",
     )
@@ -185,13 +174,12 @@ def upload_captions_to_vimeo(
     # (3) Upload text track
     _upload_texttrack(final_captions_file, upload_link, client)
     messenger.log_status(
-        task_name, TaskStatus.RUNNING, "Uploaded the text track for the Vimeo video."
+        TaskStatus.RUNNING, "Uploaded the text track for the Vimeo video."
     )
 
     # (4) Mark text track as active
     _activate_texttrack(uri, client)
     messenger.log_status(
-        task_name,
         TaskStatus.RUNNING,
         "Marked the newly-uploaded text track for the Vimeo video as active.",
     )

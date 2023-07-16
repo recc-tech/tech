@@ -9,7 +9,13 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
-from autochecklist import BaseConfig, Messenger, ProblemLevel, TaskStatus
+from autochecklist.base_config import BaseConfig
+from autochecklist.messenger import (
+    Messenger,
+    ProblemLevel,
+    TaskStatus,
+    set_current_task_name,
+)
 
 
 class Task:
@@ -32,7 +38,7 @@ class Task:
     Messenger to use for logging and input.
     """
 
-    _name: str
+    name: str
     """
     Name of the task.
     """
@@ -47,14 +53,13 @@ class Task:
         self._run = func
         self._fallback_message = fallback_message
         self._messenger = messenger
-        self._name = name
+        self.name = name
 
     def run(self):
-        self._messenger.log_status(self._name, TaskStatus.RUNNING, f"Task started.")
+        self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
         try:
             self._run()
             self._messenger.log_status(
-                self._name,
                 TaskStatus.DONE,
                 f"Task completed automatically.",
             )
@@ -62,28 +67,23 @@ class Task:
             # TODO: Just set _run to None for unimplemented tasks instead of throwing an exception?
             if isinstance(e, NotImplementedError):
                 self._messenger.log_status(
-                    self._name,
                     TaskStatus.WAITING_FOR_USER,
                     f"This task is not automated. Requesting user input.",
                 )
             else:
                 self._messenger.log_problem(
-                    self._name,
                     ProblemLevel.ERROR,
                     f"Task failed due to an exception: {e}.",
                     stacktrace=traceback.format_exc(),
                 )
                 self._messenger.log_status(
-                    self._name,
                     TaskStatus.WAITING_FOR_USER,
                     f"Task failed. Requesting user input.",
                 )
 
-            self._messenger.wait(self._name, self._fallback_message)
+            self._messenger.wait(self._fallback_message)
 
-            self._messenger.log_status(
-                self._name, TaskStatus.DONE, f"Task completed manually."
-            )
+            self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
 
 
 class TaskThread(Thread):
@@ -111,7 +111,9 @@ class TaskThread(Thread):
 
         # Run tasks
         for t in self.tasks:
+            set_current_task_name(t.name)
             t.run()
+            set_current_task_name(None)
 
 
 class TaskGraph:
@@ -217,7 +219,11 @@ class TaskGraph:
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
         for task_name in sorted_task_names:
-            messenger.log_status(task_name, TaskStatus.NOT_STARTED, "This task has not yet started.")
+            messenger.log_status(
+                TaskStatus.NOT_STARTED,
+                "This task has not yet started.",
+                task_name=task_name,
+            )
 
         threads = TaskGraph._create_and_combine_threads(
             sorted_task_names, task_index, function_index, messenger
@@ -347,8 +353,6 @@ class TaskGraph:
 
 
 class FunctionFinder:
-    _TASK_NAME = "FUNCTION FINDER"
-
     def __init__(
         self, module: Union[ModuleType, None], arguments: Set[Any], messenger: Messenger
     ):
@@ -359,7 +363,6 @@ class FunctionFinder:
     def find_functions(self, names: List[str]) -> Dict[str, Callable[[], None]]:
         if self._module is None:
             self._messenger.log_debug(
-                self._TASK_NAME,
                 "No module with task implementations was provided.",
             )
             return {f: FunctionFinder._unimplemented_task for f in names}
@@ -376,13 +379,12 @@ class FunctionFinder:
 
         if signature.return_annotation not in [None, "None", Signature.empty]:
             self._messenger.log_problem(
-                self._TASK_NAME,
                 ProblemLevel.WARN,
                 f"The function for task '{name}' should return nothing, but claims to have a return value.",
             )
 
         try:
-            inputs = self._find_arguments(signature, name)
+            inputs = self._find_arguments(signature)
         except Exception as e:
             raise ValueError(f"Failed to find arguments for function '{name}'.") from e
 
@@ -396,26 +398,21 @@ class FunctionFinder:
         try:
             function: Callable[..., None] = getattr(self._module, name)
             self._messenger.log_debug(
-                self._TASK_NAME,
                 f"Found implementation for task '{name}'.",
             )
         except AttributeError:
             self._messenger.log_debug(
-                self._TASK_NAME,
                 f"No implementation found for task '{name}'.",
             )
             return None
         return function
 
-    def _find_arguments(self, signature: Signature, task_name: str) -> Dict[str, Any]:
+    def _find_arguments(self, signature: Signature) -> Dict[str, Any]:
         params = signature.parameters.values()
         # TODO: Check for unused args
-        return {p.name: self._find_single_argument(p, task_name) for p in params}
+        return {p.name: self._find_single_argument(p) for p in params}
 
-    def _find_single_argument(self, param: Parameter, task_name: str) -> Any:
-        if param.name == "task_name" and param.annotation == str:
-            return task_name
-
+    def _find_single_argument(self, param: Parameter) -> Any:
         matching_args = [
             a for a in self._arguments if issubclass(type(a), param.annotation)
         ]
@@ -441,7 +438,6 @@ class FunctionFinder:
         }
         for name in unused_function_names:
             self._messenger.log_problem(
-                self._TASK_NAME,
                 ProblemLevel.WARN,
                 f"Function '{name}' is not used by any task.",
             )
