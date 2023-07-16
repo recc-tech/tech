@@ -135,7 +135,7 @@ class ConsoleMessenger(InputMessenger):
             name="console_messenger",
             handler=StreamHandler(),
             level=logging.INFO,
-            log_format="[%(levelname)-8s] [%(asctime)s] %(message)s",
+            log_format="[%(levelname)-8s] %(message)s",
             date_format="%H:%M:%S",
         )
 
@@ -155,7 +155,7 @@ class ConsoleMessenger(InputMessenger):
         self._console_queue.append(
             lambda: self._console_logger.log(
                 level=logging.INFO,
-                msg=f"[{task_name}] Task status: {status}. {message}",
+                msg=f"{task_name} is {status}. {message}",
             )
         )
         # Signal that there is a task in the queue
