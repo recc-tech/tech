@@ -1,141 +1,100 @@
-from typing import List, Tuple
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
+from pathlib import Path
 
-from PIL import Image as ImageModule
-from PIL import ImageDraw, ImageFont
-from PIL.Image import Image
-from PIL.ImageFont import FreeTypeFont
-
-IMG_WIDTH = 1640
-IMG_HEIGHT = 924
-MARGIN = 100
-FONT_FACE = "calibri.ttf"
+from slides import (
+    SlideOutput,
+    generate_fullscreen_slides,
+    load_json,
+    load_txt,
+    parse_slides,
+    save_json,
+)
 
 
 def main():
-    main_text = "⁹They said, ‘Whenever we are faced with any calamity such as war, plague, or famine, we can come to stand in your presence before this Temple where your name is honored. We can cry out to you to save us, and you will hear us and rescue us.’"
-    footer_text = "2 Chronicles 20:9 (NLT)"
-    img = fullscreen_slide(main_text, footer_text)
-    img.save("test.png", "PNG")
+    args = _parse_args()
+
+    output_directory: Path = args.out_dir
+
+    if args.text_input:
+        lines = load_txt(args.text_input)
+        slides = parse_slides(lines)
+        save_json(output_directory.joinpath("slides.json"), slides)
+    else:
+        slides = load_json(args.json_input)
+
+    images = generate_fullscreen_slides(slides)
+
+    for i, img in enumerate(images):
+        out_file = output_directory.joinpath(_slide_name(img, i))
+        img.image.save(out_file, format="PNG")
 
 
-def fullscreen_slide(
-    main_text: str, footer_text: str, show_bbox: bool = False
-) -> Image:
-    colour_mode = "L"
-    background = "white"
-    main_bbox = (MARGIN, MARGIN, IMG_WIDTH - MARGIN, IMG_HEIGHT - 3 * MARGIN)
-    main_foreground = "#333333"
-    main_font_size = 72
-    main_font = ImageFont.truetype(FONT_FACE, main_font_size)
-    footer_bbox = (
-        MARGIN,
-        IMG_HEIGHT - 2 * MARGIN,
-        IMG_WIDTH - MARGIN,
-        IMG_HEIGHT - MARGIN,
+def _parse_args() -> Namespace:
+    parser = ArgumentParser(description="Generate simple slides from text.")
+
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        "--text-input",
+        "-t",
+        type=lambda x: _parse_file(x, extension=".txt"),
+        help="Text file from which to take input.",
     )
-    footer_foreground = "dimgrey"
-    footer_font_size = 60
-    footer_font = ImageFont.truetype(FONT_FACE, footer_font_size)
-    line_spacing = 1.75
-
-    img = ImageModule.new(colour_mode, (IMG_WIDTH, IMG_HEIGHT), background)
-    draw = ImageDraw.Draw(img)
-    if show_bbox:
-        draw.rectangle(main_bbox, outline="black")
-        draw.rectangle(footer_bbox, outline="black")
-    wrapped_main_text = wrap_text(main_text, get_width(main_bbox), main_font)
-    line_height = get_height(main_font.getbbox("A"))  # type: ignore
-    draw.text(  # type: ignore
-        xy=(main_bbox[0], main_bbox[1]),
-        text=wrapped_main_text,
-        fill=main_foreground,
-        font=main_font,
-        spacing=line_height * (line_spacing - 1),
-        # Make the text bold
-        stroke_width=1,
-        stroke_fill=main_foreground,
-    )
-    draw.text(  # type: ignore
-        xy=(
-            footer_bbox[2],
-            get_vertical_center(footer_bbox),
-        ),
-        text=footer_text,
-        fill=footer_foreground,
-        font=footer_font,
-        align="right",
-        anchor="rm",
+    input_group.add_argument(
+        "--json-input",
+        "-j",
+        type=lambda x: _parse_file(x, extension=".json"),
+        help="JSON file from which to take input.",
     )
 
-    return img
+    parser.add_argument(
+        "--out-dir",
+        "-o",
+        required=True,
+        type=_parse_directory,
+        help="Directory in which to place the generated images.",
+    )
+
+    return parser.parse_args()
 
 
-def lower_thirds_slide():
-    # TODO: Make lower thirds slides
-    # NOTE: To center the text, call draw.text() with align="center", anchor="mm", and xy set to the middle of the desired bounding box
-    ...
+# TODO: Move these kinds of argument parsing helpers to a separate file?
+def _parse_file(filename: str, extension: str = "") -> Path:
+    path = Path(filename)
+
+    if not path.exists():
+        raise ArgumentTypeError(f"Path '{filename}' does not exist.")
+    if not path.is_file():
+        raise ArgumentTypeError(f"Path '{filename}' is not a file.")
+    # TODO: Check whether the path is accessible?
+
+    if extension:
+        if path.suffix != extension:
+            raise ArgumentTypeError(
+                f"Expected a file with a {extension} extension, but received a {path.suffix} file."
+            )
+
+    return path.resolve()
 
 
-def wrap_text(text: str, max_width: int, font: FreeTypeFont) -> str:
-    # TODO: replace other whitespace (e.g., tabs) with spaces
-    text = text.strip().replace("\r\n", "\n")
-    # Keep line breaks that the user manually chose
-    lines = [line for line in text.split("\n") if line]
-    return "\n".join([wrap_line(line, max_width, font) for line in lines])
+def _parse_directory(path_str: str) -> Path:
+    path = Path(path_str)
+
+    if not path.exists():
+        raise ArgumentTypeError(f"Path '{path_str}' does not exist.")
+    if not path.is_dir():
+        raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
+    # TODO: Check whether the path is accessible?
+
+    path = path.resolve()
+    return path
 
 
-def wrap_line(line: str, max_width: int, font: FreeTypeFont) -> str:
-    words = [w for w in line.split(" ") if w]
-    output_lines: List[str] = []
-    while words:
-        (wrapped_line, words) = extract_max_prefix(words, max_width, font)
-        output_lines.append(wrapped_line)
-    return "\n".join(output_lines)
-
-
-def extract_max_prefix(
-    words: List[str], max_width: int, font: FreeTypeFont
-) -> Tuple[str, List[str]]:
-    """
-    Return as many words as can fit on one line, along with the remaining words. At least one word will be taken regardless of its length.
-    """
-    if not words:
-        raise ValueError("No words provided.")
-    words = list(words)  # Avoid side effects
-    output = words[0]
-    words = words[1:]
-    while True:
-        if not words:
-            break
-        next_word = words[0]
-        longer_output = f"{output} {next_word}"
-        width = get_width(font.getbbox(longer_output))  # type: ignore
-        if width > max_width:
-            break
-        else:
-            output = longer_output
-            words = words[1:]
-    return (output, words)
-
-
-def get_width(bbox: Tuple[int, int, int, int]) -> int:
-    left, _, right, _ = bbox
-    return right - left
-
-
-def get_horizontal_center(bbox: Tuple[int, int, int, int]) -> float:
-    left, _, right, _ = bbox
-    return left + (right - left) / 2
-
-
-def get_height(bbox: Tuple[int, int, int, int]) -> int:
-    _, top, _, bottom = bbox
-    return bottom - top
-
-
-def get_vertical_center(bbox: Tuple[int, int, int, int]) -> float:
-    _, top, _, bottom = bbox
-    return top + (bottom - top) / 2
+def _slide_name(slide: SlideOutput, index: int) -> str:
+    name = slide.name if slide.name else f"Slide {index}.png"
+    if not name.lower().endswith(".png"):
+        name = f"{name}.png"
+    return name
 
 
 if __name__ == "__main__":
