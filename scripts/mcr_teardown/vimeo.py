@@ -76,7 +76,6 @@ class ReccVimeoClient:
                 key=client_id,
                 secret=client_secret,
             )
-            # TODO: Lazily test the credentials (so that the connection isn't tested unless necessary)? Put this behind a command-line flag
             if self._is_connection_valid(client):
                 return client
         raise RuntimeError(
