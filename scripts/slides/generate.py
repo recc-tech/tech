@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Literal, Tuple
 
+from autochecklist import Messenger, ProblemLevel
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
 
@@ -11,108 +12,204 @@ FONT_FACE = "calibri.ttf"
 
 
 @dataclass
-class SlideInput:
+class SlideBlueprint:
+    _next_file_number = 1
+
     body_text: str
     footer_text: str
     name: str = ""
 
+    def __init__(self, body: str, footer: str, name: str, generate_name: bool = False):
+        self.body_text = body.strip()
+        self.footer_text = footer.strip()
+        self.name = name.strip()
+
+        if not self.name:
+            if generate_name:
+                self.name = f"Slide {SlideBlueprint._next_file_number}"
+                SlideBlueprint._next_file_number += 1
+            else:
+                message = f'Missing name for slide blueprint with body "{body}"'
+                if footer:
+                    message += f' and footer "{footer}"'
+                message += "."
+                raise ValueError(message)
+
 
 @dataclass
-class SlideOutput:
+class Slide:
     image: Image.Image
     name: str
 
 
-def generate_fullscreen_slides(slides: List[SlideInput]) -> List[SlideOutput]:
-    return [
-        _generate_fullscreen_slide_with_footer(s)
-        if s.footer_text
-        else _generate_fullscreen_slide_without_footer(s)
-        for s in slides
-    ]
+@dataclass
+class _Bbox:
+    left: int
+    top: int
+    right: int
+    bottom: int
+
+    def get_horizontal_centre(self) -> float:
+        return self.left + (self.right - self.left) / 2
+
+    def get_vertical_centre(self) -> float:
+        return self.top + (self.bottom - self.top) / 2
+
+    def get_width(self) -> int:
+        return self.right - self.left
+
+    def get_height(self) -> int:
+        return self.bottom - self.top
 
 
-def generate_lower_thirds_slide():
-    # TODO: Make lower thirds slides
-    # NOTE: To center the text, call draw.text() with align="center", anchor="mm", and xy set to the middle of the desired bounding box
-    ...
+class SlideGenerator:
+    def __init__(self, messenger: Messenger):
+        self._messenger = messenger
 
+    def generate_fullscreen_slides(self, slides: List[SlideBlueprint]) -> List[Slide]:
+        return [
+            self._generate_fullscreen_slide_with_footer(s)
+            if s.footer_text
+            else self._generate_fullscreen_slide_without_footer(s)
+            for s in slides
+        ]
 
-# TODO: Warn the user or something if the text overflows the bounding box?
-def _generate_fullscreen_slide_with_footer(input: SlideInput) -> SlideOutput:
-    colour_mode = "L"
-    background = "white"
-    main_bbox = (MARGIN, MARGIN, IMG_WIDTH - MARGIN, IMG_HEIGHT - 3 * MARGIN)
-    main_foreground = "#333333"
-    main_font_size = 72
-    main_font = ImageFont.truetype(FONT_FACE, main_font_size)
-    footer_bbox = (
-        MARGIN,
-        IMG_HEIGHT - 2 * MARGIN,
-        IMG_WIDTH - MARGIN,
-        IMG_HEIGHT - MARGIN,
-    )
-    footer_foreground = "dimgrey"
-    footer_font_size = 60
-    footer_font = ImageFont.truetype(FONT_FACE, footer_font_size)
-    line_spacing = 1.75
+    def generate_lower_thirds_slide(self):
+        # TODO: Make lower thirds slides
+        ...
 
-    img = Image.new(colour_mode, (IMG_WIDTH, IMG_HEIGHT), background)
-    draw = ImageDraw.Draw(img)
-    wrapped_main_text = _wrap_text(input.body_text, _get_width(main_bbox), main_font)
-    line_height = _get_height(main_font.getbbox("A"))  # type: ignore
-    draw.text(  # type: ignore
-        xy=(main_bbox[0], main_bbox[1]),
-        text=wrapped_main_text,
-        fill=main_foreground,
-        font=main_font,
-        spacing=line_height * (line_spacing - 1),
-        # Make the text bold
-        stroke_width=1,
-        stroke_fill=main_foreground,
-    )
-    draw.text(  # type: ignore
-        xy=(
-            footer_bbox[2],
-            _get_vertical_center(footer_bbox),
-        ),
-        text=input.footer_text,
-        fill=footer_foreground,
-        font=footer_font,
-        align="right",
-        anchor="rm",
-    )
+    def _generate_fullscreen_slide_with_footer(self, input: SlideBlueprint) -> Slide:
+        # TODO: Move the fonts out of the method so that the font file doesn't get opened repeatedly?
+        main_font = ImageFont.truetype(FONT_FACE, size=72)
+        footer_font = ImageFont.truetype(FONT_FACE, size=60)
 
-    return SlideOutput(image=img, name=input.name)
+        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
+        draw = ImageDraw.Draw(img)
+        self._draw_text(
+            draw=draw,
+            text=input.body_text,
+            bbox=_Bbox(
+                left=MARGIN,
+                top=MARGIN,
+                right=IMG_WIDTH - MARGIN,
+                bottom=IMG_HEIGHT - 3 * MARGIN,
+            ),
+            horiz_align="left",
+            vert_align="top",
+            font=main_font,
+            foreground="#333333",
+            stroke_width=1,  # bold
+            line_spacing=1.75,
+            slide_name=input.name,
+        )
+        self._draw_text(
+            draw=draw,
+            text=input.footer_text,
+            bbox=_Bbox(
+                MARGIN,
+                IMG_HEIGHT - 2 * MARGIN,
+                IMG_WIDTH - MARGIN,
+                IMG_HEIGHT - MARGIN,
+            ),
+            horiz_align="right",
+            vert_align="center",
+            font=footer_font,
+            foreground="dimgrey",
+            stroke_width=0,
+            line_spacing=1.75,
+            slide_name=input.name,
+        )
+        return Slide(image=img, name=input.name)
 
+    def _generate_fullscreen_slide_without_footer(self, input: SlideBlueprint) -> Slide:
+        font = ImageFont.truetype(FONT_FACE, size=72)
 
-def _generate_fullscreen_slide_without_footer(input: SlideInput) -> SlideOutput:
-    colour_mode = "L"
-    background = "white"
-    main_bbox = (MARGIN, MARGIN, IMG_WIDTH - MARGIN, IMG_HEIGHT - MARGIN)
-    main_foreground = "#333333"
-    main_font_size = 72
-    main_font = ImageFont.truetype(FONT_FACE, main_font_size)
-    line_spacing = 1.75
+        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
+        draw = ImageDraw.Draw(img)
+        self._draw_text(
+            draw=draw,
+            text=input.body_text,
+            bbox=_Bbox(MARGIN, MARGIN, IMG_WIDTH - MARGIN, IMG_HEIGHT - MARGIN),
+            horiz_align="center",
+            vert_align="center",
+            font=font,
+            foreground="#333333",
+            stroke_width=1,  # bold
+            line_spacing=1.75,
+            slide_name=input.name,
+        )
+        return Slide(image=img, name=input.name)
 
-    img = Image.new(colour_mode, (IMG_WIDTH, IMG_HEIGHT), background)
-    draw = ImageDraw.Draw(img)
-    wrapped_main_text = _wrap_text(input.body_text, _get_width(main_bbox), main_font)
-    line_height = _get_height(main_font.getbbox("A"))  # type: ignore
-    draw.text(  # type: ignore
-        xy=(_get_horizontal_center(main_bbox), _get_vertical_center(main_bbox)),
-        text=wrapped_main_text,
-        fill=main_foreground,
-        font=main_font,
-        spacing=line_height * (line_spacing - 1),
-        align="center",
-        anchor="mm",
-        # Make the text bold
-        stroke_width=1,
-        stroke_fill=main_foreground,
-    )
+    def _draw_text(
+        self,
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        bbox: _Bbox,
+        horiz_align: Literal["left", "center", "right"],
+        vert_align: Literal["top", "center", "bottom"],
+        font: FreeTypeFont,
+        foreground: str,
+        stroke_width: int,
+        line_spacing: float,
+        slide_name: str,
+    ):
+        wrapped_text = _wrap_text(text, bbox.get_width(), font)
 
-    return SlideOutput(image=img, name=input.name)
+        anchor_horiz = (
+            "l" if horiz_align == "left" else "r" if horiz_align == "right" else "m"
+        )
+        anchor_vert = (
+            "a" if vert_align == "top" else "d" if vert_align == "bottom" else "m"
+        )
+        anchor = f"{anchor_horiz}{anchor_vert}"
+
+        x = (
+            bbox.left
+            if horiz_align == "left"
+            else bbox.right
+            if horiz_align == "right"
+            else bbox.get_horizontal_centre()
+        )
+        y = (
+            bbox.top
+            if vert_align == "top"
+            else bbox.bottom
+            if vert_align == "bottom"
+            else bbox.get_vertical_centre()
+        )
+        xy = (x, y)
+
+        line_height = _get_font_bbox("A", font).get_height()
+        textbbox = _Bbox(
+            *draw.textbbox(
+                xy=xy,
+                text=wrapped_text,
+                font=font,
+                spacing=line_height * (line_spacing - 1),
+                align=horiz_align,
+                anchor=anchor,
+                stroke_width=stroke_width,
+            )
+        )
+        if (
+            textbbox.get_height() > bbox.get_height()
+            or textbbox.get_width() > bbox.get_width()
+        ):
+            self._messenger.log_problem(
+                ProblemLevel.WARN,
+                f"The text in slide '{slide_name}' does not fit within the normal text box.",
+            )
+        draw.text(  # type: ignore
+            xy=xy,
+            text=wrapped_text,
+            fill=foreground,
+            font=font,
+            spacing=line_height * (line_spacing - 1),
+            align=horiz_align,
+            anchor=anchor,
+            stroke_width=stroke_width,
+            stroke_fill=foreground,
+        )
 
 
 def _wrap_text(text: str, max_width: int, font: FreeTypeFont) -> str:
@@ -148,7 +245,7 @@ def _extract_max_prefix(
             break
         next_word = words[0]
         longer_output = f"{output} {next_word}"
-        width = _get_width(font.getbbox(longer_output))  # type: ignore
+        width = _get_font_bbox(longer_output, font).get_width()
         if width > max_width:
             break
         else:
@@ -157,21 +254,5 @@ def _extract_max_prefix(
     return (output, words)
 
 
-def _get_width(bbox: Tuple[int, int, int, int]) -> int:
-    left, _, right, _ = bbox
-    return right - left
-
-
-def _get_height(bbox: Tuple[int, int, int, int]) -> int:
-    _, top, _, bottom = bbox
-    return bottom - top
-
-
-def _get_horizontal_center(bbox: Tuple[int, int, int, int]) -> float:
-    left, _, right, _ = bbox
-    return left + (right - left) / 2
-
-
-def _get_vertical_center(bbox: Tuple[int, int, int, int]) -> float:
-    _, top, _, bottom = bbox
-    return top + (bottom - top) / 2
+def _get_font_bbox(text: str, font: FreeTypeFont) -> _Bbox:
+    return _Bbox(*font.getbbox(text))  # type: ignore

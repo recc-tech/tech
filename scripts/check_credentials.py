@@ -20,7 +20,7 @@ def main():
     log_dir = args.home_dir.joinpath("Logs")
     date_ymd = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
-    log_file = log_dir.joinpath(f"{date_ymd} {current_time} credentials.log")
+    log_file = log_dir.joinpath(f"{date_ymd} {current_time} check_credentials.log")
     file_messenger = FileMessenger(log_file=log_file)
     console_messenger = ConsoleMessenger(
         description="This script will test the credentials for various services we connect to. You will be asked to enter any missing or incorrect ones if necessary."

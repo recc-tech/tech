@@ -1,52 +1,88 @@
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
+from datetime import datetime
 from pathlib import Path
+from typing import List
 
-from slides import (
-    SlideOutput,
-    generate_fullscreen_slides,
-    load_json,
-    load_txt,
-    parse_slides,
-    save_json,
+from autochecklist import (
+    ConsoleMessenger,
+    FileMessenger,
+    Messenger,
+    TaskStatus,
+    set_current_task_name,
 )
+from slides import SlideBlueprint, SlideBlueprintReader, SlideGenerator
 
 
 def main():
     args = _parse_args()
-
     output_directory: Path = args.out_dir
+    home_directory: Path = args.home_dir
 
-    if args.text_input:
-        lines = load_txt(args.text_input)
-        slides = parse_slides(lines)
-        save_json(output_directory.joinpath("slides.json"), slides)
-    else:
-        slides = load_json(args.json_input)
+    log_dir = home_directory.joinpath("Logs")
+    date_ymd = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H-%M-%S")
+    log_file = log_dir.joinpath(f"{date_ymd} {current_time} generate_slides.log")
+    file_messenger = FileMessenger(log_file)
+    input_messenger = ConsoleMessenger(
+        description="This script will generate simple slides to be used in case the usual system is not working properly."
+    )
+    messenger = Messenger(file_messenger, input_messenger)
 
-    images = generate_fullscreen_slides(slides)
+    reader = SlideBlueprintReader(messenger)
 
-    for i, img in enumerate(images):
-        out_file = output_directory.joinpath(_slide_name(img, i))
-        img.image.save(out_file, format="PNG")
+    blueprints: List[SlideBlueprint] = []
+    if args.json_input:
+        set_current_task_name("load_json")
+        blueprints += reader.load_json(args.json_input)
+    if args.message_notes:
+        set_current_task_name("load_message_notes")
+        blueprints += reader.load_message_notes(args.message_notes)
+    if args.lyrics:
+        set_current_task_name("load_lyrics")
+        for lyrics_file in args.lyrics:
+            blueprints += reader.load_lyrics(lyrics_file)
+
+    if not args.json_input:
+        set_current_task_name("save_json")
+        reader.save_json(output_directory.joinpath("slides.json"), blueprints)
+
+    set_current_task_name("generate_slides")
+    generator = SlideGenerator(messenger)
+    slides = generator.generate_fullscreen_slides(blueprints)
+
+    set_current_task_name("save_slides")
+    for s in slides:
+        path = output_directory.joinpath(s.name)
+        if path.suffix.lower() != ".png":
+            path = path.with_suffix(".png")
+        s.image.save(path, format="PNG")
+
+    messenger.log_status(TaskStatus.DONE, "All done!", task_name="SCRIPT MAIN")
+    messenger.close()
 
 
 def _parse_args() -> Namespace:
     parser = ArgumentParser(description="Generate simple slides from text.")
 
-    input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        "--text-input",
-        "-t",
+    parser.add_argument(
+        "--message-notes",
+        "-n",
         type=lambda x: _parse_file(x, extension=".txt"),
-        help="Text file from which to take input.",
+        help="Text file from which to read the message notes.",
     )
-    input_group.add_argument(
+    parser.add_argument(
+        "--lyrics",
+        "-l",
+        type=lambda x: _parse_file(x, extension=".txt"),
+        action="append",
+        help="Text file from which to read song lyrics.",
+    )
+    parser.add_argument(
         "--json-input",
         "-j",
         type=lambda x: _parse_file(x, extension=".json"),
         help="JSON file from which to take input.",
     )
-
     parser.add_argument(
         "--out-dir",
         "-o",
@@ -55,7 +91,22 @@ def _parse_args() -> Namespace:
         help="Directory in which to place the generated images.",
     )
 
-    return parser.parse_args()
+    advanced_args = parser.add_argument_group("Advanced arguments")
+    advanced_args.add_argument(
+        "--home-dir",
+        type=_parse_directory,
+        default="D:\\Users\\Tech\\Documents",
+        help="The home directory.",
+    )
+
+    args = parser.parse_args()
+
+    if not args.message_notes and not args.lyrics and not args.json_input:
+        parser.error("You must specify at least one form of input file.")
+    if (args.message_notes or args.lyrics) and args.json_input:
+        parser.error("You cannot provide both plaintext input and JSON input.")
+
+    return args
 
 
 # TODO: Move these kinds of argument parsing helpers to a separate file?
@@ -88,13 +139,6 @@ def _parse_directory(path_str: str) -> Path:
 
     path = path.resolve()
     return path
-
-
-def _slide_name(slide: SlideOutput, index: int) -> str:
-    name = slide.name if slide.name else f"Slide {index}.png"
-    if not name.lower().endswith(".png"):
-        name = f"{name}.png"
-    return name
 
 
 if __name__ == "__main__":
