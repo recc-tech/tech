@@ -142,4 +142,7 @@ def _parse_directory(path_str: str) -> Path:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Program cancelled.")

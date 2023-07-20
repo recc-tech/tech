@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ctypes
 import logging
 from collections import deque
@@ -123,6 +125,14 @@ class FileMessenger:
 
 
 class ConsoleMessenger(InputMessenger):
+    class _LogTask:
+        run: Callable[[], Any]
+        is_input: bool
+
+        def __init__(self, run: Callable[[], Any], is_input: bool):
+            self.run = run
+            self.is_input = is_input
+
     # TODO: Make the logs look nicer (e.g., only the latest message from each thread? add colour?)
 
     def __init__(self, description: str):
@@ -140,36 +150,48 @@ class ConsoleMessenger(InputMessenger):
         )
 
         # Push tasks to a queue and have a dedicated thread handle those operations
-        self._console_queue: Deque[Callable[[], Any]] = deque()
-        self._console_semaphore = Semaphore(0)
+        self._task_queue: Deque[ConsoleMessenger._LogTask] = deque()
+        self._task_queue_cleared_lock = Lock()
+        self._task_queue_cleared_lock.acquire()
+        self._task_semaphore = Semaphore(0)
         self._start_thread(
-            name="ConsoleMessenger",
-            semaphore=self._console_semaphore,
-            queue=self._console_queue,
+            "ConsoleMessenger",
         )
 
         # Use an instance variable to send user input between threads
         self._input_value = ""
 
     def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
-        self._console_queue.append(
-            lambda: self._console_logger.log(
-                level=logging.INFO,
-                msg=f"{task_name} is {status}. {message}",
+        if self._should_exit or self._shutdown_requested:
+            return
+
+        self._task_queue.append(
+            ConsoleMessenger._LogTask(
+                run=lambda: self._console_logger.log(
+                    level=logging.INFO,
+                    msg=f"{task_name} is {status}. {message}",
+                ),
+                is_input=False,
             )
         )
         # Signal that there is a task in the queue
-        self._console_semaphore.release()
+        self._task_semaphore.release()
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        self._console_queue.append(
-            lambda: self._console_logger.log(
-                level=level.to_log_level(),
-                msg=f"[{task_name}] {message}",
+        if self._should_exit or self._shutdown_requested:
+            return
+
+        self._task_queue.append(
+            ConsoleMessenger._LogTask(
+                run=lambda: self._console_logger.log(
+                    level=level.to_log_level(),
+                    msg=f"[{task_name}] {message}",
+                ),
+                is_input=False,
             )
         )
         # Signal that there is a task in the queue
-        self._console_semaphore.release()
+        self._task_semaphore.release()
 
     def input(self, prompt: str) -> str:
         return self._input(prompt, input)
@@ -181,41 +203,57 @@ class ConsoleMessenger(InputMessenger):
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
         prompt = f"- [{task_name}] {prompt}"
-        self.input(f"{prompt} When you are done, press ENTER.")
+        # Use input_password so that pressing keys other than ENTER has no effect
+        self.input_password(f"{prompt} When you are done, press ENTER.")
 
     def close(self):
         self._should_exit = True
         # Pretend there's one more entry in the queue to get the threads to exit
-        self._console_semaphore.release()
+        self._task_semaphore.release()
+        # Wait for the queue to be cleared
+        self._task_queue_cleared_lock.acquire()
 
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
 
     def _start_thread(
-        self, name: str, semaphore: Semaphore, queue: Deque[Callable[[], Any]]
+        self,
+        name: str,
     ):
+        def clear_queue():
+            while self._task_queue:
+                task = self._task_queue.popleft()
+                if not task.is_input:
+                    task.run()
+
         def console_tasks_thread():
-            while True:
-                # Wait for there to be a task in the queue
-                semaphore.acquire()
+            try:
+                while True:
+                    # Wait for there to be a task in the queue
+                    self._task_semaphore.acquire()
 
-                # Exit only once the queue is empty
-                if self._should_exit and len(queue) == 0:
-                    return
+                    if self._should_exit or self._shutdown_requested:
+                        clear_queue()
+                        return
 
-                task = queue.popleft()
-                # CTRL+C causes an EOFError if the program was waiting for input
-                # The KeyboardInterrupt should also be raised in the main thread, so no need to display anything here
-                # TODO: Finish any remaining output tasks?
-                try:
-                    task()
-                except (EOFError, KeyboardInterrupt):
-                    self._shutdown_requested = True
-                    return
+                    task = self._task_queue.popleft()
+                    # CTRL+C causes an EOFError if the program was waiting for input
+                    # The KeyboardInterrupt should also be raised in the main thread, so no need to display anything here
+                    try:
+                        task.run()
+                    except (EOFError, KeyboardInterrupt):
+                        self._shutdown_requested = True
+                        clear_queue()
+                        return
+            finally:
+                self._task_queue_cleared_lock.release()
 
         Thread(target=console_tasks_thread, name=name, daemon=True).start()
 
     def _input(self, prompt: str, input_func: Callable[[str], str]) -> str:
+        if self._should_exit or self._shutdown_requested:
+            return ""
+
         # Use a lock so that this function blocks until the task has run
         lock = Lock()
         lock.acquire()
@@ -224,9 +262,11 @@ class ConsoleMessenger(InputMessenger):
             self._input_value = input_func(prompt)
             lock.release()
 
-        self._console_queue.append(input_task)
+        self._task_queue.append(
+            ConsoleMessenger._LogTask(run=input_task, is_input=True)
+        )
         # Signal that there is a task in the queue
-        self._console_semaphore.release()
+        self._task_semaphore.release()
 
         # Wait for the task to be done
         lock.acquire()
