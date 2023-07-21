@@ -7,10 +7,12 @@ from PIL.ImageFont import FreeTypeFont
 
 IMG_WIDTH = 1640
 IMG_HEIGHT = 924
-MARGIN = 100
+OUTER_MARGIN = 100
+INNER_MARGIN = 25
 FONT_FACE = "calibri.ttf"
 
 
+# TODO: Use larger spacing for lyrics compared to notes/scripture? Or just increase the spacing so as to fill the entire vertical space?
 @dataclass
 class SlideBlueprint:
     _next_file_number = 1
@@ -66,17 +68,26 @@ class SlideGenerator:
     def __init__(self, messenger: Messenger):
         self._messenger = messenger
 
-    def generate_fullscreen_slides(self, slides: List[SlideBlueprint]) -> List[Slide]:
+    def generate_fullscreen_slides(
+        self, blueprints: List[SlideBlueprint]
+    ) -> List[Slide]:
         return [
-            self._generate_fullscreen_slide_with_footer(s)
-            if s.footer_text
-            else self._generate_fullscreen_slide_without_footer(s)
-            for s in slides
+            self._generate_fullscreen_slide_with_footer(b)
+            if b.footer_text
+            else self._generate_fullscreen_slide_without_footer(b)
+            for b in blueprints
         ]
 
-    def generate_lower_thirds_slide(self):
-        # TODO: Make lower thirds slides
-        ...
+    def generate_lower_third_slide(
+        self, blueprints: List[SlideBlueprint], show_backdrop: bool
+    ) -> List[Slide]:
+        # TODO: Let the user choose whether or not to put a semi-opaque backdrop?
+        return [
+            self._generate_lower_third_slide_with_footer(b, show_backdrop)
+            if b.footer_text
+            else self._generate_lower_third_slide_without_footer(b, show_backdrop)
+            for b in blueprints
+        ]
 
     def _generate_fullscreen_slide_with_footer(self, input: SlideBlueprint) -> Slide:
         # TODO: Move the fonts out of the method so that the font file doesn't get opened repeatedly?
@@ -89,10 +100,10 @@ class SlideGenerator:
             draw=draw,
             text=input.body_text,
             bbox=_Bbox(
-                left=MARGIN,
-                top=MARGIN,
-                right=IMG_WIDTH - MARGIN,
-                bottom=IMG_HEIGHT - 3 * MARGIN,
+                left=OUTER_MARGIN,
+                top=OUTER_MARGIN,
+                right=IMG_WIDTH - OUTER_MARGIN,
+                bottom=IMG_HEIGHT - 3 * OUTER_MARGIN,
             ),
             horiz_align="left",
             vert_align="top",
@@ -106,10 +117,10 @@ class SlideGenerator:
             draw=draw,
             text=input.footer_text,
             bbox=_Bbox(
-                MARGIN,
-                IMG_HEIGHT - 2 * MARGIN,
-                IMG_WIDTH - MARGIN,
-                IMG_HEIGHT - MARGIN,
+                OUTER_MARGIN,
+                IMG_HEIGHT - 2 * OUTER_MARGIN,
+                IMG_WIDTH - OUTER_MARGIN,
+                IMG_HEIGHT - OUTER_MARGIN,
             ),
             horiz_align="right",
             vert_align="center",
@@ -129,7 +140,12 @@ class SlideGenerator:
         self._draw_text(
             draw=draw,
             text=input.body_text,
-            bbox=_Bbox(MARGIN, MARGIN, IMG_WIDTH - MARGIN, IMG_HEIGHT - MARGIN),
+            bbox=_Bbox(
+                OUTER_MARGIN,
+                OUTER_MARGIN,
+                IMG_WIDTH - OUTER_MARGIN,
+                IMG_HEIGHT - OUTER_MARGIN,
+            ),
             horiz_align="center",
             vert_align="center",
             font=font,
@@ -139,6 +155,101 @@ class SlideGenerator:
             slide_name=input.name,
         )
         return Slide(image=img, name=input.name)
+
+    def _generate_lower_third_slide_with_footer(
+        self, blueprint: SlideBlueprint, show_backdrop: bool
+    ) -> Slide:
+        body_font = ImageFont.truetype(FONT_FACE, size=48)
+        footer_font = ImageFont.truetype(FONT_FACE, size=44)
+
+        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
+        draw = ImageDraw.Draw(img)
+
+        if show_backdrop:
+            draw.rectangle(
+                (
+                    0,
+                    (IMG_HEIGHT * 2) // 3 - INNER_MARGIN,
+                    IMG_WIDTH,
+                    IMG_HEIGHT - OUTER_MARGIN + INNER_MARGIN,
+                ),
+                fill="#00000088",
+            )
+        self._draw_text(
+            draw=draw,
+            text=blueprint.body_text,
+            bbox=_Bbox(
+                left=OUTER_MARGIN,
+                top=(IMG_HEIGHT * 2) // 3,
+                right=IMG_WIDTH - OUTER_MARGIN,
+                bottom=IMG_HEIGHT - OUTER_MARGIN - 50,
+            ),
+            horiz_align="left",
+            vert_align="top",
+            font=body_font,
+            foreground="white",
+            stroke_width=1,
+            line_spacing=1.5,
+            slide_name=blueprint.name,
+        )
+        self._draw_text(
+            draw=draw,
+            text=blueprint.footer_text,
+            bbox=_Bbox(
+                left=OUTER_MARGIN,
+                top=IMG_HEIGHT - OUTER_MARGIN - 40,
+                right=IMG_WIDTH - OUTER_MARGIN,
+                bottom=IMG_HEIGHT - OUTER_MARGIN,
+            ),
+            horiz_align="right",
+            vert_align="center",
+            font=footer_font,
+            foreground="#DDDDDD",
+            stroke_width=0,
+            line_spacing=1,
+            slide_name=blueprint.name,
+        )
+
+        return Slide(image=img, name=blueprint.name)
+
+    def _generate_lower_third_slide_without_footer(
+        self, blueprint: SlideBlueprint, show_backdrop: bool
+    ) -> Slide:
+        font = ImageFont.truetype(FONT_FACE, size=56)
+
+        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
+        draw = ImageDraw.Draw(img)
+
+        if show_backdrop:
+            draw.rectangle(
+                (
+                    0,
+                    (IMG_HEIGHT * 2) // 3 - INNER_MARGIN,
+                    IMG_WIDTH,
+                    IMG_HEIGHT - OUTER_MARGIN + INNER_MARGIN,
+                ),
+                fill="#00000088",
+            )
+
+        self._draw_text(
+            draw=draw,
+            text=blueprint.body_text,
+            bbox=_Bbox(
+                left=OUTER_MARGIN,
+                top=(IMG_HEIGHT * 2) // 3,
+                right=IMG_WIDTH - OUTER_MARGIN,
+                bottom=IMG_HEIGHT - OUTER_MARGIN,
+            ),
+            horiz_align="center",
+            vert_align="center",
+            font=font,
+            foreground="white",
+            stroke_width=1,
+            line_spacing=2,
+            slide_name=blueprint.name,
+        )
+
+        return Slide(image=img, name=blueprint.name)
 
     def _draw_text(
         self,

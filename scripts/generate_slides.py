@@ -12,6 +12,12 @@ from autochecklist import (
 )
 from slides import SlideBlueprint, SlideBlueprintReader, SlideGenerator
 
+DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
+
+FULLSCREEN_STYLE = "fullscreen"
+LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
+LOWER_THIRD_DARK_STYLE = "lower-third-dark"
+
 
 def main():
     args = _parse_args()
@@ -23,46 +29,62 @@ def main():
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_dir.joinpath(f"{date_ymd} {current_time} generate_slides.log")
     file_messenger = FileMessenger(log_file)
-    input_messenger = ConsoleMessenger(
-        description="This script will generate simple slides to be used in case the usual system is not working properly."
-    )
+    input_messenger = ConsoleMessenger(description=DESCRIPTION)
     messenger = Messenger(file_messenger, input_messenger)
 
-    reader = SlideBlueprintReader(messenger)
+    try:
+        reader = SlideBlueprintReader(messenger)
 
-    blueprints: List[SlideBlueprint] = []
-    if args.json_input:
-        set_current_task_name("load_json")
-        blueprints += reader.load_json(args.json_input)
-    if args.message_notes:
-        set_current_task_name("load_message_notes")
-        blueprints += reader.load_message_notes(args.message_notes)
-    if args.lyrics:
-        set_current_task_name("load_lyrics")
-        for lyrics_file in args.lyrics:
-            blueprints += reader.load_lyrics(lyrics_file)
+        blueprints: List[SlideBlueprint] = []
+        if args.json_input:
+            set_current_task_name("load_json")
+            blueprints += reader.load_json(args.json_input)
+        if args.message_notes:
+            set_current_task_name("load_message_notes")
+            blueprints += reader.load_message_notes(args.message_notes)
+        if args.lyrics:
+            set_current_task_name("load_lyrics")
+            for lyrics_file in args.lyrics:
+                blueprints += reader.load_lyrics(lyrics_file)
 
-    if not args.json_input:
-        set_current_task_name("save_json")
-        reader.save_json(output_directory.joinpath("slides.json"), blueprints)
+        if not args.json_input:
+            set_current_task_name("save_json")
+            reader.save_json(output_directory.joinpath("slides.json"), blueprints)
 
-    set_current_task_name("generate_slides")
-    generator = SlideGenerator(messenger)
-    slides = generator.generate_fullscreen_slides(blueprints)
+        set_current_task_name("generate_slides")
+        generator = SlideGenerator(messenger)
+        if args.style == FULLSCREEN_STYLE:
+            slides = generator.generate_fullscreen_slides(blueprints)
+        elif args.style == LOWER_THIRD_CLEAR_STYLE:
+            slides = generator.generate_lower_third_slide(
+                blueprints, show_backdrop=False
+            )
+        elif args.style == LOWER_THIRD_DARK_STYLE:
+            slides = generator.generate_lower_third_slide(
+                blueprints, show_backdrop=True
+            )
+        else:
+            raise ValueError("")
 
-    set_current_task_name("save_slides")
-    for s in slides:
-        path = output_directory.joinpath(s.name)
-        if path.suffix.lower() != ".png":
-            path = path.with_suffix(".png")
-        s.image.save(path, format="PNG")
+        set_current_task_name("save_slides")
+        for s in slides:
+            path = output_directory.joinpath(s.name)
+            if path.suffix.lower() != ".png":
+                path = path.with_suffix(".png")
+            s.image.save(path, format="PNG")
 
-    messenger.log_status(TaskStatus.DONE, "All done!", task_name="SCRIPT MAIN")
-    messenger.close()
+        slide_or_slides = "slide" if len(slides) == 1 else "slides"
+        messenger.log_status(
+            TaskStatus.DONE,
+            f"All done! {len(slides)} {slide_or_slides} generated.",
+            task_name="SCRIPT MAIN",
+        )
+    finally:
+        messenger.close()
 
 
 def _parse_args() -> Namespace:
-    parser = ArgumentParser(description="Generate simple slides from text.")
+    parser = ArgumentParser(description=DESCRIPTION)
 
     parser.add_argument(
         "--message-notes",
@@ -89,6 +111,13 @@ def _parse_args() -> Namespace:
         required=True,
         type=_parse_directory,
         help="Directory in which to place the generated images.",
+    )
+    parser.add_argument(
+        "--style",
+        "-s",
+        default=FULLSCREEN_STYLE,
+        choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
+        help="Style of the slides.",
     )
 
     advanced_args = parser.add_argument_group("Advanced arguments")
