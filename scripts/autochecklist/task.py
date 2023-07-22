@@ -186,11 +186,12 @@ class TaskGraph:
         ]
         function_index = function_finder.find_functions(all_task_names)
 
-        graph = TaskGraph._load(tasks, function_index, messenger, config)
+        # Do things in this order so that the "not started" messages show up in topological order
+        before = None
         if len(before_tasks) > 0:
-            graph._before = TaskGraph._load(
-                before_tasks, function_index, messenger, config
-            )
+            before = TaskGraph._load(before_tasks, function_index, messenger, config)
+        graph = TaskGraph._load(tasks, function_index, messenger, config)
+        graph._before = before
         if len(after_tasks) > 0:
             graph._after = TaskGraph._load(
                 after_tasks, function_index, messenger, config
@@ -224,7 +225,9 @@ class TaskGraph:
 
         sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
 
-        for task_name in sorted_task_names:
+        # Log tasks in order, with dependent tasks after than the tasks they depend on (i.e., in the same order a
+        # person might actually perform the tasks)
+        for task_name in reversed(sorted_task_names):
             messenger.log_status(
                 TaskStatus.NOT_STARTED,
                 "This task has not yet started.",

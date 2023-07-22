@@ -629,6 +629,12 @@ class TkMessenger(InputMessenger):
         self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._tk.config(background=self._BACKGROUND_COLOUR)
 
+        screen_height = self._tk.winfo_screenheight()
+        approx_screen_width = 16 * screen_height / 9
+        window_width = int(approx_screen_width * 0.75)
+        window_height = (screen_height * 3) // 4
+        self._tk.geometry(f"{window_width}x{window_height}")
+
         self._root_frame = ScrollableFrame(self._tk)
 
         style = Style()
