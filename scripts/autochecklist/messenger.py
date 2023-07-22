@@ -133,8 +133,6 @@ class ConsoleMessenger(InputMessenger):
             self.run = run
             self.is_input = is_input
 
-    # TODO: Make the logs look nicer (e.g., only the latest message from each thread? add colour?)
-
     def __init__(self, description: str):
         print(f"{description}\n\n")
 
@@ -522,8 +520,6 @@ class TkMessenger(InputMessenger):
     _H2_FONT = "Calibri 18 bold"
 
     def __init__(self, description: str):
-        # TODO: Add a "header" text box with general instructions (and a goodbye message when the program is done?)
-
         self._shutdown_requested = False
         self._task_status_row: Dict[str, TaskStatusFrame] = {}
 

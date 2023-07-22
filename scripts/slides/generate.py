@@ -81,7 +81,6 @@ class SlideGenerator:
     def generate_lower_third_slide(
         self, blueprints: List[SlideBlueprint], show_backdrop: bool
     ) -> List[Slide]:
-        # TODO: Let the user choose whether or not to put a semi-opaque backdrop?
         return [
             self._generate_lower_third_slide_with_footer(b, show_backdrop)
             if b.footer_text
