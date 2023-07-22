@@ -23,6 +23,7 @@ from mcr_teardown import (
     McrTeardownConfig,
     ReccVimeoClient,
 )
+from parsing_helpers import parse_directory, parse_non_empty_string
 
 # TODO: Create a `MockBoxCastClient` for testing. Override all methods (set them to None? https://docs.python.org/3/library/exceptions.html#NotImplementedError) to prevent unintentionally doing things for real. Have `get()` just retrieve a corresponding HTML file. Have `click()`, `clear()`, `send_keys()`, etc. just record the fact that the click/input happened.
 # TODO: Also let user specify priority (e.g., so manual tasks are done first?)
@@ -34,6 +35,8 @@ from mcr_teardown import (
 # TODO: Make Messenger methods static so I can access them from anywhere without needing to pass the object around?
 # TODO: Close down Messenger properly in the event of an exception
 # TODO: Make console output coloured to better highlight warnings?
+
+DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
 
 
 def main():
@@ -50,13 +53,15 @@ def main():
     )
 
     file_messenger = FileMessenger(config.log_file)
-    description = f"This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues).\n\nIf you need to debug the program, see the log file at {config.log_file.resolve().as_posix()}."
+    extended_description = f"{DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.resolve().as_posix()}."
     input_messenger = (
         ConsoleMessenger(
-            f"{description}\n\nPress CTRL+C at any time to stop the script."
+            f"{extended_description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window."
         )
         if args.text_ui
-        else TkMessenger(description)
+        else TkMessenger(
+            f"{extended_description}\n\nIf you need to stop the script, close this window or the terminal window."
+        )
     )
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
@@ -138,13 +143,13 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-s",
         "--message-series",
-        type=_parse_non_empty_string,
+        type=parse_non_empty_string,
         help="Name of the series to which today's sermon belongs.",
     )
     parser.add_argument(
         "-t",
         "--message-title",
-        type=_parse_non_empty_string,
+        type=parse_non_empty_string,
         help="Title of today's sermon.",
     )
 
@@ -157,20 +162,20 @@ def _parse_args() -> Namespace:
     )
     boxcast_event_id_group.add_argument(
         "--boxcast-event-id",
-        type=_parse_non_empty_string,
+        type=parse_non_empty_string,
         help='ID of today\'s live event on BoxCast. For example, in the URL https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
     )
 
     advanced_args = parser.add_argument_group("Advanced arguments")
     advanced_args.add_argument(
         "--home-dir",
-        type=_parse_directory,
+        type=parse_directory,
         default="D:\\Users\\Tech\\Documents",
         help="The home directory.",
     )
     advanced_args.add_argument(
         "--downloads-dir",
-        type=_parse_directory,
+        type=parse_directory,
         default="D:\\Users\\Tech\\Downloads",
         help="The downloads directory, where the browser automatically places files after downloading them.",
     )
@@ -223,7 +228,7 @@ def _get_message_series():
     while True:
         raw_input = input("Enter the series to which today's message belongs:\n> ")
         try:
-            output = _parse_non_empty_string(raw_input)
+            output = parse_non_empty_string(raw_input)
             print()
             return output
         except ArgumentTypeError as e:
@@ -234,7 +239,7 @@ def _get_message_title():
     while True:
         raw_input = input("Enter the title of today's message:\n> ")
         try:
-            output = _parse_non_empty_string(raw_input)
+            output = parse_non_empty_string(raw_input)
             print()
             return output
         except ArgumentTypeError as e:
@@ -250,25 +255,6 @@ def _get_boxcast_event_id():
             return output
         except ArgumentTypeError as e:
             print(e)
-
-
-def _parse_non_empty_string(raw_input: str) -> str:
-    if not raw_input or not raw_input.strip():
-        raise ArgumentTypeError("The value cannot be empty.")
-    return raw_input.strip()
-
-
-def _parse_directory(path_str: str) -> Path:
-    path = Path(path_str)
-
-    if not path.exists():
-        raise ArgumentTypeError(f"Path '{path_str}' does not exist.")
-    if not path.is_dir():
-        raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
-    # TODO: Check whether the path is accessible?
-
-    path = path.resolve()
-    return path
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:

@@ -1,4 +1,4 @@
-from argparse import ArgumentParser, ArgumentTypeError, Namespace
+from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from pathlib import Path
 from typing import List
@@ -10,6 +10,7 @@ from autochecklist import (
     TaskStatus,
     set_current_task_name,
 )
+from parsing_helpers import parse_directory, parse_file
 from slides import SlideBlueprint, SlideBlueprintReader, SlideGenerator
 
 DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
@@ -87,34 +88,34 @@ def _parse_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
 
     parser.add_argument(
-        "--message-notes",
         "-n",
-        type=lambda x: _parse_file(x, extension=".txt"),
+        "--message-notes",
+        type=lambda x: parse_file(x, extension=".txt"),
         help="Text file from which to read the message notes.",
     )
     parser.add_argument(
-        "--lyrics",
         "-l",
-        type=lambda x: _parse_file(x, extension=".txt"),
+        "--lyrics",
+        type=lambda x: parse_file(x, extension=".txt"),
         action="append",
         help="Text file from which to read song lyrics.",
     )
     parser.add_argument(
-        "--json-input",
         "-j",
-        type=lambda x: _parse_file(x, extension=".json"),
+        "--json-input",
+        type=lambda x: parse_file(x, extension=".json"),
         help="JSON file from which to take input.",
     )
     parser.add_argument(
-        "--out-dir",
         "-o",
+        "--out-dir",
         required=True,
-        type=_parse_directory,
+        type=parse_directory,
         help="Directory in which to place the generated images.",
     )
     parser.add_argument(
-        "--style",
         "-s",
+        "--style",
         default=FULLSCREEN_STYLE,
         choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
@@ -123,7 +124,7 @@ def _parse_args() -> Namespace:
     advanced_args = parser.add_argument_group("Advanced arguments")
     advanced_args.add_argument(
         "--home-dir",
-        type=_parse_directory,
+        type=parse_directory,
         default="D:\\Users\\Tech\\Documents",
         help="The home directory.",
     )
@@ -136,38 +137,6 @@ def _parse_args() -> Namespace:
         parser.error("You cannot provide both plaintext input and JSON input.")
 
     return args
-
-
-# TODO: Move these kinds of argument parsing helpers to a separate file?
-def _parse_file(filename: str, extension: str = "") -> Path:
-    path = Path(filename)
-
-    if not path.exists():
-        raise ArgumentTypeError(f"Path '{filename}' does not exist.")
-    if not path.is_file():
-        raise ArgumentTypeError(f"Path '{filename}' is not a file.")
-    # TODO: Check whether the path is accessible?
-
-    if extension:
-        if path.suffix != extension:
-            raise ArgumentTypeError(
-                f"Expected a file with a {extension} extension, but received a {path.suffix} file."
-            )
-
-    return path.resolve()
-
-
-def _parse_directory(path_str: str) -> Path:
-    path = Path(path_str)
-
-    if not path.exists():
-        raise ArgumentTypeError(f"Path '{path_str}' does not exist.")
-    if not path.is_dir():
-        raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
-    # TODO: Check whether the path is accessible?
-
-    path = path.resolve()
-    return path
 
 
 if __name__ == "__main__":
