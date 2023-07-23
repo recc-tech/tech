@@ -10,6 +10,7 @@ from autochecklist.messenger import (
     ConsoleMessenger,
     FileMessenger,
     Messenger,
+    Parameter,
     ProblemLevel,
     TaskStatus,
     TkMessenger,

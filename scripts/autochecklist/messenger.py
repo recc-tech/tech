@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ctypes
 import logging
+from argparse import ArgumentTypeError
 from collections import deque
+from dataclasses import dataclass
 from enum import Enum, auto
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
@@ -10,7 +12,9 @@ from pathlib import Path
 from threading import Event, Lock, Semaphore, Thread, local
 from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
-from typing import Any, Callable, Deque, Dict, Union
+from typing import Any, Callable, Deque, Dict, TypeVar, Union
+
+T = TypeVar("T")
 
 thread_local = local()
 thread_local.current_task_name = None
@@ -78,6 +82,18 @@ class ProblemLevel(Enum):
         return self.name
 
 
+@dataclass
+class Parameter:
+    display_name: str
+    parser: Callable[[str], Any] = lambda x: x
+    password: bool = False
+    description: str = ""
+
+
+class InputCancelledException(Exception):
+    pass
+
+
 class InputMessenger:
     def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
         raise NotImplementedError()
@@ -91,10 +107,19 @@ class InputMessenger:
         """
         pass
 
-    def input(self, prompt: str) -> Union[str, None]:
+    def input(
+        self,
+        display_name: str,
+        password: bool,
+        parser: Callable[[str], T] = lambda x: x,
+        prompt: str = "",
+        title: str = "",
+    ) -> T:
         raise NotImplementedError()
 
-    def input_password(self, prompt: str) -> Union[str, None]:
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
+    ) -> Dict[str, Any]:
         raise NotImplementedError()
 
     def wait(self, task_name: str, prompt: str) -> None:
@@ -125,13 +150,10 @@ class FileMessenger:
 
 
 class ConsoleMessenger(InputMessenger):
+    @dataclass
     class _LogTask:
         run: Callable[[], Any]
         is_input: bool
-
-        def __init__(self, run: Callable[[], Any], is_input: bool):
-            self.run = run
-            self.is_input = is_input
 
     def __init__(self, description: str):
         print(f"{description}\n\n")
@@ -152,12 +174,7 @@ class ConsoleMessenger(InputMessenger):
         self._task_queue_cleared_lock = Lock()
         self._task_queue_cleared_lock.acquire()
         self._task_semaphore = Semaphore(0)
-        self._start_thread(
-            "ConsoleMessenger",
-        )
-
-        # Use an instance variable to send user input between threads
-        self._input_value = ""
+        self._start_thread(name="ConsoleMessenger")
 
     def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
         if self._should_exit or self._shutdown_requested:
@@ -191,18 +208,77 @@ class ConsoleMessenger(InputMessenger):
         # Signal that there is a task in the queue
         self._task_semaphore.release()
 
-    def input(self, prompt: str) -> str:
-        return self._input(prompt, input)
+    def input(
+        self,
+        display_name: str,
+        password: bool,
+        parser: Callable[[str], T] = lambda x: x,
+        prompt: str = "",
+        title: str = "",
+    ) -> T:
+        input_func = getpass if password else input
 
-    def input_password(self, prompt: str) -> str:
-        return self._input(prompt, getpass)
+        def read_input():
+            if prompt:
+                print()
+                print(prompt)
+            while True:
+                try:
+                    parsed_value = parser(input_func(f"{display_name}:\n> "))
+                    print()
+                    return parsed_value
+                except ArgumentTypeError as e:
+                    print(f"Invalid input: {e}")
+                    print()
+                except Exception as e:
+                    if isinstance(e, EOFError):
+                        raise
+                    print(f"An error occurred while taking input: {e}")
+                    print()
+
+        return self._input(read_input)
+
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
+    ) -> Dict[str, Any]:
+        def read_input():
+            if prompt:
+                print()
+                print(prompt)
+            results: Dict[str, Any] = {}
+            for name, param in params.items():
+                print()
+                input_func = getpass if param.password else input
+                first_attempt = True
+                while True:
+                    try:
+                        message = f"Enter the {param.display_name}."
+                        if param.description and first_attempt:
+                            message += f"\n{param.description}"
+                        message += "\n> "
+                        raw_value = input_func(message)
+                        results[name] = param.parser(raw_value)
+                        break
+                    except ArgumentTypeError as e:
+                        print(f"Invalid input: {e}")
+                        print()
+                    except Exception as e:
+                        if isinstance(e, EOFError):
+                            raise
+                        print(f"An error occurred while taking input: {e}")
+                        print()
+                    first_attempt = False
+            print()
+            return results
+
+        return self._input(read_input)
 
     def wait(self, task_name: str, prompt: str):
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
         prompt = f"- [{task_name}] {prompt}"
-        # Use input_password so that pressing keys other than ENTER has no effect
-        self.input_password(f"{prompt} When you are done, press ENTER.")
+        # Ask for a password so that pressing keys other than ENTER has no effect
+        self.input(f"{prompt} When you are done, press ENTER.", password=True)
 
     def close(self):
         self._should_exit = True
@@ -248,28 +324,43 @@ class ConsoleMessenger(InputMessenger):
 
         Thread(target=console_tasks_thread, name=name, daemon=True).start()
 
-    def _input(self, prompt: str, input_func: Callable[[str], str]) -> str:
-        if self._should_exit or self._shutdown_requested:
-            return ""
+    def _input(self, read_input: Callable[[], T]) -> T:
+        # read_input is the function to be called once this thread has control of the console. It should catch exceptions.
 
-        # Use a lock so that this function blocks until the task has run
+        if self._should_exit or self._shutdown_requested:
+            raise RuntimeError("Cannot take input: the user cancelled the program.")
+
+        # Use a lock so that this function blocks until the input is provided
         lock = Lock()
         lock.acquire()
 
+        # Set the value to None to get Pylance to stop complaining that it's unbound.
+        # The lock guarantees that the input function will get a chance to run before this function returns.
+        input_value: T = None  # type: ignore
+        exc: Union[BaseException, None] = None
+
         def input_task():
-            self._input_value = input_func(prompt)
-            lock.release()
+            nonlocal input_value, lock, exc
+            try:
+                input_value = read_input()
+            except (EOFError, KeyboardInterrupt) as e:
+                exc = e
+            finally:
+                lock.release()
 
         self._task_queue.append(
             ConsoleMessenger._LogTask(run=input_task, is_input=True)
         )
         # Signal that there is a task in the queue
         self._task_semaphore.release()
-
         # Wait for the task to be done
         lock.acquire()
 
-        return self._input_value
+        if isinstance(exc, BaseException):
+            # Why does Pylance think this has type Never? D:<
+            raise exc  # type: ignore
+
+        return input_value
 
 
 class ScrollableFrame(Frame):
@@ -346,6 +437,11 @@ class CopyableText(Text):
         )
 
     def set_text(self, text: str):
+        """
+        Updates the text displayed in this widget.
+
+        IMPORTANT: you MUST call a geometry management function for this widget (e.g., pack() or grid()) BEFORE calling this method.
+        """
         # If you don't call update_idletasks(), the GUI seems to be confused and rows added later will be all over
         # the place
         root = self.winfo_toplevel()
@@ -570,11 +666,102 @@ class TkMessenger(InputMessenger):
         frame.grid(sticky="W")
         self._root_frame.update_scrollregion()
 
-    def input(self, prompt: str, title: str = "") -> Union[str, None]:
-        return self._input(prompt, title)
+    def input(
+        self,
+        display_name: str,
+        password: bool,
+        parser: Callable[[str], Any] = lambda x: x,
+        prompt: str = "",
+        title: str = "Input",
+    ) -> Union[str, None]:
+        # simpledialog.askstring throws an exception each time :(
+        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
+        param = Parameter(display_name, parser, password, description=prompt)
+        results = self.input_multiple({"param": param}, prompt="", title=title)
+        return results["param"]
 
-    def input_password(self, prompt: str, title: str = "") -> Union[str, None]:
-        return self._input(prompt, title, show="*")
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
+    ) -> Dict[str, Any]:
+        # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
+
+        entry_by_name: Dict[str, Entry] = {}
+        error_message_by_name: Dict[str, CopyableText] = {}
+
+        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
+        try:
+            w.title(title)
+            if prompt:
+                prompt_box = Label(w, text=prompt)
+                prompt_box.grid()
+            for name, param in params.items():
+                entry_row = Frame(w)
+                entry_row.grid()
+                name_label = Label(entry_row, text=param.display_name)
+                name_label.grid(row=0, column=0)
+                if param.password:
+                    entry = Entry(entry_row, show="*")
+                else:
+                    entry = Entry(entry_row)
+                entry.grid(row=0, column=1)
+                entry_by_name[name] = entry
+                if param.description:
+                    description_box = CopyableText(
+                        w, background=self._BACKGROUND_COLOUR
+                    )
+                    description_box.grid()
+                    description_box.set_text(param.description)
+                error_message = CopyableText(w, background=self._BACKGROUND_COLOUR)
+                error_message.config(foreground="red")
+                error_message.grid()
+                error_message_by_name[name] = error_message
+            btn = Button(w, text="Done")
+            btn.grid()
+
+            cancelled = False
+            lock = Lock()
+            lock.acquire()
+
+            def handle_close():
+                should_exit = messagebox.askyesno(  # type: ignore
+                    title="Confirm exit",
+                    message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
+                )
+                if not should_exit:
+                    return
+                nonlocal cancelled
+                cancelled = True
+                lock.release()
+
+            def handle_submit():
+                lock.release()
+
+            w.protocol("WM_DELETE_WINDOW", handle_close)
+            btn.bind("<Button-1>", lambda _: handle_submit())
+
+            while True:
+                # Wait for the button to be pressed or for the window to be closed
+                lock.acquire()
+                if cancelled:
+                    raise InputCancelledException("The user closed the input dialog.")
+                output: Dict[str, Any] = {}
+                error = False
+                for name, entry in entry_by_name.items():
+                    parser = params[name].parser
+                    try:
+                        val = parser(entry.get())
+                        error_message_by_name[name].set_text("")
+                        output[name] = val
+                    except ArgumentTypeError as e:
+                        error_message_by_name[name].set_text(f"Invalid input: {e}")
+                        error = True
+                    except Exception as e:
+                        error_message_by_name[name].set_text(f"An error occurred: {e}")
+                        error = True
+                if not error:
+                    return output
+        finally:
+            w.destroy()
 
     def wait(self, task_name: str, prompt: str):
         if self._shutdown_requested:
@@ -740,48 +927,6 @@ class TkMessenger(InputMessenger):
         if should_exit:
             self._close()
 
-    def _input(self, prompt: str, title: str, show: str = "") -> str:
-        # It would be nice to just use simpledialog.askstring, but that throws an exception each time :(
-        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
-        # TODO: Validate the input before returning, show error message if not valid?
-        # TODO: Let the user close the script even when there's an input box
-        w = Toplevel(self._tk, padx=10, pady=10)
-        w.title(title)
-        prompt_box = Label(w, text=prompt)
-        prompt_box.pack()
-        if show:
-            entry = Entry(w, show="*")
-        else:
-            entry = Entry(w)
-        entry.pack()
-        btn = Button(w, text="Done")
-        btn.pack()
-
-        value: str = ""
-        lock = Lock()
-        lock.acquire()
-
-        def handle_close(w: Toplevel, lock: Lock):
-            nonlocal value
-            value = ""
-            w.destroy()
-            lock.release()
-
-        def handle_submit(w: Toplevel, lock: Lock):
-            nonlocal value
-            value = entry.get()
-            w.destroy()
-            lock.release()
-
-        w.protocol("WM_DELETE_WINDOW", lambda: handle_close(w, lock))
-        btn.bind("<Button-1>", lambda _: handle_submit(w, lock))
-        w.bind("<Return>", lambda _: handle_submit(w, lock))
-
-        w.grab_set()
-        # Wait for the button to be pressed or for the window to be closed
-        lock.acquire()
-        return value
-
 
 class Messenger:
     """
@@ -821,11 +966,22 @@ class Messenger:
         details = f"\n{stacktrace}" if stacktrace else ""
         self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
 
-    def input(self, prompt: str) -> Union[str, None]:
-        return self._input_messenger.input(prompt)
+    def input(
+        self,
+        display_name: str,
+        password: bool = False,
+        parser: Callable[[str], Any] = lambda x: x,
+        prompt: str = "",
+        title: str = "",
+    ) -> Union[str, None]:
+        return self._input_messenger.input(
+            display_name, password, parser, prompt, title
+        )
 
-    def input_password(self, prompt: str) -> Union[str, None]:
-        return self._input_messenger.input_password(prompt)
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
+    ) -> Dict[str, Any]:
+        return self._input_messenger.input_multiple(params, prompt, title)
 
     def wait(self, prompt: str, task_name: str = ""):
         if not task_name:

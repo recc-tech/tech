@@ -10,46 +10,82 @@ class McrTeardownConfig(BaseConfig):
         self,
         home_dir: Path,
         downloads_dir: Path,
-        message_series: str,
-        message_title: str,
-        boxcast_event_id: str,
+        message_series: str = "",
+        message_title: str = "",
+        boxcast_event_id: str = "",
     ):
         self._home_dir = home_dir.resolve()
         self._downloads_dir = downloads_dir.resolve()
-        self._message_series = message_series.strip()
-        self._message_title = message_title.strip()
-        self._boxcast_event_id = boxcast_event_id
+        self.message_series = message_series.strip()
+        self.message_title = message_title.strip()
+        self.boxcast_event_id = boxcast_event_id
 
-        date_mdy = BaseConfig._date_mdy(datetime.now())
-        self.live_event_title = f"Sunday Gathering LIVE: {date_mdy}"
-        self.live_event_url = (
-            f"https://dashboard.boxcast.com/broadcasts/{self._boxcast_event_id}"
-        )
-        self.live_event_captions_tab_url = self.live_event_url + "?tab=captions"
-        self.captions_download_path = self._downloads_dir.joinpath(
-            f"{self._boxcast_event_id}_captions.vtt"
-        )
-        self.rebroadcast_title = f"Sunday Gathering Rebroadcast: {date_mdy}"
-        self.rebroadcast_setup_url = f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self._boxcast_event_id}"
-        self.boxcast_edit_captions_url = f"https://dashboard.boxcast.com/broadcasts/{self._boxcast_event_id}/edit-captions"
-
-        log_dir = self._home_dir.joinpath("Logs")
-        date_ymd = datetime.now().strftime("%Y-%m-%d")
-        current_time = datetime.now().strftime("%H-%M-%S")
-        self.log_file = log_dir.joinpath(f"{date_ymd} {current_time} mcr_teardown.log")
-
-        self._captions_dir = self._home_dir.joinpath("Captions").joinpath(date_ymd)
-        self.original_captions_path = self._captions_dir.joinpath("original.vtt")
-        self.captions_without_worship_path = self._captions_dir.joinpath(
-            "without_worship.vtt"
-        )
-        self.final_captions_path = self._captions_dir.joinpath("final.vtt")
-
-        self.vimeo_video_title = (
-            f"{date_ymd} | {self._message_series} | {self._message_title}"
-        )
         self.vimeo_video_uri: Union[str, None] = None
         self.vimeo_video_texttracks_uri: Union[str, None] = None
+
+        self._start_date_ymd = datetime.now().strftime("%Y-%m-%d")
+        self._start_date_mdy = BaseConfig._date_mdy(datetime.now())
+        self._start_time = datetime.now().strftime("%H-%M-%S")
+
+    @property
+    def live_event_title(self) -> str:
+        return f"Sunday Gathering LIVE: {self._start_date_mdy}"
+
+    @property
+    def live_event_url(self) -> str:
+        return f"https://dashboard.boxcast.com/broadcasts/{self.boxcast_event_id}"
+
+    @property
+    def live_event_captions_tab_url(self) -> str:
+        return f"{self.live_event_url}?tab=captions"
+
+    @property
+    def captions_download_path(self):
+        return self._downloads_dir.joinpath(f"{self.boxcast_event_id}_captions.vtt")
+
+    @property
+    def rebroadcast_title(self) -> str:
+        return f"Sunday Gathering Rebroadcast: {self._start_date_mdy}"
+
+    @property
+    def rebroadcast_setup_url(self) -> str:
+        return f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self.boxcast_event_id}"
+
+    @property
+    def boxcast_edit_captions_url(self) -> str:
+        return f"https://dashboard.boxcast.com/broadcasts/{self.boxcast_event_id}/edit-captions"
+
+    @property
+    def _log_dir(self) -> Path:
+        return self._home_dir.joinpath("Logs")
+
+    @property
+    def log_file(self) -> Path:
+        return self._log_dir.joinpath(
+            f"{self._start_date_ymd} {self._start_time} mcr_teardown.log"
+        ).resolve()
+
+    @property
+    def _captions_dir(self) -> Path:
+        return self._home_dir.joinpath("Captions").joinpath(self._start_date_ymd)
+
+    @property
+    def original_captions_path(self) -> Path:
+        return self._captions_dir.joinpath("original.vtt")
+
+    @property
+    def captions_without_worship_path(self) -> Path:
+        return self._captions_dir.joinpath("without_worship.vtt")
+
+    @property
+    def final_captions_path(self) -> Path:
+        return self._captions_dir.joinpath("final.vtt")
+
+    @property
+    def vimeo_video_title(self) -> str:
+        return (
+            f"{self._start_date_ymd} | {self.message_series} | {self.message_title}"
+        )
 
     def fill_placeholders(self, text: str) -> str:
         text = (

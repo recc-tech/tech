@@ -4,6 +4,7 @@ import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from pathlib import Path
+from typing import Dict
 
 import mcr_teardown.tasks
 from autochecklist import (
@@ -11,6 +12,7 @@ from autochecklist import (
     FileMessenger,
     FunctionFinder,
     Messenger,
+    Parameter,
     ProblemLevel,
     TaskGraph,
     TaskStatus,
@@ -32,16 +34,13 @@ DESCRIPTION = "This script will guide you through the steps to shutting down the
 
 
 def main():
-    args = _parse_args()
+    args = _parse_command_line_args()
 
     set_current_task_name("SCRIPT MAIN")
 
     config = McrTeardownConfig(
         home_dir=args.home_dir,
         downloads_dir=args.downloads_dir,
-        message_series=args.message_series,
-        message_title=args.message_title,
-        boxcast_event_id=args.boxcast_event_id,
     )
 
     file_messenger = FileMessenger(config.log_file)
@@ -59,30 +58,35 @@ def main():
         file_messenger=file_messenger, input_messenger=input_messenger
     )
 
-    messenger.log_status(TaskStatus.RUNNING, "Loading the script...")
-
-    credential_store = CredentialStore(messenger=messenger)
-
-    vimeo_client = ReccVimeoClient(
-        messenger=messenger,
-        credential_store=credential_store,
-        lazy_login=args.lazy_login,
-    )
-
-    boxcast_client_factory = BoxCastClientFactory(
-        messenger=messenger,
-        credential_store=credential_store,
-        headless=not args.show_browser,
-        lazy_login=args.lazy_login,
-    )
-
-    function_finder = FunctionFinder(
-        module=None if args.no_auto else mcr_teardown.tasks,
-        arguments={boxcast_client_factory, config, messenger, vimeo_client},
-        messenger=messenger,
-    )
-
     try:
+        messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
+
+        args = _get_missing_args(args, messenger)
+        config.message_series = args.message_series
+        config.message_title = args.message_title
+        config.boxcast_event_id = args.boxcast_event_id
+
+        credential_store = CredentialStore(messenger=messenger)
+
+        vimeo_client = ReccVimeoClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            lazy_login=args.lazy_login,
+        )
+
+        boxcast_client_factory = BoxCastClientFactory(
+            messenger=messenger,
+            credential_store=credential_store,
+            headless=not args.show_browser,
+            lazy_login=args.lazy_login,
+        )
+
+        function_finder = FunctionFinder(
+            module=None if args.no_auto else mcr_teardown.tasks,
+            arguments={boxcast_client_factory, config, messenger, vimeo_client},
+            messenger=messenger,
+        )
+
         task_list_file = (
             Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
         )
@@ -92,15 +96,19 @@ def main():
         )
         task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
         messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
+    except KeyboardInterrupt as e:
+        messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")
+        return
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.FATAL,
-            f"Failed to load the task graph: {e}.",
+            f"Failed to load the task graph: {e}",
             stacktrace=traceback.format_exc(),
         )
         messenger.log_status(TaskStatus.DONE, "The script failed to start.")
-        messenger.close()
         return
+    finally:
+        messenger.close()
 
     try:
         if not args.no_run:
@@ -126,7 +134,7 @@ def main():
         messenger.close()
 
 
-def _parse_args() -> Namespace:
+def _parse_command_line_args() -> Namespace:
     parser = ArgumentParser(
         description="Script to guide and automate the teardown process in the MCR."
     )
@@ -199,16 +207,7 @@ def _parse_args() -> Namespace:
 
     args = parser.parse_args()
 
-    # TODO: Add this to the UI?
-    if not args.message_series:
-        args.message_series = _get_message_series()
-
-    if not args.message_title:
-        args.message_title = _get_message_title()
-
-    if not args.boxcast_event_url and not args.boxcast_event_id:
-        args.boxcast_event_id = _get_boxcast_event_id()
-    elif args.boxcast_event_url:
+    if args.boxcast_event_url:
         args.boxcast_event_id = args.boxcast_event_url
     # For some reason Pylance complains about the del keyword but not delattr
     delattr(args, "boxcast_event_url")
@@ -216,37 +215,39 @@ def _parse_args() -> Namespace:
     return args
 
 
-def _get_message_series():
-    while True:
-        raw_input = input("Enter the series to which today's message belongs:\n> ")
-        try:
-            output = parse_non_empty_string(raw_input)
-            print()
-            return output
-        except ArgumentTypeError as e:
-            print(e)
+def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
+    params: Dict[str, Parameter] = {}
+    if not cmd_args.message_series:
+        params["message_series"] = Parameter(
+            "Message Series",
+            parser=parse_non_empty_string,
+            description='This is the name of the series to which today\'s sermon belongs. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the series was "Getting There".',
+        )
+    if not cmd_args.message_title:
+        params["message_title"] = Parameter(
+            "Message Title",
+            parser=parse_non_empty_string,
+            description='This is the title of today\'s sermon. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the title was "Avoiding Road Rage".',
+        )
+    if not cmd_args.boxcast_event_id:
+        params["boxcast_event_id"] = Parameter(
+            "BoxCast Event URL",
+            parser=_parse_boxcast_event_url,
+            description="This is the URL of today's live event on BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
+        )
 
+    if len(params) == 0:
+        return cmd_args
 
-def _get_message_title():
-    while True:
-        raw_input = input("Enter the title of today's message:\n> ")
-        try:
-            output = parse_non_empty_string(raw_input)
-            print()
-            return output
-        except ArgumentTypeError as e:
-            print(e)
+    user_args = messenger.input_multiple(params, prompt="The script needs some more information to get started.")
+    if "message_series" in user_args:
+        cmd_args.message_series = user_args["message_series"]
+    if "message_title" in user_args:
+        cmd_args.message_title = user_args["message_title"]
+    if "boxcast_event_url" in user_args:
+        cmd_args.boxcast_event_id = user_args["boxcast_event_id"]
 
-
-def _get_boxcast_event_id():
-    while True:
-        raw_input = input("Enter the URL of today's live event on BoxCast:\n> ")
-        try:
-            output = _parse_boxcast_event_url(raw_input)
-            print()
-            return output
-        except ArgumentTypeError as e:
-            print(e)
+    return cmd_args
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:

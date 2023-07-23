@@ -13,6 +13,7 @@ class Credential(Enum):
     VIMEO_CLIENT_SECRET = ("vimeo_client_secret", "Vimeo client secret", True)
 
 
+# TODO: Add a method to enter multiple passwords on one screen (using messenger.input_multiple)?
 class CredentialStore:
     _KEYRING_APP_NAME = "recc_tech_mcr_teardown"
 
@@ -38,7 +39,7 @@ class CredentialStore:
         prompt = base_prompt
         while True:
             value = (
-                self._messenger.input_password(prompt)
+                self._messenger.input(prompt, password=True)
                 if is_secret
                 else self._messenger.input(prompt)
             )
