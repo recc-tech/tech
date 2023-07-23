@@ -9,6 +9,7 @@ def parse_non_empty_string(raw_input: str) -> str:
 
 
 def parse_directory(path_str: str) -> Path:
+    # TODO: trailing backslash in path breaks the string, makes it so that there's a double quote instead of trailing slash (?!)
     path = Path(path_str)
 
     if not path.exists():

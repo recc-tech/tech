@@ -19,6 +19,8 @@ FULLSCREEN_STYLE = "fullscreen"
 LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
 LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
+# TODO: generating the slides seems to break on Unicode characters (e.g., ’ instead of ')
+
 
 def main():
     args = _parse_args()
@@ -125,7 +127,6 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-s",
         "--style",
-        default=[FULLSCREEN_STYLE],
         action="append",
         choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
@@ -145,6 +146,9 @@ def _parse_args() -> Namespace:
         parser.error("You must specify at least one form of input file.")
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
+
+    if len(args.style) == 0:
+        args.style = [FULLSCREEN_STYLE]
 
     return args
 

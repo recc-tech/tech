@@ -7,6 +7,7 @@ from autochecklist import Messenger, ProblemLevel
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
 
+# TODO: vMix output is 1920x1080
 IMG_WIDTH = 1640
 IMG_HEIGHT = 924
 OUTER_MARGIN = 100
@@ -374,5 +375,6 @@ def _extract_max_prefix(
     return (output, words)
 
 
+# TODO: Some lines are still too long. Probably need to account for the stroke_width
 def _get_font_bbox(text: str, font: FreeTypeFont) -> _Bbox:
     return _Bbox(*font.getbbox(text))  # type: ignore

@@ -244,7 +244,7 @@ def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
         cmd_args.message_series = user_args["message_series"]
     if "message_title" in user_args:
         cmd_args.message_title = user_args["message_title"]
-    if "boxcast_event_url" in user_args:
+    if "boxcast_event_id" in user_args:
         cmd_args.boxcast_event_id = user_args["boxcast_event_id"]
 
     return cmd_args

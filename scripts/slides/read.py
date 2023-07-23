@@ -13,7 +13,7 @@ class SlideBlueprintReader:
         self._messenger = messenger
 
     def load_message_notes(self, file: Path) -> List[SlideBlueprint]:
-        with open(file, mode="r") as f:
+        with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
         # The particular value here isn't a big deal, as long as it does not occur within the notes themselves
         slide_boundary = "----- SLIDE BOUNDARY -----"
@@ -28,7 +28,7 @@ class SlideBlueprintReader:
         return [self._convert_note_to_blueprint(s) for s in slide_contents]
 
     def load_lyrics(self, file: Path) -> List[SlideBlueprint]:
-        with open(file, mode="r") as f:
+        with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
         # Don't show lyrics from different verses on the same slide
@@ -42,7 +42,7 @@ class SlideBlueprintReader:
         return blueprints
 
     def load_json(self, file: Path) -> List[SlideBlueprint]:
-        with open(file, mode="r") as f:
+        with open(file, mode="r", encoding="utf-8") as f:
             json_obj = json.load(f)
         try:
             return self._parse_json_obj(json_obj)
@@ -55,7 +55,7 @@ class SlideBlueprintReader:
 
     def save_json(self, file: Path, slides: List[SlideBlueprint]):
         slides_dicts = [s.__dict__ for s in slides]
-        with open(file, mode="w") as f:
+        with open(file, mode="w", encoding="utf-8") as f:
             json.dump({"slides": slides_dicts}, f, indent="\t")
 
     def _convert_note_to_blueprint(self, note: str) -> SlideBlueprint:
