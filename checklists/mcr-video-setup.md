@@ -10,6 +10,7 @@ assignees: recc-tech
 - [ ] Download sermon notes (if they're present)
 - [ ] Move the downloaded files to `D:\Users\Tech\Documents\vMix Assets\By Service\YYYY-MM-DD`, where `YYYY-MM-DD` is the current date
 - [ ] Download any new assets (e.g., new bumper videos, new announcements) and move them to `D:\Users\Tech\Documents\vMix Assets\By Type\`
+- [ ] If you have time, check the existing assets in `D:\Users\Tech\Documents\vMix Assets\By Type\` and move outdated ones to `D:\Users\Tech\Documents\vMix Assets\By Type\Archive\`
 
 ## Church Online Platform
 - [ ] Copy the sermon notes to the event (if they were on Planning Center Online)
@@ -26,7 +27,7 @@ assignees: recc-tech
 - [ ] Open last week's preset
 - [ ] Turn on both monitors and turn on the external output
     - You may need to turn off the external output and turn it back on if it doesn't work the first time
-- [ ] Import videos and close the previous week's kids video
+- [ ] Close the previous week's kids video and then import the new kids video and any new assets
     - You can drag the videos directly from File Explorer into the "Videos" category
 - Set up and test triggers for kids countdown and video
     - [ ] Set up a trigger on the kids countdown loop that fades to the kids video for this week
