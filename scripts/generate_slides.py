@@ -11,7 +11,7 @@ from autochecklist import (
     set_current_task_name,
 )
 from parsing_helpers import parse_directory, parse_file
-from slides import SlideBlueprint, SlideBlueprintReader, SlideGenerator
+from slides import Slide, SlideBlueprint, SlideBlueprintReader, SlideGenerator
 
 DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
 
@@ -54,18 +54,27 @@ def main():
 
         set_current_task_name("generate_slides")
         generator = SlideGenerator(messenger)
-        if args.style == FULLSCREEN_STYLE:
-            slides = generator.generate_fullscreen_slides(blueprints)
-        elif args.style == LOWER_THIRD_CLEAR_STYLE:
-            slides = generator.generate_lower_third_slide(
-                blueprints, show_backdrop=False
+        styles: List[str] = args.style
+        slides: List[Slide] = []
+        if FULLSCREEN_STYLE in styles:
+            blueprints_with_prefix = [
+                b.with_name(f"FULL - {b.name}") for b in blueprints
+            ]
+            slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
+        if LOWER_THIRD_CLEAR_STYLE in args.style:
+            blueprints_with_prefix = [
+                b.with_name(f"LTC - {b.name}") for b in blueprints
+            ]
+            slides += generator.generate_lower_third_slide(
+                blueprints_with_prefix, show_backdrop=False
             )
-        elif args.style == LOWER_THIRD_DARK_STYLE:
-            slides = generator.generate_lower_third_slide(
-                blueprints, show_backdrop=True
+        if LOWER_THIRD_DARK_STYLE in args.style:
+            blueprints_with_prefix = [
+                b.with_name(f"LTD - {b.name}") for b in blueprints
+            ]
+            slides += generator.generate_lower_third_slide(
+                blueprints_with_prefix, show_backdrop=True
             )
-        else:
-            raise ValueError("")
 
         set_current_task_name("save_slides")
         for s in slides:
@@ -116,7 +125,8 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-s",
         "--style",
-        default=FULLSCREEN_STYLE,
+        default=[FULLSCREEN_STYLE],
+        action="append",
         choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
     )

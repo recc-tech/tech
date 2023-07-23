@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List, Literal, Tuple
 
@@ -36,6 +38,14 @@ class SlideBlueprint:
                     message += f' and footer "{footer}"'
                 message += "."
                 raise ValueError(message)
+
+    def with_name(self, new_name: str) -> SlideBlueprint:
+        """
+        Returns a new `SlideBlueprint` with the given name.
+        """
+        return SlideBlueprint(
+            body=self.body_text, footer=self.footer_text, name=new_name
+        )
 
 
 @dataclass
