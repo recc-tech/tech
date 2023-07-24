@@ -19,8 +19,6 @@ FULLSCREEN_STYLE = "fullscreen"
 LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
 LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
-# TODO: generating the slides seems to break on Unicode characters (e.g., ’ instead of ')
-
 
 def main():
     args = _parse_args()
@@ -60,19 +58,22 @@ def main():
         slides: List[Slide] = []
         if FULLSCREEN_STYLE in styles:
             blueprints_with_prefix = [
-                b.with_name(f"FULL - {b.name}") for b in blueprints
+                b.with_name(f"FULL{i} - {b.name}" if b.name else f"FULL{i}")
+                for i, b in enumerate(blueprints, start=1)
             ]
             slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
         if LOWER_THIRD_CLEAR_STYLE in args.style:
             blueprints_with_prefix = [
-                b.with_name(f"LTC - {b.name}") for b in blueprints
+                b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
+                for i, b in enumerate(blueprints, start=1)
             ]
             slides += generator.generate_lower_third_slide(
                 blueprints_with_prefix, show_backdrop=False
             )
         if LOWER_THIRD_DARK_STYLE in args.style:
             blueprints_with_prefix = [
-                b.with_name(f"LTD - {b.name}") for b in blueprints
+                b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
+                for i, b in enumerate(blueprints, start=1)
             ]
             slides += generator.generate_lower_third_slide(
                 blueprints_with_prefix, show_backdrop=True
@@ -128,6 +129,7 @@ def _parse_args() -> Namespace:
         "-s",
         "--style",
         action="append",
+        required=True,
         choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
     )
@@ -146,9 +148,6 @@ def _parse_args() -> Namespace:
         parser.error("You must specify at least one form of input file.")
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
-
-    if len(args.style) == 0:
-        args.style = [FULLSCREEN_STYLE]
 
     return args
 

@@ -171,7 +171,7 @@ class TaskGraph:
         messenger: Messenger,
         config: BaseConfig,
     ) -> TaskGraph:
-        with open(task_list_file, "r") as f:
+        with open(task_list_file, "r", encoding="utf-8") as f:
             json_data: Dict[str, Any] = json.load(f)
             tasks: List[Dict[str, Any]] = json_data["tasks"]
             before_tasks: List[Dict[str, Any]] = (

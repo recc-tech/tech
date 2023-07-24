@@ -18,34 +18,16 @@ FONT_FACE = "calibri.ttf"
 # TODO: Use larger spacing for lyrics compared to notes/scripture? Or just increase the spacing so as to fill the entire vertical space?
 @dataclass
 class SlideBlueprint:
-    _next_file_number = 1
-
     body_text: str
     footer_text: str
-    name: str = ""
-
-    def __init__(self, body: str, footer: str, name: str, generate_name: bool = False):
-        self.body_text = body.strip()
-        self.footer_text = footer.strip()
-        self.name = name.strip()
-
-        if not self.name:
-            if generate_name:
-                self.name = f"Slide {SlideBlueprint._next_file_number}"
-                SlideBlueprint._next_file_number += 1
-            else:
-                message = f'Missing name for slide blueprint with body "{body}"'
-                if footer:
-                    message += f' and footer "{footer}"'
-                message += "."
-                raise ValueError(message)
+    name: str
 
     def with_name(self, new_name: str) -> SlideBlueprint:
         """
         Returns a new `SlideBlueprint` with the given name.
         """
         return SlideBlueprint(
-            body=self.body_text, footer=self.footer_text, name=new_name
+            body_text=self.body_text, footer_text=self.footer_text, name=new_name
         )
 
 
