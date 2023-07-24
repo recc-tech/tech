@@ -9,11 +9,13 @@ def parse_non_empty_string(raw_input: str) -> str:
 
 
 def parse_directory(path_str: str) -> Path:
-    # TODO: trailing backslash in path breaks the string, makes it so that there's a double quote instead of trailing slash (?!)
     path = Path(path_str)
 
     if not path.exists():
-        raise ArgumentTypeError(f"Path '{path_str}' does not exist.")
+        message = f"Path '{path_str}' does not exist."
+        if path_str.endswith('"') or path_str.endswith("'"):
+            message = f"{message} Note that if you provided the path in quotes and with a trailing backslash, you must escape that final backslash."
+        raise ArgumentTypeError(message)
     if not path.is_dir():
         raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
     # TODO: Check whether the path is accessible?
