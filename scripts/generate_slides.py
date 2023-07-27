@@ -10,14 +10,23 @@ from autochecklist import (
     TaskStatus,
     set_current_task_name,
 )
+from common.web_driver import ReccWebDriver
 from parsing_helpers import parse_directory, parse_file
-from slides import Slide, SlideBlueprint, SlideBlueprintReader, SlideGenerator
+from slides import (
+    BibleVerseFinder,
+    Slide,
+    SlideBlueprint,
+    SlideBlueprintReader,
+    SlideGenerator,
+)
 
 DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
 
 FULLSCREEN_STYLE = "fullscreen"
 LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
 LOWER_THIRD_DARK_STYLE = "lower-third-dark"
+
+SCRIPT_MAIN = "SCRIPT MAIN"
 
 
 def main():
@@ -34,8 +43,19 @@ def main():
     messenger = Messenger(file_messenger, input_messenger)
 
     try:
-        reader = SlideBlueprintReader(messenger)
+        messenger.log_status(
+            TaskStatus.RUNNING, "Script started.", task_name=SCRIPT_MAIN
+        )
 
+        web_driver = ReccWebDriver(headless=not args.show_browser)
+
+        bible_verse_finder = BibleVerseFinder(web_driver, messenger)
+
+        reader = SlideBlueprintReader(messenger, bible_verse_finder)
+
+        messenger.log_status(
+            TaskStatus.RUNNING, "Reading input...", task_name=SCRIPT_MAIN
+        )
         blueprints: List[SlideBlueprint] = []
         if args.json_input:
             set_current_task_name("load_json")
@@ -49,9 +69,13 @@ def main():
                 blueprints += reader.load_lyrics(lyrics_file)
 
         if not args.json_input:
+            messenger.log_status(
+                TaskStatus.RUNNING, "Saving slide data to a JSON file...", task_name=SCRIPT_MAIN
+            )
             set_current_task_name("save_json")
             reader.save_json(output_directory.joinpath("slides.json"), blueprints)
 
+        messenger.log_status(TaskStatus.RUNNING, "Generating images...", task_name=SCRIPT_MAIN)
         set_current_task_name("generate_slides")
         generator = SlideGenerator(messenger)
         styles: List[str] = args.style
@@ -79,6 +103,7 @@ def main():
                 blueprints_with_prefix, show_backdrop=True
             )
 
+        messenger.log_status(TaskStatus.RUNNING, "Saving images...", task_name=SCRIPT_MAIN)
         set_current_task_name("save_slides")
         for s in slides:
             path = output_directory.joinpath(s.name)
@@ -134,12 +159,19 @@ def _parse_args() -> Namespace:
         help="Style of the slides.",
     )
 
+    # TODO: Add an option to clear out all the existing slides
+
     advanced_args = parser.add_argument_group("Advanced arguments")
     advanced_args.add_argument(
         "--home-dir",
         type=parse_directory,
         default="D:\\Users\\Tech\\Documents",
         help="The home directory.",
+    )
+    advanced_args.add_argument(
+        "--show-browser",
+        action="store_true",
+        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
     )
 
     args = parser.parse_args()

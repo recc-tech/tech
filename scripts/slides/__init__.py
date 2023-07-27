@@ -6,4 +6,4 @@ Functions for generating images and translating a message plan on Planning Cente
 # pyright: basic
 
 from slides.generate import Slide, SlideBlueprint, SlideGenerator
-from slides.read import SlideBlueprintReader
+from slides.read import BibleVerse, BibleVerseFinder, SlideBlueprintReader
