@@ -2,7 +2,7 @@ import unittest
 import unittest.mock as mock
 
 from autochecklist import ProblemLevel
-from common.web_driver import ReccWebDriver
+from common import ReccWebDriver
 from slides.read import BibleVerse, BibleVerseFinder
 
 

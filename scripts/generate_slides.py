@@ -10,8 +10,7 @@ from autochecklist import (
     TaskStatus,
     set_current_task_name,
 )
-from common.web_driver import ReccWebDriver
-from parsing_helpers import parse_directory, parse_file
+from common import ReccWebDriver, parse_directory, parse_file
 from slides import (
     BibleVerseFinder,
     Slide,
@@ -70,12 +69,16 @@ def main():
 
         if not args.json_input:
             messenger.log_status(
-                TaskStatus.RUNNING, "Saving slide data to a JSON file...", task_name=SCRIPT_MAIN
+                TaskStatus.RUNNING,
+                "Saving slide data to a JSON file...",
+                task_name=SCRIPT_MAIN,
             )
             set_current_task_name("save_json")
             reader.save_json(output_directory.joinpath("slides.json"), blueprints)
 
-        messenger.log_status(TaskStatus.RUNNING, "Generating images...", task_name=SCRIPT_MAIN)
+        messenger.log_status(
+            TaskStatus.RUNNING, "Generating images...", task_name=SCRIPT_MAIN
+        )
         set_current_task_name("generate_slides")
         generator = SlideGenerator(messenger)
         styles: List[str] = args.style
@@ -103,7 +106,9 @@ def main():
                 blueprints_with_prefix, show_backdrop=True
             )
 
-        messenger.log_status(TaskStatus.RUNNING, "Saving images...", task_name=SCRIPT_MAIN)
+        messenger.log_status(
+            TaskStatus.RUNNING, "Saving images...", task_name=SCRIPT_MAIN
+        )
         set_current_task_name("save_slides")
         for s in slides:
             path = output_directory.joinpath(s.name)

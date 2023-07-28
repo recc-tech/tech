@@ -8,8 +8,8 @@ from autochecklist import (
     TaskStatus,
     set_current_task_name,
 )
+from common import parse_directory
 from mcr_teardown import BoxCastClientFactory, CredentialStore, ReccVimeoClient
-from parsing_helpers import parse_directory
 
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask the user to enter any missing or incorrect ones if necessary."
 

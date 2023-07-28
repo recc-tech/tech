@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
 from autochecklist import Messenger, ProblemLevel
-from common.web_driver import ReccWebDriver
+from common import ReccWebDriver
 from selenium.webdriver.common.by import By
 from slides.generate import SlideBlueprint
 

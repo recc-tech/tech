@@ -19,13 +19,13 @@ from autochecklist import (
     TkMessenger,
     set_current_task_name,
 )
+from common import parse_directory, parse_non_empty_string
 from mcr_teardown import (
     BoxCastClientFactory,
     CredentialStore,
     McrTeardownConfig,
     ReccVimeoClient,
 )
-from parsing_helpers import parse_directory, parse_non_empty_string
 
 # TODO: Test the BoxCast code by turning off the WiFi after loading the page.
 # TODO: Save progress in a file in case the script needs to be stopped and restarted?

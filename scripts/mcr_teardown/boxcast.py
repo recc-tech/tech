@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
-from common.web_driver import ReccWebDriver
+from common import ReccWebDriver
 from mcr_teardown.credentials import Credential, CredentialStore
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
