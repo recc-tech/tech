@@ -12,7 +12,7 @@ class BibleVerseFindingTest(unittest.TestCase):
         # Create the driver once and reuse it for all tests because
         #  (1) creating a new WebDriver is slow
         #  (2) having a bunch of Firefox windows open is massively memory-intensive
-        cls._driver = ReccWebDriver(headless=False)
+        cls._driver = ReccWebDriver(headless=True)
 
     def setUp(self):
         self._messenger = mock.Mock()
