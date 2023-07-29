@@ -1,7 +1,9 @@
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
+from getpass import getpass
+from inspect import cleandoc
 from pathlib import Path
-from typing import List
+from typing import List, Optional, Tuple
 
 from autochecklist import (
     ConsoleMessenger,
@@ -151,7 +153,7 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "-o",
         "--out-dir",
-        required=True,
+        default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
         type=parse_directory,
         help="Directory in which to place the generated images.",
     )
@@ -159,7 +161,6 @@ def _parse_args() -> Namespace:
         "-s",
         "--style",
         action="append",
-        required=True,
         choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
     )
@@ -182,15 +183,56 @@ def _parse_args() -> Namespace:
     args = parser.parse_args()
 
     if not args.message_notes and not args.lyrics and not args.json_input:
-        parser.error("You must specify at least one form of input file.")
+        (args.message_notes, args.json_input) = _locate_input(parser, args.out_dir)
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
 
+    if not args.style:
+        args.style = [LOWER_THIRD_DARK_STYLE]
+
     return args
+
+
+def _locate_input(
+    parser: ArgumentParser, directory: Path
+) -> Tuple[Optional[Path], Optional[Path]]:
+    json_file = directory.joinpath("slides.json")
+    if json_file.exists() and json_file.is_file():
+        print(f"Reading slides from existing .json file {json_file.as_posix()}.\n")
+        return (None, json_file)
+
+    message_notes_file = directory.joinpath("message-notes.txt")
+    if message_notes_file.exists() and message_notes_file.is_file():
+        print(f"Reading message notes from {message_notes_file.as_posix()}.\n")
+        return (message_notes_file, None)
+
+    # Use getpass so that pressing other keys has no effect
+    getpass(
+        cleandoc(
+            f"""
+            No input files could be found.
+              1. Go to Planning Center Online (https://services.planningcenteronline.com/dashboard).
+              2. Find the message notes in today's plan (the ones that say which slides to create).
+              3. Save the message notes in {message_notes_file}.
+            Press ENTER when you are done, or press CTRL+C to stop the script.
+            """
+        )
+    )
+    print()
+    while True:
+        if message_notes_file.exists() and message_notes_file.is_file():
+            print(f"Reading message notes from {message_notes_file.as_posix()}.\n")
+            return (message_notes_file, None)
+
+        # Use getpass so that pressing other keys has no effect
+        getpass(
+            "The message notes file could not be found. Press ENTER when you have created it, or press CTRL+C to stop the script."
+        )
+        print()
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("Program cancelled.")
+        print("\nProgram cancelled.")
