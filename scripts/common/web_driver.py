@@ -1,6 +1,8 @@
 import time
+from typing import List, Optional
 
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -62,3 +64,13 @@ class ReccWebDriver(WebDriver):
             raise ValueError(
                 f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
             )
+
+    def find_elements(
+        self, by: str = By.ID, value: Optional[str] = None
+    ) -> List[WebElement]:
+        elements = super().find_elements(by, value)
+        if not elements:
+            raise NoSuchElementException(
+                f"No elements found for the given criteria (by = {by}, value = '{value}')."
+            )
+        return elements

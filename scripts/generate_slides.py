@@ -183,7 +183,7 @@ def _parse_args() -> Namespace:
     args = parser.parse_args()
 
     if not args.message_notes and not args.lyrics and not args.json_input:
-        (args.message_notes, args.json_input) = _locate_input(parser, args.out_dir)
+        (args.message_notes, args.json_input) = _locate_input(args.out_dir)
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
 
@@ -193,9 +193,8 @@ def _parse_args() -> Namespace:
     return args
 
 
-def _locate_input(
-    parser: ArgumentParser, directory: Path
-) -> Tuple[Optional[Path], Optional[Path]]:
+# TODO: Do this using the Messenger instead
+def _locate_input(directory: Path) -> Tuple[Optional[Path], Optional[Path]]:
     json_file = directory.joinpath("slides.json")
     if json_file.exists() and json_file.is_file():
         print(f"Reading slides from existing .json file {json_file.as_posix()}.\n")
@@ -213,7 +212,7 @@ def _locate_input(
             No input files could be found.
               1. Go to Planning Center Online (https://services.planningcenteronline.com/dashboard).
               2. Find the message notes in today's plan (the ones that say which slides to create).
-              3. Save the message notes in {message_notes_file}.
+              3. Save the message notes in {message_notes_file.as_posix()}.
             Press ENTER when you are done, or press CTRL+C to stop the script.
             """
         )

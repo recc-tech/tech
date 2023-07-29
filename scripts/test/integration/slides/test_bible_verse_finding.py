@@ -75,6 +75,14 @@ class BibleVerseFindingTest(unittest.TestCase):
         )
         self._log_problem_mock.assert_not_called()
 
+    def test_hebrews_13_5_nlt(self):
+        # The text is shown in two separate paragraphs on BibleGateway
+        self.assertEqual(
+            self.finder.find(BibleVerse("Hebrews", 13, 5, "NLT")),
+            "Don’t love money; be satisfied with what you have. For God has said, “I will never fail you. I will never abandon you.”",
+        )
+        self._log_problem_mock.assert_not_called()
+
     def test_exodus_14_14_invalid_translation(self):
         self.assertIsNone(self.finder.find(BibleVerse("Exodus", 14, 14, "INVALID")))
         self._log_problem_mock.assert_called_once()

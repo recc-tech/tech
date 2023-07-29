@@ -99,10 +99,10 @@ class BibleVerseFinder:
     def find(self, verse: BibleVerse) -> Optional[str]:
         try:
             self._get_page(verse)
-            span = self._driver.wait_for_single_element(
-                By.XPATH, "//div[@class='passage-text']//p", clickable=False
+            paragraphs = self._driver.find_elements(
+                By.XPATH, "//div[@class='passage-text']//p"
             )
-            text = span.get_attribute("innerText")  # type: ignore
+            text = "\n".join([p.get_attribute("innerText") for p in paragraphs])  # type: ignore
             return self._normalize(text)
         except Exception:
             self._messenger.log_problem(
@@ -161,16 +161,8 @@ class SlideBlueprintReader:
     def load_message_notes(self, file: Path) -> List[SlideBlueprint]:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
-        # The particular value here isn't a big deal, as long as it does not occur within the notes themselves
-        slide_boundary = "----- SLIDE BOUNDARY -----"
-        text = re.sub(
-            "^(title )?slides? ?- ?",
-            slide_boundary,
-            text,
-            flags=re.IGNORECASE | re.MULTILINE,
-        )
-        slide_contents = text.split(slide_boundary)[1:]
-        slide_contents = [s.strip() for s in slide_contents if s.strip()]
+
+        slide_contents = self._split_message_notes(text)
 
         blueprints: List[SlideBlueprint] = []
         for s in slide_contents:
@@ -207,6 +199,20 @@ class SlideBlueprintReader:
         slides_dicts = [s.__dict__ for s in slides]
         with open(file, mode="w", encoding="utf-8") as f:
             json.dump({"slides": slides_dicts}, f, indent="\t")
+
+    def _split_message_notes(self, text: str) -> List[str]:
+        # The particular value here isn't a big deal, as long as it does not occur within the notes themselves
+        slide_boundary = "----- SLIDE BOUNDARY -----"
+        slides_prefix_regex = re.compile(
+            "^(title )?slides? ?- ?", flags=re.IGNORECASE | re.MULTILINE
+        )
+        if slides_prefix_regex.match(text):
+            delimited_text = slides_prefix_regex.sub(slide_boundary, text)
+        else:
+            delimited_text = text.replace("\r\n", "\n").replace("\n", slide_boundary)
+        notes = delimited_text.split(slide_boundary)
+        non_empty_notes = [n.strip() for n in notes if n.strip()]
+        return non_empty_notes
 
     def _convert_note_to_blueprint(self, note: str) -> List[SlideBlueprint]:
         bible_verses = BibleVerse.parse(note)
