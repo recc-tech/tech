@@ -1,3 +1,4 @@
+import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from getpass import getpass
@@ -9,7 +10,9 @@ from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
     Messenger,
+    ProblemLevel,
     TaskStatus,
+    TkMessenger,
     set_current_task_name,
 )
 from common import ReccWebDriver, parse_directory, parse_file
@@ -21,16 +24,18 @@ from slides import (
     SlideGenerator,
 )
 
-DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
+_DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
 
-FULLSCREEN_STYLE = "fullscreen"
-LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
-LOWER_THIRD_DARK_STYLE = "lower-third-dark"
+_FULLSCREEN_STYLE = "fullscreen"
+_LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
+_LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
-SCRIPT_MAIN = "SCRIPT MAIN"
+_SCRIPT_MAIN = "SCRIPT MAIN"
 
 
 def main():
+    set_current_task_name(_SCRIPT_MAIN)
+
     args = _parse_args()
     output_directory: Path = args.out_dir
     home_directory: Path = args.home_dir
@@ -40,96 +45,147 @@ def main():
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_dir.joinpath(f"{date_ymd} {current_time} generate_slides.log")
     file_messenger = FileMessenger(log_file)
-    input_messenger = ConsoleMessenger(description=DESCRIPTION)
+    input_messenger = (
+        ConsoleMessenger(description=_DESCRIPTION)
+        if args.text_ui
+        else TkMessenger(description=_DESCRIPTION)
+    )
     messenger = Messenger(file_messenger, input_messenger)
 
     try:
-        messenger.log_status(
-            TaskStatus.RUNNING, "Script started.", task_name=SCRIPT_MAIN
-        )
+        messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
         web_driver = ReccWebDriver(headless=not args.show_browser)
-
         bible_verse_finder = BibleVerseFinder(web_driver, messenger)
-
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
+        generator = SlideGenerator(messenger)
 
-        messenger.log_status(
-            TaskStatus.RUNNING, "Reading input...", task_name=SCRIPT_MAIN
+        messenger.log_status(TaskStatus.RUNNING, "Running tasks...")
+
+        set_current_task_name("read_input")
+        blueprints = _read_input(
+            args.json_input, args.message_notes, args.lyrics, reader, messenger
         )
-        blueprints: List[SlideBlueprint] = []
-        if args.json_input:
-            set_current_task_name("load_json")
-            blueprints += reader.load_json(args.json_input)
-        if args.message_notes:
-            set_current_task_name("load_message_notes")
-            blueprints += reader.load_message_notes(args.message_notes)
-        if args.lyrics:
-            set_current_task_name("load_lyrics")
-            for lyrics_file in args.lyrics:
-                blueprints += reader.load_lyrics(lyrics_file)
 
         if not args.json_input:
+            set_current_task_name("save_input")
+            json_file = output_directory.joinpath("slides.json")
             messenger.log_status(
                 TaskStatus.RUNNING,
-                "Saving slide data to a JSON file...",
-                task_name=SCRIPT_MAIN,
+                f"Saving slide contents to {json_file.as_posix()}...",
             )
-            set_current_task_name("save_json")
-            reader.save_json(output_directory.joinpath("slides.json"), blueprints)
+            reader.save_json(json_file, blueprints)
+            messenger.log_status(
+                TaskStatus.DONE, f"Slide contents saved to {json_file.as_posix()}."
+            )
 
-        messenger.log_status(
-            TaskStatus.RUNNING, "Generating images...", task_name=SCRIPT_MAIN
-        )
         set_current_task_name("generate_slides")
-        generator = SlideGenerator(messenger)
-        styles: List[str] = args.style
-        slides: List[Slide] = []
-        if FULLSCREEN_STYLE in styles:
-            blueprints_with_prefix = [
-                b.with_name(f"FULL{i} - {b.name}" if b.name else f"FULL{i}")
-                for i, b in enumerate(blueprints, start=1)
-            ]
-            slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
-        if LOWER_THIRD_CLEAR_STYLE in args.style:
-            blueprints_with_prefix = [
-                b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
-                for i, b in enumerate(blueprints, start=1)
-            ]
-            slides += generator.generate_lower_third_slide(
-                blueprints_with_prefix, show_backdrop=False
-            )
-        if LOWER_THIRD_DARK_STYLE in args.style:
-            blueprints_with_prefix = [
-                b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
-                for i, b in enumerate(blueprints, start=1)
-            ]
-            slides += generator.generate_lower_third_slide(
-                blueprints_with_prefix, show_backdrop=True
-            )
+        slides = _generate_slides(blueprints, args.style, generator, messenger)
 
-        messenger.log_status(
-            TaskStatus.RUNNING, "Saving images...", task_name=SCRIPT_MAIN
-        )
         set_current_task_name("save_slides")
-        for s in slides:
-            path = output_directory.joinpath(s.name)
-            if path.suffix.lower() != ".png":
-                path = path.with_suffix(".png")
-            s.image.save(path, format="PNG")
+        _save_slides(slides, output_directory, messenger)
 
-        slide_or_slides = "slide" if len(slides) == 1 else "slides"
+        set_current_task_name(_SCRIPT_MAIN)
         messenger.log_status(
-            TaskStatus.DONE,
-            f"All done! {len(slides)} {slide_or_slides} generated.",
-            task_name="SCRIPT MAIN",
+            TaskStatus.DONE, f"All done! {len(slides)} slides generated."
         )
+    except Exception as e:
+        messenger.log_problem(
+            ProblemLevel.FATAL,
+            f"Error: {e}.",
+            stacktrace=traceback.format_exc(),
+        )
+        messenger.log_status(TaskStatus.DONE, "Script failed.")
+    except KeyboardInterrupt as e:
+        messenger.log_status(TaskStatus.DONE, "Script cancelled by the user.")
     finally:
         messenger.close()
 
 
+def _read_input(
+    json_input: Optional[Path],
+    message_notes: Optional[Path],
+    lyrics: List[Path],
+    reader: SlideBlueprintReader,
+    messenger: Messenger,
+) -> List[SlideBlueprint]:
+    blueprints: List[SlideBlueprint] = []
+    if json_input:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Reading previous data from {json_input.as_posix()}...",
+        )
+        blueprints += reader.load_json(json_input)
+    if message_notes:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Reading message notes from {message_notes.as_posix()}...",
+        )
+        blueprints += reader.load_message_notes(message_notes)
+    if lyrics:
+        lyrics_file_list = ", ".join([f.as_posix() for f in lyrics])
+        messenger.log_status(
+            TaskStatus.RUNNING, f"Reading lyrics from {lyrics_file_list}..."
+        )
+        for lyrics_file in lyrics:
+            blueprints += reader.load_lyrics(lyrics_file)
+    messenger.log_status(TaskStatus.DONE, f"{len(blueprints)} slides found.")
+    return blueprints
+
+
+def _generate_slides(
+    blueprints: List[SlideBlueprint],
+    styles: List[str],
+    generator: SlideGenerator,
+    messenger: Messenger,
+) -> List[Slide]:
+    slides: List[Slide] = []
+    if _FULLSCREEN_STYLE in styles:
+        messenger.log_status(TaskStatus.RUNNING, "Generating fullscreen images...")
+        blueprints_with_prefix = [
+            b.with_name(f"FULL{i} - {b.name}" if b.name else f"FULL{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
+    if _LOWER_THIRD_CLEAR_STYLE in styles:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            "Generating lower third images without a background...",
+        )
+        blueprints_with_prefix = [
+            b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_lower_third_slide(
+            blueprints_with_prefix, show_backdrop=False
+        )
+    if _LOWER_THIRD_DARK_STYLE in styles:
+        messenger.log_status(
+            TaskStatus.RUNNING, "Generating lower third images with a background..."
+        )
+        blueprints_with_prefix = [
+            b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_lower_third_slide(
+            blueprints_with_prefix, show_backdrop=True
+        )
+    messenger.log_status(TaskStatus.DONE, f"{len(slides)} slides generated.")
+    return slides
+
+
+def _save_slides(slides: List[Slide], output_directory: Path, messenger: Messenger):
+    messenger.log_status(TaskStatus.RUNNING, "Saving images...")
+    for s in slides:
+        path = output_directory.joinpath(s.name)
+        if path.suffix.lower() != ".png":
+            path = path.with_suffix(".png")
+        s.image.save(path, format="PNG")
+    messenger.log_status(TaskStatus.DONE, "Images saved.")
+
+
 def _parse_args() -> Namespace:
-    parser = ArgumentParser(description=DESCRIPTION)
+    parser = ArgumentParser(description=_DESCRIPTION)
 
     parser.add_argument(
         "-n",
@@ -161,7 +217,7 @@ def _parse_args() -> Namespace:
         "-s",
         "--style",
         action="append",
-        choices=[FULLSCREEN_STYLE, LOWER_THIRD_CLEAR_STYLE, LOWER_THIRD_DARK_STYLE],
+        choices=[_FULLSCREEN_STYLE, _LOWER_THIRD_CLEAR_STYLE, _LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
     )
 
@@ -179,6 +235,11 @@ def _parse_args() -> Namespace:
         action="store_true",
         help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
     )
+    advanced_args.add_argument(
+        "--text-ui",
+        action="store_true",
+        help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
+    )
 
     args = parser.parse_args()
 
@@ -188,7 +249,7 @@ def _parse_args() -> Namespace:
         parser.error("You cannot provide both plaintext input and JSON input.")
 
     if not args.style:
-        args.style = [LOWER_THIRD_DARK_STYLE]
+        args.style = [_LOWER_THIRD_DARK_STYLE]
 
     return args
 

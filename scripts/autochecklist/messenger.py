@@ -125,6 +125,7 @@ class InputMessenger:
     def wait(self, task_name: str, prompt: str) -> None:
         raise NotImplementedError()
 
+    @property
     def shutdown_requested(self) -> bool:
         """
         Whether the user wants to cancel the program (e.g., by closing the GUI or by hitting CTRL+C).
@@ -287,6 +288,7 @@ class ConsoleMessenger(InputMessenger):
         # Wait for the queue to be cleared
         self._task_queue_cleared_lock.acquire()
 
+    @property
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
 
@@ -630,7 +632,7 @@ class TkMessenger(InputMessenger):
     def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
         # TODO: What if the shutdown happens while in the middle of logging something?
         if self._shutdown_requested:
-            return
+            raise KeyboardInterrupt()
 
         if task_name in self._task_status_row:
             self._task_status_row[task_name].update_contents(status, message)
@@ -651,7 +653,7 @@ class TkMessenger(InputMessenger):
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         if self._shutdown_requested:
-            return
+            raise KeyboardInterrupt()
 
         frame = ProblemFrame(
             self._problems_container,
@@ -683,6 +685,9 @@ class TkMessenger(InputMessenger):
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
     ) -> Dict[str, Any]:
+        if self._shutdown_requested:
+            raise KeyboardInterrupt()
+
         # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
 
         entry_by_name: Dict[str, Entry] = {}
@@ -765,7 +770,7 @@ class TkMessenger(InputMessenger):
 
     def wait(self, task_name: str, prompt: str):
         if self._shutdown_requested:
-            return
+            raise KeyboardInterrupt()
 
         frame = ActionItemFrame(
             self._action_items_container,
@@ -803,6 +808,7 @@ class TkMessenger(InputMessenger):
         )
         self._root_frame.update_scrollregion()
 
+    @property
     def shutdown_requested(self) -> bool:
         return self._shutdown_requested
 
@@ -947,10 +953,10 @@ class Messenger:
         if not task_name:
             task_name = current_task_name()
 
-        self._input_messenger.log_status(task_name, status, message)
-
         log_message = f"Task status: {status}. {message}"
         self._file_messenger.log(task_name, logging.INFO, log_message)
+
+        self._input_messenger.log_status(task_name, status, message)
 
     def log_problem(
         self,
@@ -962,10 +968,10 @@ class Messenger:
         if not task_name:
             task_name = current_task_name()
 
-        self._input_messenger.log_problem(task_name, level, message)
-
         details = f"\n{stacktrace}" if stacktrace else ""
         self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
+
+        self._input_messenger.log_problem(task_name, level, message)
 
     def input(
         self,
@@ -992,8 +998,9 @@ class Messenger:
     def close(self):
         self._input_messenger.close()
 
+    @property
     def shutdown_requested(self) -> bool:
-        return self._input_messenger.shutdown_requested()
+        return self._input_messenger.shutdown_requested
 
 
 def _initialize_logger(

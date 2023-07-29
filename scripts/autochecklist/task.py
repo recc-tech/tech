@@ -158,7 +158,7 @@ class TaskGraph:
             while thread.is_alive():
                 thread.join(timeout=1)
                 # If the messenger is shut down, it means the user wants to end the program
-                if self._messenger.shutdown_requested():
+                if self._messenger.shutdown_requested:
                     raise KeyboardInterrupt()
 
         if self._after is not None:
