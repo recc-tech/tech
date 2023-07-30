@@ -128,7 +128,10 @@ def main():
         )
         messenger.log_status(TaskStatus.DONE, "The script failed.")
     except KeyboardInterrupt as e:
-        messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")
+        messenger.log_status(
+            TaskStatus.DONE, "The script was cancelled by the user.", file_only=True
+        )
+        print("Program cancelled.")
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close()
@@ -239,7 +242,9 @@ def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
     if len(params) == 0:
         return cmd_args
 
-    user_args = messenger.input_multiple(params, prompt="The script needs some more information to get started.")
+    user_args = messenger.input_multiple(
+        params, prompt="The script needs some more information to get started."
+    )
     if "message_series" in user_args:
         cmd_args.message_series = user_args["message_series"]
     if "message_title" in user_args:

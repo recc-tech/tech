@@ -1,5 +1,5 @@
 {
-	"_comment": "For more information about the format of this file, see [TODO: make wiki page and put link here]",
+	"_comment": "For more information about the format of this file, see https://github.com/recc-tech/tech/wiki/MCR-Teardown-Script#the-format-of-the-task-list.",
 	"before": [
 		{
 			"name": "stop_broadcast",

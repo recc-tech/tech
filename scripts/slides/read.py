@@ -173,10 +173,7 @@ class SlideBlueprintReader:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
-        # Don't show lyrics from different verses on the same slide
-        text = text.replace("\r\n", "\n")
-        text = re.sub("\n\n+", "\n\n", text)
-        verses = [v for v in text.split("\n\n") if v]
+        verses = self._split_lyrics(text)
 
         blueprints: List[SlideBlueprint] = []
         for v in verses:
@@ -213,6 +210,13 @@ class SlideBlueprintReader:
         notes = delimited_text.split(slide_boundary)
         non_empty_notes = [n.strip() for n in notes if n.strip()]
         return non_empty_notes
+
+    def _split_lyrics(self, text: str) -> List[str]:
+        text = text.replace("\r\n", "\n")
+        text = re.sub("\n\n+", "\n\n", text)
+        text = "\n".join([x for x in text.split("\n") if not x.startswith("#")])
+        verses = [v for v in text.split("\n\n") if v]
+        return verses
 
     def _convert_note_to_blueprint(self, note: str) -> List[SlideBlueprint]:
         bible_verses = BibleVerse.parse(note)

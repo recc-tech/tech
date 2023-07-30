@@ -1,8 +1,6 @@
 import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
-from getpass import getpass
-from inspect import cleandoc
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -36,9 +34,9 @@ _SCRIPT_MAIN = "SCRIPT MAIN"
 def main():
     set_current_task_name(_SCRIPT_MAIN)
 
-    args = _parse_args()
-    output_directory: Path = args.out_dir
-    home_directory: Path = args.home_dir
+    cmd_args = _parse_args()
+    output_directory: Path = cmd_args.out_dir
+    home_directory: Path = cmd_args.home_dir
 
     log_dir = home_directory.joinpath("Logs")
     date_ymd = datetime.now().strftime("%Y-%m-%d")
@@ -47,15 +45,23 @@ def main():
     file_messenger = FileMessenger(log_file)
     input_messenger = (
         ConsoleMessenger(description=_DESCRIPTION)
-        if args.text_ui
+        if cmd_args.text_ui
         else TkMessenger(description=_DESCRIPTION)
     )
     messenger = Messenger(file_messenger, input_messenger)
 
     try:
+        message_notes: Optional[Path] = cmd_args.message_notes
+        lyrics: List[Path] = cmd_args.message_notes
+        json_input: Optional[Path] = cmd_args.json_input
+        if not message_notes and not lyrics and not json_input:
+            (message_notes, lyrics, json_input) = _locate_input(
+                output_directory, messenger
+            )
+
         messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
-        web_driver = ReccWebDriver(headless=not args.show_browser)
+        web_driver = ReccWebDriver(headless=not cmd_args.show_browser)
         bible_verse_finder = BibleVerseFinder(web_driver, messenger)
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger)
@@ -63,24 +69,14 @@ def main():
         messenger.log_status(TaskStatus.RUNNING, "Running tasks...")
 
         set_current_task_name("read_input")
-        blueprints = _read_input(
-            args.json_input, args.message_notes, args.lyrics, reader, messenger
-        )
+        blueprints = _read_input(json_input, message_notes, lyrics, reader, messenger)
 
-        if not args.json_input:
+        if not json_input:
             set_current_task_name("save_input")
-            json_file = output_directory.joinpath("slides.json")
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                f"Saving slide contents to {json_file.as_posix()}...",
-            )
-            reader.save_json(json_file, blueprints)
-            messenger.log_status(
-                TaskStatus.DONE, f"Slide contents saved to {json_file.as_posix()}."
-            )
+            _save_json(blueprints, output_directory, reader, messenger)
 
         set_current_task_name("generate_slides")
-        slides = _generate_slides(blueprints, args.style, generator, messenger)
+        slides = _generate_slides(blueprints, cmd_args.style, generator, messenger)
 
         set_current_task_name("save_slides")
         _save_slides(slides, output_directory, messenger)
@@ -91,97 +87,16 @@ def main():
         )
     except Exception as e:
         messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"Error: {e}.",
-            stacktrace=traceback.format_exc(),
+            ProblemLevel.FATAL, f"Error: {e}.", stacktrace=traceback.format_exc()
         )
         messenger.log_status(TaskStatus.DONE, "Script failed.")
     except KeyboardInterrupt as e:
-        messenger.log_status(TaskStatus.DONE, "Script cancelled by the user.")
+        messenger.log_status(
+            TaskStatus.DONE, "Script cancelled by the user.", file_only=True
+        )
+        print("Program cancelled.")
     finally:
         messenger.close()
-
-
-def _read_input(
-    json_input: Optional[Path],
-    message_notes: Optional[Path],
-    lyrics: List[Path],
-    reader: SlideBlueprintReader,
-    messenger: Messenger,
-) -> List[SlideBlueprint]:
-    blueprints: List[SlideBlueprint] = []
-    if json_input:
-        messenger.log_status(
-            TaskStatus.RUNNING,
-            f"Reading previous data from {json_input.as_posix()}...",
-        )
-        blueprints += reader.load_json(json_input)
-    if message_notes:
-        messenger.log_status(
-            TaskStatus.RUNNING,
-            f"Reading message notes from {message_notes.as_posix()}...",
-        )
-        blueprints += reader.load_message_notes(message_notes)
-    if lyrics:
-        lyrics_file_list = ", ".join([f.as_posix() for f in lyrics])
-        messenger.log_status(
-            TaskStatus.RUNNING, f"Reading lyrics from {lyrics_file_list}..."
-        )
-        for lyrics_file in lyrics:
-            blueprints += reader.load_lyrics(lyrics_file)
-    messenger.log_status(TaskStatus.DONE, f"{len(blueprints)} slides found.")
-    return blueprints
-
-
-def _generate_slides(
-    blueprints: List[SlideBlueprint],
-    styles: List[str],
-    generator: SlideGenerator,
-    messenger: Messenger,
-) -> List[Slide]:
-    slides: List[Slide] = []
-    if _FULLSCREEN_STYLE in styles:
-        messenger.log_status(TaskStatus.RUNNING, "Generating fullscreen images...")
-        blueprints_with_prefix = [
-            b.with_name(f"FULL{i} - {b.name}" if b.name else f"FULL{i}")
-            for i, b in enumerate(blueprints, start=1)
-        ]
-        slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
-    if _LOWER_THIRD_CLEAR_STYLE in styles:
-        messenger.log_status(
-            TaskStatus.RUNNING,
-            "Generating lower third images without a background...",
-        )
-        blueprints_with_prefix = [
-            b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
-            for i, b in enumerate(blueprints, start=1)
-        ]
-        slides += generator.generate_lower_third_slide(
-            blueprints_with_prefix, show_backdrop=False
-        )
-    if _LOWER_THIRD_DARK_STYLE in styles:
-        messenger.log_status(
-            TaskStatus.RUNNING, "Generating lower third images with a background..."
-        )
-        blueprints_with_prefix = [
-            b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
-            for i, b in enumerate(blueprints, start=1)
-        ]
-        slides += generator.generate_lower_third_slide(
-            blueprints_with_prefix, show_backdrop=True
-        )
-    messenger.log_status(TaskStatus.DONE, f"{len(slides)} slides generated.")
-    return slides
-
-
-def _save_slides(slides: List[Slide], output_directory: Path, messenger: Messenger):
-    messenger.log_status(TaskStatus.RUNNING, "Saving images...")
-    for s in slides:
-        path = output_directory.joinpath(s.name)
-        if path.suffix.lower() != ".png":
-            path = path.with_suffix(".png")
-        s.image.save(path, format="PNG")
-    messenger.log_status(TaskStatus.DONE, "Images saved.")
 
 
 def _parse_args() -> Namespace:
@@ -243,8 +158,6 @@ def _parse_args() -> Namespace:
 
     args = parser.parse_args()
 
-    if not args.message_notes and not args.lyrics and not args.json_input:
-        (args.message_notes, args.json_input) = _locate_input(args.out_dir)
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
 
@@ -254,41 +167,122 @@ def _parse_args() -> Namespace:
     return args
 
 
-# TODO: Do this using the Messenger instead
-def _locate_input(directory: Path) -> Tuple[Optional[Path], Optional[Path]]:
+def _locate_input(
+    directory: Path, messenger: Messenger
+) -> Tuple[Optional[Path], List[Path], Optional[Path]]:
+    messenger.log_status(TaskStatus.RUNNING, "Looking for input...")
+
     json_file = directory.joinpath("slides.json")
-    if json_file.exists() and json_file.is_file():
-        print(f"Reading slides from existing .json file {json_file.as_posix()}.\n")
-        return (None, json_file)
+    if json_file.is_file():
+        return (None, [], json_file)
 
     message_notes_file = directory.joinpath("message-notes.txt")
-    if message_notes_file.exists() and message_notes_file.is_file():
-        print(f"Reading message notes from {message_notes_file.as_posix()}.\n")
-        return (message_notes_file, None)
-
-    # Use getpass so that pressing other keys has no effect
-    getpass(
-        cleandoc(
-            f"""
-            No input files could be found.
-              1. Go to Planning Center Online (https://services.planningcenteronline.com/dashboard).
-              2. Find the message notes in today's plan (the ones that say which slides to create).
-              3. Save the message notes in {message_notes_file.as_posix()}.
-            Press ENTER when you are done, or press CTRL+C to stop the script.
-            """
-        )
-    )
-    print()
+    lyrics_file = directory.joinpath("lyrics.txt")
     while True:
-        if message_notes_file.exists() and message_notes_file.is_file():
-            print(f"Reading message notes from {message_notes_file.as_posix()}.\n")
-            return (message_notes_file, None)
+        out_notes = message_notes_file if message_notes_file.is_file() else None
+        out_lyrics = [lyrics_file] if lyrics_file.is_file() else []
+        if out_notes or out_lyrics:
+            return (out_notes, out_lyrics, None)
+        else:
+            messenger.wait(
+                f"Get the message slides from Planning Center Online and save them in {message_notes_file}. If you'd like to generate slides for the lyrics, save the lyrics for all the songs in {lyrics_file}."
+            )
 
-        # Use getpass so that pressing other keys has no effect
-        getpass(
-            "The message notes file could not be found. Press ENTER when you have created it, or press CTRL+C to stop the script."
+
+def _read_input(
+    json_input: Optional[Path],
+    message_notes: Optional[Path],
+    lyrics: List[Path],
+    reader: SlideBlueprintReader,
+    messenger: Messenger,
+) -> List[SlideBlueprint]:
+    blueprints: List[SlideBlueprint] = []
+    if json_input:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Reading previous data from {json_input.as_posix()}...",
         )
-        print()
+        blueprints += reader.load_json(json_input)
+    if message_notes:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Reading message notes from {message_notes.as_posix()}...",
+        )
+        blueprints += reader.load_message_notes(message_notes)
+    if lyrics:
+        lyrics_file_list = ", ".join([f.as_posix() for f in lyrics])
+        messenger.log_status(
+            TaskStatus.RUNNING, f"Reading lyrics from {lyrics_file_list}..."
+        )
+        for lyrics_file in lyrics:
+            blueprints += reader.load_lyrics(lyrics_file)
+    messenger.log_status(TaskStatus.DONE, f"{len(blueprints)} slides found.")
+    return blueprints
+
+
+def _save_json(
+    blueprints: List[SlideBlueprint],
+    output_directory: Path,
+    reader: SlideBlueprintReader,
+    messenger: Messenger,
+):
+    json_file = output_directory.joinpath("slides.json")
+    messenger.log_status(
+        TaskStatus.RUNNING,
+        f"Saving slide contents to {json_file.as_posix()}...",
+    )
+    reader.save_json(json_file, blueprints)
+    messenger.log_status(
+        TaskStatus.DONE, f"Slide contents saved to {json_file.as_posix()}."
+    )
+
+
+def _generate_slides(
+    blueprints: List[SlideBlueprint],
+    styles: List[str],
+    generator: SlideGenerator,
+    messenger: Messenger,
+) -> List[Slide]:
+    slides: List[Slide] = []
+    if _FULLSCREEN_STYLE in styles:
+        messenger.log_status(TaskStatus.RUNNING, "Generating fullscreen images...")
+        blueprints_with_prefix = [
+            b.with_name(f"FULL{i} - {b.name}" if b.name else f"FULL{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
+    if _LOWER_THIRD_CLEAR_STYLE in styles:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            "Generating lower third images without a background...",
+        )
+        blueprints_with_prefix = [
+            b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_lower_third_slide(
+            blueprints_with_prefix, show_backdrop=False
+        )
+    if _LOWER_THIRD_DARK_STYLE in styles:
+        messenger.log_status(
+            TaskStatus.RUNNING, "Generating lower third images with a background..."
+        )
+        blueprints_with_prefix = [
+            b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
+            for i, b in enumerate(blueprints, start=1)
+        ]
+        slides += generator.generate_lower_third_slide(
+            blueprints_with_prefix, show_backdrop=True
+        )
+    messenger.log_status(TaskStatus.DONE, f"{len(slides)} slides generated.")
+    return slides
+
+
+def _save_slides(slides: List[Slide], output_directory: Path, messenger: Messenger):
+    messenger.log_status(TaskStatus.RUNNING, "Saving images...")
+    for s in slides:
+        s.save(output_directory)
+    messenger.log_status(TaskStatus.DONE, "Images saved.")
 
 
 if __name__ == "__main__":

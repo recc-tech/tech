@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Literal, Tuple
 
 from autochecklist import Messenger, ProblemLevel
@@ -35,6 +36,12 @@ class SlideBlueprint:
 class Slide:
     image: Image.Image
     name: str
+
+    def save(self, directory: Path):
+        path = directory.joinpath(self.name)
+        if path.suffix.lower() != ".png":
+            path = path.with_suffix(".png")
+        self.image.save(path, format="PNG")
 
 
 @dataclass

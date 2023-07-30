@@ -949,14 +949,21 @@ class Messenger:
             task_name = current_task_name()
         self._file_messenger.log(task_name, logging.DEBUG, message)
 
-    def log_status(self, status: TaskStatus, message: str, task_name: str = ""):
+    def log_status(
+        self,
+        status: TaskStatus,
+        message: str,
+        task_name: str = "",
+        file_only: bool = False,
+    ):
         if not task_name:
             task_name = current_task_name()
 
         log_message = f"Task status: {status}. {message}"
         self._file_messenger.log(task_name, logging.INFO, log_message)
 
-        self._input_messenger.log_status(task_name, status, message)
+        if not file_only:
+            self._input_messenger.log_status(task_name, status, message)
 
     def log_problem(
         self,
