@@ -5,65 +5,56 @@ assignees: recc-tech
 
 # MCR Setup Checklist
 
-## Planning Center Online
-- [ ] Download kids video
-- [ ] Download sermon notes (if they're present)
-- [ ] Move the downloaded files to `D:\Users\Tech\Documents\vMix Assets\By Service\YYYY-MM-DD`, where `YYYY-MM-DD` is the current date
-- [ ] Download any new assets (e.g., new bumper videos, new announcements) and move them to `D:\Users\Tech\Documents\vMix Assets\By Type\`
-- [ ] If you have time, check the existing assets in `D:\Users\Tech\Documents\vMix Assets\By Type\` and move outdated ones to `D:\Users\Tech\Documents\vMix Assets\By Type\Archive\`
-
-## Church Online Platform
-- [ ] Copy the sermon notes to the event (if they were on Planning Center Online)
-    > :warning: Pay attention to the "Additional Services" section at the end.
-    > - For the main event, uncheck every other service.
-    > - For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
-- [ ] Check that all the services have been created and have content
-
-## BoxCast
-- _NOTE:_ If you are asked to log in, you may need to refresh the page first
-- [ ] Check that the events have been created
-
-## vMix
-- [ ] Open last week's preset
-- [ ] Turn on both monitors and turn on the external output
-    - You may need to turn off the external output and turn it back on if it doesn't work the first time
-- [ ] Close the previous week's kids video and then import the new kids video and any new assets
-    - You can drag the videos directly from File Explorer into the "Videos" category
-- Set up and test triggers for kids countdown and video
-    - [ ] Set up a trigger on the kids countdown loop that fades to the kids video for this week
-    - [ ] Set up a trigger on the kids video that fades to the pre-stream title loop
-    - [ ] Test the triggers by playing the countdown loop (skip to a few seconds before the end)
-    - Once the triggers are set up and tested, you'll be able to set up the kids tech while the videos are being broadcast
-- [ ] Restart all videos and loops
-    - Do this _after_ testing the triggers so that you don't forget to reset those videos
-- Update titles
+- Turn everything on.
+    - [ ] Turn on camera 4 (the camera on the tripod).
+    - [ ] Turn on the sound computer.
+    - [ ] Open vMix.
+    - [ ] Open last week's preset in vMix.
+    - [ ] Turn on both monitors in the MCR and activate the external output in vMix.
+    - [ ] Turn on the NDI controller.
+- Download media from Planning Center Online.
+    - [ ] Download the Kids Connection Video.
+    - [ ] Download the sermon notes (if they're present).
+    - [ ] Download any new assets (e.g., new bumper videos, new announcements).
+    - [ ] Move the Kids Connection video and sermon notes to `D:\Users\Tech\Documents\vMix Assets\By Service\YYYY-MM-DD`, where `YYYY-MM-DD` is today's date.
+    - [ ] Move the new assets to `D:\Users\Tech\Documents\vMix Assets\By Type\`.
+- Import media into vMix.
+    - [ ] Import the Kids Connection video into the "Videos" category in vMix and close the previous week's video.
+        - You can drag and drop videos directly from Windows File Explorer into vMix!
+    - [ ] Import other assets (e.g., bumper videos, announcements).
+    - [ ] If you have time, clear out outdated files. Close the input in vMix and move the file from `D:\Users\Tech\Documents\vMix Assets\By Type\` to `D:\Users\Tech\Documents\vMix Assets\By Type\Archive\`.
+- Check that the events are set up properly on Church Online Platform.
+    - [ ] Check that the main event and rebroadcast events have been created _and have content_. If not, follow the instructions for [creating events on Church Online Platform](https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform).
+    - [ ] Copy the sermon notes to the event (if they were on Planning Center Online).
+        > :warning: Pay attention to the "Additional Services" section at the end.
+        > - For the main event, uncheck every other service.
+        > - For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
+- Check that the events are set up properly on BoxCast.
+    - [ ] Check that both the Kids Connection and the main event have been created. If not, follow the instructions for [creating live events on BoxCast](https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast).
+- Set up and test triggers for Kids Connection countdown and video. This lets you set up in the Annex while the Kids Connection countdown and video play automatically.
+    - [ ] Set up a trigger on the kids countdown loop that fades to the kids video for this week.
+    - [ ] Set up a trigger on the kids video that fades to the pre-stream title loop.
+    - [ ] Test the triggers by playing the countdown loop and video (skip to a few seconds before the end).
+- [ ] Restart all videos and loops. Do this _after_ testing the triggers so that you don't forget to reset those videos.
+- Update the titles in vMix.
     - [ ] Pre-stream title
     - [ ] Host
     - [ ] Speaker
     - [ ] Special announcer(s), if any
-    - [ ] Check that all the titles and the pre-stream title loop look good
-- [ ] Create slides for the verses
-- [ ] Save preset as a new file
-    - Click "Save As"
-    - Name the file `YYYY-MM-DD Live.vmix`, where `YYYY-MM-DD` is the current date
-- [ ] Check cameras and frame shots
-    - [ ] If any of the band members are in a bad position (e.g., blocking someone else), let them know
-- [ ] Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown _and start the stream_. Check on Church Online Platform that the stream is working.
-- [ ] Check sound
-    - If there is no sound:
-        - Check that the sound station is sending sound (look at the LR level)
-        - Reset the "Audio IN 1-2" input
-        - Unplug the sound USB cable and plug it back in
-- [ ] After the Kids Connection broadcast, start recording
-
-## Kids AV
-- [ ] Copy the kids video to the laptop's Desktop
-    - You can use the USB from the MCR sound station. Put the USB back at the sound station when you're done.
-- [ ] Once the kids broadcast starts, bring the equipment to the Annex
-    - As of 2023/02/26, the Kids Connection gathering takes place upstairs, in the second room on the left
-- [ ] Set up the laptop and TV
-    - On the old Dell Latitude, you should be able to log in to the account `David Reader` without a password.
-    - On the old Dell Inspiron, use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
+    - [ ] Check that all the titles and the pre-stream title loop look good.
+- [ ] Create backup slides for the message notes and verses. See the [guide to generating backup slides](https://github.com/recc-tech/tech/wiki/Generating-Backup-Slides).
+- [ ] Save the vMix preset as a new file. Click "Save As" and name the file `YYYY-MM-DD Live.vmix` (where `YYYY-MM-DD` is today's date).
+- [ ] Check cameras.
+    - [ ] Make sure the cameras are responding to inputs from the NDI controller and that the video isn't laggy.
+    - [ ] Frame the shots. If any of the band members are in a bad position (e.g., blocking someone else), let them know.
+- [ ] Check sound.
+- [ ] Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown _and start the stream_. Check on Church Online Platform's Host Tools section that the stream is working.
+- Set up the Kids Connection tech in the Annex.
+    - [ ] Copy the kids video to the laptop's Desktop. You can use the USB from the MCR sound station, as long as you put it back when you're done.
+    - [ ] Once the kids broadcast starts, bring the equipment to the Annex and set up the laptop and TV.
+        - On the old Dell Latitude, you should be able to log in to the account `David Reader` without a password.
+        - On the old Dell Inspiron, use the account `Tech`. The password should be written on a sticky note on the laptop. If for some reason you need the security questions, the answers are all "Montreal".
+- [ ] After the Kids Connection broadcast, start recording.
 
 ## General Reminders
 - At each scene change (e.g., from worship to announcements):
