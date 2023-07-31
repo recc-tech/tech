@@ -8,8 +8,11 @@ def parse_non_empty_string(raw_input: str) -> str:
     return raw_input.strip()
 
 
-def parse_directory(path_str: str) -> Path:
+def parse_directory(path_str: str, create: bool = False) -> Path:
     path = Path(path_str)
+
+    if create:
+        path.mkdir(exist_ok=True, parents=False)
 
     if not path.exists():
         message = f"Path '{path_str}' does not exist."

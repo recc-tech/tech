@@ -125,7 +125,7 @@ def _parse_args() -> Namespace:
         "-o",
         "--out-dir",
         default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
-        type=parse_directory,
+        type=lambda x: parse_directory(x, create=True),
         help="Directory in which to place the generated images.",
     )
     parser.add_argument(
