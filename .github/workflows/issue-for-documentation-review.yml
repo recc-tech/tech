@@ -17,6 +17,7 @@ jobs:
     permissions:
       issues: write
     steps:
+      - uses: actions/checkout@v2
       - name: Create issue
         uses: JasonEtco/create-an-issue@v2
         env:
