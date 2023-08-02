@@ -27,7 +27,7 @@ jobs:
         with:
           repo: ${{ github.repository }}
           ref: ${{ github.ref }}
-          path: "./checklists/"
+          path: "./checklists/weekly/"
           ext: ".md"
   # Create an issue for each checklist
   create-issues:
