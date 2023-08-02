@@ -5,24 +5,22 @@ assignees: recc-tech
 
 # Documentation Review Checklist
 
-Documentation risks becoming outdated if we don't maintain it. Below is a checklist for reviewing the documentation and weekly checklists.
+Documentation can become outdated if we don't maintain it. Below is a checklist for reviewing the documentation and weekly checklists.
 
 ## For Each Article in the Wiki
 
 Check that:
 
-- [ ] All the information is still accurate and relevant.
+- [ ] All the information is still accurate, relevant, and consistent with current practices (not what we'd _like_ to do).
 - [ ] No important information is missing.
-- [ ] All screenshots are up to date (esp. UI screenshots).
 - [ ] All hyperlinks are still working.
-
-If applicable, add any new information to the articles.
+- [ ] All screenshots are up to date (esp. UI screenshots).
 
 ## For Each Weekly Checklist
 
 Check that:
 
-- [ ] All the information is still accurate and reflects current practices (not what we'd _like_ to do).
+- [ ] All the information is still accurate, relevant, and consistent with current practices (not what we'd _like_ to do).
 - [ ] No steps are missing.
 - [ ] All hyperlinks are still working.
 
