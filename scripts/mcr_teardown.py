@@ -79,6 +79,8 @@ def main():
             credential_store=credential_store,
             headless=not args.show_browser,
             lazy_login=args.lazy_login,
+            log_directory=config.log_dir,
+            log_file_name="mcr_teardown_web_driver"
         )
 
         function_finder = FunctionFinder(

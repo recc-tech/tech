@@ -45,6 +45,8 @@ def main():
         headless=not args.show_browser,
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
+        log_directory=log_dir,
+        log_file_name="check_credentials_web_driver",
     )
 
     messenger.log_status(TaskStatus.DONE, "Everything looks good!")

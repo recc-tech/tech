@@ -3,6 +3,7 @@ import time
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from common import ReccWebDriver
@@ -26,8 +27,9 @@ class BoxCastClient(ReccWebDriver):
         credential_store: CredentialStore,
         headless: bool = True,
         lazy_login: bool = False,
+        log_file: Optional[Path] = None,
     ):
-        super().__init__(headless=headless)
+        super().__init__(headless=headless, log_file=log_file)
 
         self._messenger = messenger
         self._credential_store = credential_store
@@ -111,19 +113,34 @@ class BoxCastClientFactory:
         credential_store: CredentialStore,
         headless: bool = True,
         lazy_login: bool = False,
+        log_directory: Optional[Path] = None,
+        log_file_name: Optional[str] = None,
     ):
         self._messenger = messenger
         self._credential_store = credential_store
         self._headless = headless
+        self._log_directory = log_directory
+        self._log_file_name = log_file_name if log_file_name else "boxcast_client"
+        if self._log_file_name.endswith(".log"):
+            self._log_file_name = self._log_file_name[:-4]
 
         if not lazy_login:
             self._test_login()
 
     def get_client(self):
+        if not self._log_directory:
+            log_file = None
+        else:
+            date_ymd = datetime.now().strftime("%Y-%m-%d")
+            current_time = datetime.now().strftime("%H-%M-%S")
+            log_file = self._log_directory.joinpath(
+                f"{date_ymd} {current_time} {self._log_file_name}.log"
+            )
         return BoxCastClient(
             messenger=self._messenger,
             credential_store=self._credential_store,
             headless=self._headless,
+            log_file=log_file,
         )
 
     def _test_login(self):

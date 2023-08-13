@@ -1,9 +1,11 @@
 import time
+from pathlib import Path
 from typing import List, Optional
 
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,11 +13,16 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 class ReccWebDriver(WebDriver):
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, log_file: Optional[Path] = None):
         options = Options()
         if headless:
             options.add_argument("-headless")  # type: ignore
-        super().__init__(options=options)  # type: ignore
+        service = (
+            Service(log_path=log_file.as_posix())
+            if log_file
+            else Service(log_path="NUL")
+        )
+        super().__init__(options=options, service=service)  # type: ignore
 
     def wait_for_single_element(
         self,

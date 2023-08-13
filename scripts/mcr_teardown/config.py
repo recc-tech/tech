@@ -56,12 +56,12 @@ class McrTeardownConfig(BaseConfig):
         return f"https://dashboard.boxcast.com/broadcasts/{self.boxcast_event_id}/edit-captions"
 
     @property
-    def _log_dir(self) -> Path:
+    def log_dir(self) -> Path:
         return self._home_dir.joinpath("Logs")
 
     @property
     def log_file(self) -> Path:
-        return self._log_dir.joinpath(
+        return self.log_dir.joinpath(
             f"{self._start_date_ymd} {self._start_time} mcr_teardown.log"
         ).resolve()
 
@@ -83,9 +83,7 @@ class McrTeardownConfig(BaseConfig):
 
     @property
     def vimeo_video_title(self) -> str:
-        return (
-            f"{self._start_date_ymd} | {self.message_series} | {self.message_title}"
-        )
+        return f"{self._start_date_ymd} | {self.message_series} | {self.message_title}"
 
     def fill_placeholders(self, text: str) -> str:
         text = (

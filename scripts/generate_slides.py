@@ -42,6 +42,7 @@ def main():
     date_ymd = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
     log_file = log_dir.joinpath(f"{date_ymd} {current_time} generate_slides.log")
+    web_driver_log_file = log_dir.joinpath(f"{date_ymd} {current_time} geckodriver.log")
     file_messenger = FileMessenger(log_file)
     input_messenger = (
         ConsoleMessenger(description=_DESCRIPTION)
@@ -61,7 +62,9 @@ def main():
 
         messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
-        web_driver = ReccWebDriver(headless=not cmd_args.show_browser)
+        web_driver = ReccWebDriver(
+            headless=not cmd_args.show_browser, log_file=web_driver_log_file
+        )
         bible_verse_finder = BibleVerseFinder(web_driver, messenger)
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger)

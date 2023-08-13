@@ -2,4 +2,3 @@
 .vscode/
 /scripts/test/manual/home/
 __pycache__/
-geckodriver.log
