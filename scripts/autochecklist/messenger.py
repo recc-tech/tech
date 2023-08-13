@@ -802,7 +802,6 @@ class TkMessenger(InputMessenger):
             foreground=self._FOREGROUND_COLOUR,
         )
         goodbye_message_textbox.grid(sticky="W", pady=25)
-        # TODO: only show this message when all the tasks are done! Why is it showing up earlier (twice in total!)?
         goodbye_message_textbox.set_text(
             "All tasks are complete. Close this window to exit."
         )

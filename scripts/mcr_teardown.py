@@ -80,7 +80,7 @@ def main():
             headless=not args.show_browser,
             lazy_login=args.lazy_login,
             log_directory=config.log_dir,
-            log_file_name="mcr_teardown_web_driver"
+            log_file_name="mcr_teardown_web_driver",
         )
 
         function_finder = FunctionFinder(
@@ -100,6 +100,7 @@ def main():
         messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
     except KeyboardInterrupt as e:
         messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")
+        messenger.close()
         return
     except Exception as e:
         messenger.log_problem(
@@ -108,9 +109,8 @@ def main():
             stacktrace=traceback.format_exc(),
         )
         messenger.log_status(TaskStatus.DONE, "The script failed to start.")
-        return
-    finally:
         messenger.close()
+        return
 
     try:
         if not args.no_run:
