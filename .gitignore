@@ -1,5 +1,5 @@
 .venv/
 .vscode/
-/scripts/test-home/
+/scripts/test/manual/home/
 __pycache__/
 geckodriver.log
