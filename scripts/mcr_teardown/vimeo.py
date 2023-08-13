@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Tuple, Union
@@ -140,6 +141,39 @@ def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, 
     video_uri = response_data["uri"]
     texttrack_uri = response_data["metadata"]["connections"]["texttracks"]["uri"]
     return (video_uri, texttrack_uri)
+
+
+def disable_automatic_captions(
+    texttracks_uri: str, client: ReccVimeoClient, messenger: Messenger
+):
+    response = client.get(texttracks_uri, params={"fields": "uri"})
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"The Vimeo client failed to get the text tracks for today's video. GET {texttracks_uri} returned HTTP status {response.status_code}."
+        )
+
+    response_data = response.json()["data"]
+    for texttrack in response_data:
+        # If we wanted to be sure we weren't disabling captions we want to
+        # keep, we could check that the language field contains "autogen."
+        # That probably isn't necessary as long as this task is performed
+        # before our captions are uploaded and there are never existing
+        # captions we want to keep.
+        try:
+            patch_uri = texttrack["uri"]
+            patch_response = client.patch(patch_uri, data={"active": False})
+
+            if patch_response.status_code != 200:
+                raise RuntimeError(
+                    f"The Vimeo client failed to disable one of the existing text tracks. PATCH {patch_uri} returned HTTP status {patch_response.status_code}."
+                )
+        except Exception:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                "The Vimeo client failed to disable one of the existing text tracks.",
+                stacktrace=traceback.format_exc(),
+            )
 
 
 def rename_video(video_uri: str, new_title: str, client: ReccVimeoClient):

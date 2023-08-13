@@ -76,6 +76,21 @@ def get_vimeo_video_data(
     config.vimeo_video_texttracks_uri = texttrack_uri
 
 
+def disable_automatic_captions(
+    config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
+):
+    if config.vimeo_video_texttracks_uri is None:
+        raise ValueError(
+            "The link to the Vimeo video's captions is unknown (config.vimeo_video_texttracks_uri was not set)."
+        )
+
+    vimeo_tasks.disable_automatic_captions(
+        texttracks_uri=config.vimeo_video_texttracks_uri,
+        client=vimeo_client,
+        messenger=messenger,
+    )
+
+
 def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClient):
     video_uri = config.vimeo_video_uri
     if video_uri is None:
