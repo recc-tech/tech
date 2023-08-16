@@ -53,7 +53,7 @@ def main():
 
     try:
         message_notes: Optional[Path] = cmd_args.message_notes
-        lyrics: List[Path] = cmd_args.message_notes
+        lyrics: List[Path] = cmd_args.lyrics
         json_input: Optional[Path] = cmd_args.json_input
         if not message_notes and not lyrics and not json_input:
             (message_notes, lyrics, json_input) = _locate_input(

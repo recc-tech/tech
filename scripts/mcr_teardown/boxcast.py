@@ -74,7 +74,6 @@ class BoxCastClient(ReccWebDriver):
                     lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
                     message=f"Login failed: still on the login page after {max_seconds_to_redirect} seconds.",
                 )
-                # TODO: This seems to fail when it comes to the rebroadcasts. The driver just stays on the home page
                 super().get(target_url)
                 wait.until(  # type: ignore
                     lambda driver: driver.current_url == target_url,  # type: ignore

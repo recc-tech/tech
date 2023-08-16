@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Literal, Tuple
@@ -8,15 +9,13 @@ from autochecklist import Messenger, ProblemLevel
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
 
-# TODO: vMix output is 1920x1080
-IMG_WIDTH = 1640
-IMG_HEIGHT = 924
+IMG_WIDTH = 1920
+IMG_HEIGHT = 1080
 OUTER_MARGIN = 100
 INNER_MARGIN = 25
 FONT_FACE = "calibri.ttf"
 
 
-# TODO: Use larger spacing for lyrics compared to notes/scripture? Or just increase the spacing so as to fill the entire vertical space?
 @dataclass
 class SlideBlueprint:
     body_text: str
@@ -71,28 +70,44 @@ class SlideGenerator:
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
+        # ImageFont.truetype opens a font file and keeps it open. Load the
+        # fonts once here instead of loading them in
+        # _generate_fullscreen_slide_with[out]_footer to avoid opening too many
+        # files.
+        # https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype
+        body_font = ImageFont.truetype(FONT_FACE, size=72)
+        footer_font = ImageFont.truetype(FONT_FACE, size=60)
+
         return [
-            self._generate_fullscreen_slide_with_footer(b)
+            self._generate_fullscreen_slide_with_footer(
+                b, body_font=body_font, footer_font=footer_font
+            )
             if b.footer_text
-            else self._generate_fullscreen_slide_without_footer(b)
+            else self._generate_fullscreen_slide_without_footer(b, font=body_font)
             for b in blueprints
         ]
 
     def generate_lower_third_slide(
         self, blueprints: List[SlideBlueprint], show_backdrop: bool
     ) -> List[Slide]:
+        body_font = ImageFont.truetype(FONT_FACE, size=48)
+        footer_font = ImageFont.truetype(FONT_FACE, size=44)
+        no_footer_font = ImageFont.truetype(FONT_FACE, size=56)
+
         return [
-            self._generate_lower_third_slide_with_footer(b, show_backdrop)
+            self._generate_lower_third_slide_with_footer(
+                b, show_backdrop, body_font=body_font, footer_font=footer_font
+            )
             if b.footer_text
-            else self._generate_lower_third_slide_without_footer(b, show_backdrop)
+            else self._generate_lower_third_slide_without_footer(
+                b, show_backdrop, font=no_footer_font
+            )
             for b in blueprints
         ]
 
-    def _generate_fullscreen_slide_with_footer(self, input: SlideBlueprint) -> Slide:
-        # TODO: Move the fonts out of the method so that the font file doesn't get opened repeatedly?
-        main_font = ImageFont.truetype(FONT_FACE, size=72)
-        footer_font = ImageFont.truetype(FONT_FACE, size=60)
-
+    def _generate_fullscreen_slide_with_footer(
+        self, input: SlideBlueprint, body_font: FreeTypeFont, footer_font: FreeTypeFont
+    ) -> Slide:
         img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
         draw = ImageDraw.Draw(img)
         self._draw_text(
@@ -106,7 +121,7 @@ class SlideGenerator:
             ),
             horiz_align="left",
             vert_align="top",
-            font=main_font,
+            font=body_font,
             foreground="#333333",
             stroke_width=1,  # bold
             line_spacing=1.75,
@@ -131,9 +146,9 @@ class SlideGenerator:
         )
         return Slide(image=img, name=input.name)
 
-    def _generate_fullscreen_slide_without_footer(self, input: SlideBlueprint) -> Slide:
-        font = ImageFont.truetype(FONT_FACE, size=72)
-
+    def _generate_fullscreen_slide_without_footer(
+        self, input: SlideBlueprint, font: FreeTypeFont
+    ) -> Slide:
         img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
         draw = ImageDraw.Draw(img)
         self._draw_text(
@@ -156,11 +171,12 @@ class SlideGenerator:
         return Slide(image=img, name=input.name)
 
     def _generate_lower_third_slide_with_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
+        self,
+        blueprint: SlideBlueprint,
+        show_backdrop: bool,
+        body_font: FreeTypeFont,
+        footer_font: FreeTypeFont,
     ) -> Slide:
-        body_font = ImageFont.truetype(FONT_FACE, size=48)
-        footer_font = ImageFont.truetype(FONT_FACE, size=44)
-
         img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
         draw = ImageDraw.Draw(img)
 
@@ -212,10 +228,8 @@ class SlideGenerator:
         return Slide(image=img, name=blueprint.name)
 
     def _generate_lower_third_slide_without_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
+        self, blueprint: SlideBlueprint, show_backdrop: bool, font: FreeTypeFont
     ) -> Slide:
-        font = ImageFont.truetype(FONT_FACE, size=56)
-
         img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
         draw = ImageDraw.Draw(img)
 
@@ -263,7 +277,7 @@ class SlideGenerator:
         line_spacing: float,
         slide_name: str,
     ):
-        wrapped_text = _wrap_text(text, bbox.get_width(), font)
+        wrapped_text = _wrap_text(text, bbox.get_width(), font, stroke_width)
 
         anchor_horiz = (
             "l" if horiz_align == "left" else "r" if horiz_align == "right" else "m"
@@ -289,7 +303,7 @@ class SlideGenerator:
         )
         xy = (x, y)
 
-        line_height = _get_font_bbox("A", font).get_height()
+        line_height = _get_font_bbox("A", font, stroke_width).get_height()
         textbbox = _Bbox(
             *draw.textbbox(
                 xy=xy,
@@ -322,25 +336,28 @@ class SlideGenerator:
         )
 
 
-def _wrap_text(text: str, max_width: int, font: FreeTypeFont) -> str:
-    # TODO: replace other whitespace (e.g., tabs) with spaces
+def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
     text = text.strip().replace("\r\n", "\n")
     # Keep line breaks that the user manually chose
-    lines = [line for line in text.split("\n") if line]
-    return "\n".join([_wrap_line(line, max_width, font) for line in lines])
+    lines = [re.sub(r"\s+", " ", line) for line in text.split("\n") if line]
+    return "\n".join(
+        [_wrap_line(line, max_width, font, stroke_width) for line in lines]
+    )
 
 
-def _wrap_line(line: str, max_width: int, font: FreeTypeFont) -> str:
+def _wrap_line(line: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
     words = [w for w in line.split(" ") if w]
     output_lines: List[str] = []
     while words:
-        (wrapped_line, words) = _extract_max_prefix(words, max_width, font)
+        (wrapped_line, words) = _extract_max_prefix(
+            words, max_width, font, stroke_width
+        )
         output_lines.append(wrapped_line)
     return "\n".join(output_lines)
 
 
 def _extract_max_prefix(
-    words: List[str], max_width: int, font: FreeTypeFont
+    words: List[str], max_width: int, font: FreeTypeFont, stroke_width: int
 ) -> Tuple[str, List[str]]:
     """
     Return as many words as can fit on one line, along with the remaining words. At least one word will be taken regardless of its length.
@@ -355,7 +372,7 @@ def _extract_max_prefix(
             break
         next_word = words[0]
         longer_output = f"{output} {next_word}"
-        width = _get_font_bbox(longer_output, font).get_width()
+        width = _get_font_bbox(longer_output, font, stroke_width).get_width()
         if width > max_width:
             break
         else:
@@ -364,6 +381,5 @@ def _extract_max_prefix(
     return (output, words)
 
 
-# TODO: Some lines are still too long. Probably need to account for the stroke_width
-def _get_font_bbox(text: str, font: FreeTypeFont) -> _Bbox:
-    return _Bbox(*font.getbbox(text))  # type: ignore
+def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> _Bbox:
+    return _Bbox(*font.getbbox(text, stroke_width=stroke_width))  # type: ignore

@@ -41,7 +41,6 @@ class ReccVimeoClient:
         if not lazy_login:
             self._client = self._login_with_retries(max_attempts=3)
 
-    # TODO: Try logging in again if the response comes back as 401 or 403?
     def get(self, url: str, params: Dict[str, Any]) -> Response:
         return self._client.get(url, params=params)  # type: ignore
 
