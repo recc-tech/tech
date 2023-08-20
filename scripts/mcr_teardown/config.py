@@ -23,9 +23,10 @@ class McrTeardownConfig(BaseConfig):
         self.vimeo_video_uri: Union[str, None] = None
         self.vimeo_video_texttracks_uri: Union[str, None] = None
 
-        self._start_date_ymd = datetime.now().strftime("%Y-%m-%d")
-        self._start_date_mdy = BaseConfig._date_mdy(datetime.now())
-        self._start_time = datetime.now().strftime("%H-%M-%S")
+        now = datetime.now()
+        self._start_date_ymd = now.strftime("%Y-%m-%d")
+        self._start_date_mdy = BaseConfig._date_mdy(now)
+        self._start_time = now.strftime("%H-%M-%S")
 
     @property
     def live_event_title(self) -> str:

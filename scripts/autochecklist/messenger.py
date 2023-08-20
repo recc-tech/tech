@@ -150,6 +150,8 @@ class FileMessenger:
         self.file_logger.log(level=level, msg=f"[{task_name:<35}] {message}")
 
 
+# TODO: Review punctuation in input prompts (esp. in check_credentials and mcr_setup)
+# TODO: Restore log levels so that user can ignore status updates by default?
 class ConsoleMessenger(InputMessenger):
     @dataclass
     class _LogTask:
