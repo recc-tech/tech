@@ -44,7 +44,7 @@
 		},
 		{
 			"name": "import_kids_video",
-			"description": "Import the Kids Connection video into the 'Videos' category in vMix and close the previous week's video. You can drag and drop the video from Windows File Explorer directly into vMix!",
+			"description": "Import the Kids Connection video into the 'Videos' category in vMix and close the previous week's video. (Note: you can drag and drop the video from Windows File Explorer directly into vMix!)",
 			"depends_on": [
 				"move_assets_by_service"
 			]
@@ -77,10 +77,15 @@
 		},
 		{
 			"name": "import_backup_slides",
-			"description": "Import the backup slides into vMix.",
+			"description": "Close the previous week's backup slides and import the new backup slides into the 'Verses' category in vMix.",
 			"depends_on": [
 				"generate_backup_slides"
 			]
+		},
+		{
+			"name": "archive_old_assets",
+			"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{ASSETS_BY_TYPE_ARCHIVE_DIR}%.",
+			"depends_on": []
 		},
 		{
 			"name": "check_cop_events",
@@ -104,7 +109,7 @@
 		},
 		{
 			"name": "check_boxcast_events",
-			"description": "Check that the Kids Connection event and main event are set up on BoxCast. If not, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast.",
+			"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If the events are not set up properly, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast.",
 			"depends_on": []
 		},
 		{
@@ -122,6 +127,52 @@
 			]
 		},
 		{
+			"name": "update_pre_stream_title",
+			"description": "In vMix, update the pre-stream title loop.",
+			"depends_on": []
+		},
+		{
+			"name": "update_speaker_title",
+			"description": "In vMix, update the speaker's title.",
+			"depends_on": [
+				"update_pre_stream_title"
+			]
+		},
+		{
+			"name": "update_host_title",
+			"description": "In vMix, update the host's title.",
+			"depends_on": [
+				"update_speaker_title"
+			]
+		},
+		{
+			"name": "update_special_announcer_title",
+			"description": "In vMix, update the 'Special Announcer Title' if someone other than the host or speaker will be making an announcement.",
+			"depends_on": [
+				"update_host_title"
+			]
+		},
+		{
+			"name": "test_titles",
+			"description": "In vMix, check that all the titles look good.",
+			"depends_on": [
+				"update_special_announcer_title"
+			]
+		},
+		{
+			"name": "save_vmix_preset",
+			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{VMIX_PRESET_FILE}%.",
+			"depends_on": [
+				"import_kids_video",
+				"import_other_assets",
+				"import_backup_slides",
+				"archive_old_assets",
+				"generate_backup_slides",
+				"restart_videos",
+				"test_titles"
+			]
+		},
+		{
 			"name": "check_cameras",
 			"description": "Check the cameras. If any of the band members are in a bad position (e.g., blocking someone else), ask them to move. If the cameras are laggy or unresponsive, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-cameras-arent-working.",
 			"depends_on": []
@@ -132,26 +183,14 @@
 			"depends_on": []
 		},
 		{
-			"name": "archive_old_assets",
-			"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{ASSETS_BY_TYPE_ARCHIVE_DIR}%.",
-			"depends_on": [
-				"import_other_assets"
-			]
-		},
-		{
-			"name": "save_vmix_preset",
-			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{VMIX_PRESET_FILE}%.",
-			"depends_on": [
-				"archive_old_assets",
-				"generate_backup_slides"
-			]
+			"name": "check_github_checklist",
+			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
+			"depends_on": []
 		},
 		{
 			"name": "start_stream",
 			"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown, and start the stream. Check in Church Online Platform's Host Tools that the stream is working.",
-			"depends_on": [
-				"create_kids_connection_triggers"
-			]
+			"depends_on": []
 		},
 		{
 			"name": "set_up_in_annex",

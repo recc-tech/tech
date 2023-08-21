@@ -157,20 +157,13 @@
 	],
 	"after": [
 		{
-			"name": "check_github_checklist",
-			"description": "Double-check that all tasks (except the final shutdown tasks) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
+			"name": "close_vmix",
+			"description": "Save this week's preset and close vMix.",
 			"depends_on": []
 		},
 		{
-			"name": "close_vmix",
-			"description": "Save this week's preset and close vMix.",
-			"depends_on": [
-				"check_github_checklist"
-			]
-		},
-		{
 			"name": "turn_off_monitors",
-			"description": "Turn off both monitors in the MCR.",
+			"description": "Turn off both TV monitors in the MCR.",
 			"depends_on": [
 				"close_vmix"
 			]
@@ -178,13 +171,19 @@
 		{
 			"name": "turn_off_ndi_controller",
 			"description": "Turn off the NDI controller.",
+			"depends_on": []
+		},
+		{
+			"name": "check_github_checklist",
+			"description": "Double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
 			"depends_on": [
-				"check_github_checklist"
+				"turn_off_monitors",
+				"turn_off_ndi_controller"
 			]
 		},
 		{
 			"name": "shut_down_computers",
-			"description": "This is the final task. When this script exits, shut down (and update, if necessary) both MCR computers.",
+			"description": "When this script exits, shut down both MCR computers. If there are updates, then select 'Shut Down and Update' instead.",
 			"depends_on": [
 				"turn_off_monitors",
 				"turn_off_ndi_controller"

@@ -462,6 +462,8 @@ class CopyableText(Text):
         self.configure(height=height)
 
 
+# TODO: Refactor this code to just use grids instead of these silly frames
+# TODO: As far as possible, show the items here in the same order as they appear in tasks.json (https://stackoverflow.com/questions/46340796/inserting-new-rows-in-tkinter-grid)
 class ActionItemFrame(Frame):
     _PADX = 5
 

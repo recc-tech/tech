@@ -122,6 +122,10 @@ class TaskThread(Thread):
             set_current_task_name(None)
 
 
+# TODO: Split this into two steps: (1) read file into TaskGraphModel, (2) convert model to runnable task graph
+# TODO: Assign each task a number (with tasks appearing earlier in the JSON file having a lower task number if possible) so that they can be shown in order. Maybe put the tasks in a list and always take the first task from the list whose dependencies have all already been taken
+# TODO: Let user omit "depends_on" when there are no dependencies
+# TODO: Instead of having before and after, just make everything a task but allow subtasks.
 class TaskGraph:
     _before: Union[TaskGraph, None]
     _threads: Set[TaskThread]

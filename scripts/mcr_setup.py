@@ -10,6 +10,7 @@ from autochecklist import (
     ProblemLevel,
     TaskGraph,
     TaskStatus,
+    TkMessenger,
     set_current_task_name,
 )
 from common.parsing_helpers import parse_directory
@@ -25,7 +26,15 @@ def main():
 
     config = McrSetupConfig(home_dir=args.home_dir)
     file_messenger = FileMessenger(log_file=config.log_file)
-    input_messenger = ConsoleMessenger(description=_DESCRIPTION)
+    input_messenger = (
+        ConsoleMessenger(
+            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, press CTRL+C or close the terminal window."
+        )
+        if args.text_ui
+        else TkMessenger(
+            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, close this window or the terminal window."
+        )
+    )
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
     )
@@ -83,6 +92,11 @@ def _parse_args() -> Namespace:
         "--no-run",
         action="store_true",
         help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    advanced_args.add_argument(
+        "--text-ui",
+        action="store_true",
+        help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
 
     return parser.parse_args()
