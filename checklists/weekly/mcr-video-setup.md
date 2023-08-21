@@ -18,15 +18,15 @@ assignees: recc-tech
     - [ ] Import the Kids Connection video into the "Videos" category in vMix and close the previous week's video.
         - You can drag and drop videos directly from Windows File Explorer into vMix!
     - [ ] Import the other new assets into vMix.
+    - [ ] Create backup slides for the message notes and verses. See the [guide to generating backup slides](https://github.com/recc-tech/tech/wiki/Generating-Backup-Slides).
+    - [ ] Close the previous week's backup slides and import the new backup slides into the "Verses" category in vMix.
     - [ ] If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to `D:\Users\Tech\Documents\vMix Assets\By Type\Archive\`.
 - Check that the events are set up properly on Church Online Platform.
     - [ ] Check that the main event and rebroadcast events have been created _and have content_. If not, follow the instructions for [creating events on Church Online Platform](https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform).
-    - [ ] Copy the sermon notes to the event (if they were on Planning Center Online).
-        > :warning: Pay attention to the "Additional Services" section at the end.
-        > - For the main event, uncheck every other service.
-        > - For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
-- Check that the events are set up properly on BoxCast.
-    - [ ] Check that both the Kids Connection and the main event have been created. If not, follow the instructions for [creating live events on BoxCast](https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast).
+    - [ ] Copy the sermon notes to the event (if they were on Planning Center Online). :warning: IMPORTANT: :warning: Pay attention to the "Additional Services" section at the end. For the main event, uncheck every other service. For the rebroadcasts, check all the other rebroadcasts on the same date but uncheck everything else.
+- Check that the events are set up properly on BoxCast:
+    - [ ] Check that both the Kids Connection event and the main event have been created. If not, follow the instructions for [creating live events on BoxCast](https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast).
+    - [ ] Check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event.
 - Set up and test triggers for Kids Connection countdown and video. This lets you set up in the Annex while the Kids Connection countdown and video play automatically.
     - [ ] Set up a trigger on the kids countdown loop that fades to the kids video for this week.
     - [ ] Set up a trigger on the kids video that fades to the pre-stream title loop.
@@ -38,7 +38,6 @@ assignees: recc-tech
     - [ ] Speaker
     - [ ] Special announcer(s), if any
     - [ ] Check that all the titles and the pre-stream title loop look good.
-- [ ] Create backup slides for the message notes and verses. See the [guide to generating backup slides](https://github.com/recc-tech/tech/wiki/Generating-Backup-Slides).
 - [ ] Save the vMix preset as a new file. Click "Save As" and name the file `YYYY-MM-DD Live.vmix` (where `YYYY-MM-DD` is today's date).
 - [ ] Check the cameras. If any of the band members are in a bad position (e.g., blocking someone else), ask them to move. If the cameras are laggy or unresponsive, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-cameras-arent-working.
 - [ ] Check that vMix is receiving sound from the MCR sound station. If not, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station.
