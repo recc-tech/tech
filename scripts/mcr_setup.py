@@ -1,4 +1,6 @@
+import sys
 import traceback
+import warnings
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -9,6 +11,7 @@ from autochecklist import (
     Messenger,
     ProblemLevel,
     TaskGraph,
+    TaskModel,
     TaskStatus,
     TkMessenger,
     set_current_task_name,
@@ -38,7 +41,7 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
     )
-    function_finder = FunctionFinder(None, set(), messenger)
+    function_finder = FunctionFinder(None, [], messenger)
 
     task_list_file = Path(__file__).parent.joinpath("mcr_setup").joinpath("tasks.json")
     messenger.log_status(
@@ -46,7 +49,8 @@ def main():
         f"Loading the task graph from {task_list_file.as_posix()}...",
     )
     try:
-        task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
+        task_model = TaskModel.load(task_list_file)
+        task_graph = TaskGraph(task_model, messenger, function_finder, config)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.FATAL,
@@ -103,4 +107,6 @@ def _parse_args() -> Namespace:
 
 
 if __name__ == "__main__":
+    if not sys.warnoptions:
+        warnings.simplefilter("default")
     main()

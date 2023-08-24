@@ -3,11 +3,13 @@ from __future__ import annotations
 import inspect
 import json
 import traceback
+from collections import defaultdict
+from dataclasses import dataclass, field
 from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Set, Tuple, Union
+from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
 
 from autochecklist.base_config import BaseConfig
 from autochecklist.messenger import (
@@ -18,90 +20,59 @@ from autochecklist.messenger import (
 )
 
 
-class Task:
-    """
-    Represents a single, independent task.
-    """
-
-    _run: Union[Callable[[], None], None]
-    """
-    Function which performs the given task, but without logging or exception handling.
-    """
-
-    _fallback_message: str
-    """
-    Instructions to show to the user in case the function raises an exception.
-    """
-
-    _messenger: Messenger
-    """
-    Messenger to use for logging and input.
-    """
-
-    name: str
-    """
-    Name of the task.
-    """
-
+class TaskGraph:
     def __init__(
         self,
-        func: Union[Callable[[], None], None],
-        fallback_message: str,
+        task: TaskModel,
         messenger: Messenger,
-        name: str,
+        function_finder: FunctionFinder,
+        config: BaseConfig,
     ):
-        self._run = func
-        self._fallback_message = fallback_message
+        task_with_normalized_prereqs = _normalize_prerequisites(
+            task, set(), _create_name_to_task_dict(task)
+        )
+        tasks = _get_leaf_tasks(task_with_normalized_prereqs)
+        sorted_tasks = _sort_tasks(tasks)
+        tasks_with_minimal_prereqs = _remove_redundant_prerequisites(sorted_tasks)
+        runnable_tasks = _convert_models_to_tasks(
+            tasks_with_minimal_prereqs, messenger, function_finder, config
+        )
+
+        self._threads = _assign_tasks_to_threads(runnable_tasks)
         self._messenger = messenger
-        self.name = name
 
-    def run(self):
-        if self._run is None:
+    def run(self) -> None:
+        tasks = [task for thread in self._threads for task in thread.tasks]
+        sorted_tasks = sorted(tasks, key=lambda t: t.index)
+        for task in sorted_tasks:
             self._messenger.log_status(
-                TaskStatus.WAITING_FOR_USER,
-                f"This task is not automated. Requesting user input.",
+                TaskStatus.NOT_STARTED, "Not started.", task_name=task.name
             )
-            self._messenger.wait(self._fallback_message)
-            self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
-        else:
-            self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
-            try:
-                self._run()
-                self._messenger.log_status(
-                    TaskStatus.DONE,
-                    f"Task completed automatically.",
-                )
-            except NotImplementedError as e:
-                self._messenger.log_status(
-                    TaskStatus.WAITING_FOR_USER,
-                    f"This task is not fully automated yet. Requesting user input.",
-                )
-                self._messenger.wait(self._fallback_message)
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
-            except Exception as e:
-                self._messenger.log_problem(
-                    ProblemLevel.ERROR,
-                    f"Task automation failed due to an exception: {e}.",
-                    stacktrace=traceback.format_exc(),
-                )
-                self._messenger.log_status(
-                    TaskStatus.WAITING_FOR_USER,
-                    f"Task automation failed. Requesting user input.",
-                )
-                self._messenger.wait(self._fallback_message)
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+
+        # You cannot join a thread that has not yet started, so the threads
+        # must be in the right order
+        for t in self._threads:
+            t.start()
+
+        # Periodically stop waiting for the thread to check whether the user
+        # wants to exit
+        for thread in self._threads:
+            while thread.is_alive():
+                thread.join(timeout=1)
+                # If the messenger is shut down, it means the user wants to end
+                # the program
+                if self._messenger.shutdown_requested:
+                    raise KeyboardInterrupt()
 
 
-class TaskThread(Thread):
-    """
-    Represents a sequence of tasks.
-    """
+class _TaskThread(Thread):
+    """A sequence of tasks to be run one after the other."""
 
     def __init__(
         self,
         name: str,
-        tasks: List[Task],
-        prerequisites: Set[TaskThread],
+        tasks: List[_Task],
+        prerequisites: Set[_TaskThread],
     ):
         """
         Creates a new `Thread` with the given name that runs the given tasks, but only after all prerequisite threads have finished.
@@ -122,252 +93,175 @@ class TaskThread(Thread):
             set_current_task_name(None)
 
 
-# TODO: Split this into two steps: (1) read file into TaskGraphModel, (2) convert model to runnable task graph
-# TODO: Assign each task a number (with tasks appearing earlier in the JSON file having a lower task number if possible) so that they can be shown in order. Maybe put the tasks in a list and always take the first task from the list whose dependencies have all already been taken
-# TODO: Let user omit "depends_on" when there are no dependencies
-# TODO: Instead of having before and after, just make everything a task but allow subtasks.
-class TaskGraph:
-    _before: Union[TaskGraph, None]
-    _threads: Set[TaskThread]
-    _after: Union[TaskGraph, None]
+class _Task:
+    """A single, independent task."""
 
-    def __init__(self, threads: Set[TaskThread], messenger: Messenger):
-        self._threads = threads
-        self._before = None
-        self._after = None
+    def __init__(
+        self,
+        name: str,
+        index: int,
+        prerequisites: List[_Task],
+        func: Optional[Callable[[], None]],
+        description: str,
+        messenger: Messenger,
+    ):
+        self.name = name
+        """Unique name of the task."""
+        self.index = index
+        """
+        Position of the task in the sorted task list. The first task has
+        index 1.
+        """
+        self.prerequisites = prerequisites
+        """Tasks that must be completed before this one can run."""
+        self._run = func
+        """
+        Function provided by the client for performing the given task.
+        """
+        self._description = description
+        """
+        Instructions to show to the user in case the function raises an
+        exception.
+        """
         self._messenger = messenger
+        """
+        Messenger to use for logging and input.
+        """
 
-    def run(self) -> None:
-        if self._before is not None:
-            self._before.run()
-
-        # Need to start threads in order because you cannot join a thread that has not yet started
-        started_thread_names: Set[str] = set()
-        unstarted_threads = {t for t in self._threads}
-        while len(unstarted_threads) > 0:
-            thread_to_start = None
-            for thread in unstarted_threads:
-                prerequisite_names = {t.name for t in thread.prerequisites}
-                if all([name in started_thread_names for name in prerequisite_names]):
-                    thread_to_start = thread
-            if thread_to_start is None:
-                raise RuntimeError("Circular dependency in TaskGraph object.")
-            thread_to_start.start()
-            started_thread_names.add(thread_to_start.name)
-            unstarted_threads.remove(thread_to_start)
-
-        # Wait for main tasks to finish
-        # Periodically stop waiting for the thread to check whether the user wants to exit
-        for thread in self._threads:
-            while thread.is_alive():
-                thread.join(timeout=1)
-                # If the messenger is shut down, it means the user wants to end the program
-                if self._messenger.shutdown_requested:
-                    raise KeyboardInterrupt()
-
-        if self._after is not None:
-            self._after.run()
-
-    @staticmethod
-    def load(
-        task_list_file: Path,
-        function_finder: FunctionFinder,
-        messenger: Messenger,
-        config: BaseConfig,
-    ) -> TaskGraph:
-        with open(task_list_file, "r", encoding="utf-8") as f:
-            json_data: Dict[str, Any] = json.load(f)
-            tasks: List[Dict[str, Any]] = json_data["tasks"]
-            before_tasks: List[Dict[str, Any]] = (
-                json_data["before"] if "before" in json_data else []
+    def run(self):
+        if self._run is None:
+            self._messenger.log_status(
+                TaskStatus.WAITING_FOR_USER,
+                f"This task is not automated. Requesting user input.",
             )
-            after_tasks: List[Dict[str, Any]] = (
-                json_data["after"] if "after" in json_data else []
+            self._messenger.wait(self._description)
+            self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+        else:
+            self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
+            try:
+                self._run()
+                self._messenger.log_status(
+                    TaskStatus.DONE,
+                    f"Task completed automatically.",
+                )
+            except NotImplementedError as e:
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"This task is not fully automated yet. Requesting user input.",
+                )
+                self._messenger.wait(self._description)
+                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+            except Exception as e:
+                self._messenger.log_problem(
+                    ProblemLevel.ERROR,
+                    f"An error occurred while trying to complete the task automatically: {e}",
+                    stacktrace=traceback.format_exc(),
+                )
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"Task automation failed. Requesting user input.",
+                )
+                self._messenger.wait(self._description)
+                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+
+
+@dataclass(frozen=True)
+class TaskModel:
+    """Contents of the task list, as read directly from a file."""
+    name: str
+    description: str = ""
+    prerequisites: Set[str] = field(default_factory=set)
+    subtasks: List[TaskModel] = field(default_factory=list)
+
+    def __post_init__(self):
+        object.__setattr__(self, "name", self.name.strip())
+        if not self.name.strip():
+            raise ValueError("Every task must have a non-blank name.")
+        if not self.subtasks and not self.description.strip():
+            raise ValueError(
+                f"Task '{self.name}' has no description. Tasks without subtasks must have a description."
             )
-
-        all_task_names: List[str] = [
-            t["name"] for t in before_tasks + tasks + after_tasks
-        ]
-        function_index = function_finder.find_functions(all_task_names)
-
-        # Do things in this order so that the "not started" messages show up in topological order
-        before = None
-        if len(before_tasks) > 0:
-            before = TaskGraph._load(before_tasks, function_index, messenger, config)
-        graph = TaskGraph._load(tasks, function_index, messenger, config)
-        graph._before = before
-        if len(after_tasks) > 0:
-            graph._after = TaskGraph._load(
-                after_tasks, function_index, messenger, config
-            )
-        return graph
-
-    @staticmethod
-    def _load(
-        tasks: List[Dict[str, Any]],
-        function_index: Dict[str, Union[Callable[[], None], None]],
-        messenger: Messenger,
-        config: BaseConfig,
-    ) -> TaskGraph:
-        unsorted_task_names: Set[str] = {t["name"] for t in tasks}
-
-        TaskGraph._validate_tasks(tasks)
-
-        # Use a dictionary for fast access to tasks by name
-        task_index: Dict[str, Tuple[str, List[str], List[str]]] = dict()
-        for t in tasks:
-            description = config.fill_placeholders(t["description"])
-            task_index[t["name"]] = (description, t["depends_on"], [])
-
-        # Add backwards links for convenience
-        for t in unsorted_task_names:
-            (_, depends_on, _) = task_index[t]
-            for prereq in depends_on:
-                prereq_info = task_index[prereq]
-                prereq_info[2].append(t)
-                task_index[prereq] = prereq_info
-
-        sorted_task_names = TaskGraph._topological_sort(unsorted_task_names, task_index)
-
-        # Log tasks in order, with dependent tasks after than the tasks they depend on (i.e., in the same order a
-        # person might actually perform the tasks)
-        for task_name in reversed(sorted_task_names):
-            messenger.log_status(
-                TaskStatus.NOT_STARTED,
-                "This task has not yet started.",
-                task_name=task_name,
+        if self.subtasks and self.description.strip():
+            raise ValueError(
+                f"Task '{self.name}' has subtasks and a description. If a task has subtasks, its description will not be shown to the user. Prefix the field name with an underscore if you want to use it as a comment."
             )
 
-        threads = TaskGraph._create_and_combine_threads(
-            sorted_task_names, task_index, function_index, messenger
+    @classmethod
+    def load(cls, file: Path) -> TaskModel:
+        """Parse the given file to a `TaskModel`."""
+        with open(file, mode="r", encoding="utf-8") as f:
+            task = json.load(f)
+        return cls._parse(task)
+
+    @classmethod
+    def _parse(cls, task: object) -> TaskModel:
+        if not isinstance(task, dict):
+            raise ValueError(
+                f"Expected a task in the form of a Python dictionary, but found an object of type '{type(task)}'."
+            )
+        t: Dict[str, object] = task
+        task_dict: DefaultDict[str, object] = defaultdict(lambda: None, t)
+
+        name = "" if task_dict["name"] is None else str(task_dict["name"])
+
+        unknown_fields = {
+            key
+            for key in task_dict
+            if not str(key).startswith("_")
+            and key not in {"name", "description", "prerequisites", "subtasks"}
+        }
+        if unknown_fields:
+            raise ValueError(
+                f"Task '{name}' has unknown fields: {', '.join(unknown_fields)}. Prefix them with an underscore if they are meant as comments.",
+            )
+
+        return cls(
+            name=name,
+            description=(
+                ""
+                if task_dict["description"] is None
+                else str(task_dict["description"])
+            ),
+            prerequisites=cls._parse_prerequisites(task_dict["prerequisites"]),
+            subtasks=cls._parse_subtasks(task_dict["subtasks"]),
         )
 
-        return TaskGraph(threads, messenger)
-
-    @staticmethod
-    def _validate_tasks(tasks: List[Dict[str, Any]]):
-        # Check that required fields are present
-        for t in tasks:
-            if "name" not in t:
-                raise ValueError('Missing field "name" in task.')
-            name = t["name"]
-            if "description" not in t:
-                raise ValueError(f'Missing field "description" for task "{name}".')
-            if "depends_on" not in t:
-                raise ValueError(f'Missing field "depends_on" for task "{name}".')
-
-        # Check for duplicate names
-        task_name_list: List[str] = [t["name"] for t in tasks]
-        task_name_set = set(task_name_list)
-        for name in task_name_set:
-            task_name_list.remove(name)
-        if len(task_name_list) > 0:
+    @classmethod
+    def _parse_prerequisites(cls, prerequisites: object) -> Set[str]:
+        if prerequisites is None:
+            prerequisites = []
+        if not isinstance(prerequisites, list):
             raise ValueError(
-                f"The following task names are not unique: {', '.join(task_name_list)}"
+                f"Expected the prerequisites to be a list, but found an object of type '{type(prerequisites)}'."
             )
-
-        # Check for invalid dependencies
-        for t in tasks:
-            for p in t["depends_on"]:
-                if p not in task_name_set:
-                    raise ValueError(f'Unrecognized dependency "{p}".')
-
-    @staticmethod
-    def _topological_sort(
-        task_names: Set[str], task_index: Dict[str, Tuple[str, List[str], List[str]]]
-    ) -> List[str]:
-        """
-        Sorts the given set of tasks such that each task depends only on tasks that occur later in the list.
-        """
-        ordered_task_names: List[str] = []
-        while len(task_names) > 0:
-            # Find a task such that all the tasks that depend on it are already in the output list
-            task_to_remove = None
-            for t in task_names:
-                (_, _, prerequisite_of) = task_index[t]
-                if all([x in ordered_task_names for x in prerequisite_of]):
-                    task_to_remove = t
-                    break
-            # A graph can be sorted topologically iff it is acyclic
-            if task_to_remove is None:
-                raise ValueError("The task graph contains circular dependencies.")
-            # Add task to the output list
-            ordered_task_names.append(task_to_remove)
-            task_names.remove(task_to_remove)
-        return ordered_task_names
-
-    @staticmethod
-    def _create_and_combine_threads(
-        sorted_task_names: List[str],
-        task_index: Dict[str, Tuple[str, List[str], List[str]]],
-        function_index: Dict[str, Union[Callable[[], None], None]],
-        messenger: Messenger,
-    ) -> Set[TaskThread]:
-        thread_for_task: Dict[str, TaskThread] = {}
-        threads: Set[TaskThread] = set()
-
-        while len(sorted_task_names) > 0:
-            thread = TaskThread(name="", tasks=[], prerequisites=set())
-
-            task_name = sorted_task_names.pop()
-            (description, depends_on, prerequisite_of) = task_index[task_name]
-            while True:
-                task_obj = Task(
-                    func=function_index[task_name],
-                    fallback_message=description,
-                    messenger=messenger,
-                    name=task_name,
+        prereqs: List[object] = prerequisites
+        str_prereqs: List[str] = []
+        for i, p in enumerate(prereqs):
+            if not isinstance(p, str):
+                raise ValueError(
+                    f"Expected the prerequisites to be a list of strings, but found that the element at index {i} is of type '{type(p)}'."
                 )
-                thread.tasks.append(task_obj)
+            str_prereqs.append(p)
+        return {p.strip() for p in str_prereqs}
 
-                thread_for_task[task_name] = thread
-
-                for dependency_name in depends_on:
-                    prerequisite_thread = thread_for_task[dependency_name]
-                    # Don't let a thread depend on itself
-                    if prerequisite_thread is thread:
-                        continue
-                    thread.prerequisites.add(prerequisite_thread)
-
-                # Combine tasks into one thread as long as the current task is a prerequisite of only one task and that
-                # task depends only on the current task
-                if len(prerequisite_of) != 1:
-                    break
-                next_task_name = prerequisite_of[0]
-                (next_description, next_depends_on, next_prerequisite_of) = task_index[
-                    next_task_name
-                ]
-                if len(next_depends_on) != 1:
-                    break
-
-                task_name = next_task_name
-                sorted_task_names.remove(task_name)
-                (description, depends_on, prerequisite_of) = (
-                    next_description,
-                    next_depends_on,
-                    next_prerequisite_of,
-                )
-
-            # Name each thread after its last task
-            thread.name = TaskGraph._snake_case_to_pascal_case(task_name)
-
-            threads.add(thread)
-
-        return threads
-
-    @staticmethod
-    def _snake_case_to_pascal_case(snake: str) -> str:
-        """
-        Converts a string from scake_case to PascalCase.
-        """
-        words = [x for x in snake.split("_") if x]
-        capitalized_words = [w[0].upper() + w[1:] for w in words]
-        return "".join(capitalized_words)
+    @classmethod
+    def _parse_subtasks(cls, subtasks: object) -> List[TaskModel]:
+        if subtasks is None:
+            subtasks = []
+        if not isinstance(subtasks, list):
+            raise ValueError(
+                f"Expected the subtasks to be a list, but found an object of type '{type(subtasks)}'."
+            )
+        subtasks_list: List[object] = subtasks
+        return [cls._parse(st) for st in subtasks_list]
 
 
 class FunctionFinder:
     def __init__(
-        self, module: Union[ModuleType, None], arguments: Set[Any], messenger: Messenger
+        self,
+        module: Optional[ModuleType],
+        arguments: List[Any],
+        messenger: Messenger,
     ):
         self._module = module
         self._arguments = arguments
@@ -375,7 +269,11 @@ class FunctionFinder:
 
     def find_functions(
         self, names: List[str]
-    ) -> Dict[str, Union[Callable[[], None], None]]:
+    ) -> Dict[str, Optional[Callable[[], None]]]:
+        """
+        Return a mapping from task name to function implementing that task, or
+        `None` if there's no function for that task.
+        """
         if self._module is None:
             self._messenger.log_debug(
                 "No module with task implementations was provided.",
@@ -386,7 +284,7 @@ class FunctionFinder:
         if len(unused_function_names) > 0:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
-                f"The following functions are not used by any task: {', '.join(unused_function_names)}",
+                f"The following functions are not used by object task: {', '.join(unused_function_names)}",
             )
 
         function_assignments = {
@@ -404,7 +302,7 @@ class FunctionFinder:
 
         return function_assignments
 
-    def _find_function_with_args(self, name: str) -> Union[Callable[[], None], None]:
+    def _find_function_with_args(self, name: str) -> Optional[Callable[[], None]]:
         original_function = self._find_original_function(name)
         if original_function is None:
             return None
@@ -426,13 +324,13 @@ class FunctionFinder:
 
         return f
 
-    def _find_original_function(self, name: str) -> Union[None, Callable[..., Any]]:
+    def _find_original_function(self, name: str) -> Optional[Callable[..., object]]:
         try:
             return getattr(self._module, name)
         except AttributeError:
             return None
 
-    def _find_arguments(self, signature: Signature) -> Dict[str, Any]:
+    def _find_arguments(self, signature: Signature) -> Dict[str, object]:
         params = signature.parameters.values()
         # TODO: Check for unused args
         return {p.name: self._find_single_argument(p) for p in params}
@@ -462,3 +360,237 @@ class FunctionFinder:
             if name not in used_function_names
         }
         return unused_function_names
+
+
+def _create_name_to_task_dict(task: TaskModel) -> Dict[str, TaskModel]:
+    """Create a dictionary that maps task names to tasks."""
+
+    def _fill_dict(t: TaskModel, name_to_task: Dict[str, TaskModel]):
+        if t.name in name_to_task:
+            raise ValueError(f"The name '{t.name}' is used by more than one task.")
+        name_to_task[t.name] = t
+        for s in t.subtasks:
+            _fill_dict(s, name_to_task)
+
+    output: Dict[str, TaskModel] = {}
+    _fill_dict(task, output)
+    return output
+
+
+def _normalize_prerequisites(
+    task: TaskModel, upper_prereqs: Set[str], name_to_task: Dict[str, TaskModel]
+) -> TaskModel:
+    """
+    Push the prerequisites down to the leaf tasks and expand them to only refer
+    to leaf tasks.
+    """
+    combined_prerequisites = task.prerequisites.union(upper_prereqs)
+    if not task.subtasks:
+        expanded_prerequisites: Set[str] = set()
+        for task_name in combined_prerequisites:
+            try:
+                prereq = name_to_task[task_name]
+            except KeyError:
+                raise ValueError(f"The prerequisite '{task_name}' could not be found.")
+            expanded_prerequisites = expanded_prerequisites.union(
+                {t.name for t in _get_leaf_tasks(prereq)}
+            )
+        return TaskModel(
+            name=task.name,
+            description=task.description,
+            prerequisites=expanded_prerequisites,
+            subtasks=task.subtasks,
+        )
+    else:
+        return TaskModel(
+            name=task.name,
+            description=task.description,
+            prerequisites=set(),
+            subtasks=[
+                _normalize_prerequisites(t, combined_prerequisites, name_to_task)
+                for t in task.subtasks
+            ],
+        )
+
+
+def _get_leaf_tasks(task: TaskModel) -> List[TaskModel]:
+    if not task.subtasks:
+        return [task]
+    else:
+        tasks: List[TaskModel] = []
+        for t in task.subtasks:
+            tasks.extend(_get_leaf_tasks(t))
+        return tasks
+
+
+def _sort_tasks(tasks: List[TaskModel]) -> List[TaskModel]:
+    """
+    Sort the list so that tasks only depend on tasks that come earlier in the
+    list.
+    """
+    tasks = list(tasks)  # Avoid mutating the input list
+    sorted_tasks: List[TaskModel] = []
+    sorted_task_names: List[str] = []
+    while tasks:
+        found = False
+        for t in tasks:
+            if any([p not in sorted_task_names for p in t.prerequisites]):
+                continue
+            sorted_tasks.append(t)
+            sorted_task_names.append(t.name)
+            tasks.remove(t)
+            found = True
+            break
+        if not found:
+            try:
+                cycle = _find_cycle(tasks)
+            except:
+                raise ValueError(
+                    "The task graph contains at least one cycle, but no example could be found."
+                )
+            raise ValueError(
+                f"The task graph contains at least one cycle. For example: {' -> '.join(cycle)}."
+            )
+    return sorted_tasks
+
+
+def _find_cycle(tasks: List[TaskModel]) -> List[str]:
+    """Find a single example of a cycle in the given task list."""
+    name_to_task = {t.name: t for t in tasks}
+    next = {
+        n: [x for x in t.prerequisites if x in name_to_task][0]
+        for (n, t) in name_to_task.items()
+    }
+
+    tortoise = list(name_to_task.keys())[0]
+    hare = tortoise
+    tortoise = next[tortoise]
+    hare = next[next[hare]]
+    while tortoise != hare:
+        tortoise = next[tortoise]
+        hare = next[next[hare]]
+
+    cycle = [hare]
+    t = next[hare]
+    while t != hare:
+        cycle.append(t)
+        t = next[t]
+
+    # Start the cycle with the minimum name. Having this be consistent makes
+    # testing easier.
+    first_element = min(cycle)
+    first_index = cycle.index(first_element)
+    cycle = cycle[first_index:] + cycle[0:first_index]
+
+    # Show that the cycle loops back to the first element
+    cycle.append(first_element)
+
+    return cycle
+
+
+def _remove_redundant_prerequisites(sorted_tasks: List[TaskModel]) -> List[TaskModel]:
+    """
+    Remove unnecessary prerequisites in the given task list.
+
+    For example, consider the following two graphs:
+      - Task B depends on task A, task C depends on tasks A and B.
+      - Task B depends on Task A, task C depends on task B.
+
+    In either case, the tasks can only be run in the order A -> B -> C.
+    Therefore, so the dependency of task C on task A is redundant and can be
+    removed.
+    """
+    all_prerequisites: Dict[str, Set[str]] = {}
+    for task in sorted_tasks:
+        all_prerequisites[task.name] = task.prerequisites.union(
+            *[all_prerequisites[s] for s in task.prerequisites]
+        )
+
+    required_direct_prerequisites: Dict[str, Set[str]] = {}
+    for task in sorted_tasks:
+        required_direct_prerequisites[task.name] = task.prerequisites.difference(
+            *[all_prerequisites[s] for s in task.prerequisites]
+        )
+
+    return [
+        TaskModel(
+            name=t.name,
+            description=t.description,
+            prerequisites=required_direct_prerequisites[t.name],
+            subtasks=[],
+        )
+        for t in sorted_tasks
+    ]
+
+
+def _convert_models_to_tasks(
+    models: List[TaskModel],
+    messenger: Messenger,
+    finder: FunctionFinder,
+    config: BaseConfig,
+) -> List[_Task]:
+    name_to_func: Dict[str, Optional[Callable[[], None]]] = {
+        m.name: None for m in models
+    }
+    name_to_func |= finder.find_functions([m.name for m in models])
+    name_to_task: Dict[str, _Task] = {}
+    tasks: List[_Task] = []
+    for i, m in enumerate(models, start=1):
+        task = _Task(
+            name=m.name,
+            index=i,
+            prerequisites=[name_to_task[p] for p in m.prerequisites],
+            func=name_to_func[m.name],
+            description=config.fill_placeholders(m.description),
+            messenger=messenger,
+        )
+        name_to_task[m.name] = task
+        tasks.append(task)
+    return tasks
+
+
+def _assign_tasks_to_threads(tasks: List[_Task]) -> List[_TaskThread]:
+    tasks = list(tasks)  # Don't mutate the input
+    threads: List[_TaskThread] = []
+    task_name_to_thread: Dict[str, _TaskThread] = {}
+    dependent_tasks = {
+        t.name: [x for x in tasks if any(y.name == t.name for y in x.prerequisites)]
+        for t in tasks
+    }
+    while tasks:
+        current_task = tasks[0]
+        current_thread_tasks = [current_task]
+        # Put as many tasks as possible into the same thread
+        while True:
+            if len(dependent_tasks[current_task.name]) != 1:
+                break
+            next_task = dependent_tasks[current_task.name][0]
+            if len(next_task.prerequisites) != 1:
+                break
+            current_thread_tasks.append(next_task)
+            current_task = next_task
+        thread = _TaskThread(
+            name=_snake_case_to_pascal_case(current_thread_tasks[-1].name),
+            tasks=current_thread_tasks,
+            prerequisites={
+                task_name_to_thread[p.name]
+                # Every task after the first one depends on exactly one other
+                # task, and that task must be the one before it in the list. So
+                # only the first task will depend on tasks from other threads.
+                for p in current_thread_tasks[0].prerequisites
+            },
+        )
+        for t in current_thread_tasks:
+            task_name_to_thread[t.name] = thread
+            tasks = [x for x in tasks if x.name != t.name]
+        threads.append(thread)
+    return threads
+
+
+def _snake_case_to_pascal_case(snake: str) -> str:
+    """
+    Convert a string from scake_case to PascalCase.
+    """
+    words = [x for x in snake.split("_") if x]
+    capitalized_words = [w[0].upper() + w[1:] for w in words]
+    return "".join(capitalized_words)

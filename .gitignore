@@ -1,4 +1,6 @@
+.coverage
 .venv/
 .vscode/
+/htmlcov/
 /scripts/test/manual/home/
 __pycache__/

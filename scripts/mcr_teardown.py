@@ -15,6 +15,7 @@ from autochecklist import (
     Parameter,
     ProblemLevel,
     TaskGraph,
+    TaskModel,
     TaskStatus,
     TkMessenger,
     set_current_task_name,
@@ -85,7 +86,7 @@ def main():
 
         function_finder = FunctionFinder(
             module=None if args.no_auto else mcr_teardown.tasks,
-            arguments={boxcast_client_factory, config, messenger, vimeo_client},
+            arguments=[boxcast_client_factory, config, messenger, vimeo_client],
             messenger=messenger,
         )
 
@@ -96,7 +97,8 @@ def main():
             TaskStatus.RUNNING,
             f"Loading the task graph from {task_list_file.as_posix()}...",
         )
-        task_graph = TaskGraph.load(task_list_file, function_finder, messenger, config)
+        task_model = TaskModel.load(task_list_file)
+        task_graph = TaskGraph(task_model, messenger, function_finder, config)
         messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
     except KeyboardInterrupt as e:
         messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")

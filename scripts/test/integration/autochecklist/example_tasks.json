@@ -1,0 +1,42 @@
+{
+	"name": "root",
+	"subtasks": [
+		{
+			"name": "add_foobar",
+			"subtasks": [
+				{
+					"name": "add_foo",
+					"description": "Add the value '%{FOO}%' to the list."
+				},
+				{
+					"name": "add_bar",
+					"description": "Add the value '%{BAR}%' to the list 🙂.",
+					"prerequisites": [
+						"add_foo"
+					]
+				},
+				{
+					"name": "raise_error",
+					"description": "This task will raise an error.",
+					"prerequisites": [
+						"add_bar"
+					]
+				}
+			]
+		},
+		{
+			"name": "add_baz",
+			"description": "Add the value '%{BAZ}%' to the list.",
+			"prerequisites": [
+				"add_foobar"
+			]
+		},
+		{
+			"name": "add_qux",
+			"description": "Add the value '%{QUX}%' to the list",
+			"prerequisites": [
+				"add_foobar"
+			]
+		}
+	]
+}
