@@ -59,18 +59,18 @@ class ReccVimeoClient:
             f"Connecting to the Vimeo API...",
         )
         for attempt_num in range(1, max_attempts + 1):
-            access_token = self._credential_store.get(
-                Credential.VIMEO_ACCESS_TOKEN,
+            credentials = self._credential_store.get_multiple(
+                prompt="Enter the Vimeo credentials.",
+                credentials=[
+                    Credential.VIMEO_ACCESS_TOKEN,
+                    Credential.VIMEO_CLIENT_ID,
+                    Credential.VIMEO_CLIENT_SECRET,
+                ],
                 force_user_input=attempt_num > 1,
             )
-            client_id = self._credential_store.get(
-                Credential.VIMEO_CLIENT_ID,
-                force_user_input=attempt_num > 1,
-            )
-            client_secret = self._credential_store.get(
-                Credential.VIMEO_CLIENT_SECRET,
-                force_user_input=attempt_num > 1,
-            )
+            access_token = credentials[Credential.VIMEO_ACCESS_TOKEN]
+            client_id = credentials[Credential.VIMEO_CLIENT_ID]
+            client_secret = credentials[Credential.VIMEO_CLIENT_SECRET]
             client = VimeoClient(
                 token=access_token,
                 key=client_id,

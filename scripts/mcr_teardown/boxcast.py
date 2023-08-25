@@ -60,13 +60,13 @@ class BoxCastClient(ReccWebDriver):
             # page. On the other hand, going to the login page, logging in, and only then going to the target page
             # seems to work.
             super().get(BoxCastClient._LOGIN_URL)
-            username = self._credential_store.get(
-                Credential.BOXCAST_USERNAME, force_user_input=attempt_num > 1
-            )
-            password = self._credential_store.get(
-                Credential.BOXCAST_PASSWORD,
+            credentials = self._credential_store.get_multiple(
+                prompt="Enter the BoxCast credentials.",
+                credentials=[Credential.BOXCAST_USERNAME, Credential.BOXCAST_PASSWORD],
                 force_user_input=attempt_num > 1,
             )
+            username = credentials[Credential.BOXCAST_USERNAME]
+            password = credentials[Credential.BOXCAST_PASSWORD]
             self._complete_login_form(username, password)
 
             try:

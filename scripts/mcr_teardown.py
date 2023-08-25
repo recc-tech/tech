@@ -18,7 +18,6 @@ from autochecklist import (
     TaskModel,
     TaskStatus,
     TkMessenger,
-    set_current_task_name,
 )
 from common import parse_directory, parse_non_empty_string
 from mcr_teardown import (
@@ -36,8 +35,6 @@ DESCRIPTION = "This script will guide you through the steps to shutting down the
 
 def main():
     args = _parse_command_line_args()
-
-    set_current_task_name("SCRIPT MAIN")
 
     config = McrTeardownConfig(
         home_dir=args.home_dir,
@@ -59,86 +56,85 @@ def main():
         file_messenger=file_messenger, input_messenger=input_messenger
     )
 
+    should_messenger_finish = True
     try:
-        messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
+        try:
+            messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
-        args = _get_missing_args(args, messenger)
-        config.message_series = args.message_series
-        config.message_title = args.message_title
-        config.boxcast_event_id = args.boxcast_event_id
+            args = _get_missing_args(args, messenger)
+            config.message_series = args.message_series
+            config.message_title = args.message_title
+            config.boxcast_event_id = args.boxcast_event_id
 
-        credential_store = CredentialStore(messenger=messenger)
+            credential_store = CredentialStore(messenger=messenger)
 
-        vimeo_client = ReccVimeoClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            lazy_login=args.lazy_login,
-        )
-
-        boxcast_client_factory = BoxCastClientFactory(
-            messenger=messenger,
-            credential_store=credential_store,
-            headless=not args.show_browser,
-            lazy_login=args.lazy_login,
-            log_directory=config.log_dir,
-            log_file_name="mcr_teardown_web_driver",
-        )
-
-        function_finder = FunctionFinder(
-            module=None if args.no_auto else mcr_teardown.tasks,
-            arguments=[boxcast_client_factory, config, messenger, vimeo_client],
-            messenger=messenger,
-        )
-
-        task_list_file = (
-            Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
-        )
-        messenger.log_status(
-            TaskStatus.RUNNING,
-            f"Loading the task graph from {task_list_file.as_posix()}...",
-        )
-        task_model = TaskModel.load(task_list_file)
-        task_graph = TaskGraph(task_model, messenger, function_finder, config)
-        messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
-    except KeyboardInterrupt as e:
-        messenger.log_status(TaskStatus.DONE, "The script was cancelled by the user.")
-        messenger.close()
-        return
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"Failed to load the task graph: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(TaskStatus.DONE, "The script failed to start.")
-        messenger.close()
-        return
-
-    try:
-        if not args.no_run:
-            messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
-            task_graph.run()
-            messenger.log_status(TaskStatus.DONE, "All tasks are done! Great work :)")
-        else:
-            messenger.log_status(
-                TaskStatus.DONE,
-                "No tasks were run because the --no-run flag was given.",
+            vimeo_client = ReccVimeoClient(
+                messenger=messenger,
+                credential_store=credential_store,
+                lazy_login=args.lazy_login,
             )
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"Failed to run the tasks: {e}.",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(TaskStatus.DONE, "The script failed.")
-    except KeyboardInterrupt as e:
-        messenger.log_status(
-            TaskStatus.DONE, "The script was cancelled by the user.", file_only=True
-        )
+
+            boxcast_client_factory = BoxCastClientFactory(
+                messenger=messenger,
+                credential_store=credential_store,
+                headless=not args.show_browser,
+                lazy_login=args.lazy_login,
+                log_directory=config.log_dir,
+                log_file_name="mcr_teardown_web_driver",
+            )
+
+            function_finder = FunctionFinder(
+                module=None if args.no_auto else mcr_teardown.tasks,
+                arguments=[boxcast_client_factory, config, messenger, vimeo_client],
+                messenger=messenger,
+            )
+
+            task_list_file = (
+                Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
+            )
+            messenger.log_status(
+                TaskStatus.RUNNING,
+                f"Loading the task graph from {task_list_file.as_posix()}...",
+            )
+            task_model = TaskModel.load(task_list_file)
+            task_graph = TaskGraph(task_model, messenger, function_finder, config)
+            messenger.log_status(
+                TaskStatus.RUNNING, "Successfully loaded the task graph."
+            )
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.FATAL,
+                f"Failed to load the task graph: {e}",
+                stacktrace=traceback.format_exc(),
+            )
+            messenger.log_status(TaskStatus.DONE, "The script failed to start.")
+            return
+
+        try:
+            if not args.no_run:
+                messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
+                task_graph.run()
+                messenger.log_status(
+                    TaskStatus.DONE, "All tasks are done! Great work :)"
+                )
+            else:
+                messenger.log_status(
+                    TaskStatus.DONE,
+                    "No tasks were run because the --no-run flag was given.",
+                )
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.FATAL,
+                f"Failed to run the tasks: {e}.",
+                stacktrace=traceback.format_exc(),
+            )
+            messenger.log_status(TaskStatus.DONE, "The script failed.")
+    except KeyboardInterrupt:
         print("Program cancelled.")
+        should_messenger_finish = False
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
-        messenger.close()
+        messenger.close(finish_existing_jobs=should_messenger_finish)
 
 
 def _parse_command_line_args() -> Namespace:

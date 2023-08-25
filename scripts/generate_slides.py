@@ -11,7 +11,6 @@ from autochecklist import (
     ProblemLevel,
     TaskStatus,
     TkMessenger,
-    set_current_task_name,
 )
 from common import ReccWebDriver, parse_directory, parse_file
 from slides import (
@@ -28,12 +27,8 @@ _FULLSCREEN_STYLE = "fullscreen"
 _LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
 _LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
-_SCRIPT_MAIN = "SCRIPT MAIN"
-
 
 def main():
-    set_current_task_name(_SCRIPT_MAIN)
-
     cmd_args = _parse_args()
     output_directory: Path = cmd_args.out_dir
     home_directory: Path = cmd_args.home_dir
@@ -51,6 +46,7 @@ def main():
     )
     messenger = Messenger(file_messenger, input_messenger)
 
+    should_messenger_finish = True
     try:
         message_notes: Optional[Path] = cmd_args.message_notes
         lyrics: List[Path] = cmd_args.lyrics
@@ -71,35 +67,33 @@ def main():
 
         messenger.log_status(TaskStatus.RUNNING, "Running tasks...")
 
-        set_current_task_name("read_input")
+        messenger.set_current_task_name("read_input")
         blueprints = _read_input(json_input, message_notes, lyrics, reader, messenger)
 
         if not json_input:
-            set_current_task_name("save_input")
+            messenger.set_current_task_name("save_input")
             _save_json(blueprints, output_directory, reader, messenger)
 
-        set_current_task_name("generate_slides")
+        messenger.set_current_task_name("generate_slides")
         slides = _generate_slides(blueprints, cmd_args.style, generator, messenger)
 
-        set_current_task_name("save_slides")
+        messenger.set_current_task_name("save_slides")
         _save_slides(slides, output_directory, messenger)
 
-        set_current_task_name(_SCRIPT_MAIN)
+        messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
         messenger.log_status(
             TaskStatus.DONE, f"All done! {len(slides)} slides generated."
         )
-    except Exception as e:
+    except KeyboardInterrupt as e:
+        print("Program cancelled.")
+        should_messenger_finish = False
+    except BaseException as e:
         messenger.log_problem(
-            ProblemLevel.FATAL, f"Error: {e}.", stacktrace=traceback.format_exc()
+            ProblemLevel.FATAL, f"Error: {e}", stacktrace=traceback.format_exc()
         )
         messenger.log_status(TaskStatus.DONE, "Script failed.")
-    except KeyboardInterrupt as e:
-        messenger.log_status(
-            TaskStatus.DONE, "Script cancelled by the user.", file_only=True
-        )
-        print("Program cancelled.")
     finally:
-        messenger.close()
+        messenger.close(finish_existing_jobs=should_messenger_finish)
 
 
 def _parse_args() -> Namespace:

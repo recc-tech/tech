@@ -14,7 +14,5 @@ from autochecklist.messenger import (
     ProblemLevel,
     TaskStatus,
     TkMessenger,
-    current_task_name,
-    set_current_task_name,
 )
 from autochecklist.task import FunctionFinder, TaskGraph, TaskModel

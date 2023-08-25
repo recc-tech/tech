@@ -1,6 +1,4 @@
-import sys
 import traceback
-import warnings
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
@@ -14,7 +12,6 @@ from autochecklist import (
     TaskModel,
     TaskStatus,
     TkMessenger,
-    set_current_task_name,
 )
 from common.parsing_helpers import parse_directory
 from mcr_setup.config import McrSetupConfig
@@ -23,8 +20,6 @@ _DESCRIPTION = "This script will guide you through the steps to setting up the M
 
 
 def main():
-    set_current_task_name("SCRIPT MAIN")
-
     args = _parse_args()
 
     config = McrSetupConfig(home_dir=args.home_dir)
@@ -41,45 +36,54 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
     )
-    function_finder = FunctionFinder(None, [], messenger)
 
-    task_list_file = Path(__file__).parent.joinpath("mcr_setup").joinpath("tasks.json")
-    messenger.log_status(
-        TaskStatus.RUNNING,
-        f"Loading the task graph from {task_list_file.as_posix()}...",
-    )
+    should_messenger_finish = True
     try:
-        task_model = TaskModel.load(task_list_file)
-        task_graph = TaskGraph(task_model, messenger, function_finder, config)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"Failed to load the task graph: {e}",
-            stacktrace=traceback.format_exc(),
+        function_finder = FunctionFinder(None, [], messenger)
+
+        task_list_file = (
+            Path(__file__).parent.joinpath("mcr_setup").joinpath("tasks.json")
         )
-        messenger.close()
-        return
-    messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
-
-    try:
-        if args.no_run:
-            messenger.log_status(
-                TaskStatus.DONE,
-                "No tasks were run because the --no-run flag was given.",
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Loading the task graph from {task_list_file.as_posix()}...",
+        )
+        try:
+            task_model = TaskModel.load(task_list_file)
+            task_graph = TaskGraph(task_model, messenger, function_finder, config)
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.FATAL,
+                f"Failed to load the task graph: {e}",
+                stacktrace=traceback.format_exc(),
             )
-        else:
-            messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
-            task_graph.run()
-            messenger.log_status(TaskStatus.DONE, "All tasks are done! Great work :)")
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"Failed to run the tasks: {e}.",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(TaskStatus.DONE, "The script failed.")
+            return
+        messenger.log_status(TaskStatus.RUNNING, "Successfully loaded the task graph.")
+
+        try:
+            if args.no_run:
+                messenger.log_status(
+                    TaskStatus.DONE,
+                    "No tasks were run because the --no-run flag was given.",
+                )
+            else:
+                messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
+                task_graph.run()
+                messenger.log_status(
+                    TaskStatus.DONE, "All tasks are done! Great work :)"
+                )
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.FATAL,
+                f"Failed to run the tasks: {e}.",
+                stacktrace=traceback.format_exc(),
+            )
+            messenger.log_status(TaskStatus.DONE, "The script failed.")
+    except KeyboardInterrupt:
+        print("\nProgram cancelled.")
+        should_messenger_finish = False
     finally:
-        messenger.close()
+        messenger.close(finish_existing_jobs=should_messenger_finish)
 
 
 def _parse_args() -> Namespace:
@@ -107,6 +111,4 @@ def _parse_args() -> Namespace:
 
 
 if __name__ == "__main__":
-    if not sys.warnoptions:
-        warnings.simplefilter("default")
     main()

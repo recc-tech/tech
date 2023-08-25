@@ -12,12 +12,7 @@ from types import ModuleType
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
 
 from autochecklist.base_config import BaseConfig
-from autochecklist.messenger import (
-    Messenger,
-    ProblemLevel,
-    TaskStatus,
-    set_current_task_name,
-)
+from autochecklist.messenger import Messenger, ProblemLevel, TaskStatus
 
 
 class TaskGraph:
@@ -38,7 +33,9 @@ class TaskGraph:
             tasks_with_minimal_prereqs, messenger, function_finder, config
         )
 
-        self._threads = _assign_tasks_to_threads(runnable_tasks)
+        messenger.set_task_index_table({t.name: t.index for t in runnable_tasks})
+
+        self._threads = _assign_tasks_to_threads(runnable_tasks, messenger)
         self._messenger = messenger
 
     def run(self) -> None:
@@ -58,11 +55,7 @@ class TaskGraph:
         # wants to exit
         for thread in self._threads:
             while thread.is_alive():
-                thread.join(timeout=1)
-                # If the messenger is shut down, it means the user wants to end
-                # the program
-                if self._messenger.shutdown_requested:
-                    raise KeyboardInterrupt()
+                thread.join(timeout=0.5)
 
 
 class _TaskThread(Thread):
@@ -73,12 +66,14 @@ class _TaskThread(Thread):
         name: str,
         tasks: List[_Task],
         prerequisites: Set[_TaskThread],
+        messenger: Messenger,
     ):
         """
         Creates a new `Thread` with the given name that runs the given tasks, but only after all prerequisite threads have finished.
         """
         self.tasks = tasks
         self.prerequisites = prerequisites
+        self._messenger = messenger
         super().__init__(name=name, daemon=True)
 
     def run(self):
@@ -88,9 +83,14 @@ class _TaskThread(Thread):
 
         # Run tasks
         for t in self.tasks:
-            set_current_task_name(t.name)
-            t.run()
-            set_current_task_name(None)
+            self._messenger.set_current_task_name(t.name)
+            try:
+                t.run()
+            except KeyboardInterrupt:
+                # The program should already be in the process of shutting down
+                # if this happens.
+                return
+            self._messenger.set_current_task_name(None)
 
 
 class _Task:
@@ -151,7 +151,9 @@ class _Task:
                 )
                 self._messenger.wait(self._description)
                 self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
-            except Exception as e:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException as e:
                 self._messenger.log_problem(
                     ProblemLevel.ERROR,
                     f"An error occurred while trying to complete the task automatically: {e}",
@@ -168,6 +170,7 @@ class _Task:
 @dataclass(frozen=True)
 class TaskModel:
     """Contents of the task list, as read directly from a file."""
+
     name: str
     description: str = ""
     prerequisites: Set[str] = field(default_factory=set)
@@ -549,7 +552,9 @@ def _convert_models_to_tasks(
     return tasks
 
 
-def _assign_tasks_to_threads(tasks: List[_Task]) -> List[_TaskThread]:
+def _assign_tasks_to_threads(
+    tasks: List[_Task], messenger: Messenger
+) -> List[_TaskThread]:
     tasks = list(tasks)  # Don't mutate the input
     threads: List[_TaskThread] = []
     task_name_to_thread: Dict[str, _TaskThread] = {}
@@ -579,6 +584,7 @@ def _assign_tasks_to_threads(tasks: List[_Task]) -> List[_TaskThread]:
                 # only the first task will depend on tasks from other threads.
                 for p in current_thread_tasks[0].prerequisites
             },
+            messenger=messenger,
         )
         for t in current_thread_tasks:
             task_name_to_thread[t.name] = thread

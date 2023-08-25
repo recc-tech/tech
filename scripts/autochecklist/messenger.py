@@ -2,32 +2,153 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import math
+import os
+import signal
+import threading
 from argparse import ArgumentTypeError
-from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum, auto
 from getpass import getpass
 from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
+from queue import Empty, PriorityQueue
 from threading import Event, Lock, Semaphore, Thread, local
 from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
-from typing import Any, Callable, Deque, Dict, TypeVar, Union
+from typing import Callable, Dict, Literal, Optional, Tuple, TypeVar, Union, cast
 
 T = TypeVar("T")
 
-thread_local = local()
-thread_local.current_task_name = None
+
+class Messenger:
+    """Thread-safe class for logging and user interactions."""
+
+    ROOT_PSEUDOTASK_NAME = "SCRIPT MAIN"
+    """Default display name for the main thread."""
+
+    def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
+        self._file_messenger = file_messenger
+        self._input_messenger = input_messenger
+        self._task_manager = _TaskManager()
+        self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
+
+    def set_current_task_name(self, task_name: Optional[str]):
+        self._task_manager.set_current_task_name(task_name)
+
+    def set_task_index_table(self, task_index_table: Dict[str, int]):
+        self._task_manager.set_task_index_table(task_index_table)
+
+    def log_debug(self, message: str, task_name: str = ""):
+        self._file_messenger.log(
+            task_name=self._task_manager.get_task_name(task_name),
+            level=logging.DEBUG,
+            message=message,
+        )
+
+    def log_status(
+        self,
+        status: TaskStatus,
+        message: str,
+        task_name: str = "",
+        file_only: bool = False,
+    ):
+        (task_name, index) = self._task_manager.get_task_name_and_index(task_name)
+        log_message = f"Task status: {status}. {message}"
+        self._file_messenger.log(task_name, logging.INFO, log_message)
+        if not file_only:
+            self._input_messenger.log_status(task_name, index, status, message)
+
+    # TODO: It would be nice to show not only the exception but the exception
+    # type. For example, `str(key_error)` may just show `the_key` when
+    # `KeyError: 'the_key'` would be clearer. Ideally the solution should be
+    # easy to use everywhere without copy-pasting.
+    def log_problem(
+        self,
+        level: ProblemLevel,
+        message: str,
+        stacktrace: str = "",
+        task_name: str = "",
+    ):
+        task_name = self._task_manager.get_task_name(task_name)
+        details = f"\n{stacktrace}" if stacktrace else ""
+        self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
+        self._input_messenger.log_problem(task_name, level, message)
+
+    def input(
+        self,
+        display_name: str,
+        password: bool = False,
+        parser: Callable[[str], T] = lambda x: x,
+        prompt: str = "",
+        title: str = "",
+    ) -> Optional[T]:
+        return self._input_messenger.input(
+            display_name, password, parser, prompt, title
+        )
+
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
+    ) -> Dict[str, object]:
+        return self._input_messenger.input_multiple(params, prompt, title)
+
+    def wait(self, prompt: str, task_name: str = ""):
+        (task_name, index) = self._task_manager.get_task_name_and_index(task_name)
+        self._input_messenger.wait(task_name, index, prompt)
+
+    def close(self, finish_existing_jobs: bool):
+        self._input_messenger.close(finish_existing_jobs)
+
+    @property
+    def is_closed(self) -> bool:
+        return self._input_messenger.is_closed
 
 
-def current_task_name() -> str:
-    return (
-        thread_local.current_task_name if thread_local.current_task_name else "UNKNOWN"
-    )
+class _TaskManager:
+    """
+    Keep track of the current task by thread and provide access to relevant
+    metadata for tasks.
+    """
 
+    class _Local(local):
+        current_task_name: Optional[str] = None
 
-def set_current_task_name(name: Union[str, None]):
-    thread_local.current_task_name = name
+    def __init__(self):
+        self._local = self._Local()
+        # Put the root "task" (e.g., the script startup code) at the top by
+        # default
+        self._task_index_table = {Messenger.ROOT_PSEUDOTASK_NAME: 0}
+        self._lock = Lock()
+
+    def set_current_task_name(self, task_name: Optional[str]):
+        with self._lock:
+            self._local.current_task_name = task_name
+
+    def set_task_index_table(self, task_index_table: Dict[str, int]):
+        with self._lock:
+            # Don't mutate the input
+            self._task_index_table = dict(task_index_table)
+            # Let the client override the default placement of the root "task"
+            # if they want to
+            if Messenger.ROOT_PSEUDOTASK_NAME not in self._task_index_table:
+                self._task_index_table[Messenger.ROOT_PSEUDOTASK_NAME] = 0
+
+    def get_task_name(self, task_name: str) -> str:
+        if task_name:
+            return task_name
+        with self._lock:
+            return self._local.current_task_name or "UNKNOWN"
+
+    def get_task_name_and_index(self, task_name: str) -> Tuple[str, Optional[int]]:
+        with self._lock:
+            task_name = task_name or self._local.current_task_name or ""
+            index = (
+                self._task_index_table[task_name]
+                if task_name and task_name in self._task_index_table
+                else None
+            )
+            return (task_name or "UNKNOWN", index)
 
 
 class TaskStatus(Enum):
@@ -85,7 +206,7 @@ class ProblemLevel(Enum):
 @dataclass
 class Parameter:
     display_name: str
-    parser: Callable[[str], Any] = lambda x: x
+    parser: Callable[[str], object] = lambda x: x
     password: bool = False
     description: str = ""
 
@@ -95,13 +216,15 @@ class InputCancelledException(Exception):
 
 
 class InputMessenger:
-    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
+    def log_status(
+        self, task_name: str, index: Optional[int], status: TaskStatus, message: str
+    ) -> None:
         raise NotImplementedError()
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         raise NotImplementedError()
 
-    def close(self):
+    def close(self, finish_existing_jobs: bool):
         """
         Performs any cleanup that is required before exiting (e.g., making worker threads exit).
         """
@@ -119,14 +242,14 @@ class InputMessenger:
 
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         raise NotImplementedError()
 
-    def wait(self, task_name: str, prompt: str) -> None:
+    def wait(self, task_name: str, index: Optional[int], prompt: str) -> None:
         raise NotImplementedError()
 
     @property
-    def shutdown_requested(self) -> bool:
+    def is_closed(self) -> bool:
         """
         Whether the user wants to cancel the program (e.g., by closing the GUI or by hitting CTRL+C).
         """
@@ -153,17 +276,15 @@ class FileMessenger:
 # TODO: Review punctuation in input prompts (esp. in check_credentials and mcr_setup)
 # TODO: Restore log levels so that user can ignore status updates by default?
 class ConsoleMessenger(InputMessenger):
-    @dataclass
-    class _LogTask:
-        run: Callable[[], Any]
-        is_input: bool
+    """
+    IMPORTANT: It is NOT safe to call any method other than close after the
+    main thread receives a CTRL+C event (which normally appears as a
+    `KeyboardInterrupt`). It is possible that the messenger has already
+    received the event and is already in the process of shutting down.
+    """
 
     def __init__(self, description: str):
         print(f"{description}\n\n")
-
-        self._should_exit = False
-        self._shutdown_requested = False
-
         self._console_logger = _initialize_logger(
             name="console_messenger",
             handler=StreamHandler(),
@@ -171,45 +292,29 @@ class ConsoleMessenger(InputMessenger):
             log_format="[%(levelname)-8s] %(message)s",
             date_format="%H:%M:%S",
         )
+        self._worker = _ConsoleMessengerWorker()
 
-        # Push tasks to a queue and have a dedicated thread handle those operations
-        self._task_queue: Deque[ConsoleMessenger._LogTask] = deque()
-        self._task_queue_cleared_lock = Lock()
-        self._task_queue_cleared_lock.acquire()
-        self._task_semaphore = Semaphore(0)
-        self._start_thread(name="ConsoleMessenger")
-
-    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
-        if self._should_exit or self._shutdown_requested:
-            return
-
-        self._task_queue.append(
-            ConsoleMessenger._LogTask(
-                run=lambda: self._console_logger.log(
-                    level=logging.INFO,
-                    msg=f"{task_name} is {status}. {message}",
-                ),
-                is_input=False,
-            )
+    def log_status(
+        self, task_name: str, index: Optional[int], status: TaskStatus, message: str
+    ) -> None:
+        self._worker.submit_output_job(
+            level=_ConsoleIOJob.OUT_STATUS,
+            priority=math.inf if index is None else index,
+            run=lambda: self._console_logger.log(
+                level=logging.INFO,
+                msg=f"{task_name} is {status}. {message}",
+            ),
         )
-        # Signal that there is a task in the queue
-        self._task_semaphore.release()
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        if self._should_exit or self._shutdown_requested:
-            return
-
-        self._task_queue.append(
-            ConsoleMessenger._LogTask(
-                run=lambda: self._console_logger.log(
-                    level=level.to_log_level(),
-                    msg=f"[{task_name}] {message}",
-                ),
-                is_input=False,
-            )
+        self._worker.submit_output_job(
+            level=_ConsoleIOJob.OUT_ERROR,
+            priority=0,
+            run=lambda: self._console_logger.log(
+                level=level.to_log_level(),
+                msg=f"[{task_name}] {message}",
+            ),
         )
-        # Signal that there is a task in the queue
-        self._task_semaphore.release()
 
     def input(
         self,
@@ -223,152 +328,664 @@ class ConsoleMessenger(InputMessenger):
 
         def read_input():
             if prompt:
-                print()
                 print(prompt)
             while True:
                 try:
                     parsed_value = parser(input_func(f"{display_name}:\n> "))
-                    print()
                     return parsed_value
                 except ArgumentTypeError as e:
                     print(f"Invalid input: {e}")
-                    print()
-                except Exception as e:
-                    if isinstance(e, EOFError):
-                        raise
+                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
+                # the worker class can deal with all the cancellation-related
+                # issues
+                except (KeyboardInterrupt, EOFError):
+                    raise
+                except BaseException as e:
                     print(f"An error occurred while taking input: {e}")
-                    print()
 
-        return self._input(read_input)
+        return self._worker.submit_input_job(
+            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
+        )
 
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         def read_input():
             if prompt:
-                print()
                 print(prompt)
-            results: Dict[str, Any] = {}
+            results: Dict[str, object] = {}
             for name, param in params.items():
-                print()
                 input_func = getpass if param.password else input
                 first_attempt = True
                 while True:
                     try:
-                        message = f"Enter the {param.display_name}."
+                        message = f"{param.display_name}:"
                         if param.description and first_attempt:
-                            message += f"\n{param.description}"
+                            message += f"\n({param.description})"
                         message += "\n> "
                         raw_value = input_func(message)
                         results[name] = param.parser(raw_value)
                         break
                     except ArgumentTypeError as e:
                         print(f"Invalid input: {e}")
-                        print()
-                    except Exception as e:
-                        if isinstance(e, EOFError):
-                            raise
+                    # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
+                    # that the worker class can deal with all the
+                    # cancellation-related issues
+                    except (KeyboardInterrupt, EOFError):
+                        raise
+                    except BaseException as e:
                         print(f"An error occurred while taking input: {e}")
-                        print()
                     first_attempt = False
-            print()
             return results
 
-        return self._input(read_input)
+        return self._worker.submit_input_job(
+            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
+        )
 
-    def wait(self, task_name: str, prompt: str):
+    def wait(self, task_name: str, index: Optional[int], prompt: str):
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
         prompt = f"- [{task_name}] {prompt}"
-        # Ask for a password so that pressing keys other than ENTER has no effect
-        self.input(f"{prompt} When you are done, press ENTER.", password=True)
 
-    def close(self):
-        self._should_exit = True
-        # Pretend there's one more entry in the queue to get the threads to exit
-        self._task_semaphore.release()
-        # Wait for the queue to be cleared
-        self._task_queue_cleared_lock.acquire()
+        def wait_for_input():
+            while True:
+                try:
+                    # Ask for a password so that pressing keys other than ENTER
+                    # has no effect
+                    getpass(prompt)
+                    return
+                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
+                # the worker class can deal with all the cancellation-related
+                # issues
+                except (KeyboardInterrupt, EOFError):
+                    raise
+                except BaseException as e:
+                    print(f"An error occurred while taking input: {e}")
+                    return
+
+        self._worker.submit_input_job(
+            level=_ConsoleIOJob.IN_WAIT,
+            priority=math.inf if index is None else index,
+            read_input=wait_for_input,
+        )
+
+    def close(self, finish_existing_jobs: bool):
+        self._worker.close(finish_existing_jobs)
 
     @property
-    def shutdown_requested(self) -> bool:
-        return self._shutdown_requested
+    def is_closed(self) -> bool:
+        return self._worker.is_shut_down
 
-    def _start_thread(
-        self,
-        name: str,
+
+# TODO: Can I *prove* that this is thread-safe and handles cancellation properly?
+# - Notice that, from the moment close() sets self._is_shut_down = True, no new
+#   jobs can be added to the queue.
+class _ConsoleMessengerWorker:
+    """
+    Encapsulates all the tricky multithreading code for the `ConsoleMessenger`.
+    """
+
+    def __init__(self):
+        # Push jobs to a queue and have a dedicated thread handle them. Jobs
+        # are handled in the following order:
+        #  1. Display errors and warnings (shown first).
+        #  2. Display task status updates.
+        #  3. Request user input.
+        #  4. Wait for user (shown last).
+        #
+        # For status updates and waiting for the user, jobs may also be sorted
+        # by their priority. Jobs with lower priority are shown first. Finally,
+        # if all else is equal, the job that was submitted earliest is done
+        # first.
+        self._queue: PriorityQueue[_ConsoleIOJob] = PriorityQueue()
+        self.is_shut_down = False
+        self._finish_existing_jobs = True
+        # If the worker thread immediately stops once it receives CTRL+C
+        # directly from input() or getpass(), it may end up stopping all the
+        # threads before the main thread even receives the re-sent signal. The
+        # main thread may then think all tasks finished successfully and try
+        # using a log_* method in the messenger.
+        self._wait_for_close_lock = Lock()
+        self._wait_for_close_lock.acquire()
+        # Even though PriorityQueue is thread-safe, use a lock to guard the
+        # queue AND self._is_shut_down.
+        #
+        # Suppose there was no lock and consider the case where the worker gets
+        # shut down completely after the calling thread checks
+        # self._is_shut_down but before the job is inserted into the queue. If
+        # the job is an input task, the calling thread would hang because the
+        # worker thread would no longer be processing jobs.
+        self._lock = Lock()
+        # Even though PriorityQueue is thread-safe, use a semaphore to handle
+        # new entries to the queue. This gives the code the chance to use the
+        # general lock *before* reading from the queue.
+        self._worker_thread = Thread(
+            name="ConsoleMessenger", target=self._run_worker_thread, daemon=True
+        )
+        self._worker_thread.start()
+
+    def submit_output_job(
+        self, level: OutputJobLevel, priority: float, run: Callable[[], None]
     ):
-        def clear_queue():
-            while self._task_queue:
-                task = self._task_queue.popleft()
-                if not task.is_input:
-                    task.run()
+        job = _ConsoleIOJob(
+            level=level,
+            priority=priority,
+            timestamp=datetime.now(),
+            run=run,
+            is_from_main_thread=_is_current_thread_main(),
+        )
+        with self._lock:
+            if self.is_shut_down:
+                raise KeyboardInterrupt()
+            self._queue.put(job)
 
-        def console_tasks_thread():
-            try:
-                while True:
-                    # Wait for there to be a task in the queue
-                    self._task_semaphore.acquire()
-
-                    if self._should_exit or self._shutdown_requested:
-                        clear_queue()
-                        return
-
-                    task = self._task_queue.popleft()
-                    # CTRL+C causes an EOFError if the program was waiting for input
-                    # The KeyboardInterrupt should also be raised in the main thread, so no need to display anything here
-                    try:
-                        task.run()
-                    except (EOFError, KeyboardInterrupt):
-                        self._shutdown_requested = True
-                        clear_queue()
-                        return
-            finally:
-                self._task_queue_cleared_lock.release()
-
-        Thread(target=console_tasks_thread, name=name, daemon=True).start()
-
-    def _input(self, read_input: Callable[[], T]) -> T:
-        # read_input is the function to be called once this thread has control of the console. It should catch exceptions.
-
-        if self._should_exit or self._shutdown_requested:
-            raise RuntimeError("Cannot take input: the user cancelled the program.")
-
-        # Use a lock so that this function blocks until the input is provided
+    def submit_input_job(
+        self, level: InputJobLevel, priority: float, read_input: Callable[[], T]
+    ) -> T:
         lock = Lock()
         lock.acquire()
-
-        # Set the value to None to get Pylance to stop complaining that it's unbound.
-        # The lock guarantees that the input function will get a chance to run before this function returns.
+        # Set the value to None to get Pylance to stop complaining that it's
+        # unbound. The lock guarantees that the input function will get a
+        # chance to run before this function returns.
         input_value: T = None  # type: ignore
-        exc: Union[BaseException, None] = None
+        ctrl_c: bool = False
 
         def input_task():
-            nonlocal input_value, lock, exc
+            nonlocal input_value, lock, ctrl_c
             try:
-                input_value = read_input()
-            except (EOFError, KeyboardInterrupt) as e:
-                exc = e
+                while True:
+                    try:
+                        input_value = read_input()
+                        return
+                    except (KeyboardInterrupt, EOFError):
+                        ctrl_c = True
+                        raise
+                    except ArgumentTypeError as e:
+                        print(f"Invalid input: {e}")
+                    except BaseException as e:
+                        print(f"An error occurred while taking input: {e}")
             finally:
                 lock.release()
 
-        self._task_queue.append(
-            ConsoleMessenger._LogTask(run=input_task, is_input=True)
+        job = _ConsoleIOJob(
+            level=level,
+            priority=priority,
+            timestamp=datetime.now(),
+            run=input_task,
+            is_from_main_thread=_is_current_thread_main(),
+            lock=lock,
         )
-        # Signal that there is a task in the queue
-        self._task_semaphore.release()
+        with self._lock:
+            if self.is_shut_down:
+                raise KeyboardInterrupt()
+            self._queue.put(job)
+
         # Wait for the task to be done
         lock.acquire()
+        if job.cancelled or ctrl_c:
+            raise KeyboardInterrupt()
+        else:
+            return input_value
 
-        if isinstance(exc, BaseException):
-            # Why does Pylance think this has type Never? D:<
-            raise exc  # type: ignore
+    def close(self, finish_existing_jobs: bool):
+        with self._lock:
+            # Check whether the lock is already locked just in case the client
+            # calls close() multiple times.
+            if self._wait_for_close_lock.locked():
+                self._wait_for_close_lock.release()
+            # If self.is_shut_down is true, either the user already called
+            # close() or the program was cancelled and the exception was
+            # received by the worker thread via input() or getpass(). In either
+            # case, there's nothing more to do.
+            if not self.is_shut_down:
+                self._finish_existing_jobs = finish_existing_jobs
+                self.is_shut_down = True
 
-        return input_value
+                # Put a fake job in the queue to wake up the worker thread
+                def fake_run():
+                    raise RuntimeError(
+                        "This task shouldn't have been run! There is an issue with the ConsoleMessenger."
+                    )
+
+                self._queue.put(
+                    _ConsoleIOJob(
+                        level=_ConsoleIOJob.OUT_ERROR,
+                        priority=-math.inf,
+                        timestamp=datetime.min,
+                        run=fake_run,
+                        is_from_main_thread=_is_current_thread_main(),
+                        is_fake=True,
+                    )
+                )
+        # Don't end the program until the worker thread is done. Funky things
+        # could happen if the worker is still trying to write to the console
+        # as the program is shutting down.
+        self._worker_thread.join()
+
+    def _run_worker_thread(self):
+        try:
+            while True:
+                # IMPORTANT: check for shutdown AFTER getting a job from the
+                # queue. Otherwise, the job might actually be the fake one
+                # placed in the queue by close() to wake up this loop.
+                job = self._queue.get(block=True)
+                with self._lock:
+                    if self.is_shut_down:
+                        # Put the job back in the queue so that it doesn't get
+                        # forgotten
+                        self._queue.put(job)
+                        break
+
+                try:
+                    job.run()
+                except (KeyboardInterrupt, EOFError):
+                    # For some reason, when the worker thread is running
+                    # input() or getpass(), pressing CTRL+C results in an
+                    # EOFError in this worker thread instead of a
+                    # KeyboardInterrupt in the main thread. Manually
+                    # re-trigger the CTRL+C for consistency.
+                    #
+                    # Need to set is_shut_down so that no new input tasks
+                    # are processed before close() is called.
+                    with self._lock:
+                        self._finish_existing_jobs = False
+                        self.is_shut_down = True
+                    # If the offending job was submitted by the main thread,
+                    # the main thread should already receive a
+                    # KeyboardInterrupt from submit_input_job. The second one
+                    # might be delivered while the first one is still being
+                    # handled, which results in ugly stack traces.
+                    if not job.is_from_main_thread:
+                        os.kill(os.getpid(), signal.CTRL_C_EVENT)
+                        # It seems like the signal isn't delivered until print() is
+                        # called! But printing nothing doesn't work.
+                        print(" ", end="", flush=True)
+                    break
+                except BaseException:
+                    continue
+        finally:
+            self._wait_for_close_lock.acquire()
+            # Clear the queue so that input jobs can be released
+            while True:
+                try:
+                    job = self._queue.get(block=False)
+                except Empty:
+                    return
+                if job.is_fake:
+                    continue
+                if self._finish_existing_jobs and not job.is_input:
+                    try:
+                        job.run()
+                    except BaseException:
+                        pass
+                else:
+                    # The check for job.lock.locked() shouldn't be necessary, but
+                    # it doesn't hurt
+                    job.cancelled = True
+                    if job.lock is not None and job.lock.locked():
+                        job.lock.release()
+
+
+OutputJobLevel = Literal[0, 1]
+InputJobLevel = Literal[2, 3]
+
+
+@dataclass(order=True)
+class _ConsoleIOJob:
+    OUT_ERROR = 0
+    OUT_STATUS = 1
+    IN_INPUT = 2
+    IN_WAIT = 3
+
+    level: Union[OutputJobLevel, InputJobLevel]
+    priority: float
+    timestamp: datetime
+    run: Callable[[], object] = field(compare=False)
+    is_from_main_thread: bool = field(compare=False)
+    lock: Optional[Lock] = field(compare=False, default=None)
+    cancelled: bool = field(compare=False, default=False)
+    is_fake: bool = field(compare=False, default=False)
+
+    @property
+    def is_input(self):
+        return self.level in [self.IN_INPUT, self.IN_WAIT]
+
+
+class TkMessenger(InputMessenger):
+    _BACKGROUND_COLOUR = "#EEEEEE"
+    _FOREGROUND_COLOUR = "#000000"
+
+    _NORMAL_FONT = "Calibri 12"
+    _ITALIC_FONT = f"{_NORMAL_FONT} italic"
+    _BOLD_FONT = f"{_NORMAL_FONT} bold"
+    _H2_FONT = "Calibri 18 bold"
+
+    def __init__(self, description: str):
+        self._shutdown_requested = False
+        self._task_status_row: Dict[str, TaskStatusFrame] = {}
+
+        root_started = Semaphore(0)
+        self._gui_thread = Thread(
+            name="GUI", target=lambda: self._run_gui(root_started, description)
+        )
+        self._gui_thread.start()
+        # Wait for the GUI to enter the main loop
+        root_started.acquire()
+
+    def log_status(
+        self, task_name: str, index: Optional[int], status: TaskStatus, message: str
+    ) -> None:
+        # TODO: Sort rows by index
+        # TODO: What if the shutdown happens while in the middle of logging something?
+        if self._shutdown_requested:
+            raise KeyboardInterrupt()
+
+        if task_name in self._task_status_row:
+            self._task_status_row[task_name].update_contents(status, message)
+        else:
+            frame = TaskStatusFrame(
+                self._task_statuses_container,
+                task_name=task_name,
+                status=status,
+                message=message,
+                font=self._NORMAL_FONT,
+                background=self._BACKGROUND_COLOUR,
+                foreground=self._FOREGROUND_COLOUR,
+                padding=5,
+            )
+            frame.grid(sticky="W")
+            self._root_frame.update_scrollregion()
+            self._task_status_row[task_name] = frame
+
+    def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
+        if self._shutdown_requested:
+            raise KeyboardInterrupt()
+
+        frame = ProblemFrame(
+            self._problems_container,
+            task_name=task_name,
+            level=level,
+            message=message,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            padding=5,
+        )
+        frame.grid(sticky="W")
+        self._root_frame.update_scrollregion()
+
+    def input(
+        self,
+        display_name: str,
+        password: bool,
+        parser: Callable[[str], T] = lambda x: x,
+        prompt: str = "",
+        title: str = "Input",
+    ) -> Optional[T]:
+        # simpledialog.askstring throws an exception each time :(
+        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
+        param = Parameter(display_name, parser, password, description=prompt)
+        results = self.input_multiple({"param": param}, prompt="", title=title)
+        return cast(Optional[T], results["param"])
+
+    def input_multiple(
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
+    ) -> Dict[str, object]:
+        if self._shutdown_requested:
+            raise KeyboardInterrupt()
+
+        # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
+
+        entry_by_name: Dict[str, Entry] = {}
+        error_message_by_name: Dict[str, CopyableText] = {}
+
+        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
+        try:
+            w.title(title)
+            if prompt:
+                prompt_box = Label(w, text=prompt)
+                prompt_box.grid()
+            for name, param in params.items():
+                entry_row = Frame(w)
+                entry_row.grid()
+                name_label = Label(entry_row, text=param.display_name)
+                name_label.grid(row=0, column=0)
+                if param.password:
+                    entry = Entry(entry_row, show="*")
+                else:
+                    entry = Entry(entry_row)
+                entry.grid(row=0, column=1)
+                entry_by_name[name] = entry
+                if param.description:
+                    description_box = CopyableText(
+                        w, background=self._BACKGROUND_COLOUR
+                    )
+                    description_box.grid()
+                    description_box.set_text(param.description)
+                error_message = CopyableText(w, background=self._BACKGROUND_COLOUR)
+                error_message.config(foreground="red")
+                error_message.grid()
+                error_message_by_name[name] = error_message
+            btn = Button(w, text="Done")
+            btn.grid()
+
+            cancelled = False
+            lock = Lock()
+            lock.acquire()
+
+            def handle_close():
+                should_exit = messagebox.askyesno(  # type: ignore
+                    title="Confirm exit",
+                    message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
+                )
+                if not should_exit:
+                    return
+                nonlocal cancelled
+                cancelled = True
+                lock.release()
+
+            def handle_submit():
+                lock.release()
+
+            w.protocol("WM_DELETE_WINDOW", handle_close)
+            btn.bind("<Button-1>", lambda _: handle_submit())
+
+            while True:
+                # Wait for the button to be pressed or for the window to be closed
+                lock.acquire()
+                if cancelled:
+                    raise InputCancelledException("The user closed the input dialog.")
+                output: Dict[str, object] = {}
+                error = False
+                for name, entry in entry_by_name.items():
+                    parser = params[name].parser
+                    try:
+                        val = parser(entry.get())
+                        error_message_by_name[name].set_text("")
+                        output[name] = val
+                    except ArgumentTypeError as e:
+                        error_message_by_name[name].set_text(f"Invalid input: {e}")
+                        error = True
+                    except Exception as e:
+                        error_message_by_name[name].set_text(f"An error occurred: {e}")
+                        error = True
+                if not error:
+                    return output
+        finally:
+            w.destroy()
+
+    def wait(self, task_name: str, index: Optional[int], prompt: str):
+        # TODO: Sort rows by index
+        if self._shutdown_requested:
+            raise KeyboardInterrupt()
+
+        frame = ActionItemFrame(
+            self._action_items_container,
+            task_name=task_name,
+            prompt=prompt,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            padding=5,
+        )
+        frame.grid(sticky="w")
+        self._root_frame.update_scrollregion()
+        frame.wait_for_click()
+        # Update the scrollregion again in case it got smaller
+        self._root_frame.update_scrollregion()
+
+    def close(self, finish_existing_jobs: bool):
+        # TODO: Implement this properly, taking into consideration the value of
+        # finish_existing_jobs
+
+        # Leave the GUI open until the user closes the window
+
+        # TODO: Skip all this if the window is already closed
+        if self._shutdown_requested:
+            return
+
+        goodbye_message_textbox = CopyableText(
+            self._action_items_container,
+            width=170,
+            font=self._NORMAL_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        goodbye_message_textbox.grid(sticky="W", pady=25)
+        goodbye_message_textbox.set_text(
+            "All tasks are complete. Close this window to exit."
+        )
+        self._root_frame.update_scrollregion()
+
+    @property
+    def is_closed(self) -> bool:
+        return self._shutdown_requested
+
+    def _run_gui(self, root_started: Semaphore, description: str):
+        # TODO: Make the GUI responsive
+
+        # Try to make the GUI less blurry
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+
+        self._tk = Tk()
+        self._tk.title("MCR Teardown")
+        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
+        self._tk.config(background=self._BACKGROUND_COLOUR)
+
+        screen_height = self._tk.winfo_screenheight()
+        approx_screen_width = 16 * screen_height / 9
+        window_width = int(approx_screen_width * 0.75)
+        window_height = (screen_height * 3) // 4
+        self._tk.geometry(f"{window_width}x{window_height}")
+
+        self._root_frame = ScrollableFrame(self._tk)
+
+        style = Style()
+        # TODO: Change button background?
+        style.configure(  # type: ignore
+            "TButton",
+            font=self._NORMAL_FONT,
+        )
+        style.configure(  # type: ignore
+            "TFrame",
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+
+        description_textbox = CopyableText(
+            self._root_frame,
+            width=170,
+            font=self._ITALIC_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        description_textbox.grid(sticky="W", pady=25)
+        description_textbox.set_text(description)
+
+        action_items_header = CopyableText(
+            self._root_frame,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        action_items_header.grid(sticky="W", pady=(50, 0))
+        action_items_header.set_text("Action Items")
+
+        self._action_items_container = Frame(self._root_frame)
+        self._action_items_container.grid(sticky="W")
+
+        action_items_description = CopyableText(
+            self._action_items_container,
+            font=self._ITALIC_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        action_items_description.grid(sticky="W", pady=25)
+        action_items_description.set_text(
+            "Tasks that you must perform manually are listed here."
+        )
+
+        task_statuses_header = CopyableText(
+            self._root_frame,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        task_statuses_header.grid(sticky="W", pady=(50, 0))
+        task_statuses_header.set_text("Task Statuses")
+
+        self._task_statuses_container = Frame(self._root_frame)
+        self._task_statuses_container.grid(sticky="W")
+
+        task_statuses_description = CopyableText(
+            self._task_statuses_container,
+            font=self._ITALIC_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        task_statuses_description.grid(sticky="W", pady=25)
+        task_statuses_description.set_text("The status of each task is listed here.")
+
+        problems_header = CopyableText(
+            self._root_frame,
+            font=self._H2_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        problems_header.grid(sticky="W", pady=(50, 0))
+        problems_header.set_text("Problems")
+
+        self._problems_container = Frame(self._root_frame)
+        self._problems_container.grid(sticky="W")
+
+        problems_description = CopyableText(
+            self._problems_container,
+            font=self._ITALIC_FONT,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+        )
+        problems_description.grid(sticky="W", pady=25)
+        problems_description.set_text("Potential problems are listed here.")
+
+        self._tk.after(0, lambda: root_started.release())
+        self._tk.mainloop()
+
+    def _close(self):
+        # TODO: Release waiting threads?
+        self._shutdown_requested = True
+        # For some reason, using destroy() instead of quit() causes an error
+        self._tk.quit()
+
+    def _confirm_exit(self):
+        should_exit = messagebox.askyesno(  # type: ignore
+            title="Confirm exit", message="Are you sure you want to exit?"
+        )
+        if should_exit:
+            self._close()
 
 
 class ScrollableFrame(Frame):
-    def __init__(self, parent: Misc, *args: Any, **kwargs: Any):
+    def __init__(self, parent: Misc, *args: object, **kwargs: object):
         # TODO: The fact that this widget places itself is pretty sketchy
 
         outer_frame = Frame(parent)
@@ -428,7 +1045,7 @@ class CopyableText(Text):
     Text widget that supports both text wrapping and copying its contents to the clipboard.
     """
 
-    def __init__(self, parent: Misc, *args: Any, **kwargs: Any):
+    def __init__(self, parent: Misc, *args: object, **kwargs: object):
         super().__init__(
             parent,
             height=1,
@@ -476,7 +1093,7 @@ class ActionItemFrame(Frame):
         background: str,
         foreground: str,
         padding: int,
-        **kwargs: Any,
+        **kwargs: object,
     ):
         super().__init__(parent, padding=padding, **kwargs)
 
@@ -612,407 +1229,6 @@ class ProblemFrame(Frame):
             return "#000000"
 
 
-class TkMessenger(InputMessenger):
-    _BACKGROUND_COLOUR = "#EEEEEE"
-    _FOREGROUND_COLOUR = "#000000"
-
-    _NORMAL_FONT = "Calibri 12"
-    _ITALIC_FONT = f"{_NORMAL_FONT} italic"
-    _BOLD_FONT = f"{_NORMAL_FONT} bold"
-    _H2_FONT = "Calibri 18 bold"
-
-    def __init__(self, description: str):
-        self._shutdown_requested = False
-        self._task_status_row: Dict[str, TaskStatusFrame] = {}
-
-        root_started = Semaphore(0)
-        self._gui_thread = Thread(
-            name="GUI", target=lambda: self._run_gui(root_started, description)
-        )
-        self._gui_thread.start()
-        # Wait for the GUI to enter the main loop
-        root_started.acquire()
-
-    def log_status(self, task_name: str, status: TaskStatus, message: str) -> None:
-        # TODO: What if the shutdown happens while in the middle of logging something?
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        if task_name in self._task_status_row:
-            self._task_status_row[task_name].update_contents(status, message)
-        else:
-            frame = TaskStatusFrame(
-                self._task_statuses_container,
-                task_name=task_name,
-                status=status,
-                message=message,
-                font=self._NORMAL_FONT,
-                background=self._BACKGROUND_COLOUR,
-                foreground=self._FOREGROUND_COLOUR,
-                padding=5,
-            )
-            frame.grid(sticky="W")
-            self._root_frame.update_scrollregion()
-            self._task_status_row[task_name] = frame
-
-    def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        frame = ProblemFrame(
-            self._problems_container,
-            task_name=task_name,
-            level=level,
-            message=message,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            padding=5,
-        )
-        frame.grid(sticky="W")
-        self._root_frame.update_scrollregion()
-
-    def input(
-        self,
-        display_name: str,
-        password: bool,
-        parser: Callable[[str], Any] = lambda x: x,
-        prompt: str = "",
-        title: str = "Input",
-    ) -> Union[str, None]:
-        # simpledialog.askstring throws an exception each time :(
-        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
-        param = Parameter(display_name, parser, password, description=prompt)
-        results = self.input_multiple({"param": param}, prompt="", title=title)
-        return results["param"]
-
-    def input_multiple(
-        self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
-    ) -> Dict[str, Any]:
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
-
-        entry_by_name: Dict[str, Entry] = {}
-        error_message_by_name: Dict[str, CopyableText] = {}
-
-        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
-        try:
-            w.title(title)
-            if prompt:
-                prompt_box = Label(w, text=prompt)
-                prompt_box.grid()
-            for name, param in params.items():
-                entry_row = Frame(w)
-                entry_row.grid()
-                name_label = Label(entry_row, text=param.display_name)
-                name_label.grid(row=0, column=0)
-                if param.password:
-                    entry = Entry(entry_row, show="*")
-                else:
-                    entry = Entry(entry_row)
-                entry.grid(row=0, column=1)
-                entry_by_name[name] = entry
-                if param.description:
-                    description_box = CopyableText(
-                        w, background=self._BACKGROUND_COLOUR
-                    )
-                    description_box.grid()
-                    description_box.set_text(param.description)
-                error_message = CopyableText(w, background=self._BACKGROUND_COLOUR)
-                error_message.config(foreground="red")
-                error_message.grid()
-                error_message_by_name[name] = error_message
-            btn = Button(w, text="Done")
-            btn.grid()
-
-            cancelled = False
-            lock = Lock()
-            lock.acquire()
-
-            def handle_close():
-                should_exit = messagebox.askyesno(  # type: ignore
-                    title="Confirm exit",
-                    message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
-                )
-                if not should_exit:
-                    return
-                nonlocal cancelled
-                cancelled = True
-                lock.release()
-
-            def handle_submit():
-                lock.release()
-
-            w.protocol("WM_DELETE_WINDOW", handle_close)
-            btn.bind("<Button-1>", lambda _: handle_submit())
-
-            while True:
-                # Wait for the button to be pressed or for the window to be closed
-                lock.acquire()
-                if cancelled:
-                    raise InputCancelledException("The user closed the input dialog.")
-                output: Dict[str, Any] = {}
-                error = False
-                for name, entry in entry_by_name.items():
-                    parser = params[name].parser
-                    try:
-                        val = parser(entry.get())
-                        error_message_by_name[name].set_text("")
-                        output[name] = val
-                    except ArgumentTypeError as e:
-                        error_message_by_name[name].set_text(f"Invalid input: {e}")
-                        error = True
-                    except Exception as e:
-                        error_message_by_name[name].set_text(f"An error occurred: {e}")
-                        error = True
-                if not error:
-                    return output
-        finally:
-            w.destroy()
-
-    def wait(self, task_name: str, prompt: str):
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        frame = ActionItemFrame(
-            self._action_items_container,
-            task_name=task_name,
-            prompt=prompt,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            padding=5,
-        )
-        frame.grid(sticky="w")
-        self._root_frame.update_scrollregion()
-        frame.wait_for_click()
-        # Update the scrollregion again in case it got smaller
-        self._root_frame.update_scrollregion()
-
-    def close(self):
-        # Leave the GUI open until the user closes the window
-
-        # TODO: Skip all this if the window is already closed
-        if self._shutdown_requested:
-            return
-
-        goodbye_message_textbox = CopyableText(
-            self._action_items_container,
-            width=170,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        goodbye_message_textbox.grid(sticky="W", pady=25)
-        goodbye_message_textbox.set_text(
-            "All tasks are complete. Close this window to exit."
-        )
-        self._root_frame.update_scrollregion()
-
-    @property
-    def shutdown_requested(self) -> bool:
-        return self._shutdown_requested
-
-    def _run_gui(self, root_started: Semaphore, description: str):
-        # TODO: Make the GUI responsive
-
-        # Try to make the GUI less blurry
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-
-        self._tk = Tk()
-        self._tk.title("MCR Teardown")
-        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
-        self._tk.config(background=self._BACKGROUND_COLOUR)
-
-        screen_height = self._tk.winfo_screenheight()
-        approx_screen_width = 16 * screen_height / 9
-        window_width = int(approx_screen_width * 0.75)
-        window_height = (screen_height * 3) // 4
-        self._tk.geometry(f"{window_width}x{window_height}")
-
-        self._root_frame = ScrollableFrame(self._tk)
-
-        style = Style()
-        # TODO: Change button background?
-        style.configure(  # type: ignore
-            "TButton",
-            font=self._NORMAL_FONT,
-        )
-        style.configure(  # type: ignore
-            "TFrame",
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-
-        description_textbox = CopyableText(
-            self._root_frame,
-            width=170,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        description_textbox.grid(sticky="W", pady=25)
-        description_textbox.set_text(description)
-
-        action_items_header = CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        action_items_header.grid(sticky="W", pady=(50, 0))
-        action_items_header.set_text("Action Items")
-
-        self._action_items_container = Frame(self._root_frame)
-        self._action_items_container.grid(sticky="W")
-
-        action_items_description = CopyableText(
-            self._action_items_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        action_items_description.grid(sticky="W", pady=25)
-        action_items_description.set_text(
-            "Tasks that you must perform manually are listed here."
-        )
-
-        task_statuses_header = CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        task_statuses_header.grid(sticky="W", pady=(50, 0))
-        task_statuses_header.set_text("Task Statuses")
-
-        self._task_statuses_container = Frame(self._root_frame)
-        self._task_statuses_container.grid(sticky="W")
-
-        task_statuses_description = CopyableText(
-            self._task_statuses_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        task_statuses_description.grid(sticky="W", pady=25)
-        task_statuses_description.set_text("The status of each task is listed here.")
-
-        problems_header = CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        problems_header.grid(sticky="W", pady=(50, 0))
-        problems_header.set_text("Problems")
-
-        self._problems_container = Frame(self._root_frame)
-        self._problems_container.grid(sticky="W")
-
-        problems_description = CopyableText(
-            self._problems_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        problems_description.grid(sticky="W", pady=25)
-        problems_description.set_text("Potential problems are listed here.")
-
-        self._tk.after(0, lambda: root_started.release())
-        self._tk.mainloop()
-
-    def _close(self):
-        # TODO: Release waiting threads?
-        self._shutdown_requested = True
-        # For some reason, using destroy() instead of quit() causes an error
-        self._tk.quit()
-
-    def _confirm_exit(self):
-        should_exit = messagebox.askyesno(  # type: ignore
-            title="Confirm exit", message="Are you sure you want to exit?"
-        )
-        if should_exit:
-            self._close()
-
-
-class Messenger:
-    """
-    Thread-safe interface for logging to a file and to the console. Also allows for getting user input without having log messages appear in the console and without making logging blocking.
-    """
-
-    def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
-        self._file_messenger = file_messenger
-        self._input_messenger = input_messenger
-
-    def log_debug(self, message: str, task_name: str = ""):
-        if not task_name:
-            task_name = current_task_name()
-        self._file_messenger.log(task_name, logging.DEBUG, message)
-
-    def log_status(
-        self,
-        status: TaskStatus,
-        message: str,
-        task_name: str = "",
-        file_only: bool = False,
-    ):
-        if not task_name:
-            task_name = current_task_name()
-
-        log_message = f"Task status: {status}. {message}"
-        self._file_messenger.log(task_name, logging.INFO, log_message)
-
-        if not file_only:
-            self._input_messenger.log_status(task_name, status, message)
-
-    def log_problem(
-        self,
-        level: ProblemLevel,
-        message: str,
-        stacktrace: str = "",
-        task_name: str = "",
-    ):
-        if not task_name:
-            task_name = current_task_name()
-
-        details = f"\n{stacktrace}" if stacktrace else ""
-        self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
-
-        self._input_messenger.log_problem(task_name, level, message)
-
-    def input(
-        self,
-        display_name: str,
-        password: bool = False,
-        parser: Callable[[str], Any] = lambda x: x,
-        prompt: str = "",
-        title: str = "",
-    ) -> Union[str, None]:
-        return self._input_messenger.input(
-            display_name, password, parser, prompt, title
-        )
-
-    def input_multiple(
-        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
-    ) -> Dict[str, Any]:
-        return self._input_messenger.input_multiple(params, prompt, title)
-
-    def wait(self, prompt: str, task_name: str = ""):
-        if not task_name:
-            task_name = current_task_name()
-        self._input_messenger.wait(task_name, prompt)
-
-    def close(self):
-        self._input_messenger.close()
-
-    @property
-    def shutdown_requested(self) -> bool:
-        return self._input_messenger.shutdown_requested
-
-
 def _initialize_logger(
     name: str, handler: Handler, level: int, log_format: str, date_format: str
 ):
@@ -1027,3 +1243,7 @@ def _initialize_logger(
     logger.setLevel(level)
     logger.addHandler(handler)
     return logger
+
+
+def _is_current_thread_main() -> bool:
+    return threading.current_thread() is threading.main_thread()

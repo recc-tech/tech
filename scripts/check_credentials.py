@@ -1,3 +1,4 @@
+import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 
@@ -5,8 +6,8 @@ from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
     Messenger,
+    ProblemLevel,
     TaskStatus,
-    set_current_task_name,
 )
 from common import parse_directory
 from mcr_teardown import BoxCastClientFactory, CredentialStore, ReccVimeoClient
@@ -17,8 +18,6 @@ DESCRIPTION = "This script will test the credentials for various services we con
 def main():
     args = _parse_args()
 
-    set_current_task_name("SCRIPT MAIN")
-
     log_dir = args.home_dir.joinpath("Logs")
     date_ymd = datetime.now().strftime("%Y-%m-%d")
     current_time = datetime.now().strftime("%H-%M-%S")
@@ -28,29 +27,45 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=console_messenger
     )
-    credential_store = CredentialStore(
-        messenger=messenger, force_user_input=args.force_input
-    )
 
-    ReccVimeoClient(
-        messenger=messenger,
-        credential_store=credential_store,
-        # Since lazy_login = false, the login should be tested eagerly
-        lazy_login=False,
-    )
+    should_messenger_finish = True
+    try:
+        credential_store = CredentialStore(
+            messenger=messenger, force_user_input=args.force_input
+        )
 
-    BoxCastClientFactory(
-        messenger=messenger,
-        credential_store=credential_store,
-        headless=not args.show_browser,
-        # Since lazy_login = false, the login should be tested eagerly
-        lazy_login=False,
-        log_directory=log_dir,
-        log_file_name="check_credentials_web_driver",
-    )
+        ReccVimeoClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            # Since lazy_login = false, the login should be tested eagerly
+            lazy_login=False,
+        )
 
-    messenger.log_status(TaskStatus.DONE, "Everything looks good!")
-    messenger.close()
+        BoxCastClientFactory(
+            messenger=messenger,
+            credential_store=credential_store,
+            headless=not args.show_browser,
+            # Since lazy_login = false, the login should be tested eagerly
+            lazy_login=False,
+            log_directory=log_dir,
+            log_file_name="check_credentials_web_driver",
+        )
+
+        messenger.log_status(TaskStatus.DONE, "Everything looks good!")
+    except KeyboardInterrupt:
+        print("\nProgram cancelled.")
+        should_messenger_finish = False
+    except BaseException as e:
+        messenger.log_problem(
+            ProblemLevel.FATAL,
+            f"An error occurred: {e}",
+            stacktrace=traceback.format_exc(),
+        )
+        messenger.log_status(
+            TaskStatus.DONE, "Program finished unsuccessfully. Please try again."
+        )
+    finally:
+        messenger.close(finish_existing_jobs=should_messenger_finish)
 
 
 def _parse_args() -> Namespace:
