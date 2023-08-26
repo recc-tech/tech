@@ -65,7 +65,7 @@ def main():
             TaskStatus.DONE, "Program finished unsuccessfully. Please try again."
         )
     finally:
-        messenger.close(finish_existing_jobs=should_messenger_finish)
+        messenger.close(wait=should_messenger_finish)
 
 
 def _parse_args() -> Namespace:

@@ -1,13 +1,13 @@
-from ctypes import windll
-from datetime import datetime
-from messaging import Colour, Messenger
-from webvtt import Segment, WebVTT
-
 import csv
 import inspect
 import os
 import tkinter as tk
 import tkinter.filedialog as filedialog
+from ctypes import windll
+from datetime import datetime
+
+from messaging import Colour, Messenger
+from webvtt import Segment, WebVTT
 
 
 def _remind_to_review_low_confidence() -> None:

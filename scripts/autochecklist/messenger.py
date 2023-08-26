@@ -17,7 +17,7 @@ from queue import Empty, PriorityQueue
 from threading import Event, Lock, Semaphore, Thread, local
 from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
-from typing import Callable, Dict, Literal, Optional, Tuple, TypeVar, Union, cast
+from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar, Union, cast
 
 T = TypeVar("T")
 
@@ -97,12 +97,13 @@ class Messenger:
         (task_name, index) = self._task_manager.get_task_name_and_index(task_name)
         self._input_messenger.wait(task_name, index, prompt)
 
-    def close(self, finish_existing_jobs: bool):
-        self._input_messenger.close(finish_existing_jobs)
-
-    @property
-    def is_closed(self) -> bool:
-        return self._input_messenger.is_closed
+    def close(self, wait: bool):
+        """
+        If `wait` is `False`, the messenger will stop immediately, (as opposed
+        to, for example, finishing IO operations that were started but not yet
+        completed or waiting for the user to close the window.
+        """
+        self._input_messenger.close(wait)
 
 
 class _TaskManager:
@@ -224,7 +225,7 @@ class InputMessenger:
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         raise NotImplementedError()
 
-    def close(self, finish_existing_jobs: bool):
+    def close(self, wait: bool):
         """
         Performs any cleanup that is required before exiting (e.g., making worker threads exit).
         """
@@ -246,13 +247,6 @@ class InputMessenger:
         raise NotImplementedError()
 
     def wait(self, task_name: str, index: Optional[int], prompt: str) -> None:
-        raise NotImplementedError()
-
-    @property
-    def is_closed(self) -> bool:
-        """
-        Whether the user wants to cancel the program (e.g., by closing the GUI or by hitting CTRL+C).
-        """
         raise NotImplementedError()
 
 
@@ -409,12 +403,8 @@ class ConsoleMessenger(InputMessenger):
             read_input=wait_for_input,
         )
 
-    def close(self, finish_existing_jobs: bool):
-        self._worker.close(finish_existing_jobs)
-
-    @property
-    def is_closed(self) -> bool:
-        return self._worker.is_shut_down
+    def close(self, wait: bool):
+        self._worker.close(finish_existing_jobs=wait)
 
 
 # TODO: Can I *prove* that this is thread-safe and handles cancellation properly?
@@ -438,7 +428,7 @@ class _ConsoleMessengerWorker:
         # if all else is equal, the job that was submitted earliest is done
         # first.
         self._queue: PriorityQueue[_ConsoleIOJob] = PriorityQueue()
-        self.is_shut_down = False
+        self._is_shut_down = False
         self._finish_existing_jobs = True
         # If the worker thread immediately stops once it receives CTRL+C
         # directly from input() or getpass(), it may end up stopping all the
@@ -475,7 +465,7 @@ class _ConsoleMessengerWorker:
             is_from_main_thread=_is_current_thread_main(),
         )
         with self._lock:
-            if self.is_shut_down:
+            if self._is_shut_down:
                 raise KeyboardInterrupt()
             self._queue.put(job)
 
@@ -516,7 +506,7 @@ class _ConsoleMessengerWorker:
             lock=lock,
         )
         with self._lock:
-            if self.is_shut_down:
+            if self._is_shut_down:
                 raise KeyboardInterrupt()
             self._queue.put(job)
 
@@ -533,13 +523,13 @@ class _ConsoleMessengerWorker:
             # calls close() multiple times.
             if self._wait_for_close_lock.locked():
                 self._wait_for_close_lock.release()
-            # If self.is_shut_down is true, either the user already called
+            # If self._is_shut_down is true, either the user already called
             # close() or the program was cancelled and the exception was
             # received by the worker thread via input() or getpass(). In either
             # case, there's nothing more to do.
-            if not self.is_shut_down:
+            if not self._is_shut_down:
                 self._finish_existing_jobs = finish_existing_jobs
-                self.is_shut_down = True
+                self._is_shut_down = True
 
                 # Put a fake job in the queue to wake up the worker thread
                 def fake_run():
@@ -570,7 +560,7 @@ class _ConsoleMessengerWorker:
                 # placed in the queue by close() to wake up this loop.
                 job = self._queue.get(block=True)
                 with self._lock:
-                    if self.is_shut_down:
+                    if self._is_shut_down:
                         # Put the job back in the queue so that it doesn't get
                         # forgotten
                         self._queue.put(job)
@@ -585,21 +575,18 @@ class _ConsoleMessengerWorker:
                     # KeyboardInterrupt in the main thread. Manually
                     # re-trigger the CTRL+C for consistency.
                     #
-                    # Need to set is_shut_down so that no new input tasks
+                    # Need to set self._is_shut_down so that no new input tasks
                     # are processed before close() is called.
                     with self._lock:
                         self._finish_existing_jobs = False
-                        self.is_shut_down = True
+                        self._is_shut_down = True
                     # If the offending job was submitted by the main thread,
                     # the main thread should already receive a
                     # KeyboardInterrupt from submit_input_job. The second one
                     # might be delivered while the first one is still being
                     # handled, which results in ugly stack traces.
                     if not job.is_from_main_thread:
-                        os.kill(os.getpid(), signal.CTRL_C_EVENT)
-                        # It seems like the signal isn't delivered until print() is
-                        # called! But printing nothing doesn't work.
-                        print(" ", end="", flush=True)
+                        _interrupt_main_thread()
                     break
                 except BaseException:
                     continue
@@ -661,12 +648,14 @@ class TkMessenger(InputMessenger):
     _H2_FONT = "Calibri 18 bold"
 
     def __init__(self, description: str):
-        self._shutdown_requested = False
-        self._task_status_row: Dict[str, TaskStatusFrame] = {}
-
+        self._mutex = Lock()
+        self._close_called = False
+        self._is_main_thread_waiting_for_input = False
+        self._is_shut_down = False
+        self._waiting_locks: Set[Lock] = set()
         root_started = Semaphore(0)
         self._gui_thread = Thread(
-            name="GUI", target=lambda: self._run_gui(root_started, description)
+            name="TkMessenger", target=lambda: self._run_gui(root_started, description)
         )
         self._gui_thread.start()
         # Wait for the GUI to enter the main loop
@@ -675,44 +664,23 @@ class TkMessenger(InputMessenger):
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
-        # TODO: Sort rows by index
-        # TODO: What if the shutdown happens while in the middle of logging something?
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        if task_name in self._task_status_row:
-            self._task_status_row[task_name].update_contents(status, message)
-        else:
-            frame = TaskStatusFrame(
-                self._task_statuses_container,
-                task_name=task_name,
-                status=status,
-                message=message,
-                font=self._NORMAL_FONT,
-                background=self._BACKGROUND_COLOUR,
-                foreground=self._FOREGROUND_COLOUR,
-                padding=5,
+        with self._mutex:
+            if self._is_shut_down:
+                # TODO: Isn't there a race condition here? If the user presses
+                # CTRL+C at *just* the right moment, the main thread will
+                # receive two KeyboardInterrupts
+                raise KeyboardInterrupt()
+            self._task_statuses_grid.upsert_row(
+                index=index, task_name=task_name, status=status, message=message
             )
-            frame.grid(sticky="W")
             self._root_frame.update_scrollregion()
-            self._task_status_row[task_name] = frame
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
-        frame = ProblemFrame(
-            self._problems_container,
-            task_name=task_name,
-            level=level,
-            message=message,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            padding=5,
-        )
-        frame.grid(sticky="W")
-        self._root_frame.update_scrollregion()
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            self._problems_grid.add_row(task_name, level, message)
+            self._root_frame.update_scrollregion()
 
     def input(
         self,
@@ -731,68 +699,55 @@ class TkMessenger(InputMessenger):
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
     ) -> Dict[str, object]:
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
-
         # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
 
-        entry_by_name: Dict[str, Entry] = {}
-        error_message_by_name: Dict[str, CopyableText] = {}
-
-        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            (
+                w,
+                entry_by_name,
+                error_message_by_name,
+                submit_btn,
+            ) = self._create_input_window(title, prompt, params)
+            if _is_current_thread_main():
+                self._is_main_thread_waiting_for_input = True
+        lock = Lock()
         try:
-            w.title(title)
-            if prompt:
-                prompt_box = Label(w, text=prompt)
-                prompt_box.grid()
-            for name, param in params.items():
-                entry_row = Frame(w)
-                entry_row.grid()
-                name_label = Label(entry_row, text=param.display_name)
-                name_label.grid(row=0, column=0)
-                if param.password:
-                    entry = Entry(entry_row, show="*")
-                else:
-                    entry = Entry(entry_row)
-                entry.grid(row=0, column=1)
-                entry_by_name[name] = entry
-                if param.description:
-                    description_box = CopyableText(
-                        w, background=self._BACKGROUND_COLOUR
-                    )
-                    description_box.grid()
-                    description_box.set_text(param.description)
-                error_message = CopyableText(w, background=self._BACKGROUND_COLOUR)
-                error_message.config(foreground="red")
-                error_message.grid()
-                error_message_by_name[name] = error_message
-            btn = Button(w, text="Done")
-            btn.grid()
-
             cancelled = False
-            lock = Lock()
+            with self._mutex:
+                self._waiting_locks.add(lock)
             lock.acquire()
 
             def handle_close():
+                nonlocal cancelled
                 should_exit = messagebox.askyesno(  # type: ignore
                     title="Confirm exit",
                     message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
                 )
                 if not should_exit:
                     return
-                nonlocal cancelled
                 cancelled = True
                 lock.release()
 
             def handle_submit():
+                nonlocal submit_btn
+                submit_btn.configure(state="disabled")
                 lock.release()
 
             w.protocol("WM_DELETE_WINDOW", handle_close)
-            btn.bind("<Button-1>", lambda _: handle_submit())
+            submit_btn.bind("<Button-1>", lambda _: handle_submit())
 
             while True:
                 # Wait for the button to be pressed or for the window to be closed
+                submit_btn.configure(state="normal")
+                # TODO: What if the user presses the button right here? Or what
+                # if the user changes the values as the code below is reading it?
+                # In practice, I doubt this will ever come up though
                 lock.acquire()
+                with self._mutex:
+                    if self._is_shut_down:
+                        raise KeyboardInterrupt()
                 if cancelled:
                     raise InputCancelledException("The user closed the input dialog.")
                 output: Dict[str, object] = {}
@@ -812,57 +767,65 @@ class TkMessenger(InputMessenger):
                 if not error:
                     return output
         finally:
+            with self._mutex:
+                if lock in self._waiting_locks:
+                    self._waiting_locks.remove(lock)
+                if _is_current_thread_main():
+                    self._is_main_thread_waiting_for_input = False
             w.destroy()
 
     def wait(self, task_name: str, index: Optional[int], prompt: str):
-        # TODO: Sort rows by index
-        if self._shutdown_requested:
-            raise KeyboardInterrupt()
+        def handle_done_click(btn: Button):
+            btn.configure(state="disabled")
+            lock.release()
 
-        frame = ActionItemFrame(
-            self._action_items_container,
-            task_name=task_name,
-            prompt=prompt,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            padding=5,
-        )
-        frame.grid(sticky="w")
-        self._root_frame.update_scrollregion()
-        frame.wait_for_click()
-        # Update the scrollregion again in case it got smaller
-        self._root_frame.update_scrollregion()
+        lock = Lock()
+        with self._mutex:
+            self._waiting_locks.add(lock)
+        lock.acquire()
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            actual_index = self._action_items_grid.add_row(
+                index,
+                task_name=task_name,
+                message=prompt,
+                onclick=lambda btn: handle_done_click(btn),
+            )
+            self._root_frame.update_scrollregion()
+        lock.acquire()
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            self._waiting_locks.remove(lock)
+            self._action_items_grid.delete_row(actual_index)
+            # Update the scrollregion again in case it got smaller
+            self._root_frame.update_scrollregion()
 
-    def close(self, finish_existing_jobs: bool):
-        # TODO: Implement this properly, taking into consideration the value of
-        # finish_existing_jobs
-
-        # Leave the GUI open until the user closes the window
-
-        # TODO: Skip all this if the window is already closed
-        if self._shutdown_requested:
-            return
-
-        goodbye_message_textbox = CopyableText(
-            self._action_items_container,
-            width=170,
-            font=self._NORMAL_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-        )
-        goodbye_message_textbox.grid(sticky="W", pady=25)
-        goodbye_message_textbox.set_text(
-            "All tasks are complete. Close this window to exit."
-        )
-        self._root_frame.update_scrollregion()
-
-    @property
-    def is_closed(self) -> bool:
-        return self._shutdown_requested
+    def close(self, wait: bool):
+        with self._mutex:
+            self._close_called = True
+            if not self._is_shut_down:
+                goodbye_message_textbox = _CopyableText(
+                    self._action_items_container,
+                    width=170,
+                    font=self._NORMAL_FONT,
+                    background=self._BACKGROUND_COLOUR,
+                    foreground=self._FOREGROUND_COLOUR,
+                )
+                goodbye_message_textbox.grid(sticky="W", pady=25)
+                goodbye_message_textbox.set_text(
+                    "The program is done. Close this window to exit."
+                )
+                self._root_frame.update_scrollregion()
+        if not wait:
+            self._quit()
+        self._gui_thread.join()
 
     def _run_gui(self, root_started: Semaphore, description: str):
-        # TODO: Make the GUI responsive
+        # TODO: Make the GUI responsive. I would need to find a way of having
+        # the Text widgets fill the width of the screen, which doesn't seem to
+        # be available out of the box.
 
         # Try to make the GUI less blurry
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
@@ -878,7 +841,7 @@ class TkMessenger(InputMessenger):
         window_height = (screen_height * 3) // 4
         self._tk.geometry(f"{window_width}x{window_height}")
 
-        self._root_frame = ScrollableFrame(self._tk)
+        self._root_frame = _ScrollableFrame(self._tk)
 
         style = Style()
         # TODO: Change button background?
@@ -892,99 +855,195 @@ class TkMessenger(InputMessenger):
             foreground=self._FOREGROUND_COLOUR,
         )
 
-        description_textbox = CopyableText(
+        description_textbox = _CopyableText(
             self._root_frame,
             width=170,
             font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        description_textbox.grid(sticky="W", pady=25)
+        description_textbox.grid(sticky="NEW", pady=25)
         description_textbox.set_text(description)
 
-        action_items_header = CopyableText(
+        action_items_header = _CopyableText(
             self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        action_items_header.grid(sticky="W", pady=(50, 0))
+        action_items_header.grid(sticky="NEW", pady=(50, 0))
         action_items_header.set_text("Action Items")
 
-        self._action_items_container = Frame(self._root_frame)
-        self._action_items_container.grid(sticky="W")
+        self._action_items_container = Frame(self._root_frame, style="Test.TFrame")
+        self._action_items_container.grid(sticky="NEW")
 
-        action_items_description = CopyableText(
+        action_items_description = _CopyableText(
             self._action_items_container,
             font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        action_items_description.grid(sticky="W", pady=25)
+        action_items_description.grid(sticky="NEW", pady=25)
         action_items_description.set_text(
             "Tasks that you must perform manually are listed here."
         )
 
-        task_statuses_header = CopyableText(
+        self._action_items_grid = _ActionItemGrid(
+            self._action_items_container,
+            outer_padding=5,
+            padx=5,
+            pady=5,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            normal_font=self._NORMAL_FONT,
+            header_font=self._BOLD_FONT,
+        )
+        self._action_items_grid.grid(sticky="NEW")
+
+        task_statuses_header = _CopyableText(
             self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        task_statuses_header.grid(sticky="W", pady=(50, 0))
+        task_statuses_header.grid(sticky="NEW", pady=(50, 0))
         task_statuses_header.set_text("Task Statuses")
 
-        self._task_statuses_container = Frame(self._root_frame)
-        self._task_statuses_container.grid(sticky="W")
+        task_statuses_container = Frame(self._root_frame)
+        task_statuses_container.grid(sticky="NEW")
 
-        task_statuses_description = CopyableText(
-            self._task_statuses_container,
+        task_statuses_description = _CopyableText(
+            task_statuses_container,
             font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        task_statuses_description.grid(sticky="W", pady=25)
+        task_statuses_description.grid(sticky="NEW", pady=25)
         task_statuses_description.set_text("The status of each task is listed here.")
 
-        problems_header = CopyableText(
+        self._task_statuses_grid = _TaskStatusGrid(
+            task_statuses_container,
+            outer_padding=5,
+            padx=5,
+            pady=5,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            normal_font=self._NORMAL_FONT,
+            header_font=self._BOLD_FONT,
+            bold_font=self._BOLD_FONT,
+        )
+        self._task_statuses_grid.grid(sticky="NEW")
+
+        problems_header = _CopyableText(
             self._root_frame,
             font=self._H2_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        problems_header.grid(sticky="W", pady=(50, 0))
+        problems_header.grid(sticky="NEW", pady=(50, 0))
         problems_header.set_text("Problems")
 
         self._problems_container = Frame(self._root_frame)
-        self._problems_container.grid(sticky="W")
+        self._problems_container.grid(sticky="NEW")
 
-        problems_description = CopyableText(
+        problems_description = _CopyableText(
             self._problems_container,
             font=self._ITALIC_FONT,
             background=self._BACKGROUND_COLOUR,
             foreground=self._FOREGROUND_COLOUR,
         )
-        problems_description.grid(sticky="W", pady=25)
+        problems_description.grid(sticky="NEW", pady=25)
         problems_description.set_text("Potential problems are listed here.")
+
+        self._problems_grid = _ProblemGrid(
+            self._problems_container,
+            outer_padding=5,
+            padx=5,
+            pady=5,
+            background=self._BACKGROUND_COLOUR,
+            foreground=self._FOREGROUND_COLOUR,
+            normal_font=self._NORMAL_FONT,
+            header_font=self._BOLD_FONT,
+            bold_font=self._BOLD_FONT,
+        )
+        self._problems_grid.grid(sticky="NEW")
 
         self._tk.after(0, lambda: root_started.release())
         self._tk.mainloop()
 
-    def _close(self):
-        # TODO: Release waiting threads?
-        self._shutdown_requested = True
-        # For some reason, using destroy() instead of quit() causes an error
-        self._tk.quit()
+    def _create_input_window(
+        self, title: str, prompt: str, params: Dict[str, Parameter]
+    ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, _CopyableText], Button]:
+        entry_by_name: Dict[str, Entry] = {}
+        error_message_by_name: Dict[str, _CopyableText] = {}
+        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
+        try:
+            w.title(title)
+            if prompt:
+                prompt_box = Label(w, text=prompt)
+                prompt_box.grid()
+            for name, param in params.items():
+                entry_row = Frame(w)
+                entry_row.grid()
+                name_label = Label(entry_row, text=param.display_name)
+                name_label.grid(row=0, column=0)
+                if param.password:
+                    entry = Entry(entry_row, show="*")
+                else:
+                    entry = Entry(entry_row)
+                entry.grid(row=0, column=1)
+                entry_by_name[name] = entry
+                if param.description:
+                    description_box = _CopyableText(
+                        w, background=self._BACKGROUND_COLOUR
+                    )
+                    description_box.grid()
+                    description_box.set_text(param.description)
+                error_message = _CopyableText(w, background=self._BACKGROUND_COLOUR)
+                error_message.config(foreground="red")
+                error_message.grid()
+                error_message_by_name[name] = error_message
+            btn = Button(w, text="Done")
+            btn.grid()
+        except BaseException:
+            w.destroy()
+            raise
+        return (w, entry_by_name, error_message_by_name, btn)
 
     def _confirm_exit(self):
         should_exit = messagebox.askyesno(  # type: ignore
             title="Confirm exit", message="Are you sure you want to exit?"
         )
         if should_exit:
-            self._close()
+            with self._mutex:
+                # If the client called close(), it expects the user to close
+                # the window, so there's no need to notify it. But if it hasn't
+                # called close, it's probably not done yet and needs to be
+                # interrupted.
+                #
+                # If an input dialog is open in the main thread,
+                if (
+                    not self._close_called
+                    and not self._is_main_thread_waiting_for_input
+                ):
+                    _interrupt_main_thread()
+            self._quit()
+
+    def _quit(self):
+        with self._mutex:
+            # If the GUI thread isn't alive, then probably _quit() was already
+            # called
+            # TODO: Change this to self._is_shut_down
+            if not self._gui_thread.is_alive():
+                return
+            self._is_shut_down = True
+            for lock in self._waiting_locks:
+                if lock.locked():
+                    lock.release()
+            self._tk.quit()
 
 
-class ScrollableFrame(Frame):
+class _ScrollableFrame(Frame):
     def __init__(self, parent: Misc, *args: object, **kwargs: object):
         # TODO: The fact that this widget places itself is pretty sketchy
 
@@ -1040,7 +1099,7 @@ class ScrollableFrame(Frame):
             self._canvas.config(scrollregion=region)
 
 
-class CopyableText(Text):
+class _CopyableText(Text):
     """
     Text widget that supports both text wrapping and copying its contents to the clipboard.
     """
@@ -1079,93 +1138,307 @@ class CopyableText(Text):
         self.configure(height=height)
 
 
-# TODO: Refactor this code to just use grids instead of these silly frames
-# TODO: As far as possible, show the items here in the same order as they appear in tasks.json (https://stackoverflow.com/questions/46340796/inserting-new-rows-in-tkinter-grid)
-class ActionItemFrame(Frame):
-    _PADX = 5
+class _ThickSeparator(Frame):
+    def __init__(
+        self,
+        parent: Misc,
+        thickness: int,
+        orient: Literal["horizontal", "vertical"],
+        colour: str,
+    ):
+        STYLE = "ThickSeparator.TFrame"
+        if orient == "horizontal":
+            super().__init__(parent, height=thickness, style=STYLE)
+        else:
+            super().__init__(parent, width=thickness, style=STYLE)
+        Style().configure(STYLE, background=colour)  # type: ignore
+
+
+class _ActionItemGrid(Frame):
+    _BTN_COLUMN = 0
+    _BTN_WIDTH = 20
+    _NAME_COLUMN = 1
+    _NAME_WIDTH = 35
+    _MSG_COLUMN = 2
+    _MSG_WIDTH = 100
 
     def __init__(
         self,
         parent: Misc,
-        task_name: str,
-        prompt: str,
-        font: str,
+        outer_padding: int,
+        padx: int,
+        pady: int,
         background: str,
         foreground: str,
-        padding: int,
+        normal_font: str,
+        header_font: str,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        super().__init__(parent, padding=outer_padding, *args, **kwargs)
+
+        self._padx = padx
+        self._pady = pady
+        self._background = background
+        self._foreground = foreground
+        self._normal_font = normal_font
+        self._header_font = header_font
+
+        self._widgets: Dict[int, Tuple[Button, _CopyableText, _CopyableText]] = {}
+        self._create_header()
+
+    def add_row(
+        self,
+        index: Optional[int],
+        task_name: str,
+        message: str,
+        onclick: Callable[[Button], None],
+    ) -> int:
+        if index is None or index in self._widgets:
+            # If the index is the same as an existing row, tkinter seems to
+            # overwrite the existing widgets. It's better to avoid that and
+            # just put this action item at the buttom.
+            actual_index = max(self._widgets.keys()) + 1 if self._widgets else 0
+        else:
+            actual_index = index
+
+        button = Button(self, text="Done", state="enabled", width=self._BTN_WIDTH)
+        button.configure(command=lambda: onclick(button))
+        button.grid(
+            # Increase the row number to account for the header
+            row=actual_index + 2,
+            column=self._BTN_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
+        name_label = _CopyableText(
+            self,
+            width=self._NAME_WIDTH,
+            font=self._normal_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        name_label.grid(
+            row=actual_index + 2,
+            column=self._NAME_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
+        name_label.set_text(task_name)
+        msg_label = _CopyableText(
+            self,
+            width=self._MSG_WIDTH,
+            font=self._normal_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        msg_label.grid(
+            row=actual_index + 2,
+            column=self._MSG_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
+        msg_label.set_text(message)
+
+        self._widgets[actual_index] = (button, name_label, msg_label)
+
+        return actual_index
+
+    def delete_row(self, index: int):
+        if index not in self._widgets:
+            return
+        (button, name_label, msg_label) = self._widgets[index]
+        button.destroy()
+        name_label.destroy()
+        msg_label.destroy()
+
+    def _create_header(self):
+        # Include the empty header cell just to keep the UI stable whether or
+        # not the grid has entries
+        button_header_label = _CopyableText(
+            self,
+            width=self._BTN_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        button_header_label.grid(
+            row=0, column=self._BTN_COLUMN, padx=self._padx, pady=self._pady
+        )
+
+        name_header_label = _CopyableText(
+            self,
+            width=self._NAME_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        name_header_label.grid(
+            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
+        )
+        name_header_label.set_text("Task")
+
+        msg_header_label = _CopyableText(
+            self,
+            width=self._MSG_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        msg_header_label.grid(
+            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+        )
+        msg_header_label.set_text("Instructions")
+
+        separator = _ThickSeparator(
+            self, thickness=3, orient="horizontal", colour="black"
+        )
+        separator.grid(row=1, column=0, columnspan=3, sticky="EW")
+
+
+class _TaskStatusGrid(Frame):
+    _NAME_COLUMN = 1
+    _NAME_WIDTH = 35
+    _STATUS_COLUMN = 0
+    _STATUS_WIDTH = 20
+    _MSG_COLUMN = 2
+    _MSG_WIDTH = 100
+
+    def __init__(
+        self,
+        parent: Misc,
+        outer_padding: int,
+        padx: int,
+        pady: int,
+        background: str,
+        foreground: str,
+        normal_font: str,
+        header_font: str,
+        bold_font: str,
+        *args: object,
         **kwargs: object,
     ):
-        super().__init__(parent, padding=padding, **kwargs)
+        super().__init__(parent, padding=outer_padding, *args, **kwargs)
 
-        self._lock = Lock()
-        self._lock.acquire()
+        self._outer_padding = outer_padding
+        self._padx = padx
+        self._pady = pady
+        self._background = background
+        self._foreground = foreground
+        self._normal_font = normal_font
+        self._header_font = header_font
+        self._bold_font = bold_font
 
-        self._button = Button(
-            self,
-            text="Done",
-            command=self._handle_click,
-            state="enabled",
-        )
-        self._button.grid(row=0, column=0, padx=self._PADX)
+        self._widgets: Dict[int, Tuple[_CopyableText, _CopyableText]] = {}
+        self._index_to_name: Dict[int, str] = {}
+        self._create_header()
 
-        self._name_label = CopyableText(
-            self, width=35, font=font, background=background, foreground=foreground
-        )
-        self._name_label.grid(row=0, column=1, padx=self._PADX)
-        self._name_label.set_text(task_name)
-
-        self._message_label = CopyableText(
-            self, width=100, font=font, background=background, foreground=foreground
-        )
-        self._message_label.grid(row=0, column=2, padx=self._PADX)
-        self._message_label.set_text(prompt)
-
-    def wait_for_click(self):
-        self._lock.acquire()
-
-    def _handle_click(self):
-        self._lock.release()
-        self.destroy()
-
-
-class TaskStatusFrame(Frame):
-    _PADX = 5
-
-    def __init__(
-        self,
-        parent: Misc,
-        task_name: str,
-        status: TaskStatus,
-        message: str,
-        font: str,
-        padding: int,
-        background: str,
-        foreground: str,
+    def upsert_row(
+        self, index: Optional[int], task_name: str, status: TaskStatus, message: str
     ):
-        super().__init__(parent, padding=padding)
-
-        self._name_label = CopyableText(
-            self, width=35, font=font, background=background, foreground=foreground
+        is_index_taken = (
+            index in self._index_to_name and self._index_to_name[index] != task_name
         )
-        self._name_label.grid(row=0, column=0, padx=self._PADX)
-        self._name_label.set_text(task_name)
+        if index is None or is_index_taken:
+            actual_index = (
+                max(self._index_to_name.keys()) + 1 if self._index_to_name else 0
+            )
+        else:
+            actual_index = index
 
-        self._status_label = CopyableText(
-            self, width=20, font=font, background=background, foreground=foreground
+        row_already_exists = actual_index in self._widgets
+        if row_already_exists:
+            (status_label, msg_label) = self._widgets[actual_index]
+        else:
+            name_label = _CopyableText(
+                self,
+                width=self._NAME_WIDTH,
+                font=self._normal_font,
+                background=self._background,
+                foreground=self._foreground,
+            )
+            name_label.grid(
+                # Increase the row number to account for the header
+                row=actual_index + 2,
+                column=self._NAME_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+            name_label.set_text(task_name)
+            status_label = _CopyableText(
+                self,
+                width=self._STATUS_WIDTH,
+                font=self._bold_font,
+                background=self._background,
+                foreground=self._foreground,
+            )
+            status_label.grid(
+                row=actual_index + 2,
+                column=self._STATUS_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+            msg_label = _CopyableText(
+                self,
+                width=self._MSG_WIDTH,
+                font=self._normal_font,
+                background=self._background,
+                foreground=self._foreground,
+            )
+            msg_label.grid(
+                row=actual_index + 2,
+                column=self._MSG_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+            self._widgets[actual_index] = (status_label, msg_label)
+
+        status_label.set_text(str(status))
+        status_label.config(foreground=self._status_colour(status))
+        msg_label.set_text(message)
+        self._index_to_name[actual_index] = task_name
+
+    def _create_header(self):
+        name_header_label = _CopyableText(
+            self,
+            width=self._NAME_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
         )
-        self._status_label.grid(row=0, column=1, padx=self._PADX)
-
-        self._message_label = CopyableText(
-            self, width=100, font=font, background=background, foreground=foreground
+        name_header_label.grid(
+            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
         )
-        self._message_label.grid(row=0, column=2, padx=self._PADX)
+        name_header_label.set_text("Task")
 
-        self.update_contents(status, message)
+        status_header_label = _CopyableText(
+            self,
+            width=self._STATUS_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        status_header_label.grid(
+            row=0, column=self._STATUS_COLUMN, padx=self._padx, pady=self._pady
+        )
+        status_header_label.set_text("Status")
 
-    def update_contents(self, status: TaskStatus, message: str):
-        self._status_label.set_text(str(status))
-        self._status_label.config(foreground=TaskStatusFrame._status_colour(status))
-        self._message_label.set_text(message)
+        msg_header_label = _CopyableText(
+            self,
+            width=self._MSG_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        msg_header_label.grid(
+            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+        )
+        msg_header_label.set_text("Details")
+
+        separator = _ThickSeparator(
+            self, thickness=3, orient="horizontal", colour="black"
+        )
+        separator.grid(row=1, column=0, columnspan=3, sticky="EW")
 
     @staticmethod
     def _status_colour(status: TaskStatus) -> str:
@@ -1177,45 +1450,136 @@ class TaskStatusFrame(Frame):
             return "#FF7700"
         elif status == TaskStatus.DONE:
             return "#009020"
+        else:
+            return "#000000"
 
 
-class ProblemFrame(Frame):
-    _PADX = 5
+class _ProblemGrid(Frame):
+    _NAME_COLUMN = 1
+    _NAME_WIDTH = 35
+    _LEVEL_COLUMN = 0
+    _LEVEL_WIDTH = 20
+    _MSG_COLUMN = 2
+    _MSG_WIDTH = 100
 
     def __init__(
         self,
         parent: Misc,
-        task_name: str,
-        level: ProblemLevel,
-        message: str,
-        font: str,
-        padding: int,
+        outer_padding: int,
+        padx: int,
+        pady: int,
         background: str,
         foreground: str,
+        normal_font: str,
+        header_font: str,
+        bold_font: str,
+        *args: object,
+        **kwargs: object,
     ):
-        super().__init__(parent, padding=padding)
+        super().__init__(parent, padding=outer_padding, *args, **kwargs)
 
-        self._name_label = CopyableText(
-            self, width=35, font=font, background=background, foreground=foreground
-        )
-        self._name_label.grid(row=0, column=0, padx=self._PADX)
-        self._name_label.set_text(task_name)
+        self._outer_padding = outer_padding
+        self._padx = padx
+        self._pady = pady
+        self._background = background
+        self._foreground = foreground
+        self._normal_font = normal_font
+        self._header_font = header_font
+        self._bold_font = bold_font
 
-        self._level_label = CopyableText(
+        self._current_row = 0
+        self._create_header()
+
+    def add_row(self, task_name: str, level: ProblemLevel, message: str):
+        name_label = _CopyableText(
             self,
-            width=20,
-            font=font,
-            background=background,
-            foreground=ProblemFrame._level_colour(level),
+            width=self._NAME_WIDTH,
+            font=self._normal_font,
+            background=self._background,
+            foreground=self._foreground,
         )
-        self._level_label.grid(row=0, column=1, padx=self._PADX)
-        self._level_label.set_text(str(level))
+        name_label.grid(
+            # Increase the row number to account for the header
+            row=self._current_row + 2,
+            column=self._NAME_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
+        name_label.set_text(task_name)
 
-        self._message_label = CopyableText(
-            self, width=100, font=font, background=background, foreground=foreground
+        level_label = _CopyableText(
+            self,
+            width=self._LEVEL_WIDTH,
+            foreground=self._level_colour(level),
+            font=self._bold_font,
+            background=self._background,
         )
-        self._message_label.grid(row=0, column=2, padx=self._PADX)
+        level_label.grid(
+            row=self._current_row + 2,
+            column=self._LEVEL_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
+        level_label.set_text(str(level))
+
+        self._message_label = _CopyableText(
+            self,
+            width=self._MSG_WIDTH,
+            font=self._normal_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        self._message_label.grid(
+            row=self._current_row + 2,
+            column=self._MSG_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+        )
         self._message_label.set_text(message)
+
+        self._current_row += 1
+
+    def _create_header(self):
+        name_header_label = _CopyableText(
+            self,
+            width=self._NAME_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        name_header_label.grid(
+            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
+        )
+        name_header_label.set_text("Task")
+
+        level_header_label = _CopyableText(
+            self,
+            width=self._LEVEL_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        level_header_label.grid(
+            row=0, column=self._LEVEL_COLUMN, padx=self._padx, pady=self._pady
+        )
+        level_header_label.set_text("Level")
+
+        msg_header_label = _CopyableText(
+            self,
+            width=self._MSG_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        msg_header_label.grid(
+            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+        )
+        msg_header_label.set_text("Details")
+
+        separator = _ThickSeparator(
+            self, thickness=3, orient="horizontal", colour="black"
+        )
+        separator.grid(row=1, column=0, columnspan=3, sticky="EW")
 
     @staticmethod
     def _level_colour(level: ProblemLevel) -> str:
@@ -1247,3 +1611,20 @@ def _initialize_logger(
 
 def _is_current_thread_main() -> bool:
     return threading.current_thread() is threading.main_thread()
+
+
+def _interrupt_main_thread():
+    print(f"Interrupting main thread (pid {os.getpid()})")
+    os.kill(os.getpid(), signal.CTRL_C_EVENT)
+    # It seems like the signal isn't delivered until print() is
+    # called! But printing nothing doesn't work.
+    print(" ", end="", flush=True)
+    # TODO: This doesn't seem to work consistently. Is there a better way?
+    # Should I have this function call taskkill /f as a fallback if close()
+    # isn't called within 5 seconds?
+    #
+    # The most obvious example of inconsistent behaviour is closing the GUI
+    # when there is an input dialog open. This function gets called every time,
+    # but in many cases the main thread does not respond to the signal at all.
+    # Could it be that input_multiple() and this function are racing to throw a
+    # KeyboardInterrupt into the main thread?

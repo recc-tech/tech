@@ -93,7 +93,7 @@ def main():
         )
         messenger.log_status(TaskStatus.DONE, "Script failed.")
     finally:
-        messenger.close(finish_existing_jobs=should_messenger_finish)
+        messenger.close(wait=should_messenger_finish)
 
 
 def _parse_args() -> Namespace:

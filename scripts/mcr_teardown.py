@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
@@ -55,6 +56,9 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
     )
+
+    # TODO: Remove?
+    messenger.log_debug(f"PID: {os.getpid()}")
 
     should_messenger_finish = True
     try:
@@ -130,11 +134,11 @@ def main():
             )
             messenger.log_status(TaskStatus.DONE, "The script failed.")
     except KeyboardInterrupt:
-        print("Program cancelled.")
+        print("\nProgram cancelled.")
         should_messenger_finish = False
     finally:
         # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
-        messenger.close(finish_existing_jobs=should_messenger_finish)
+        messenger.close(wait=should_messenger_finish)
 
 
 def _parse_command_line_args() -> Namespace:
