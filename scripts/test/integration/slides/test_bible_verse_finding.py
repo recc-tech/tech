@@ -1,7 +1,7 @@
 import unittest
 import unittest.mock as mock
 
-from autochecklist import ProblemLevel
+from autochecklist.messenger import ProblemLevel
 from common import ReccWebDriver
 from slides.read import BibleVerse, BibleVerseFinder
 
@@ -88,7 +88,7 @@ class BibleVerseFindingTest(unittest.TestCase):
         self._log_problem_mock.assert_called_once()
         call_args = self._log_problem_mock.call_args
         self.assertIsNotNone(call_args)
-        self.assertEqual(call_args.args[0], ProblemLevel.ERROR)
+        self.assertEqual(call_args.args[0], ProblemLevel.WARN)
         self.assertEqual(
             call_args.args[1],
             "Failed to fetch text for Bible verse Exodus 14:14 (INVALID).",
@@ -103,7 +103,7 @@ class BibleVerseFindingTest(unittest.TestCase):
         self._log_problem_mock.assert_called_once()
         call_args = self._log_problem_mock.call_args
         self.assertIsNotNone(call_args)
-        self.assertEqual(call_args.args[0], ProblemLevel.ERROR)
+        self.assertEqual(call_args.args[0], ProblemLevel.WARN)
         self.assertEqual(
             call_args.args[1],
             "Failed to fetch text for Bible verse Psalm 151:1 (NLT).",
