@@ -982,27 +982,40 @@ class TkMessenger(InputMessenger):
         try:
             w.title(title)
             if prompt:
-                prompt_box = Label(w, text=prompt)
+                prompt_box = Label(
+                    w, text=prompt, font=self._ITALIC_FONT, padding=(0, 0, 0, 50)
+                )
                 prompt_box.grid()
             for name, param in params.items():
-                entry_row = Frame(w)
+                param_frame = Frame(w)
+                param_frame.grid(pady=15)
+                entry_row = Frame(param_frame)
                 entry_row.grid()
-                name_label = Label(entry_row, text=param.display_name)
-                name_label.grid(row=0, column=0)
+                name_label = Label(
+                    entry_row, text=param.display_name, font=self._BOLD_FONT
+                )
+                name_label.grid(row=0, column=0, padx=5)
                 if param.password:
-                    entry = Entry(entry_row, show="*")
+                    entry = Entry(entry_row, show="*", font=self._NORMAL_FONT)
                 else:
-                    entry = Entry(entry_row)
-                entry.grid(row=0, column=1)
+                    entry = Entry(entry_row, font=self._NORMAL_FONT)
+                entry.grid(row=0, column=1, padx=5)
                 entry_by_name[name] = entry
                 if param.description:
                     description_box = _CopyableText(
-                        w, background=self._BACKGROUND_COLOUR
+                        param_frame,
+                        font=self._ITALIC_FONT,
+                        background=self._BACKGROUND_COLOUR,
+                        foreground=self._FOREGROUND_COLOUR,
                     )
                     description_box.grid()
                     description_box.set_text(param.description)
-                error_message = _CopyableText(w, background=self._BACKGROUND_COLOUR)
-                error_message.config(foreground="red")
+                error_message = _CopyableText(
+                    param_frame,
+                    font=self._NORMAL_FONT,
+                    background=self._BACKGROUND_COLOUR,
+                    foreground="red",
+                )
                 error_message.grid()
                 error_message_by_name[name] = error_message
             btn = Button(w, text="Done")
