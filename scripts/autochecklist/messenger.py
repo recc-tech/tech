@@ -699,8 +699,6 @@ class TkMessenger(InputMessenger):
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
     ) -> Dict[str, object]:
-        # TODO: If the main window is closed while the main thread is waiting for input, the script will not stop properly
-
         with self._mutex:
             if self._is_shut_down:
                 raise KeyboardInterrupt()
@@ -772,7 +770,11 @@ class TkMessenger(InputMessenger):
                     self._waiting_locks.remove(lock)
                 if _is_current_thread_main():
                     self._is_main_thread_waiting_for_input = False
-            w.destroy()
+                # If quit() was already called then the entire GUI is already
+                # being destroyed. If this call to destroy() happens after the
+                # GUI mainloop exits, then this code will deadlock.
+                if not self._is_shut_down:
+                    w.destroy()
 
     def wait(self, task_name: str, index: Optional[int], prompt: str):
         def handle_done_click(btn: Button):
@@ -1619,12 +1621,5 @@ def _interrupt_main_thread():
     # It seems like the signal isn't delivered until print() is
     # called! But printing nothing doesn't work.
     print(" ", end="", flush=True)
-    # TODO: This doesn't seem to work consistently. Is there a better way?
-    # Should I have this function call taskkill /f as a fallback if close()
-    # isn't called within 5 seconds?
-    #
-    # The most obvious example of inconsistent behaviour is closing the GUI
-    # when there is an input dialog open. This function gets called every time,
-    # but in many cases the main thread does not respond to the signal at all.
-    # Could it be that input_multiple() and this function are racing to throw a
-    # KeyboardInterrupt into the main thread?
+    # TODO: Should I have this function call taskkill /f as a fallback if
+    # close() isn't called within 5 seconds?
