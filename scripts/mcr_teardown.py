@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
@@ -56,9 +55,6 @@ def main():
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
     )
-
-    # TODO: Remove?
-    messenger.log_debug(f"PID: {os.getpid()}")
 
     should_messenger_finish = True
     try:
@@ -260,7 +256,7 @@ def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:
-    if event_url == "\x16":
+    if all(c == "\x16" for c in event_url):
         # TODO: Make this same check everywhere? Write a custom input() function that adds this check?
         raise ArgumentTypeError(
             "You entered the value CTRL+V, which is not a valid event URL. Try right-clicking to paste."

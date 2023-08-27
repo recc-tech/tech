@@ -23,7 +23,8 @@ T = TypeVar("T")
 
 # TODO: Use other synchronization primitives (e.g., Event, Condition) rather
 # than using Lock everywhere?
-# TODO: Test this better (cancelling the program is especially tricky)
+# TODO: Write automated tests (cancelling the program is especially tricky to
+# get right)
 
 
 class Messenger:
@@ -271,7 +272,6 @@ class FileMessenger:
         self.file_logger.log(level=level, msg=f"[{task_name:<35}] {message}")
 
 
-# TODO: Review punctuation in input prompts (esp. in check_credentials and mcr_setup)
 # TODO: Restore log levels so that user can ignore status updates by default?
 class ConsoleMessenger(InputMessenger):
     """
