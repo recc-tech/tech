@@ -1048,8 +1048,7 @@ class TkMessenger(InputMessenger):
         with self._mutex:
             # If the GUI thread isn't alive, then probably _quit() was already
             # called
-            # TODO: Change this to self._is_shut_down
-            if not self._gui_thread.is_alive():
+            if self._is_shut_down:
                 return
             self._is_shut_down = True
             for lock in self._waiting_locks:
