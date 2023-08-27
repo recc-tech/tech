@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -92,7 +91,7 @@ class BibleVerseFinder:
         except Exception:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
-                f"Failed to set page options on BibleGateway.",
+                f"Failed to set page options on BibleGateway. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
                 stacktrace=traceback.format_exc(),
             )
 
@@ -106,7 +105,7 @@ class BibleVerseFinder:
             return self._normalize(text)
         except Exception:
             self._messenger.log_problem(
-                ProblemLevel.ERROR,
+                ProblemLevel.WARN,
                 f"Failed to fetch text for Bible verse {verse}.",
                 stacktrace=traceback.format_exc(),
             )
@@ -146,7 +145,7 @@ class BibleVerseFinder:
             else:
                 self._messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"Could not determine whether option '{title}' is enabled or disabled.",
+                    f"While setting page options on BibleGateway, could not determine whether option '{title}' is enabled or disabled. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
                 )
 
     def _normalize(self, text: str) -> str:
@@ -186,11 +185,9 @@ class SlideBlueprintReader:
         try:
             return _parse_json_obj(json_obj)
         except Exception as e:
-            self._messenger.log_problem(
-                ProblemLevel.FATAL,
-                f"An error occurred while loading the previous data: {e}",
-            )
-            sys.exit(1)
+            raise RuntimeError(
+                f"Failed to load the previous slides from '{file}'."
+            ) from e
 
     def save_json(self, file: Path, slides: List[SlideBlueprint]):
         slides_dicts = [s.__dict__ for s in slides]

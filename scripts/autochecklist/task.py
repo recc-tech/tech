@@ -287,7 +287,7 @@ class FunctionFinder:
         if len(unused_function_names) > 0:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
-                f"The following functions are not used by object task: {', '.join(unused_function_names)}",
+                f"The following functions are not used by any task: {', '.join(unused_function_names)}",
             )
 
         function_assignments = {
@@ -394,7 +394,9 @@ def _normalize_prerequisites(
             try:
                 prereq = name_to_task[task_name]
             except KeyError:
-                raise ValueError(f"The prerequisite '{task_name}' could not be found.")
+                raise ValueError(
+                    f"The prerequisite '{task_name}' could not be found."
+                ) from None
             expanded_prerequisites = expanded_prerequisites.union(
                 {t.name for t in _get_leaf_tasks(prereq)}
             )
@@ -447,10 +449,10 @@ def _sort_tasks(tasks: List[TaskModel]) -> List[TaskModel]:
         if not found:
             try:
                 cycle = _find_cycle(tasks)
-            except:
+            except Exception as e:
                 raise ValueError(
                     "The task graph contains at least one cycle, but no example could be found."
-                )
+                ) from e
             raise ValueError(
                 f"The task graph contains at least one cycle. For example: {' -> '.join(cycle)}."
             )

@@ -37,13 +37,6 @@ def main():
         file_messenger=file_messenger, input_messenger=input_messenger
     )
 
-    # TODO: Remove this
-    messenger.log_problem(ProblemLevel.WARN, "This is a warning (only for testing).")
-    messenger.log_problem(ProblemLevel.ERROR, "This is an error (only for testing).")
-    messenger.log_problem(
-        ProblemLevel.FATAL, "This is a fatal error (only for testing)."
-    )
-
     should_messenger_finish = True
     try:
         function_finder = FunctionFinder(None, [], messenger)

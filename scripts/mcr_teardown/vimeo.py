@@ -76,26 +76,20 @@ class ReccVimeoClient:
                 key=client_id,
                 secret=client_secret,
             )
-            if self._is_connection_valid(client):
+            response: Response = client.get("/tutorial")  # type: ignore
+            if response.status_code == 200:
+                self._messenger.log_status(
+                    TaskStatus.RUNNING,
+                    f"Successfully connected to the Vimeo API.",
+                )
                 return client
+            else:
+                self._messenger.log_debug(
+                    f"Vimeo client test request failed (attempt {attempt_num}/{max_attempts}). Response had HTTP status {response.status_code}.",
+                )
         raise RuntimeError(
             f"Failed to connect to the Vimeo API ({max_attempts} attempts)"
         )
-
-    def _is_connection_valid(self, client: VimeoClient) -> bool:
-        response: Response = client.get("/tutorial")  # type: ignore
-        if response.status_code == 200:
-            self._messenger.log_status(
-                TaskStatus.RUNNING,
-                f"Successfully connected to the Vimeo API.",
-            )
-            return True
-        else:
-            self._messenger.log_problem(
-                ProblemLevel.ERROR,
-                f"Vimeo client test request failed (HTTP status {response.status_code}).",
-            )
-            return False
 
 
 def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, str]:
@@ -145,7 +139,7 @@ def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, 
 def disable_automatic_captions(
     texttracks_uri: str, client: ReccVimeoClient, messenger: Messenger
 ):
-    response = client.get(texttracks_uri, params={"fields": "uri"})
+    response = client.get(texttracks_uri, params={"fields": "uri,name"})
 
     if response.status_code != 200:
         raise RuntimeError(
@@ -165,12 +159,15 @@ def disable_automatic_captions(
 
             if patch_response.status_code != 200:
                 raise RuntimeError(
-                    f"The Vimeo client failed to disable one of the existing text tracks. PATCH {patch_uri} returned HTTP status {patch_response.status_code}."
+                    f"PATCH {patch_uri} returned HTTP status {patch_response.status_code}."
                 )
-        except Exception:
+        # Catch exceptions instead of just moving this log statement into the
+        # if statement so that, if the client itself throws an exception, it
+        # gets caught.
+        except Exception as e:
             messenger.log_problem(
                 ProblemLevel.WARN,
-                "The Vimeo client failed to disable one of the existing text tracks.",
+                f"The Vimeo client failed to disable text track '{texttrack['name']}' at '{texttrack['uri']}' due to an error: {e}",
                 stacktrace=traceback.format_exc(),
             )
 

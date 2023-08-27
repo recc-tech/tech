@@ -174,11 +174,11 @@ class TaskStatus(Enum):
         return self.name
 
 
-# TODO: Review the use of the different problem levels
 class ProblemLevel(Enum):
     WARN = auto()
     """
-    Something that may or may not be a problem and does not stop a task from continuing.
+    Something that may cause incorrect behaviour, but does not immediately
+    prevent the current task from continuing.
     """
     ERROR = auto()
     """
@@ -186,7 +186,7 @@ class ProblemLevel(Enum):
     """
     FATAL = auto()
     """
-    A problem from which the program cannot recover.
+    A problem that forces the entire program to exit.
     """
 
     def to_log_level(self) -> int:

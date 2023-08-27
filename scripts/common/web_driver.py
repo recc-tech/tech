@@ -47,15 +47,15 @@ class ReccWebDriver(WebDriver):
             if len(elements) == 0:
                 raise NoSuchElementException(
                     f"No element found for the given criteria (by = {by}, value = '{value}')."
-                )
+                ) from None
             elif len(elements) == 1:
                 raise ValueError(
                     f"An element was found for the given criteria (by = {by}, value = '{value}'), but it does not seem to be clickable."
-                )
+                ) from None
             else:
                 raise ValueError(
                     f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
-                )
+                ) from None
 
         # Wait to see if duplicate elements appear
         time.sleep(1)

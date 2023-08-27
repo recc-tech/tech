@@ -2,6 +2,7 @@ import shutil
 import time
 import traceback
 from datetime import datetime, timedelta
+from inspect import cleandoc
 from pathlib import Path
 from typing import Optional
 
@@ -85,10 +86,13 @@ class BoxCastClient(ReccWebDriver):
                 )
                 return
             except TimeoutException:
-                self._messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).",
-                    stacktrace=traceback.format_exc(),
+                self._messenger.log_debug(
+                    cleandoc(
+                        f"""
+                        Failed to log in to BoxCast (attempt {attempt_num}/{max_attempts}).\n
+                        {traceback.format_exc()}
+                        """
+                    ),
                 )
         raise RuntimeError(f"Failed to log in to BoxCast ({max_attempts} attempts).")
 
@@ -346,12 +350,7 @@ def _move_captions_to_captions_folder(
 ):
     _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
 
-    if destination_path.exists():
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"File '{destination_path}' already exists and will be overwritten.",
-        )
-    else:
+    if not destination_path.parent.exists():
         destination_path.parent.mkdir(exist_ok=True, parents=True)
 
     shutil.move(download_path, destination_path)

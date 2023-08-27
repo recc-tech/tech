@@ -89,7 +89,7 @@ def main():
         should_messenger_finish = False
     except BaseException as e:
         messenger.log_problem(
-            ProblemLevel.FATAL, f"Error: {e}", stacktrace=traceback.format_exc()
+            ProblemLevel.FATAL, f"An error occurred: {e}", stacktrace=traceback.format_exc()
         )
         messenger.log_status(TaskStatus.DONE, "Script failed.")
     finally:

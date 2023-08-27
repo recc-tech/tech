@@ -120,12 +120,6 @@ def copy_captions_to_without_worship(config: McrTeardownConfig, messenger: Messe
     if not config.original_captions_path.exists():
         raise ValueError(f"File '{config.original_captions_path}' does not exist.")
 
-    if config.captions_without_worship_path.exists():
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"File '{config.captions_without_worship_path}' already exists and will be overwritten.",
-        )
-
     # Copy the file first so that the new file isn't read-only
     shutil.copy(
         src=config.original_captions_path, dst=config.captions_without_worship_path
