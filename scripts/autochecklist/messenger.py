@@ -21,6 +21,10 @@ from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar, Union
 
 T = TypeVar("T")
 
+# TODO: Use other synchronization primitives (e.g., Event, Condition) rather
+# than using Lock everywhere?
+# TODO: Test this better (cancelling the program is especially tricky)
+
 
 class Messenger:
     """Thread-safe class for logging and user interactions."""
