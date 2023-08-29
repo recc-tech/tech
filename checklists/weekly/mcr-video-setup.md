@@ -53,3 +53,4 @@ assignees: recc-tech
 - At each scene change (e.g., from worship to announcements):
     - Put up the person's title up
     - Check the sound level
+- Keep an eye on the time. If the service is still going at around 11:50, you may need to extend the stream time on BoxCast and Church Online Platform.
