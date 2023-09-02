@@ -3,4 +3,5 @@
 .vscode/
 htmlcov/
 /scripts/test/manual/home/
+/scripts/test/integration/mcr_teardown/test_home/
 __pycache__/
