@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, List, Optional, Self, TypeVar
+from typing import Callable, List, Optional, TypeVar
 
 from autochecklist import CancellationToken
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -29,7 +31,8 @@ class ReccWebDriver(WebDriver):
 
     def wait(
         self,
-        condition: Callable[[Self], T],
+        # TODO: This type was Self before. Fix Python version discrepancy!
+        condition: Callable[[ReccWebDriver], T],
         timeout: timedelta,
         message: str,
         cancellation_token: Optional[CancellationToken],
