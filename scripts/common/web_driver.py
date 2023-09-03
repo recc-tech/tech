@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, List, Optional, TypeVar
+from typing import Callable, List, Optional, Tuple, Type, TypeVar
 
 from autochecklist import CancellationToken
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -31,22 +31,27 @@ class ReccWebDriver(WebDriver):
 
     def wait(
         self,
-        # TODO: This type was Self before. Fix Python version discrepancy!
         condition: Callable[[ReccWebDriver], T],
         timeout: timedelta,
         message: str,
         cancellation_token: Optional[CancellationToken],
         poll_frequency: timedelta = timedelta(seconds=0.5),
+        ignore_exceptions: Optional[Tuple[Type[BaseException]]] = None,
     ) -> T:
+        if ignore_exceptions is None:
+            ignore_exceptions = tuple()
         start = time.monotonic()
         timeout_seconds = timeout.total_seconds()
         poll_frequency_seconds = poll_frequency.total_seconds()
         while True:
             if cancellation_token is not None:
                 cancellation_token.raise_if_cancelled()
-            value = condition(self)
-            if value:
-                return value
+            try:
+                value = condition(self)
+                if value:
+                    return value
+            except ignore_exceptions:
+                pass
             time.sleep(poll_frequency_seconds)
             if time.monotonic() - start > timeout_seconds:
                 raise TimeoutException(message)
@@ -70,6 +75,7 @@ class ReccWebDriver(WebDriver):
                 timeout=timeout,
                 message="",
                 cancellation_token=cancellation_token,
+                ignore_exceptions=(NoSuchElementException,),
             )
         except TimeoutException:
             # The error might be because there are no matches, but it could also be because there are multiple matches and the first one isn't clickable!

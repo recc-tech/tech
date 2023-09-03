@@ -69,46 +69,35 @@ class BoxCastTestCase(unittest.TestCase):
             boxcast_event_id=EVENT_ID,
         )
 
-        with self.subTest(msg="download_captions"):
-            tasks.download_captions(
-                boxcast_client_factory=boxcast_client_factory,
-                config=config,
-                messenger=messenger,
-            )
-            expected_file = Path(__file__).parent.joinpath("captions.vtt")
-            with open(expected_file, mode="r", encoding="utf-8") as f:
-                expected_captions = f.read()
-            with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
-                actual_captions = f.read()
-            self.assertEqual(expected_captions, actual_captions)
-            log_problem_mock.assert_not_called()
+        tasks.download_captions(
+            boxcast_client_factory=boxcast_client_factory,
+            config=config,
+            messenger=messenger,
+        )
+        expected_file = Path(__file__).parent.joinpath("captions.vtt")
+        with open(expected_file, mode="r", encoding="utf-8") as f:
+            expected_captions = f.read()
+        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
+            actual_captions = f.read()
+        self.assertEqual(expected_captions, actual_captions)
+        log_problem_mock.assert_not_called()
 
-        # Make sure that warnings or errors from the first sub-test don't
-        # affect the next one
-        messenger.reset_mock()
+        tasks.copy_captions_to_without_worship(config=config)
+        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
+            original_captions = f.read()
+        with open(
+            config.captions_without_worship_path, mode="r", encoding="utf-8"
+        ) as f:
+            captions_without_worship = f.read()
+        self.assertEqual(original_captions, captions_without_worship)
+        log_problem_mock.assert_not_called()
 
-        with self.subTest(msg="copy_captions_to_without_worship"):
-            tasks.copy_captions_to_without_worship(config=config)
-            with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
-                original_captions = f.read()
-            with open(
-                config.captions_without_worship_path, mode="r", encoding="utf-8"
-            ) as f:
-                captions_without_worship = f.read()
-            self.assertEqual(original_captions, captions_without_worship)
-            log_problem_mock.assert_not_called()
-            # TODO: Check that file is read-only?
-
-        messenger.reset_mock()
-
-        with self.subTest(msg="copy_captions_to_final"):
-            tasks.copy_captions_to_final(config=config)
-            with open(
-                config.captions_without_worship_path, mode="r", encoding="utf-8"
-            ) as f:
-                captions_without_worship = f.read()
-            with open(config.final_captions_path, mode="r", encoding="utf-8") as f:
-                final_captions = f.read()
-            self.assertEqual(captions_without_worship, final_captions)
-            log_problem_mock.assert_not_called()
-            # TODO: Check that the file is read-only?
+        tasks.copy_captions_to_final(config=config)
+        with open(
+            config.captions_without_worship_path, mode="r", encoding="utf-8"
+        ) as f:
+            captions_without_worship = f.read()
+        with open(config.final_captions_path, mode="r", encoding="utf-8") as f:
+            final_captions = f.read()
+        self.assertEqual(captions_without_worship, final_captions)
+        log_problem_mock.assert_not_called()
