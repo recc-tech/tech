@@ -1129,7 +1129,7 @@ class TkMessenger(InputMessenger):
         menu = Menu(None, tearoff=0)
         menu.add_command(
             label="Copy",
-            command=lambda: pyperclip.copy(self._get_selected_text()),  # type: ignore
+            command=self._right_click_copy,
             state="normal" if self._get_selected_text() else "disabled",
         )
         # TODO: Add more menu options
@@ -1138,6 +1138,18 @@ class TkMessenger(InputMessenger):
         # menu.add_command(label="Open in browser")
         # menu.add_command(label="Open in text editor")
         menu.tk_popup(x=event.x_root, y=event.y_root)
+
+    def _right_click_copy(self):
+        try:
+            text = self._get_selected_text()
+            if not text:
+                return
+            pyperclip.copy(text)  # type: ignore
+        except Exception:
+            messagebox.showwarning(  # type: ignore
+                title="Failed to copy",
+                message="An error occurred while trying to copy. Please try again.",
+            )
 
     def _get_selected_text(self) -> str:
         try:
