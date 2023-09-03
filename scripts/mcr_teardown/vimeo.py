@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import time
 import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
-from autochecklist import Messenger, ProblemLevel, TaskStatus
+import autochecklist
+from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
 from mcr_teardown.credentials import Credential, CredentialStore
 from requests import Response
 from vimeo import VimeoClient  # type: ignore
@@ -16,7 +16,7 @@ NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
 Maximum time elapsed since today's video was uploaded.
 """
 
-RETRY_SECONDS = 60
+RETRY_DELAY = timedelta(seconds=60)
 """
 Number of seconds to wait between checks for the new video on Vimeo.
 """
@@ -29,36 +29,65 @@ CAPTIONS_NAME = "English (Canada)"
 
 
 class ReccVimeoClient:
+    REQUEST_TIMEOUT_SECONDS = 10
+
     def __init__(
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
+        cancellation_token: Optional[CancellationToken],
         lazy_login: bool = False,
     ):
         self._messenger = messenger
         self._credential_store = credential_store
 
         if not lazy_login:
-            self._client = self._login_with_retries(max_attempts=3)
+            self._client = self._login_with_retries(
+                max_attempts=3, cancellation_token=cancellation_token
+            )
 
-    def get(self, url: str, params: Dict[str, Any]) -> Response:
-        return self._client.get(url, params=params)  # type: ignore
+    def get(
+        self,
+        url: str,
+        params: Dict[str, Any],
+        timeout: float = REQUEST_TIMEOUT_SECONDS,
+    ) -> Response:
+        return self._client.get(url, params=params, timeout=timeout)  # type: ignore
 
-    def post(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
-        return self._client.post(url, data=data)  # type: ignore
+    def post(
+        self,
+        url: str,
+        data: Union[bytes, Dict[str, Any]],
+        timeout: float = REQUEST_TIMEOUT_SECONDS,
+    ) -> Response:
+        return self._client.post(url, data=data, timeout=timeout)  # type: ignore
 
-    def put(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
-        return self._client.put(url, data=data)  # type: ignore
+    def put(
+        self,
+        url: str,
+        data: Union[bytes, Dict[str, Any]],
+        timeout: float = REQUEST_TIMEOUT_SECONDS,
+    ) -> Response:
+        return self._client.put(url, data=data, timeout=timeout)  # type: ignore
 
-    def patch(self, url: str, data: Union[bytes, Dict[str, Any]]) -> Response:
-        return self._client.patch(url, data=data)  # type: ignore
+    def patch(
+        self,
+        url: str,
+        data: Union[bytes, Dict[str, Any]],
+        timeout: float = REQUEST_TIMEOUT_SECONDS,
+    ) -> Response:
+        return self._client.patch(url, data=data, timeout=timeout)  # type: ignore
 
-    def _login_with_retries(self, max_attempts: int) -> VimeoClient:
+    def _login_with_retries(
+        self, max_attempts: int, cancellation_token: Optional[CancellationToken]
+    ) -> VimeoClient:
         self._messenger.log_status(
             TaskStatus.RUNNING,
             f"Connecting to the Vimeo API...",
         )
         for attempt_num in range(1, max_attempts + 1):
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
             credentials = self._credential_store.get_multiple(
                 prompt="Enter the Vimeo credentials.",
                 credentials=[
@@ -92,7 +121,9 @@ class ReccVimeoClient:
         )
 
 
-def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, str]:
+def get_video_data(
+    messenger: Messenger, client: ReccVimeoClient, cancellation_token: CancellationToken
+) -> Tuple[str, str]:
     # Wait for the video to be posted
     while True:
         response = client.get(
@@ -110,7 +141,6 @@ def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, 
                 f"Vimeo client failed to access GET /videos (HTTP status {response.status_code})."
             )
 
-        # TODO: Implement a mechanism for taking manual control of tasks in case something is wrong and the video can't be found automatically?
         response_body = response.json()
         response_data = response.json()["data"][0]
         if response_body["total"] < 1 or (
@@ -121,9 +151,9 @@ def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, 
         ):
             messenger.log_status(
                 TaskStatus.RUNNING,
-                f"Video not yet found on Vimeo. Retrying in {RETRY_SECONDS} seconds.",
+                f"Video not yet found on Vimeo as of {datetime.now().strftime('%H:%M:%S')}. Retrying in {int(RETRY_DELAY.total_seconds())} seconds.",
             )
-            time.sleep(RETRY_SECONDS)
+            autochecklist.sleep_attentively(RETRY_DELAY, cancellation_token)
         else:
             messenger.log_status(
                 TaskStatus.RUNNING,
@@ -137,7 +167,10 @@ def get_video_data(messenger: Messenger, client: ReccVimeoClient) -> Tuple[str, 
 
 
 def disable_automatic_captions(
-    texttracks_uri: str, client: ReccVimeoClient, messenger: Messenger
+    texttracks_uri: str,
+    client: ReccVimeoClient,
+    messenger: Messenger,
+    cancellation_token: CancellationToken,
 ):
     response = client.get(texttracks_uri, params={"fields": "uri,name"})
 
@@ -148,6 +181,7 @@ def disable_automatic_captions(
 
     response_data = response.json()["data"]
     for texttrack in response_data:
+        cancellation_token.raise_if_cancelled()
         # If we wanted to be sure we weren't disabling captions we want to
         # keep, we could check that the language field contains "autogen."
         # That probably isn't necessary as long as this task is performed

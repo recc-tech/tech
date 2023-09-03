@@ -19,7 +19,9 @@ class BibleVerseFindingTest(unittest.TestCase):
         # Save this in its own variable to get Pylance to stop complaining that the type is unknown
         self._log_problem_mock = mock.Mock()
         self._messenger.log_problem = self._log_problem_mock
-        self.finder = BibleVerseFinder(driver=self._driver, messenger=self._messenger)
+        self.finder = BibleVerseFinder(
+            driver=self._driver, messenger=self._messenger, cancellation_token=None
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -6,17 +6,14 @@ from inspect import cleandoc
 from pathlib import Path
 from typing import Optional
 
-from autochecklist import Messenger, ProblemLevel, TaskStatus
+import autochecklist
+from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
 from common import ReccWebDriver
 from mcr_teardown.credentials import Credential, CredentialStore
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.select import Select
-from selenium.webdriver.support.wait import WebDriverWait
-
-_RETRY_SECONDS = 60
-_SECONDS_PER_MINUTE = 60
 
 
 class BoxCastClient(ReccWebDriver):
@@ -26,6 +23,7 @@ class BoxCastClient(ReccWebDriver):
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
+        cancellation_token: Optional[CancellationToken],
         headless: bool = True,
         lazy_login: bool = False,
         log_file: Optional[Path] = None,
@@ -37,25 +35,35 @@ class BoxCastClient(ReccWebDriver):
 
         if not lazy_login:
             self._login_with_retries(
-                target_url="https://dashboard.boxcast.com/broadcasts", max_attempts=3
+                target_url="https://dashboard.boxcast.com/broadcasts",
+                max_attempts=3,
+                cancellation_token=cancellation_token,
             )
 
-    def get(self, url: str):
-        redirect_timeout = 10
+    def get(self, url: str, cancellation_token: Optional[CancellationToken] = None):
         super().get(url)
-        wait = WebDriverWait(self, timeout=redirect_timeout)
-        wait.until(  # type: ignore
-            lambda driver: driver.current_url in [url, BoxCastClient._LOGIN_URL],  # type: ignore
+        redirect_timeout = 10
+        self.wait(
+            condition=lambda driver: driver.current_url
+            in [url, BoxCastClient._LOGIN_URL],
+            timeout=timedelta(seconds=redirect_timeout),
             message=f"Did not get redirected to the target page ({url}) or to the login page within {redirect_timeout} seconds.",
+            cancellation_token=cancellation_token,
         )
 
         if self.current_url.startswith(BoxCastClient._LOGIN_URL):
-            self._login_with_retries(target_url=url, max_attempts=3)
+            self._login_with_retries(
+                target_url=url, max_attempts=3, cancellation_token=cancellation_token
+            )
 
-    def _login_with_retries(self, target_url: str, max_attempts: int):
+    def _login_with_retries(
+        self,
+        target_url: str,
+        max_attempts: int,
+        cancellation_token: Optional[CancellationToken],
+    ):
         self._messenger.log_status(TaskStatus.RUNNING, "Logging into BoxCast...")
         max_seconds_to_redirect = 10
-        wait = WebDriverWait(self, timeout=max_seconds_to_redirect)
         for attempt_num in range(1, max_attempts + 1):
             # For some reason, the login often fails if we try going to the target page and are redirected to the login
             # page. On the other hand, going to the login page, logging in, and only then going to the target page
@@ -68,17 +76,23 @@ class BoxCastClient(ReccWebDriver):
             )
             username = credentials[Credential.BOXCAST_USERNAME]
             password = credentials[Credential.BOXCAST_PASSWORD]
-            self._complete_login_form(username, password)
+            self._complete_login_form(username, password, cancellation_token)
 
             try:
-                wait.until(  # type: ignore
-                    lambda driver: driver.current_url != BoxCastClient._LOGIN_URL,  # type: ignore
+                self.wait(
+                    condition=(
+                        lambda driver: driver.current_url != BoxCastClient._LOGIN_URL
+                    ),
+                    timeout=timedelta(seconds=max_seconds_to_redirect),
                     message=f"Login failed: still on the login page after {max_seconds_to_redirect} seconds.",
+                    cancellation_token=cancellation_token,
                 )
                 super().get(target_url)
-                wait.until(  # type: ignore
-                    lambda driver: driver.current_url == target_url,  # type: ignore
+                self.wait(
+                    condition=lambda driver: driver.current_url == target_url,
+                    timeout=timedelta(seconds=max_seconds_to_redirect),
                     message=f"Could not get target page ({target_url}) within {max_seconds_to_redirect} seconds.",
+                    cancellation_token=cancellation_token,
                 )
                 self._messenger.log_status(
                     TaskStatus.RUNNING,
@@ -96,15 +110,29 @@ class BoxCastClient(ReccWebDriver):
                 )
         raise RuntimeError(f"Failed to log in to BoxCast ({max_attempts} attempts).")
 
-    def _complete_login_form(self, username: str, password: str):
-        email_textbox = self.wait_for_single_element(By.ID, "email", timeout=10)
+    def _complete_login_form(
+        self,
+        username: str,
+        password: str,
+        cancellation_token: Optional[CancellationToken],
+    ):
+        email_textbox = self.wait_for_single_element(
+            By.ID,
+            "email",
+            cancellation_token=cancellation_token,
+            timeout=timedelta(seconds=10),
+        )
         email_textbox.send_keys(username)  # type: ignore
 
-        password_textbox = self.wait_for_single_element(By.ID, "password")
+        password_textbox = self.wait_for_single_element(
+            By.ID, "password", cancellation_token=cancellation_token
+        )
         password_textbox.send_keys(password)  # type: ignore
 
         login_button = self.wait_for_single_element(
-            By.XPATH, "//input[@value='Log In'][@type='submit']"
+            By.XPATH,
+            "//input[@value='Log In'][@type='submit']",
+            cancellation_token=cancellation_token,
         )
         login_button.click()
 
@@ -114,6 +142,7 @@ class BoxCastClientFactory:
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
+        cancellation_token: Optional[CancellationToken],
         headless: bool = True,
         lazy_login: bool = False,
         log_directory: Optional[Path] = None,
@@ -128,9 +157,9 @@ class BoxCastClientFactory:
             self._log_file_name = self._log_file_name[:-4]
 
         if not lazy_login:
-            self._test_login()
+            self._test_login(cancellation_token)
 
-    def get_client(self):
+    def get_client(self, cancellation_token: Optional[CancellationToken]):
         if not self._log_directory:
             log_file = None
         else:
@@ -144,43 +173,60 @@ class BoxCastClientFactory:
             credential_store=self._credential_store,
             headless=self._headless,
             log_file=log_file,
+            cancellation_token=cancellation_token,
         )
 
-    def _test_login(self):
+    def _test_login(self, cancellation_token: Optional[CancellationToken]):
         # Get a page other than the landing page just to be sure that we're logged in
-        with self.get_client() as test_client:
-            test_client.get("https://dashboard.boxcast.com/schedule")
+        with self.get_client(cancellation_token) as test_client:
+            test_client.get(
+                "https://dashboard.boxcast.com/schedule",
+                cancellation_token=cancellation_token,
+            )
 
 
 # TODO: Use the new BoxCast UI
-def export_to_vimeo(client: BoxCastClient, event_url: str):
-    client.get(event_url)
+def export_to_vimeo(
+    client: BoxCastClient,
+    event_url: str,
+    cancellation_token: CancellationToken,
+):
+    client.get(event_url, cancellation_token)
 
     download_or_export_button = client.wait_for_single_element(
         By.XPATH,
         "//button[contains(., 'Download or Export Recording')]",
-        timeout=60 * _SECONDS_PER_MINUTE,
+        cancellation_token=cancellation_token,
+        timeout=timedelta(minutes=60),
     )
     download_or_export_button.click()  # type: ignore
 
     vimeo_tab = client.wait_for_single_element(
-        By.XPATH, "//div[@id='headlessui-portal-root']//a[contains(., 'Vimeo')]"
+        By.XPATH,
+        "//div[@id='headlessui-portal-root']//a[contains(., 'Vimeo')]",
+        cancellation_token=cancellation_token,
     )
     vimeo_tab.click()
 
     user_dropdown_label = client.wait_for_single_element(
-        By.XPATH, "//label[contains(., 'Export as User')]"
+        By.XPATH,
+        "//label[contains(., 'Export as User')]",
+        cancellation_token=cancellation_token,
     )
     user_dropdown_id = user_dropdown_label.get_attribute("for")  # type: ignore
 
     user_dropdown = client.wait_for_single_element(
-        By.XPATH, f"//select[@id='{user_dropdown_id}']"
+        By.XPATH,
+        f"//select[@id='{user_dropdown_id}']",
+        cancellation_token=cancellation_token,
     )
     user_dropdown_select = Select(user_dropdown)
     user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
 
     vimeo_export_button = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'Export To Vimeo')]"
+        By.XPATH,
+        "//button[contains(., 'Export To Vimeo')]",
+        cancellation_token=cancellation_token,
     )
     vimeo_export_button.click()
 
@@ -190,14 +236,41 @@ def download_captions(
     captions_tab_url: str,
     download_path: Path,
     destination_path: Path,
-    messenger: Messenger,
+    cancellation_token: CancellationToken,
 ):
-    _download_captions_to_downloads_folder(client, captions_tab_url)
-    _move_captions_to_captions_folder(download_path, destination_path, messenger)
+    client.get(captions_tab_url, cancellation_token)
+    download_captions_button = client.wait_for_single_element(
+        By.XPATH,
+        "//button[contains(., 'Download Captions')]",
+        cancellation_token=cancellation_token,
+        timeout=timedelta(minutes=60),
+    )
+    download_captions_button.click()  # type: ignore
+    vtt_download_button = client.wait_for_single_element(
+        By.XPATH,
+        "//button[contains(., 'WebVTT File (.vtt)')]",
+        cancellation_token=cancellation_token,
+        timeout=timedelta(seconds=1),
+    )
+    vtt_download_button.click()
+
+    _wait_for_file_to_exist(
+        download_path,
+        timeout=timedelta(seconds=60),
+        cancellation_token=cancellation_token,
+    )
+    if not destination_path.parent.exists():
+        destination_path.parent.mkdir(exist_ok=True, parents=True)
+    shutil.move(download_path, destination_path)
 
 
-def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path):
-    client.get(url)
+def upload_captions_to_boxcast(
+    client: BoxCastClient,
+    url: str,
+    file_path: Path,
+    cancellation_token: CancellationToken,
+):
+    client.get(url, cancellation_token)
 
     # There is also a settings "button" in the sidebar, but it is represented
     # with an <a> tag rather than a <button> tag. Just in case, check that the
@@ -205,22 +278,31 @@ def upload_captions_to_boxcast(client: BoxCastClient, url: str, file_path: Path)
     settings_button = client.wait_for_single_element(
         By.XPATH,
         "//button[contains(., 'Settings')][not(ancestor::nav)]",
-        timeout=10,
+        cancellation_token=cancellation_token,
+        timeout=timedelta(seconds=10),
     )
     settings_button.click()  # type: ignore
 
     replace_captions_option = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'Replace Captions with WebVTT File')]"
+        By.XPATH,
+        "//button[contains(., 'Replace Captions with WebVTT File')]",
+        cancellation_token=cancellation_token,
     )
     replace_captions_option.click()
 
     file_input = client.wait_for_single_element(
-        By.XPATH, "//input[@type='file'][contains(@accept, '.vtt')]", clickable=False
+        By.XPATH,
+        "//input[@type='file'][contains(@accept, '.vtt')]",
+        cancellation_token=cancellation_token,
+        clickable=False,
     )
     file_input.send_keys(str(file_path))  # type: ignore
 
     submit_button = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'Save Uploaded Caption File')]", timeout=10
+        By.XPATH,
+        "//button[contains(., 'Save Uploaded Caption File')]",
+        cancellation_token=cancellation_token,
+        timeout=timedelta(seconds=10),
     )
     submit_button.click()  # type: ignore
 
@@ -233,9 +315,14 @@ def create_rebroadcast(
     start_datetime: datetime,
     client: BoxCastClient,
     messenger: Messenger,
+    cancellation_token: CancellationToken,
 ):
     _get_rebroadcast_page(
-        rebroadcast_setup_url, source_broadcast_title, client, messenger
+        rebroadcast_setup_url,
+        source_broadcast_title,
+        client,
+        messenger,
+        cancellation_token,
     )
 
     try:
@@ -247,10 +334,10 @@ def create_rebroadcast(
             stacktrace=traceback.format_exc(),
         )
 
-    _set_event_name(rebroadcast_title, client)
+    _set_event_name(rebroadcast_title, client, cancellation_token)
 
     try:
-        _clear_event_description(client)
+        _clear_event_description(client, cancellation_token)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -259,7 +346,9 @@ def create_rebroadcast(
         )
 
     try:
-        _set_event_start_date(start_datetime.strftime("%m/%d/%Y"), client)
+        _set_event_start_date(
+            start_datetime.strftime("%m/%d/%Y"), client, cancellation_token
+        )
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -267,10 +356,10 @@ def create_rebroadcast(
             stacktrace=traceback.format_exc(),
         )
 
-    _set_event_start_time(start_datetime.strftime("%H:%M"), client)
+    _set_event_start_time(start_datetime.strftime("%H:%M"), client, cancellation_token)
 
     try:
-        _make_event_non_recurring(client)
+        _make_event_non_recurring(client, cancellation_token)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -279,7 +368,7 @@ def create_rebroadcast(
         )
 
     try:
-        _make_event_public(client)
+        _make_event_public(client, cancellation_token)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -297,7 +386,7 @@ def create_rebroadcast(
         )
 
     try:
-        _show_advanced_settings(client)
+        _show_advanced_settings(client, cancellation_token)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -306,7 +395,7 @@ def create_rebroadcast(
         )
 
     try:
-        _make_event_not_recorded(client)
+        _make_event_not_recorded(client, cancellation_token)
     except Exception as e:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -314,51 +403,25 @@ def create_rebroadcast(
             stacktrace=traceback.format_exc(),
         )
 
-    _press_schedule_broadcast_button(client)
+    _press_schedule_broadcast_button(client, cancellation_token)
 
     # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
     expected_prefix = "https://dashboard.boxcast.com/broadcasts"
     redirect_timeout = 10
-    wait = WebDriverWait(client, timeout=redirect_timeout)
-    wait.until(  # type: ignore
-        lambda driver: driver.current_url.startswith(expected_prefix),  # type: ignore
+    client.wait(
+        condition=lambda driver: driver.current_url.startswith(expected_prefix),
+        timeout=timedelta(seconds=10),
         message=f"Did not get redirected to the expected page (starting with {expected_prefix}) within {redirect_timeout} seconds.",
+        cancellation_token=cancellation_token,
     )
 
 
-def _download_captions_to_downloads_folder(
-    client: BoxCastClient,
-    captions_tab_url: str,
+def _wait_for_file_to_exist(
+    path: Path, timeout: timedelta, cancellation_token: CancellationToken
 ):
-    client.get(captions_tab_url)
-
-    download_captions_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Download Captions')]",
-        timeout=60 * _SECONDS_PER_MINUTE,
-    )
-    download_captions_button.click()  # type: ignore
-
-    vtt_download_button = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'WebVTT File (.vtt)')]", timeout=1
-    )
-    vtt_download_button.click()
-
-
-def _move_captions_to_captions_folder(
-    download_path: Path, destination_path: Path, messenger: Messenger
-):
-    _wait_for_file_to_exist(download_path, timeout=timedelta(seconds=60))
-
-    if not destination_path.parent.exists():
-        destination_path.parent.mkdir(exist_ok=True, parents=True)
-
-    shutil.move(download_path, destination_path)
-
-
-def _wait_for_file_to_exist(path: Path, timeout: timedelta):
     wait_start = datetime.now()
     while True:
+        cancellation_token.raise_if_cancelled()
         if path.exists():
             return
         if datetime.now() - wait_start > timeout:
@@ -371,22 +434,29 @@ def _get_rebroadcast_page(
     expected_source_name: str,
     client: BoxCastClient,
     messenger: Messenger,
+    cancellation_token: CancellationToken,
 ):
     """
     Get the rebroadcast page and wait until the source broadcast is available.
     """
+    retry_seconds = 60
     while True:
-        client.get(rebroadcast_setup_url)
+        client.get(rebroadcast_setup_url, cancellation_token)
 
         source_broadcast_element = client.wait_for_single_element(
-            By.TAG_NAME, "recording-source-chooser", timeout=10
+            By.TAG_NAME,
+            "recording-source-chooser",
+            cancellation_token=cancellation_token,
+            timeout=timedelta(seconds=10),
         )
         if "Source Broadcast Unavailable" in source_broadcast_element.text:
             messenger.log_status(
                 TaskStatus.RUNNING,
-                f"Source broadcast is not yet available. Retrying in {_RETRY_SECONDS} seconds.",
+                f"The source broadcast is not yet available as of {datetime.now().strftime('%H:%M:%S')}. Retrying in {retry_seconds} seconds.",
             )
-            time.sleep(_RETRY_SECONDS)
+            autochecklist.sleep_attentively(
+                timedelta(seconds=retry_seconds), cancellation_token
+            )
         elif expected_source_name in source_broadcast_element.text:
             messenger.log_status(
                 TaskStatus.RUNNING,
@@ -424,45 +494,65 @@ def _select_quick_entry_mode(client: BoxCastClient, messenger: Messenger):
         )
 
 
-def _set_event_name(name: str, client: BoxCastClient):
-    broadcast_name_textbox = client.wait_for_single_element(By.ID, "eventName")
+def _set_event_name(
+    name: str, client: BoxCastClient, cancellation_token: CancellationToken
+):
+    broadcast_name_textbox = client.wait_for_single_element(
+        By.ID, "eventName", cancellation_token=cancellation_token
+    )
     broadcast_name_textbox.clear()
     broadcast_name_textbox.send_keys(name)  # type: ignore
 
 
-def _clear_event_description(client: BoxCastClient):
-    description_textbox = client.wait_for_single_element(By.ID, "eventDescription")
+def _clear_event_description(
+    client: BoxCastClient, cancellation_token: CancellationToken
+):
+    description_textbox = client.wait_for_single_element(
+        By.ID, "eventDescription", cancellation_token=cancellation_token
+    )
     description_textbox.clear()
 
 
-def _set_event_start_date(date: str, client: BoxCastClient):
+def _set_event_start_date(
+    date: str, client: BoxCastClient, cancellation_token: CancellationToken
+):
     start_date_input = client.wait_for_single_element(
-        By.XPATH, "//label[contains(., 'Start Date')]/..//input"
+        By.XPATH,
+        "//label[contains(., 'Start Date')]/..//input",
+        cancellation_token=cancellation_token,
     )
     start_date_input.clear()
     start_date_input.send_keys(date)  # type: ignore
 
 
-def _set_event_start_time(time: str, client: BoxCastClient):
+def _set_event_start_time(
+    time: str, client: BoxCastClient, cancellation_token: CancellationToken
+):
     start_time_input = client.wait_for_single_element(
-        By.XPATH, "//label[contains(., 'Start Time')]/..//input"
+        By.XPATH,
+        "//label[contains(., 'Start Time')]/..//input",
+        cancellation_token=cancellation_token,
     )
     start_time_input.clear()
     start_time_input.send_keys(time)  # type: ignore
 
 
-def _make_event_non_recurring(client: BoxCastClient):
+def _make_event_non_recurring(
+    client: BoxCastClient, cancellation_token: CancellationToken
+):
     recurring_broadcast_checkbox = client.wait_for_single_element(
         By.XPATH,
         "//recurrence-pattern[contains(., 'Make This a Recurring Broadcast')]//i",
+        cancellation_token=cancellation_token,
     )
     _set_checkbox_checked(recurring_broadcast_checkbox, False)
 
 
-def _make_event_public(client: BoxCastClient):
+def _make_event_public(client: BoxCastClient, cancellation_token: CancellationToken):
     broadcast_public_button = client.wait_for_single_element(
         By.XPATH,
         "//label[contains(text(), 'Broadcast Type')]/..//label[contains(., 'Public')]",
+        cancellation_token=cancellation_token,
     )
     broadcast_public_button.click()
 
@@ -472,9 +562,13 @@ def _clear_broadcast_destinations(client: BoxCastClient):
     raise NotImplementedError("This operation is not yet implemented.")
 
 
-def _show_advanced_settings(client: BoxCastClient):
+def _show_advanced_settings(
+    client: BoxCastClient, cancellation_token: CancellationToken
+):
     advanced_settings_elem = client.wait_for_single_element(
-        By.XPATH, "//a[contains(., 'Advanced Settings')]"
+        By.XPATH,
+        "//a[contains(., 'Advanced Settings')]",
+        cancellation_token=cancellation_token,
     )
     if "Show Advanced Settings" in advanced_settings_elem.text:
         advanced_settings_elem.click()
@@ -484,16 +578,24 @@ def _show_advanced_settings(client: BoxCastClient):
         raise ValueError("Could not find link to reveal advanced settings.")
 
 
-def _make_event_not_recorded(client: BoxCastClient):
+def _make_event_not_recorded(
+    client: BoxCastClient, cancellation_token: CancellationToken
+):
     record_broadcast_checkbox = client.wait_for_single_element(
-        By.XPATH, "//label[contains(., 'Record Broadcast')]//i[1]"
+        By.XPATH,
+        "//label[contains(., 'Record Broadcast')]//i[1]",
+        cancellation_token=cancellation_token,
     )
     _set_checkbox_checked(record_broadcast_checkbox, False)
 
 
-def _press_schedule_broadcast_button(client: BoxCastClient):
+def _press_schedule_broadcast_button(
+    client: BoxCastClient, cancellation_token: CancellationToken
+):
     submit_button = client.wait_for_single_element(
-        By.XPATH, "//button[contains(., 'Schedule Broadcast')]"
+        By.XPATH,
+        "//button[contains(., 'Schedule Broadcast')]",
+        cancellation_token=cancellation_token,
     )
     submit_button.click()
 

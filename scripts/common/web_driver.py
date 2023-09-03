@@ -1,7 +1,9 @@
 import time
+from datetime import timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional, Self, TypeVar
 
+from autochecklist import CancellationToken
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
@@ -9,7 +11,8 @@ from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.wait import WebDriverWait
+
+T = TypeVar("T")
 
 
 class ReccWebDriver(WebDriver):
@@ -24,22 +27,46 @@ class ReccWebDriver(WebDriver):
         )
         super().__init__(options=options, service=service)  # type: ignore
 
+    def wait(
+        self,
+        condition: Callable[[Self], T],
+        timeout: timedelta,
+        message: str,
+        cancellation_token: Optional[CancellationToken],
+        poll_frequency: timedelta = timedelta(seconds=0.5),
+    ) -> T:
+        start = time.monotonic()
+        timeout_seconds = timeout.total_seconds()
+        poll_frequency_seconds = poll_frequency.total_seconds()
+        while True:
+            if cancellation_token is not None:
+                cancellation_token.raise_if_cancelled()
+            value = condition(self)
+            if value:
+                return value
+            time.sleep(poll_frequency_seconds)
+            if time.monotonic() - start > timeout_seconds:
+                raise TimeoutException(message)
+
     def wait_for_single_element(
         self,
         by: str,
         value: str,
-        # This seems like a reasonably safe amount of time to wait if you expect the element to already be loaded,
-        # but potentially be obscured by another element (e.g., a dropdown menu)
-        timeout: float = 5,
+        cancellation_token: Optional[CancellationToken],
         # Whether the element needs to be clickable
         clickable: bool = True,
+        # This seems like a reasonably safe amount of time to wait if you expect the element to already be loaded,
+        # but potentially be obscured by another element (e.g., a dropdown menu)
+        timeout: timedelta = timedelta(seconds=5),
     ) -> WebElement:
         ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))  # type: ignore
 
-        wait = WebDriverWait(self, timeout=timeout)
         try:
-            wait.until(  # type: ignore
-                ec,
+            self.wait(
+                condition=ec,  # type: ignore
+                timeout=timeout,
+                message="",
+                cancellation_token=cancellation_token,
             )
         except TimeoutException:
             # The error might be because there are no matches, but it could also be because there are multiple matches and the first one isn't clickable!

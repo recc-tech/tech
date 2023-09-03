@@ -56,7 +56,9 @@ class BoxCastTestCase(unittest.TestCase):
         messenger.log_problem = log_problem_mock
         credential_store = CredentialStore(messenger)
         boxcast_client = BoxCastClient(
-            messenger=messenger, credential_store=credential_store
+            messenger=messenger,
+            credential_store=credential_store,
+            cancellation_token=None,
         )
         boxcast_client_factory = Mock(spec=["get_client"])
         boxcast_client_factory.get_client.return_value = boxcast_client  # type: ignore

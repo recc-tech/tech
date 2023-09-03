@@ -4,7 +4,7 @@ from datetime import datetime
 
 import mcr_teardown.boxcast as boxcast_tasks
 import mcr_teardown.vimeo as vimeo_tasks
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import Messenger
 from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
 from mcr_teardown.vimeo import ReccVimeoClient
@@ -15,7 +15,8 @@ def create_rebroadcast_1pm(
     config: McrTeardownConfig,
     messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.create_rebroadcast(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
@@ -23,6 +24,7 @@ def create_rebroadcast_1pm(
             start_datetime=datetime.now().replace(hour=13, minute=0, second=0),
             client=client,
             messenger=messenger,
+            cancellation_token=cancellation_token,
         )
 
 
@@ -31,7 +33,8 @@ def create_rebroadcast_5pm(
     config: McrTeardownConfig,
     messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.create_rebroadcast(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
@@ -39,6 +42,7 @@ def create_rebroadcast_5pm(
             start_datetime=datetime.now().replace(hour=17, minute=0, second=0),
             client=client,
             messenger=messenger,
+            cancellation_token=cancellation_token,
         )
 
 
@@ -47,7 +51,8 @@ def create_rebroadcast_7pm(
     config: McrTeardownConfig,
     messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.create_rebroadcast(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
@@ -55,14 +60,22 @@ def create_rebroadcast_7pm(
             start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
             client=client,
             messenger=messenger,
+            cancellation_token=cancellation_token,
         )
 
 
 def export_to_vimeo(
-    boxcast_client_factory: BoxCastClientFactory, config: McrTeardownConfig
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
-        boxcast_tasks.export_to_vimeo(client=client, event_url=config.live_event_url)
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
+        boxcast_tasks.export_to_vimeo(
+            client=client,
+            event_url=config.live_event_url,
+            cancellation_token=cancellation_token,
+        )
 
 
 def get_vimeo_video_data(
@@ -70,7 +83,11 @@ def get_vimeo_video_data(
     vimeo_client: ReccVimeoClient,
     config: McrTeardownConfig,
 ):
-    (video_uri, texttrack_uri) = vimeo_tasks.get_video_data(messenger, vimeo_client)
+    (video_uri, texttrack_uri) = vimeo_tasks.get_video_data(
+        messenger=messenger,
+        client=vimeo_client,
+        cancellation_token=messenger.allow_cancel(),
+    )
 
     config.vimeo_video_uri = video_uri
     config.vimeo_video_texttracks_uri = texttrack_uri
@@ -88,6 +105,7 @@ def disable_automatic_captions(
         texttracks_uri=config.vimeo_video_texttracks_uri,
         client=vimeo_client,
         messenger=messenger,
+        cancellation_token=messenger.allow_cancel(),
     )
 
 
@@ -106,56 +124,51 @@ def download_captions(
     config: McrTeardownConfig,
     messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.download_captions(
             client=client,
             captions_tab_url=config.live_event_captions_tab_url,
             download_path=config.captions_download_path,
             destination_path=config.original_captions_path,
-            messenger=messenger,
+            cancellation_token=cancellation_token,
         )
 
 
-def copy_captions_to_without_worship(config: McrTeardownConfig, messenger: Messenger):
+def copy_captions_to_without_worship(config: McrTeardownConfig):
     if not config.original_captions_path.exists():
         raise ValueError(f"File '{config.original_captions_path}' does not exist.")
-
     # Copy the file first so that the new file isn't read-only
     shutil.copy(
         src=config.original_captions_path, dst=config.captions_without_worship_path
     )
-
     config.original_captions_path.chmod(stat.S_IREAD)
 
 
-def copy_captions_to_final(config: McrTeardownConfig, messenger: Messenger):
+def copy_captions_to_final(config: McrTeardownConfig):
     if not config.captions_without_worship_path.exists():
         raise ValueError(
             f"File '{config.captions_without_worship_path}' does not exist."
         )
-
-    if config.final_captions_path.exists():
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"File '{config.final_captions_path}' already exists and will be overwritten",
-        )
-
     # Copy the file first so that the new file isn't read-only
     shutil.copy(
         src=config.captions_without_worship_path, dst=config.final_captions_path
     )
-
     config.captions_without_worship_path.chmod(stat.S_IREAD)
 
 
 def upload_captions_to_boxcast(
-    boxcast_client_factory: BoxCastClientFactory, config: McrTeardownConfig
+    boxcast_client_factory: BoxCastClientFactory,
+    config: McrTeardownConfig,
+    messenger: Messenger,
 ):
-    with boxcast_client_factory.get_client() as client:
+    cancellation_token = messenger.allow_cancel()
+    with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.upload_captions_to_boxcast(
             client=client,
             url=config.boxcast_edit_captions_url,
             file_path=config.final_captions_path,
+            cancellation_token=cancellation_token,
         )
 
 

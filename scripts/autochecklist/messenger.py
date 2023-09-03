@@ -37,17 +37,22 @@ class Messenger:
         self._file_messenger = file_messenger
         self._input_messenger = input_messenger
         self._task_manager = _TaskManager()
+        self._task_manager_mutex = Lock()
         self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
 
     def set_current_task_name(self, task_name: Optional[str]):
-        self._task_manager.set_current_task_name(task_name)
+        with self._task_manager_mutex:
+            self._task_manager.set_current_task_name(task_name)
 
     def set_task_index_table(self, task_index_table: Dict[str, int]):
-        self._task_manager.set_task_index_table(task_index_table)
+        with self._task_manager_mutex:
+            self._task_manager.set_task_index_table(task_index_table)
 
     def log_debug(self, message: str, task_name: str = ""):
+        with self._task_manager_mutex:
+            task_name = self._task_manager.get_task_name(task_name) or "UNKNOWN"
         self._file_messenger.log(
-            task_name=self._task_manager.get_task_name(task_name),
+            task_name=task_name,
             level=logging.DEBUG,
             message=message,
         )
@@ -59,11 +64,20 @@ class Messenger:
         task_name: str = "",
         file_only: bool = False,
     ):
-        (task_name, index) = self._task_manager.get_task_name_and_index(task_name)
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            if actual_task_name:
+                task_name_for_display = actual_task_name
+                index = self._task_manager.get_index(actual_task_name)
+            else:
+                task_name_for_display = "UNKNOWN"
+                index = None
         log_message = f"Task status: {status}. {message}"
-        self._file_messenger.log(task_name, logging.INFO, log_message)
+        self._file_messenger.log(task_name_for_display, logging.INFO, log_message)
         if not file_only:
-            self._input_messenger.log_status(task_name, index, status, message)
+            self._input_messenger.log_status(
+                task_name_for_display, index, status, message
+            )
 
     # TODO: It would be nice to show not only the exception but the exception
     # type. For example, `str(key_error)` may just show `the_key` when
@@ -76,7 +90,8 @@ class Messenger:
         stacktrace: str = "",
         task_name: str = "",
     ):
-        task_name = self._task_manager.get_task_name(task_name)
+        with self._task_manager_mutex:
+            task_name = self._task_manager.get_task_name(task_name) or "UNKNOWN"
         details = f"\n{stacktrace}" if stacktrace else ""
         self._file_messenger.log(task_name, level.to_log_level(), f"{message}{details}")
         self._input_messenger.log_problem(task_name, level, message)
@@ -99,8 +114,84 @@ class Messenger:
         return self._input_messenger.input_multiple(params, prompt, title)
 
     def wait(self, prompt: str, task_name: str = ""):
-        (task_name, index) = self._task_manager.get_task_name_and_index(task_name)
-        self._input_messenger.wait(task_name, index, prompt)
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            if actual_task_name:
+                task_name_for_display = actual_task_name
+                index = self._task_manager.get_index(actual_task_name)
+            else:
+                task_name_for_display = "UNKNOWN"
+                index = None
+        self._input_messenger.wait(task_name_for_display, index, prompt)
+
+    def allow_cancel(self, task_name: str = "") -> CancellationToken:
+        """
+        Allow the user to cancel a task.
+        """
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            if not actual_task_name:
+                self.log_debug(
+                    message="Could not allow cancelling because the current task is unknown and no task name was provided.",
+                    task_name="UNKNOWN",
+                )
+                return CancellationToken()
+            token = self._task_manager.get_cancellation_token(actual_task_name)
+            # Avoid generating multiple tokens for one task, otherwise the user
+            # might cancel and not have every piece of code be notified
+            if not token:
+                token = CancellationToken()
+            self._task_manager.set_cancellation_token(actual_task_name, token)
+
+        def callback():
+            should_cancel = messagebox.askyesno(  # type: ignore
+                title="Confirm cancel",
+                message="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
+            )
+            if not should_cancel:
+                return
+            token.cancel()
+            self.log_status(
+                status=TaskStatus.RUNNING,
+                message="Cancelling task...",
+                task_name=actual_task_name or "",
+            )
+            self.disallow_cancel(task_name=actual_task_name or "")
+
+        try:
+            self._input_messenger.add_command(
+                task_name=actual_task_name,
+                command_name="Cancel",
+                callback=callback,
+            )
+        except NotImplementedError:
+            self.log_debug(
+                message="Could not allow cancelling because the input messenger does not support it.",
+                task_name=actual_task_name,
+            )
+        return token
+
+    def disallow_cancel(self, task_name: str = ""):
+        """
+        Remove the ability to cancel a task if cancelling was allowed.
+        """
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            if not actual_task_name:
+                self.log_debug(
+                    message="Could not disallow cancelling because the current task is unknown and no task name was provided.",
+                    task_name=task_name,
+                )
+                return
+        try:
+            self._input_messenger.remove_command(
+                task_name=actual_task_name, command_name="Cancel"
+            )
+        except NotImplementedError:
+            self.log_debug(
+                message="Could not disallow cancelling because the input messenger does not support it.",
+                task_name=actual_task_name,
+            )
 
     def close(self, wait: bool):
         """
@@ -124,37 +215,60 @@ class _TaskManager:
         self._local = self._Local()
         # Put the root "task" (e.g., the script startup code) at the top by
         # default
-        self._task_index_table = {Messenger.ROOT_PSEUDOTASK_NAME: 0}
-        self._lock = Lock()
+        self._index_by_task = {Messenger.ROOT_PSEUDOTASK_NAME: 0}
+        self._cancellation_token_by_task: Dict[str, CancellationToken] = {}
 
     def set_current_task_name(self, task_name: Optional[str]):
-        with self._lock:
-            self._local.current_task_name = task_name
+        self._local.current_task_name = task_name
 
     def set_task_index_table(self, task_index_table: Dict[str, int]):
-        with self._lock:
-            # Don't mutate the input
-            self._task_index_table = dict(task_index_table)
-            # Let the client override the default placement of the root "task"
-            # if they want to
-            if Messenger.ROOT_PSEUDOTASK_NAME not in self._task_index_table:
-                self._task_index_table[Messenger.ROOT_PSEUDOTASK_NAME] = 0
+        # Don't mutate the input
+        self._index_by_task = dict(task_index_table)
+        # Let the client override the default placement of the root "task"
+        # if they want to
+        if Messenger.ROOT_PSEUDOTASK_NAME not in self._index_by_task:
+            self._index_by_task[Messenger.ROOT_PSEUDOTASK_NAME] = 0
 
-    def get_task_name(self, task_name: str) -> str:
-        if task_name:
-            return task_name
-        with self._lock:
-            return self._local.current_task_name or "UNKNOWN"
+    def get_task_name(self, task_name: str) -> Optional[str]:
+        return task_name if task_name else self._local.current_task_name
 
-    def get_task_name_and_index(self, task_name: str) -> Tuple[str, Optional[int]]:
-        with self._lock:
-            task_name = task_name or self._local.current_task_name or ""
-            index = (
-                self._task_index_table[task_name]
-                if task_name and task_name in self._task_index_table
-                else None
-            )
-            return (task_name or "UNKNOWN", index)
+    def get_index(self, task_name: str) -> Optional[int]:
+        return (
+            self._index_by_task[task_name]
+            if task_name and task_name in self._index_by_task
+            else None
+        )
+
+    def get_cancellation_token(self, task_name: str) -> Optional[CancellationToken]:
+        return (
+            self._cancellation_token_by_task[task_name]
+            if task_name in self._cancellation_token_by_task
+            else None
+        )
+
+    def set_cancellation_token(self, task_name: str, token: CancellationToken):
+        self._cancellation_token_by_task[task_name] = token
+
+
+class CancellationToken:
+    def __init__(self):
+        self._is_cancelled = False
+        self._mutex = Lock()
+
+    def cancel(self):
+        with self._mutex:
+            self._is_cancelled = True
+
+    def raise_if_cancelled(self):
+        with self._mutex:
+            if self._is_cancelled:
+                raise TaskCancelledException()
+
+
+# Subclass `BaseException` so that code that catches `Exception` doesn't
+# accidentally catch this
+class TaskCancelledException(BaseException):
+    pass
 
 
 class TaskStatus(Enum):
@@ -252,6 +366,14 @@ class InputMessenger:
         raise NotImplementedError()
 
     def wait(self, task_name: str, index: Optional[int], prompt: str) -> None:
+        raise NotImplementedError()
+
+    def add_command(
+        self, task_name: str, command_name: str, callback: Callable[[], None]
+    ) -> None:
+        raise NotImplementedError()
+
+    def remove_command(self, task_name: str, command_name: str) -> None:
         raise NotImplementedError()
 
 
@@ -828,6 +950,28 @@ class TkMessenger(InputMessenger):
             self._quit()
         self._gui_thread.join()
 
+    def add_command(
+        self, task_name: str, command_name: str, callback: Callable[[], None]
+    ) -> None:
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            self._task_statuses_grid.upsert_command(
+                task_name=task_name,
+                command_name=command_name,
+                callback=callback,
+            )
+            self._root_frame.update_scrollregion()
+
+    def remove_command(self, task_name: str, command_name: str) -> None:
+        with self._mutex:
+            if self._is_shut_down:
+                raise KeyboardInterrupt()
+            self._task_statuses_grid.remove_command(
+                task_name=task_name, command_name=command_name
+            )
+            self._root_frame.update_scrollregion()
+
     def _run_gui(self, root_started: Semaphore, description: str):
         # TODO: Make the GUI responsive. I would need to find a way of having
         # the Text widgets fill the width of the screen, which doesn't seem to
@@ -1174,11 +1318,11 @@ class _ThickSeparator(Frame):
 
 class _ActionItemGrid(Frame):
     _BTN_COLUMN = 0
-    _BTN_WIDTH = 20
+    _BTN_WIDTH = 10
     _NAME_COLUMN = 1
     _NAME_WIDTH = 35
     _MSG_COLUMN = 2
-    _MSG_WIDTH = 100
+    _MSG_WIDTH = 120
 
     def __init__(
         self,
@@ -1315,11 +1459,13 @@ class _ActionItemGrid(Frame):
 
 
 class _TaskStatusGrid(Frame):
-    _NAME_COLUMN = 1
-    _NAME_WIDTH = 35
-    _STATUS_COLUMN = 0
+    _COMMANDS_COLUMN = 0
+    _COMMANDS_WIDTH = 10
+    _STATUS_COLUMN = 1
     _STATUS_WIDTH = 20
-    _MSG_COLUMN = 2
+    _NAME_COLUMN = 2
+    _NAME_WIDTH = 35
+    _MSG_COLUMN = 3
     _MSG_WIDTH = 100
 
     def __init__(
@@ -1347,27 +1493,36 @@ class _TaskStatusGrid(Frame):
         self._header_font = header_font
         self._bold_font = bold_font
 
-        self._widgets: Dict[int, Tuple[_CopyableText, _CopyableText]] = {}
-        self._index_to_name: Dict[int, str] = {}
+        self._taken_indices: Set[int] = set()
+        self._widgets_by_name: Dict[
+            str, Tuple[Frame, _CopyableText, _CopyableText]
+        ] = {}
+        self._command: Dict[Tuple[str, str], Button] = {}
         self._create_header()
 
     def upsert_row(
         self, index: Optional[int], task_name: str, status: TaskStatus, message: str
     ):
-        is_index_taken = (
-            index in self._index_to_name and self._index_to_name[index] != task_name
-        )
-        if index is None or is_index_taken:
-            actual_index = (
-                max(self._index_to_name.keys()) + 1 if self._index_to_name else 0
-            )
+        if task_name in self._widgets_by_name:
+            # Update existing row
+            (_, status_label, msg_label) = self._widgets_by_name[task_name]
         else:
-            actual_index = index
+            # Add new row
+            if index is None or index in self._taken_indices:
+                actual_index = (
+                    max(self._taken_indices) + 1 if self._taken_indices else 0
+                )
+            else:
+                actual_index = index
 
-        row_already_exists = actual_index in self._widgets
-        if row_already_exists:
-            (status_label, msg_label) = self._widgets[actual_index]
-        else:
+            commands_frame = Frame(self, width=self._COMMANDS_WIDTH)
+            commands_frame.grid(
+                # Increase the row number to account for the header
+                row=actual_index + 2,
+                column=self._COMMANDS_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
             name_label = _CopyableText(
                 self,
                 width=self._NAME_WIDTH,
@@ -1376,7 +1531,6 @@ class _TaskStatusGrid(Frame):
                 foreground=self._foreground,
             )
             name_label.grid(
-                # Increase the row number to account for the header
                 row=actual_index + 2,
                 column=self._NAME_COLUMN,
                 padx=self._padx,
@@ -1409,14 +1563,50 @@ class _TaskStatusGrid(Frame):
                 padx=self._padx,
                 pady=self._pady,
             )
-            self._widgets[actual_index] = (status_label, msg_label)
+            self._taken_indices.add(actual_index)
+            self._widgets_by_name[task_name] = (commands_frame, status_label, msg_label)
 
         status_label.set_text(str(status))
         status_label.config(foreground=self._status_colour(status))
         msg_label.set_text(message)
-        self._index_to_name[actual_index] = task_name
+
+    def upsert_command(
+        self, task_name: str, command_name: str, callback: Callable[[], None]
+    ):
+        if task_name not in self._widgets_by_name:
+            self.upsert_row(
+                index=None,
+                task_name=task_name,
+                status=TaskStatus.RUNNING,
+                message="This task is cancellable.",
+            )
+        (commands_frame, _, _) = self._widgets_by_name[task_name]
+        if (task_name, command_name) in self._command:
+            existing_button = self._command[(task_name, command_name)]
+            existing_button.config(command=callback)
+        else:
+            button = Button(commands_frame, text=command_name, command=callback)
+            button.pack()
+            self._command[(task_name, command_name)] = button
+
+    def remove_command(self, task_name: str, command_name: str):
+        if (task_name, command_name) in self._command:
+            existing_button = self._command[(task_name, command_name)]
+            existing_button.destroy()
 
     def _create_header(self):
+        command_header_label = _CopyableText(
+            self,
+            width=self._COMMANDS_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        command_header_label.grid(
+            row=0, column=self._COMMANDS_COLUMN, padx=self._padx, pady=self._pady
+        )
+        command_header_label.set_text("")
+
         name_header_label = _CopyableText(
             self,
             width=self._NAME_WIDTH,
@@ -1456,7 +1646,7 @@ class _TaskStatusGrid(Frame):
         separator = _ThickSeparator(
             self, thickness=3, orient="horizontal", colour="black"
         )
-        separator.grid(row=1, column=0, columnspan=3, sticky="EW")
+        separator.grid(row=1, column=0, columnspan=4, sticky="EW")
 
     @staticmethod
     def _status_colour(status: TaskStatus) -> str:
@@ -1478,7 +1668,7 @@ class _ProblemGrid(Frame):
     _LEVEL_COLUMN = 0
     _LEVEL_WIDTH = 20
     _MSG_COLUMN = 2
-    _MSG_WIDTH = 100
+    _MSG_WIDTH = 110
 
     def __init__(
         self,
@@ -1632,7 +1822,6 @@ def _is_current_thread_main() -> bool:
 
 
 def _interrupt_main_thread():
-    print(f"Interrupting main thread (pid {os.getpid()})")
     os.kill(os.getpid(), signal.CTRL_C_EVENT)
     # It seems like the signal isn't delivered until print() is
     # called! But printing nothing doesn't work.

@@ -12,7 +12,12 @@ from types import ModuleType
 from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
 
 from autochecklist.base_config import BaseConfig
-from autochecklist.messenger import Messenger, ProblemLevel, TaskStatus
+from autochecklist.messenger import (
+    Messenger,
+    ProblemLevel,
+    TaskCancelledException,
+    TaskStatus,
+)
 
 
 class TaskGraph:
@@ -43,7 +48,7 @@ class TaskGraph:
         sorted_tasks = sorted(tasks, key=lambda t: t.index)
         for task in sorted_tasks:
             self._messenger.log_status(
-                TaskStatus.NOT_STARTED, "Not started.", task_name=task.name
+                TaskStatus.NOT_STARTED, "-", task_name=task.name
             )
 
         # You cannot join a thread that has not yet started, so the threads
@@ -134,8 +139,7 @@ class _Task:
                 TaskStatus.WAITING_FOR_USER,
                 f"This task is not automated. Requesting user input.",
             )
-            self._messenger.wait(self._description)
-            self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+            self._run_manually()
         else:
             self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
             try:
@@ -149,10 +153,15 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"This task is not fully automated yet. Requesting user input.",
                 )
-                self._messenger.wait(self._description)
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+                self._run_manually()
             except (KeyboardInterrupt, SystemExit):
                 raise
+            except TaskCancelledException:
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"Task cancelled by the user. Requesting user input.",
+                )
+                self._run_manually()
             except BaseException as e:
                 self._messenger.log_problem(
                     ProblemLevel.ERROR,
@@ -163,8 +172,12 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"Task automation failed. Requesting user input.",
                 )
-                self._messenger.wait(self._description)
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+                self._run_manually()
+
+    def _run_manually(self):
+        self._messenger.disallow_cancel()
+        self._messenger.wait(self._description)
+        self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
 
 
 @dataclass(frozen=True)

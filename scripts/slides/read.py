@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote_plus
 
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import CancellationToken, Messenger, ProblemLevel
 from common import ReccWebDriver
 from selenium.webdriver.common.by import By
 from slides.generate import SlideBlueprint
@@ -82,12 +82,17 @@ class BibleVerse:
 
 
 class BibleVerseFinder:
-    def __init__(self, driver: ReccWebDriver, messenger: Messenger):
+    def __init__(
+        self,
+        driver: ReccWebDriver,
+        messenger: Messenger,
+        cancellation_token: Optional[CancellationToken],
+    ):
         self._driver = driver
         self._messenger = messenger
 
         try:
-            self._set_page_options()
+            self._set_page_options(cancellation_token)
         except Exception:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
@@ -118,12 +123,13 @@ class BibleVerseFinder:
             url += "&interface=print"
         self._driver.get(url)
 
-    def _set_page_options(self):
+    def _set_page_options(self, cancellation_token: Optional[CancellationToken]):
         self._get_page(BibleVerse("Genesis", 1, 1, "NLT"), use_print_interface=False)
 
         page_options_btn = self._driver.wait_for_single_element(
             By.XPATH,
             "//*[name()='svg']/*[name()='title'][contains(., 'Page Options')]/..",
+            cancellation_token=cancellation_token,
         )
         page_options_btn.click()
 
@@ -131,6 +137,7 @@ class BibleVerseFinder:
             checkbox = self._driver.wait_for_single_element(
                 By.XPATH,
                 f"//*[name()='svg']/*[name()='title'][contains(., '{title}')]/..",
+                cancellation_token=cancellation_token,
             )
             checkbox_name = checkbox.get_attribute("name")  # type: ignore
             if checkbox_name == "checked":

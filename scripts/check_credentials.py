@@ -37,6 +37,7 @@ def main():
         ReccVimeoClient(
             messenger=messenger,
             credential_store=credential_store,
+            cancellation_token=None,
             # Since lazy_login = false, the login should be tested eagerly
             lazy_login=False,
         )
@@ -44,6 +45,7 @@ def main():
         BoxCastClientFactory(
             messenger=messenger,
             credential_store=credential_store,
+            cancellation_token=None,
             headless=not args.show_browser,
             # Since lazy_login = false, the login should be tested eagerly
             lazy_login=False,

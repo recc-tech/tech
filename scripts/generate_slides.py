@@ -61,7 +61,11 @@ def main():
         web_driver = ReccWebDriver(
             headless=not cmd_args.show_browser, log_file=web_driver_log_file
         )
-        bible_verse_finder = BibleVerseFinder(web_driver, messenger)
+        bible_verse_finder = BibleVerseFinder(
+            # No need for a cancellation token since this script is linear and
+            # the user can just cancel the whole thing
+            web_driver, messenger, cancellation_token=None
+        )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger)
 
@@ -89,7 +93,9 @@ def main():
         should_messenger_finish = False
     except BaseException as e:
         messenger.log_problem(
-            ProblemLevel.FATAL, f"An error occurred: {e}", stacktrace=traceback.format_exc()
+            ProblemLevel.FATAL,
+            f"An error occurred: {e}",
+            stacktrace=traceback.format_exc(),
         )
         messenger.log_status(TaskStatus.DONE, "Script failed.")
     finally:

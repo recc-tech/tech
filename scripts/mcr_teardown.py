@@ -71,12 +71,14 @@ def main():
             vimeo_client = ReccVimeoClient(
                 messenger=messenger,
                 credential_store=credential_store,
+                cancellation_token=None,
                 lazy_login=args.lazy_login,
             )
 
             boxcast_client_factory = BoxCastClientFactory(
                 messenger=messenger,
                 credential_store=credential_store,
+                cancellation_token=None,
                 headless=not args.show_browser,
                 lazy_login=args.lazy_login,
                 log_directory=config.log_dir,
