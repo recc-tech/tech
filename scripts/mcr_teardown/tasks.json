@@ -99,7 +99,7 @@
 						},
 						{
 							"name": "review_and_publish_captions",
-							"description": "On BoxCast, review low-confidence cues and publish the captions.",
+							"description": "On BoxCast, review low-confidence cues and publish the captions, but don't download them yet.",
 							"prerequisites": [
 								"start_generating_captions"
 							]
