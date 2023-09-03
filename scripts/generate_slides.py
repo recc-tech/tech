@@ -42,7 +42,7 @@ def main():
     input_messenger = (
         ConsoleMessenger(description=_DESCRIPTION)
         if cmd_args.text_ui
-        else TkMessenger(description=_DESCRIPTION)
+        else TkMessenger(title="Generate Slides", description=_DESCRIPTION)
     )
     messenger = Messenger(file_messenger, input_messenger)
 
@@ -64,7 +64,9 @@ def main():
         bible_verse_finder = BibleVerseFinder(
             # No need for a cancellation token since this script is linear and
             # the user can just cancel the whole thing
-            web_driver, messenger, cancellation_token=None
+            web_driver,
+            messenger,
+            cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger)

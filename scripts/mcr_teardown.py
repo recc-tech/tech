@@ -19,13 +19,8 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import parse_directory, parse_non_empty_string
-from mcr_teardown import (
-    BoxCastClientFactory,
-    CredentialStore,
-    McrTeardownConfig,
-    ReccVimeoClient,
-)
+from common import CredentialStore, parse_directory, parse_non_empty_string
+from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
 
 # TODO: Test the BoxCast code by turning off the WiFi after loading the page.
 # TODO: Save progress in a file in case the script needs to be stopped and restarted?
@@ -49,7 +44,8 @@ def main():
         )
         if args.text_ui
         else TkMessenger(
-            f"{extended_description}\n\nIf you need to stop the script, close this window or the terminal window."
+            title="MCR Teardown",
+            description=f"{extended_description}\n\nIf you need to stop the script, close this window or the terminal window.",
         )
     )
     messenger = Messenger(

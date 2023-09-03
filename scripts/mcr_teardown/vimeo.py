@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import autochecklist
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
-from mcr_teardown.credentials import Credential, CredentialStore
+from common import Credential, CredentialStore, InputPolicy
 from requests import Response
 from vimeo import VimeoClient  # type: ignore
 
@@ -95,7 +95,9 @@ class ReccVimeoClient:
                     Credential.VIMEO_CLIENT_ID,
                     Credential.VIMEO_CLIENT_SECRET,
                 ],
-                force_user_input=attempt_num > 1,
+                request_input=(
+                    InputPolicy.ALWAYS if attempt_num > 1 else InputPolicy.AS_REQUIRED
+                ),
             )
             access_token = credentials[Credential.VIMEO_ACCESS_TOKEN]
             client_id = credentials[Credential.VIMEO_CLIENT_ID]

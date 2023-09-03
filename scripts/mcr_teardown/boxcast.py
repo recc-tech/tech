@@ -8,8 +8,7 @@ from typing import Optional
 
 import autochecklist
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
-from common import ReccWebDriver
-from mcr_teardown.credentials import Credential, CredentialStore
+from common import Credential, CredentialStore, InputPolicy, ReccWebDriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
@@ -72,7 +71,9 @@ class BoxCastClient(ReccWebDriver):
             credentials = self._credential_store.get_multiple(
                 prompt="Enter the BoxCast credentials.",
                 credentials=[Credential.BOXCAST_USERNAME, Credential.BOXCAST_PASSWORD],
-                force_user_input=attempt_num > 1,
+                request_input=(
+                    InputPolicy.ALWAYS if attempt_num > 1 else InputPolicy.AS_REQUIRED
+                ),
             )
             username = credentials[Credential.BOXCAST_USERNAME]
             password = credentials[Credential.BOXCAST_PASSWORD]

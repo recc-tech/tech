@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from argparse import ArgumentTypeError
-from enum import Enum
-from typing import Dict, List
+from enum import Enum, auto
+from typing import Dict, List, Optional
 
 import keyring
 from autochecklist import Messenger, Parameter
@@ -36,31 +36,55 @@ class Credential(Enum):
         return matching_values[0]
 
 
+class InputPolicy(Enum):
+    NEVER = auto()
+    AS_REQUIRED = auto()
+    ALWAYS = auto()
+
+
 class CredentialStore:
     _KEYRING_APP_NAME = "recc_tech_mcr_teardown"
 
-    def __init__(self, messenger: Messenger, force_user_input: bool = False):
+    def __init__(
+        self,
+        messenger: Messenger,
+        request_input: Optional[InputPolicy] = None,
+    ):
         self._messenger = messenger
-        self._force_user_input = force_user_input
+        self._request_input = request_input
 
     def get_multiple(
-        self, prompt: str, credentials: List[Credential], force_user_input: bool
+        self,
+        prompt: str,
+        credentials: List[Credential],
+        request_input: InputPolicy,
     ) -> Dict[Credential, str]:
-        force = force_user_input or self._force_user_input
+        input_policy = (
+            self._request_input if self._request_input is not None else request_input
+        )
+        saved_credentials = {
+            c: keyring.get_password(CredentialStore._KEYRING_APP_NAME, c.name)
+            for c in credentials
+        }
+        match input_policy:
+            case InputPolicy.NEVER:
+                unknown_credentials = [
+                    c for (c, v) in saved_credentials.items() if not v
+                ]
+                if unknown_credentials:
+                    raise ValueError(
+                        f"The following credentials are not saved and this credential store is not allowed to request user input: {', '.join([c.display_name for c in unknown_credentials])}"
+                    )
+                credentials_to_input: List[Credential] = []
+            case InputPolicy.AS_REQUIRED:
+                credentials_to_input = [
+                    c for (c, v) in saved_credentials.items() if not v
+                ]
+            case InputPolicy.ALWAYS:
+                credentials_to_input = credentials
 
-        credential_values: Dict[Credential, str] = {}
-        unknown_credentials: List[Credential] = []
-        for c in credentials:
-            if force:
-                unknown_credentials.append(c)
-            else:
-                value = keyring.get_password(CredentialStore._KEYRING_APP_NAME, c.name)
-                if value:
-                    credential_values[c] = value
-                else:
-                    unknown_credentials.append(c)
-
-        if unknown_credentials:
+        known_credentials = {c: v for (c, v) in saved_credentials.items() if v}
+        if credentials_to_input:
             unknown_credential_raw_values = self._messenger.input_multiple(
                 prompt=prompt,
                 title="Input credentials",
@@ -70,7 +94,7 @@ class CredentialStore:
                         parser=_validate_input,
                         password=c.is_password,
                     )
-                    for c in unknown_credentials
+                    for c in credentials_to_input
                 },
             )
             unknown_credential_values = {
@@ -81,19 +105,18 @@ class CredentialStore:
                 keyring.set_password(
                     CredentialStore._KEYRING_APP_NAME, credential.name, value
                 )
-            credential_values |= unknown_credential_values
-
-        return credential_values
+                known_credentials[credential] = value
+        return known_credentials
 
     def get(
         self,
         credential: Credential,
-        force_user_input: bool,
+        request_input: InputPolicy,
     ) -> str:
         value_dict = self.get_multiple(
             prompt="",
             credentials=[credential],
-            force_user_input=force_user_input,
+            request_input=request_input,
         )
         return value_dict[credential]
 

@@ -777,7 +777,7 @@ class TkMessenger(InputMessenger):
     _BOLD_FONT = f"{_NORMAL_FONT} bold"
     _H2_FONT = "Calibri 18 bold"
 
-    def __init__(self, description: str):
+    def __init__(self, title: str, description: str):
         self._mutex = Lock()
         self._close_called = False
         self._is_main_thread_waiting_for_input = False
@@ -785,7 +785,7 @@ class TkMessenger(InputMessenger):
         self._waiting_locks: Set[Lock] = set()
         root_started = Semaphore(0)
         self._gui_thread = Thread(
-            name="TkMessenger", target=lambda: self._run_gui(root_started, description)
+            name="TkMessenger", target=lambda: self._run_gui(title, root_started, description)
         )
         self._gui_thread.start()
         # Wait for the GUI to enter the main loop
@@ -976,7 +976,7 @@ class TkMessenger(InputMessenger):
             )
             self._root_frame.update_scrollregion()
 
-    def _run_gui(self, root_started: Semaphore, description: str):
+    def _run_gui(self, title: str, root_started: Semaphore, description: str):
         # TODO: Make the GUI responsive. I would need to find a way of having
         # the Text widgets fill the width of the screen, which doesn't seem to
         # be available out of the box.
@@ -985,7 +985,7 @@ class TkMessenger(InputMessenger):
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
         self._tk = Tk()
-        self._tk.title("MCR Teardown")
+        self._tk.title(title)
         self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._tk.config(background=self._BACKGROUND_COLOUR)
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)

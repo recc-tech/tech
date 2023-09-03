@@ -6,9 +6,9 @@ from unittest.mock import Mock
 
 import mcr_teardown.tasks as tasks
 from autochecklist.messenger import Messenger
+from common import Credential, CredentialStore, InputPolicy
 from mcr_teardown.boxcast import BoxCastClient, BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
-from mcr_teardown.credentials import Credential, CredentialStore
 
 EVENT_ID = "oajqcyzetaazjvduyqz5"
 BOXCAST_TEST_USERNAME = "tech@riversedge.life"
@@ -21,7 +21,7 @@ class BoxCastTestCase(unittest.TestCase):
         messenger = Mock(spec=Messenger)
         credential_store = CredentialStore(messenger)
         boxcast_username = credential_store.get(
-            Credential.BOXCAST_USERNAME, force_user_input=False
+            Credential.BOXCAST_USERNAME, request_input=InputPolicy.AS_REQUIRED
         )
         if boxcast_username != BOXCAST_TEST_USERNAME:
             cls.error_message = f"Expected the BoxCast username to be '{BOXCAST_TEST_USERNAME}' but found username '{boxcast_username}'. Run python check_credentials.py --force-input to set the correct credentials."
@@ -30,6 +30,7 @@ class BoxCastTestCase(unittest.TestCase):
             BoxCastClientFactory(
                 messenger=Mock(),
                 credential_store=credential_store,
+                cancellation_token=None,
                 headless=True,
                 lazy_login=False,
                 log_directory=None,
@@ -87,7 +88,7 @@ class BoxCastTestCase(unittest.TestCase):
         messenger.reset_mock()
 
         with self.subTest(msg="copy_captions_to_without_worship"):
-            tasks.copy_captions_to_without_worship(config=config, messenger=messenger)
+            tasks.copy_captions_to_without_worship(config=config)
             with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
                 original_captions = f.read()
             with open(
@@ -101,7 +102,7 @@ class BoxCastTestCase(unittest.TestCase):
         messenger.reset_mock()
 
         with self.subTest(msg="copy_captions_to_final"):
-            tasks.copy_captions_to_final(config=config, messenger=messenger)
+            tasks.copy_captions_to_final(config=config)
             with open(
                 config.captions_without_worship_path, mode="r", encoding="utf-8"
             ) as f:

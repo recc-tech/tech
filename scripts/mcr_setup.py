@@ -30,6 +30,7 @@ def main():
         )
         if args.text_ui
         else TkMessenger(
+            title="MCR Setup",
             description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, close this window or the terminal window."
         )
     )
