@@ -6,6 +6,7 @@ import math
 import os
 import signal
 import threading
+import tkinter as tk
 from argparse import ArgumentTypeError
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,9 +16,11 @@ from logging import FileHandler, Handler, StreamHandler
 from pathlib import Path
 from queue import Empty, PriorityQueue
 from threading import Event, Lock, Semaphore, Thread, local
-from tkinter import Canvas, Misc, Text, Tk, Toplevel, messagebox
+from tkinter import Canvas, Menu, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar, Union, cast
+
+import pyperclip  # type: ignore
 
 T = TypeVar("T")
 
@@ -984,6 +987,7 @@ class TkMessenger(InputMessenger):
         self._tk.title("MCR Teardown")
         self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._tk.config(background=self._BACKGROUND_COLOUR)
+        self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
 
         screen_height = self._tk.winfo_screenheight()
         approx_screen_width = 16 * screen_height / 9
@@ -1120,6 +1124,26 @@ class TkMessenger(InputMessenger):
 
         self._tk.after(0, lambda: root_started.release())
         self._tk.mainloop()
+
+    def _show_right_click_menu(self, event: tk.Event[Misc]):
+        menu = Menu(None, tearoff=0)
+        menu.add_command(
+            label="Copy",
+            command=lambda: pyperclip.copy(self._get_selected_text()),  # type: ignore
+            state="normal" if self._get_selected_text() else "disabled",
+        )
+        # TODO: Add more menu options
+        # menu.add_command(label="Cut")
+        # menu.add_command(label="Paste", command=pyperclip.paste)
+        # menu.add_command(label="Open in browser")
+        # menu.add_command(label="Open in text editor")
+        menu.tk_popup(x=event.x_root, y=event.y_root)
+
+    def _get_selected_text(self) -> str:
+        try:
+            return self._tk.selection_get()  # type: ignore
+        except Exception:
+            return ""
 
     def _create_input_window(
         self, title: str, prompt: str, params: Dict[str, Parameter]
