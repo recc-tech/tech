@@ -5,6 +5,7 @@ import logging
 import math
 import os
 import signal
+import subprocess
 import threading
 import tkinter as tk
 from argparse import ArgumentTypeError
@@ -1132,11 +1133,15 @@ class TkMessenger(InputMessenger):
             command=self._right_click_copy,
             state="normal" if self._get_selected_text() else "disabled",
         )
+        menu.add_command(
+            label="Open in Notepad++",
+            command=self._right_click_open_in_notepadpp,
+            state="normal" if self._is_selected_text_a_filename() else "disabled",
+        )
         # TODO: Add more menu options
         # menu.add_command(label="Cut")
         # menu.add_command(label="Paste", command=pyperclip.paste)
         # menu.add_command(label="Open in browser")
-        # menu.add_command(label="Open in text editor")
         menu.tk_popup(x=event.x_root, y=event.y_root)
 
     def _right_click_copy(self):
@@ -1148,7 +1153,31 @@ class TkMessenger(InputMessenger):
         except Exception:
             messagebox.showwarning(  # type: ignore
                 title="Failed to copy",
-                message="An error occurred while trying to copy. Please try again.",
+                message="An error occurred. Please try again.",
+            )
+
+    def _is_selected_text_a_filename(self) -> bool:
+        try:
+            text = self._get_selected_text()
+            if not text:
+                return False
+            path = Path(text)
+            return path.is_file()
+        except:
+            return False
+
+    def _right_click_open_in_notepadpp(self):
+        try:
+            text = self._get_selected_text()
+            if not text:
+                return
+            path = Path(text)
+            if path.is_file():
+                subprocess.run(f'notepad++.exe "{path.as_posix()}"')
+        except Exception:
+            messagebox.showwarning(  # type: ignore
+                title="Failed to open in Notepad++",
+                message="An error occurred. Please try again.",
             )
 
     def _get_selected_text(self) -> str:
