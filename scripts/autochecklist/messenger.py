@@ -1190,6 +1190,9 @@ class TkMessenger(InputMessenger):
 
     def _get_selected_text(self) -> str:
         try:
+            # TODO: the selection doesn't get cleared when you click from one
+            # text box to another :( If you click elsewhere, selection_get
+            # still returns the previously-selected text.
             text = str(self._tk.selection_get())  # type: ignore
             return text
         except Exception:
