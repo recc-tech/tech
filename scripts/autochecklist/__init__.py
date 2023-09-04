@@ -10,6 +10,7 @@ from autochecklist.messenger import (
     CancellationToken,
     ConsoleMessenger,
     FileMessenger,
+    InputMessenger,
     Messenger,
     Parameter,
     ProblemLevel,
