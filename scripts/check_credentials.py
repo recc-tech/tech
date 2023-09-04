@@ -45,15 +45,18 @@ def main():
             ),
         )
 
-        all_logins_succeeded = _try_login_to_vimeo(
-            credential_store=credential_store, messenger=messenger
-        )
-        all_logins_succeeded = all_logins_succeeded and _try_login_to_boxcast(
-            credential_store=credential_store,
-            messenger=messenger,
-            log_dir=log_dir,
-            show_browser=args.show_browser,
-        )
+        all_logins_succeeded = True
+        if "boxcast" in args.credentials:
+            all_logins_succeeded = all_logins_succeeded and _try_login_to_boxcast(
+                credential_store=credential_store,
+                messenger=messenger,
+                log_dir=log_dir,
+                show_browser=args.show_browser,
+            )
+        if "vimeo" in args.credentials:
+            all_logins_succeeded = all_logins_succeeded and _try_login_to_vimeo(
+                credential_store=credential_store, messenger=messenger
+            )
 
         if all_logins_succeeded:
             messenger.log_status(TaskStatus.DONE, "Everything looks good!")
@@ -127,7 +130,6 @@ def _try_login_to_boxcast(
         )
         messenger.log_status(
             TaskStatus.DONE,
-            # TODO: Not only avoid forcing user input, NEVER request user input here
             f"Successfully logged into BoxCast as {credential_store.get(Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER)}",
         )
         return True
@@ -145,13 +147,21 @@ def _try_login_to_boxcast(
 
 def _parse_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
-
-    advanced_args = parser.add_argument_group("Advanced arguments")
-    advanced_args.add_argument(
+    parser.add_argument(
+        "-f",
         "--force-input",
         action="store_true",
         help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
     )
+    parser.add_argument(
+        "-c",
+        "--credentials",
+        action="append",
+        choices=["boxcast", "vimeo"],
+        help="Which credentials to check.",
+    )
+
+    advanced_args = parser.add_argument_group("Advanced arguments")
     advanced_args.add_argument(
         "--home-dir",
         type=parse_directory,
@@ -168,9 +178,12 @@ def _parse_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
-    # TODO: Let the user choose which credentials to check or set
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.credentials:
+        args.credentials = ["boxcast", "vimeo"]
+
+    return args
 
 
 if __name__ == "__main__":
