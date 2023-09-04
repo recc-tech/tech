@@ -47,9 +47,7 @@ class TaskGraph:
         tasks = [task for thread in self._threads for task in thread.tasks]
         sorted_tasks = sorted(tasks, key=lambda t: t.index)
         for task in sorted_tasks:
-            self._messenger.log_status(
-                TaskStatus.NOT_STARTED, "-", task_name=task.name
-            )
+            self._messenger.log_status(TaskStatus.NOT_STARTED, "-", task_name=task.name)
 
         # You cannot join a thread that has not yet started, so the threads
         # must be in the right order
@@ -134,45 +132,49 @@ class _Task:
         """
 
     def run(self):
-        if self._run is None:
+        try:
+            self._run_automatically()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except NotImplementedError:
             self._messenger.log_status(
                 TaskStatus.WAITING_FOR_USER,
                 f"This task is not automated. Requesting user input.",
             )
             self._run_manually()
-        else:
+        except TaskCancelledException:
+            self._messenger.log_status(
+                TaskStatus.WAITING_FOR_USER,
+                f"The task was cancelled by the user. Requesting user input.",
+            )
+            self._run_manually()
+        except BaseException as e:
+            self._messenger.log_problem(
+                ProblemLevel.ERROR,
+                f"An error occurred while trying to complete the task automatically: {e}",
+                stacktrace=traceback.format_exc(),
+            )
+            self._messenger.log_status(
+                TaskStatus.WAITING_FOR_USER,
+                f"The task automation failed. Requesting user input.",
+            )
+            self._run_manually()
+
+    def _run_automatically(self):
+        try:
+            if self._run is None:
+                raise NotImplementedError()
             self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
-            try:
-                self._run()
-                self._messenger.log_status(
-                    TaskStatus.DONE,
-                    f"Task completed automatically.",
-                )
-            except NotImplementedError as e:
-                self._messenger.log_status(
-                    TaskStatus.WAITING_FOR_USER,
-                    f"This task is not fully automated yet. Requesting user input.",
-                )
-                self._run_manually()
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except TaskCancelledException:
-                self._messenger.log_status(
-                    TaskStatus.WAITING_FOR_USER,
-                    f"Task cancelled by the user. Requesting user input.",
-                )
-                self._run_manually()
-            except BaseException as e:
-                self._messenger.log_problem(
-                    ProblemLevel.ERROR,
-                    f"An error occurred while trying to complete the task automatically: {e}",
-                    stacktrace=traceback.format_exc(),
-                )
-                self._messenger.log_status(
-                    TaskStatus.WAITING_FOR_USER,
-                    f"Task automation failed. Requesting user input.",
-                )
-                self._run_manually()
+            self._run()
+            self._messenger.log_status(
+                TaskStatus.DONE,
+                f"Task completed automatically.",
+            )
+        finally:
+            # Disallow cancelling even if there's no task automation just in
+            # case it somehow got enabled by accident (e.g., by another task
+            # using the wrong name)
+            self._messenger.disallow_cancel()
 
     def _run_manually(self):
         self._messenger.disallow_cancel()
