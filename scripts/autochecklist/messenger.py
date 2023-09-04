@@ -785,7 +785,8 @@ class TkMessenger(InputMessenger):
         self._waiting_locks: Set[Lock] = set()
         root_started = Semaphore(0)
         self._gui_thread = Thread(
-            name="TkMessenger", target=lambda: self._run_gui(title, root_started, description)
+            name="TkMessenger",
+            target=lambda: self._run_gui(title, root_started, description),
         )
         self._gui_thread.start()
         # Wait for the GUI to enter the main loop
@@ -998,6 +999,8 @@ class TkMessenger(InputMessenger):
 
         self._root_frame = _ScrollableFrame(self._tk)
 
+        self._right_click_menu = self._create_right_click_menu()
+
         style = Style()
         # TODO: Change button background?
         style.configure(  # type: ignore
@@ -1126,23 +1129,28 @@ class TkMessenger(InputMessenger):
         self._tk.after(0, lambda: root_started.release())
         self._tk.mainloop()
 
-    def _show_right_click_menu(self, event: tk.Event[Misc]):
+    def _create_right_click_menu(self) -> Menu:
         menu = Menu(None, tearoff=0)
+        menu.add_command(label="Copy", command=self._right_click_copy)
         menu.add_command(
-            label="Copy",
-            command=self._right_click_copy,
-            state="normal" if self._get_selected_text() else "disabled",
-        )
-        menu.add_command(
-            label="Open in Notepad++",
-            command=self._right_click_open_in_notepadpp,
-            state="normal" if self._is_selected_text_a_filename() else "disabled",
+            label="Open in Notepad++", command=self._right_click_open_in_notepadpp
         )
         # TODO: Add more menu options
         # menu.add_command(label="Cut")
         # menu.add_command(label="Paste", command=pyperclip.paste)
         # menu.add_command(label="Open in browser")
-        menu.tk_popup(x=event.x_root, y=event.y_root)
+        return menu
+
+    def _show_right_click_menu(self, event: tk.Event[Misc]):
+        self._right_click_menu.entryconfig(
+            "Copy",
+            state="normal" if self._get_selected_text() else "disabled",
+        )
+        self._right_click_menu.entryconfig(
+            "Open in Notepad++",
+            state="normal" if self._is_selected_text_a_filename() else "disabled",
+        )
+        self._right_click_menu.tk_popup(x=event.x_root, y=event.y_root)
 
     def _right_click_copy(self):
         try:
@@ -1182,7 +1190,8 @@ class TkMessenger(InputMessenger):
 
     def _get_selected_text(self) -> str:
         try:
-            return self._tk.selection_get()  # type: ignore
+            text = str(self._tk.selection_get())  # type: ignore
+            return text
         except Exception:
             return ""
 
