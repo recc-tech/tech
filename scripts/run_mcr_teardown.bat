@@ -11,5 +11,3 @@
 CD /D %~dp0
 
 python mcr_teardown.py
-
-PAUSE

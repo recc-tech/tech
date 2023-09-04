@@ -1,5 +1,5 @@
 @ECHO OFF
-@TITLE Generate Slides
+@TITLE Check Credentials
 
 :: In some cases, cmd.exe opens in C:\Windows\System32. The user does not
 :: normally have permission to modify files in that directory, which can cause
@@ -10,4 +10,4 @@
 :: You need to pass the /D flag because the MCR computer uses the D:/ drive.
 CD /D %~dp0
 
-python generate_slides.py %*
+python check_credentials.py %*
