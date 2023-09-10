@@ -138,6 +138,7 @@ class Messenger:
             self._task_manager.set_cancellation_token(actual_task_name, token)
 
         def callback():
+            # TODO: messagebox is not defined
             should_cancel = messagebox.askyesno(  # type: ignore
                 title="Confirm cancel",
                 message="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
