@@ -45,6 +45,9 @@ class InputMessenger:
     ) -> Dict[str, object]:
         raise NotImplementedError()
 
+    def input_bool(self, prompt: str, title: str = "") -> bool:
+        raise NotImplementedError()
+
     def wait(self, task_name: str, index: Optional[int], prompt: str) -> None:
         raise NotImplementedError()
 

@@ -163,6 +163,9 @@ class TkMessenger(InputMessenger):
                 if not self._is_shut_down:
                     w.destroy()
 
+    def input_bool(self, prompt: str, title: str = "") -> bool:
+        return messagebox.askyesno(title, prompt)  # type: ignore
+
     def wait(self, task_name: str, index: Optional[int], prompt: str):
         def handle_done_click(btn: Button):
             btn.configure(state="disabled")

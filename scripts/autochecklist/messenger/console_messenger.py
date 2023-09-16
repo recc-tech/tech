@@ -134,6 +134,22 @@ class ConsoleMessenger(InputMessenger):
             level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
         )
 
+    def input_bool(self, prompt: str, title: str = "") -> bool:
+        def read_input() -> bool:
+            print(f"{prompt} [Y/N]")
+            while True:
+                result = input("> ")
+                if result.lower() in ["y", "yes"]:
+                    return True
+                elif result.lower() in ["n", "no"]:
+                    return False
+                else:
+                    print("Invalid input. Enter 'y' for yes or 'n' for no.")
+
+        return self._worker.submit_input_job(
+            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
+        )
+
     def wait(self, task_name: str, index: Optional[int], prompt: str):
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
