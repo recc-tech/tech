@@ -214,6 +214,11 @@ class TkMessenger(InputMessenger):
             self._quit()
         self._gui_thread.join()
 
+    @property
+    def is_closed(self) -> bool:
+        with self._mutex:
+            return self._is_shut_down
+
     def add_command(
         self, task_name: str, command_name: str, callback: Callable[[], None]
     ) -> None:
@@ -519,8 +524,6 @@ class TkMessenger(InputMessenger):
                 # the window, so there's no need to notify it. But if it hasn't
                 # called close, it's probably not done yet and needs to be
                 # interrupted.
-                #
-                # If an input dialog is open in the main thread,
                 if (
                     not self._close_called
                     and not self._is_main_thread_waiting_for_input

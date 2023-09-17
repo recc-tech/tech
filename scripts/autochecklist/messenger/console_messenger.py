@@ -172,6 +172,10 @@ class ConsoleMessenger(InputMessenger):
     def close(self, wait: bool):
         self._worker.close(finish_existing_jobs=wait)
 
+    @property
+    def is_closed(self) -> bool:
+        return self._worker.is_closed
+
 
 # TODO: Can I *prove* that this is thread-safe and handles cancellation properly?
 # - Notice that, from the moment close() sets self._is_shut_down = True, no new
@@ -317,6 +321,11 @@ class _ConsoleMessengerWorker:
         # could happen if the worker is still trying to write to the console
         # as the program is shutting down.
         self._worker_thread.join()
+
+    @property
+    def is_closed(self) -> bool:
+        with self._lock:
+            return self._is_shut_down
 
     def _run_worker_thread(self):
         try:

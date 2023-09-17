@@ -202,6 +202,10 @@ class Messenger:
         """
         self._input_messenger.close(wait)
 
+    @property
+    def is_closed(self) -> bool:
+        return self._input_messenger.is_closed
+
 
 class CancellationToken:
     def __init__(self):

@@ -59,6 +59,10 @@ class InputMessenger:
     def remove_command(self, task_name: str, command_name: str) -> None:
         raise NotImplementedError()
 
+    @property
+    def is_closed(self) -> bool:
+        raise NotImplementedError()
+
 
 @dataclass
 class Parameter:
@@ -126,9 +130,9 @@ def is_current_thread_main() -> bool:
 
 def interrupt_main_thread():
     os.kill(os.getpid(), signal.CTRL_C_EVENT)
-    # TODO: This is probably just a race condition in the console messenger
     # It seems like the signal isn't delivered until print() is
-    # called! But printing nothing doesn't work.
+    # called, even if the main thread waits for several seconds! But printing
+    # nothing doesn't work.
     print(" ", end="", flush=True)
     # TODO: Should I have this function call taskkill /f as a fallback if
     # close() isn't called within 5 seconds?
