@@ -10,6 +10,7 @@ from urllib.parse import quote_plus
 
 from autochecklist import CancellationToken, Messenger, ProblemLevel
 from common import ReccWebDriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from slides.generate import SlideBlueprint
 
@@ -103,9 +104,13 @@ class BibleVerseFinder:
     def find(self, verse: BibleVerse) -> Optional[str]:
         try:
             self._get_page(verse)
-            paragraphs = self._driver.find_elements(
-                By.XPATH, "//div[@class='passage-text']//p"
-            )
+            by = By.XPATH
+            xpath = "//div[@class='passage-text']//p"
+            paragraphs = self._driver.find_elements(by, xpath)
+            if not paragraphs:
+                raise NoSuchElementException(
+                    f"No elements found for the given criteria (by = {by}, value = '{xpath}')."
+                )
             text = "\n".join([p.get_attribute("innerText") for p in paragraphs])  # type: ignore
             return self._normalize(text)
         except Exception:

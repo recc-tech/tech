@@ -3,11 +3,10 @@ from __future__ import annotations
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, Type, TypeVar
+from typing import Callable, Optional, Tuple, Type, TypeVar
 
 from autochecklist import CancellationToken
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -36,7 +35,7 @@ class ReccWebDriver(WebDriver):
         message: str,
         cancellation_token: Optional[CancellationToken],
         poll_frequency: timedelta = timedelta(seconds=0.5),
-        ignore_exceptions: Optional[Tuple[Type[BaseException]]] = None,
+        ignore_exceptions: Optional[Tuple[Type[BaseException], ...]] = None,
     ) -> T:
         if ignore_exceptions is None:
             ignore_exceptions = tuple()
@@ -107,13 +106,3 @@ class ReccWebDriver(WebDriver):
             raise ValueError(
                 f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
             )
-
-    def find_elements(
-        self, by: str = By.ID, value: Optional[str] = None
-    ) -> List[WebElement]:
-        elements = super().find_elements(by, value)
-        if not elements:
-            raise NoSuchElementException(
-                f"No elements found for the given criteria (by = {by}, value = '{value}')."
-            )
-        return elements
