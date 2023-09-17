@@ -16,7 +16,7 @@ INNER_MARGIN = 25
 FONT_FACE = "calibri.ttf"
 
 
-@dataclass
+@dataclass(frozen=True)
 class SlideBlueprint:
     body_text: str
     footer_text: str

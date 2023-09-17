@@ -2,6 +2,7 @@
 .venv/
 .vscode/
 htmlcov/
-/scripts/test/manual/home/
 /scripts/test/integration/mcr_teardown/test_home/
+/scripts/test/integration/slides/actual_message_blueprints/
+/scripts/test/manual/home/
 __pycache__/

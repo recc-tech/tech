@@ -146,7 +146,6 @@ def get_video_data(
         response_body = response.json()
         response_data = response.json()["data"][0]
         if response_body["total"] < 1 or (
-            # TODO: double-check that we have the right video by also looking at the name or something?
             datetime.now(timezone.utc)
             - datetime.fromisoformat(response_data["created_time"])
             > NEW_VIDEO_TIMEDELTA

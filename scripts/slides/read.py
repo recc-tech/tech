@@ -5,7 +5,7 @@ import re
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
 from autochecklist import CancellationToken, Messenger, ProblemLevel
@@ -34,15 +34,17 @@ class BibleVerse:
         return f"{self.book} {self.chapter}:{self.verse} ({self.translation})"
 
     @staticmethod
-    def parse(text: str) -> Optional[List[BibleVerse]]:
+    def parse(text: str) -> Optional[Tuple[List[BibleVerse], str]]:
         try:
             books_regex = r"(Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1 Samuel|2 Samuel|1 Kings|2 Kings|1 Chronicles|2 Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song of Solomon|Song of Songs|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Marc|Luke|John|Acts|Romans|1 Corinthians|2 Corinthians|Galatians|Ephesians|Philippians|Colossians|1 Thessalonians|2 Thessalonians|1 Timothy|2 Timothy|Titus|Philemon|Hebrews|James|1 Peter|2 Peter|1 John|2 John|3 John|Jude|Revelation|Revelations)"
             chapter_regex = r"(\d\d?\d?)"
             verse_range_regex = r"(?:\d{1,3}(?:-\d{1,3})?)"
             verses_regex = f"({verse_range_regex}(?:,{verse_range_regex})*)"
-            translation_regex = r"(?: \(?([A-Z0-9]{2,8})\)?)?"
+            # All the translations available on BibleGateway as of 2023-09-17
+            translations = "KJ21|ASV|AMP|AMPC|BRG|CSB|CEB|CJB|CEV|DARBY|DLNT|DRA|ERV|EHV|ESV|ESVUK|EXB|GNV|GW|GNT|HCSB|ICB|ISV|PHILLIPS|JUB|KJV|AKJV|LSB|LEB|TLB|MSG|MEV|MOUNCE|NOG|NABRE|NASB|NASB1995|NCB|NCV|NET|NIRV|NIV|NIVUK|NKJV|NLV|NLT|NMB|NRSVA|NRSVACE|NRSVCE|NRSVUE|NTE|OJB|RGT|RSV|RSVCE|TLV|VOICE|WEB|WE|WYC|YLT"
+            translation_regex = r"(?: \(?(" + translations + r")\)?)?"
             verse_regex = re.compile(
-                f"{books_regex} {chapter_regex}:{verses_regex}{translation_regex}",
+                f"{books_regex} {chapter_regex}:{verses_regex}{translation_regex}(.*)",
                 re.IGNORECASE,
             )
 
@@ -54,7 +56,11 @@ class BibleVerse:
             chapter = int(m.group(2))
             verses = BibleVerse._parse_verses(m.group(3))
             translation = "NLT" if m.group(4) is None else m.group(4).upper()
-            return [BibleVerse(book, chapter, v, translation) for v in verses]
+            remaining_text = m.group(5)
+            return (
+                [BibleVerse(book, chapter, v, translation) for v in verses],
+                remaining_text,
+            )
         except Exception:
             return None
 
@@ -173,12 +179,61 @@ class SlideBlueprintReader:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
-        slide_contents = self._split_message_notes(text)
-
+        # The "Slide-" prefix is not used consistently, so just get rid of it
+        text = re.sub(
+            "^(title )?slides? ?- ?", "", text, flags=re.IGNORECASE | re.MULTILINE
+        )
+        text = text.replace("\r\n", "\n")
         blueprints: List[SlideBlueprint] = []
-        for s in slide_contents:
-            blueprints += self._convert_note_to_blueprint(s)
-        return blueprints
+        while text:
+            lines = [x.strip() for x in text.split("\n")]
+            non_empty_lines = [x for x in lines if x]
+            first_line, remaining_lines = non_empty_lines[0], non_empty_lines[1:]
+            text = "\n".join(remaining_lines)
+            parsed_line = BibleVerse.parse(first_line)
+            if parsed_line is None:
+                blueprints.append(
+                    SlideBlueprint(
+                        body_text=first_line,
+                        footer_text="",
+                        name=_convert_text_to_filename(first_line),
+                    )
+                )
+            else:
+                (verses, remaining_line) = parsed_line
+                if remaining_line:
+                    text = f"{remaining_line}\n{text}"
+                blueprint_by_verse = {
+                    v: self._convert_bible_verse_to_blueprint(v) for v in verses
+                }
+                blueprints += blueprint_by_verse.values()
+                # Remove redundant text
+                verse_regexes = [
+                    f'(?:{v.verse})? ?(\\"|“|”)?{re.escape(b.body_text)}(\\"|“|”)?'
+                    for (v, b) in blueprint_by_verse.items()
+                ]
+                full_passage_regex = (
+                    r"\s+".join(verse_regexes).replace("\\ ", " ")
+                    # Allow line breaks between any words. While we're at it,
+                    # allow any other weird whitespace (double spaces, etc.)
+                    # too
+                    .replace(" ", r"(?:\s+)")
+                )
+                text = re.sub(full_passage_regex, "", text)
+        # Duplicate slides suggest there may be a typo in the message notes
+        # In any case, there's no need to generate a slide multiple times
+        firsts: Set[SlideBlueprint] = set()
+        unique_blueprints_in_order: List[SlideBlueprint] = []
+        for b in blueprints:
+            if b in firsts:
+                self._messenger.log_problem(
+                    level=ProblemLevel.WARN,
+                    message=f'The message notes ask for multiple slides with body "{b.body_text}", name "{b.name}", and footer "{b.footer_text}". Is there a typo?',
+                )
+            else:
+                firsts.add(b)
+                unique_blueprints_in_order.append(b)
+        return unique_blueprints_in_order
 
     def load_lyrics(self, file: Path) -> List[SlideBlueprint]:
         with open(file, mode="r", encoding="utf-8") as f:
@@ -227,39 +282,18 @@ class SlideBlueprintReader:
         verses = [v for v in text.split("\n\n") if v]
         return verses
 
-    def _convert_note_to_blueprint(self, note: str) -> List[SlideBlueprint]:
-        bible_verses = BibleVerse.parse(note)
-        if bible_verses is None:
-            return [
-                SlideBlueprint(
-                    body_text=note, footer_text="", name=_convert_text_to_filename(note)
-                )
-            ]
-        else:
-            blueprints: List[SlideBlueprint] = []
-            for v in bible_verses:
-                verse_blueprint = self._convert_bible_verse_to_blueprint(v)
-                if verse_blueprint is None:
-                    default_blueprint = SlideBlueprint(
-                        body_text=str(v),
-                        footer_text="",
-                        name=f"{v.book} {v.chapter} {v.verse} {v.translation}",
-                    )
-                    blueprints.append(default_blueprint)
-                else:
-                    blueprints.append(verse_blueprint)
-            return blueprints
-
-    def _convert_bible_verse_to_blueprint(
-        self, verse: BibleVerse
-    ) -> Optional[SlideBlueprint]:
+    def _convert_bible_verse_to_blueprint(self, verse: BibleVerse) -> SlideBlueprint:
         verse_text = self._bible_verse_finder.find(verse)
         if verse_text is None:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
                 f"'{verse}' looks like a reference to a Bible verse, but the text could not be found.",
             )
-            return None
+            return SlideBlueprint(
+                body_text=str(verse),
+                footer_text="",
+                name=f"{verse.book} {verse.chapter} {verse.verse} {verse.translation}",
+            )
         else:
             return SlideBlueprint(
                 body_text=verse_text,

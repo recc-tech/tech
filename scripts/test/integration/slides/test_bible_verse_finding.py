@@ -14,6 +14,10 @@ class BibleVerseFindingTest(unittest.TestCase):
         #  (2) having a bunch of Firefox windows open is massively memory-intensive
         cls._driver = ReccWebDriver(headless=True, log_file=None)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._driver.close()
+
     def setUp(self):
         self._messenger = mock.Mock()
         # Save this in its own variable to get Pylance to stop complaining that the type is unknown
@@ -22,10 +26,6 @@ class BibleVerseFindingTest(unittest.TestCase):
         self.finder = BibleVerseFinder(
             driver=self._driver, messenger=self._messenger, cancellation_token=None
         )
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls._driver.close()
 
     def test_genesis_1_1_nlt(self):
         # Beginning of a chapter (so BibleGateway shows a large chapter number)
