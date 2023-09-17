@@ -26,6 +26,8 @@ class ReccWebDriver(WebDriver):
             if log_file
             else Service(log_path="NUL")
         )
+        # TODO: This raises "selenium.common.exceptions.WebDriverException: Message: Process unexpectedly closed with status 0,"
+        # but only at church and only the first time!
         super().__init__(options=options, service=service)  # type: ignore
 
     def wait(
