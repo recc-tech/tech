@@ -22,7 +22,14 @@ T = TypeVar("T")
 
 
 class Messenger:
-    """Thread-safe class for logging and user interactions."""
+    """
+    Thread-safe class for logging and user interactions.
+
+    IMPORTANT: It is NOT safe to call any method other than `close` after the
+    main thread receives a CTRL+C event (which normally appears as a
+    `KeyboardInterrupt`). It is possible that the messenger has already
+    received the event and is already in the process of shutting down.
+    """
 
     ROOT_PSEUDOTASK_NAME = "SCRIPT MAIN"
     """Default display name for the main thread."""

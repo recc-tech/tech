@@ -23,15 +23,7 @@ from autochecklist.messenger.input_messenger import (
 T = TypeVar("T")
 
 
-# TODO: Restore log levels so that user can ignore status updates by default?
 class ConsoleMessenger(InputMessenger):
-    """
-    IMPORTANT: It is NOT safe to call any method other than close after the
-    main thread receives a CTRL+C event (which normally appears as a
-    `KeyboardInterrupt`). It is possible that the messenger has already
-    received the event and is already in the process of shutting down.
-    """
-
     def __init__(self, description: str, log_level: int = logging.INFO):
         print(f"{description}\n\n")
 

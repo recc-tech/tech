@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
@@ -40,7 +41,8 @@ def main():
     extended_description = f"{DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.resolve().as_posix()}."
     input_messenger = (
         ConsoleMessenger(
-            f"{extended_description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window."
+            f"{extended_description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+            log_level=logging.INFO if args.verbose else logging.WARN,
         )
         if args.text_ui
         else TkMessenger(
@@ -201,17 +203,25 @@ def _parse_command_line_args() -> Namespace:
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
     advanced_args.add_argument(
+        "--verbose",
+        action="store_true",
+        help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+    )
+    advanced_args.add_argument(
         "--lazy-login",
         action="store_true",
         help="If this flag is provided, then the script will not immediately log in to services like Vimeo and BoxCast. Instead, it will wait until that particular service is specifically requested.",
     )
 
     args = parser.parse_args()
-
     if args.boxcast_event_url:
         args.boxcast_event_id = args.boxcast_event_url
     # For some reason Pylance complains about the del keyword but not delattr
     delattr(args, "boxcast_event_url")
+    if args.verbose and not args.text_ui:
+        parser.error(
+            "The --verbose flag is only applicable when the --text-ui flag is also provided."
+        )
 
     return args
 

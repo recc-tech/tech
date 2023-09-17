@@ -12,7 +12,12 @@ def parse_directory(path_str: str, create: bool = False) -> Path:
     path = Path(path_str)
 
     if create:
-        path.mkdir(exist_ok=True, parents=False)
+        try:
+            path.mkdir(exist_ok=True, parents=False)
+        except FileNotFoundError:
+            raise ArgumentTypeError(
+                f"Path '{path_str}' does not exist and could not be created."
+            ) from FileNotFoundError
 
     if not path.exists():
         message = f"Path '{path_str}' does not exist."

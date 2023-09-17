@@ -1,3 +1,4 @@
+import logging
 import traceback
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -26,12 +27,13 @@ def main():
     file_messenger = FileMessenger(log_file=config.log_file)
     input_messenger = (
         ConsoleMessenger(
-            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, press CTRL+C or close the terminal window."
+            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+            log_level=logging.INFO if args.verbose else logging.WARN,
         )
         if args.text_ui
         else TkMessenger(
             title="MCR Setup",
-            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, close this window or the terminal window."
+            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, close this window or the terminal window.",
         )
     )
     messenger = Messenger(
@@ -107,8 +109,19 @@ def _parse_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
+    advanced_args.add_argument(
+        "--verbose",
+        action="store_true",
+        help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+    )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.verbose and not args.text_ui:
+        parser.error(
+            "The --verbose flag is only applicable when the --text-ui flag is also provided."
+        )
+
+    return args
 
 
 if __name__ == "__main__":

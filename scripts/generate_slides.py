@@ -1,3 +1,4 @@
+import logging
 import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -40,7 +41,10 @@ def main():
     web_driver_log_file = log_dir.joinpath(f"{date_ymd} {current_time} geckodriver.log")
     file_messenger = FileMessenger(log_file)
     input_messenger = (
-        ConsoleMessenger(description=_DESCRIPTION)
+        ConsoleMessenger(
+            description=_DESCRIPTION,
+            log_level=logging.INFO if cmd_args.verbose else logging.WARN,
+        )
         if cmd_args.text_ui
         else TkMessenger(title="Generate Slides", description=_DESCRIPTION)
     )
@@ -160,14 +164,21 @@ def _parse_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
+    advanced_args.add_argument(
+        "--verbose",
+        action="store_true",
+        help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+    )
 
     args = parser.parse_args()
-
     if (args.message_notes or args.lyrics) and args.json_input:
         parser.error("You cannot provide both plaintext input and JSON input.")
-
     if not args.style:
         args.style = [_LOWER_THIRD_DARK_STYLE]
+    if args.verbose and not args.text_ui:
+        parser.error(
+            "The --verbose flag is only applicable when the --text-ui flag is also provided."
+        )
 
     return args
 

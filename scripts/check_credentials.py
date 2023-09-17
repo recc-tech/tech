@@ -1,3 +1,4 @@
+import logging
 import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -26,7 +27,10 @@ def main():
     log_file = log_dir.joinpath(f"{date_ymd} {current_time} check_credentials.log")
     file_messenger = FileMessenger(log_file=log_file)
     input_messenger = (
-        ConsoleMessenger(description=DESCRIPTION)
+        ConsoleMessenger(
+            description=DESCRIPTION,
+            log_level=logging.INFO if args.verbose else logging.WARN,
+        )
         if args.text_ui
         else TkMessenger(title="Check Credentials", description=DESCRIPTION)
     )
@@ -178,10 +182,19 @@ def _parse_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
     )
+    advanced_args.add_argument(
+        "--verbose",
+        action="store_true",
+        help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+    )
 
     args = parser.parse_args()
     if not args.credentials:
         args.credentials = ["boxcast", "vimeo"]
+    if args.verbose and not args.text_ui:
+        parser.error(
+            "The --verbose flag is only applicable when the --text-ui flag is also provided."
+        )
 
     return args
 

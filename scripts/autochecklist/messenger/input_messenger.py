@@ -126,6 +126,7 @@ def is_current_thread_main() -> bool:
 
 def interrupt_main_thread():
     os.kill(os.getpid(), signal.CTRL_C_EVENT)
+    # TODO: This is probably just a race condition in the console messenger
     # It seems like the signal isn't delivered until print() is
     # called! But printing nothing doesn't work.
     print(" ", end="", flush=True)
