@@ -176,6 +176,7 @@ class SlideBlueprintReader:
         self._bible_verse_finder = bible_verse_finder
 
     def load_message_notes(self, file: Path) -> List[SlideBlueprint]:
+        # TODO: Test this with the 2023-09-24 notes; they didn't work great
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
@@ -188,6 +189,9 @@ class SlideBlueprintReader:
         while text:
             lines = [x.strip() for x in text.split("\n")]
             non_empty_lines = [x for x in lines if x]
+            if not non_empty_lines:
+                break
+            # TODO: This raised an IndexError. Test it better?
             first_line, remaining_lines = non_empty_lines[0], non_empty_lines[1:]
             text = "\n".join(remaining_lines)
             parsed_line = BibleVerse.parse(first_line)

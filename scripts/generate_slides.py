@@ -30,6 +30,7 @@ _LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
 
 def main():
+    # TODO: This isn't exiting when everything is done!
     cmd_args = _parse_args()
     output_directory: Path = cmd_args.out_dir
     home_directory: Path = cmd_args.home_dir
