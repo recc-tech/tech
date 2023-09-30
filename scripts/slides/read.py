@@ -23,6 +23,255 @@ SAFE_FILENAME_CHARACTERS = re.compile("^[a-z0-9-_ &,]$", re.IGNORECASE)
 MAX_FILENAME_LEN = 50
 
 
+# region Create list of Bible book names and aliases
+
+_canonical_book_name_dict = {
+    "genesis": "Genesis",
+    "gen": "Genesis",
+    "ge": "Genesis",
+    "gn": "Genesis",
+    "exodus": "Exodus",
+    "ex": "Exodus",
+    "exod": "Exodus",
+    "exo": "Exodus",
+    "leviticus": "Leviticus",
+    "lev": "Leviticus",
+    "le": "Leviticus",
+    "lv": "Leviticus",
+    "numbers": "Numbers",
+    "num": "Numbers",
+    "nu": "Numbers",
+    "nm": "Numbers",
+    "nb": "Numbers",
+    "deuteronomy": "Deuteronomy",
+    "deut": "Deuteronomy",
+    "de": "Deuteronomy",
+    "dt": "Deuteronomy",
+    "joshua": "Joshua",
+    "josh": "Joshua",
+    "jos": "Joshua",
+    "jsh": "Joshua",
+    "judges": "Judges",
+    "judg": "Judges",
+    "jdg": "Judges",
+    "jg": "Judges",
+    "jdgs": "Judges",
+    "ruth": "Ruth",
+    "rth": "Ruth",
+    "ru": "Ruth",
+    # --- Add programmatically ---
+    "ezra": "Ezra",
+    "ezr": "Ezra",
+    "ez": "Ezra",
+    "nehemiah": "Nehemiah",
+    "neh": "Nehemiah",
+    "ne": "Nehemiah",
+    "esther": "Esther",
+    "est": "Esther",
+    "esth": "Esther",
+    "es": "Esther",
+    "job": "Job",
+    "jb": "Job",
+    "psalm": "Psalm",
+    "psalms": "Psalm",
+    "ps": "Psalm",
+    "pslm": "Psalm",
+    "psa": "Psalm",
+    "psm": "Psalm",
+    "pss": "Psalm",
+    "proverbs": "Proverbs",
+    "prov": "Proverbs",
+    "pro": "Proverbs",
+    "prv": "Proverbs",
+    "pr": "Proverbs",
+    "ecclesiastes": "Ecclesiastes",
+    "eccles": "Ecclesiastes",
+    "eccle": "Ecclesiastes",
+    "ecc": "Ecclesiastes",
+    "ec": "Ecclesiastes",
+    "song of solomon": "Song of Solomon",
+    "song": "Song of Solomon",
+    "song of songs": "Song of Solomon",
+    "sos": "Song of Solomon",
+    "so": "Song of Solomon",
+    "canticle of canticles": "Song of Solomon",
+    "canticles": "Song of Solomon",
+    "cant": "Song of Solomon",
+    "isaiah": "Isaiah",
+    "isa": "Isaiah",
+    "is": "Isaiah",
+    "jeremiah": "Jeremiah",
+    "jer": "Jeremiah",
+    "je": "Jeremiah",
+    "jr": "Jeremiah",
+    "lamentations": "Lamentations",
+    "lam": "Lamentations",
+    "la": "Lamentations",
+    "ezekiel": "Ezekiel",
+    "ezek": "Ezekiel",
+    "eze": "Ezekiel",
+    "ezk": "Ezekiel",
+    "daniel": "Daniel",
+    "dan": "Daniel",
+    "da": "Daniel",
+    "dn": "Daniel",
+    "hosea": "Hosea",
+    "hos": "Hosea",
+    "ho": "Hosea",
+    "joel": "Joel",
+    "jl": "Joel",
+    "amos": "Amos",
+    "am": "Amos",
+    "obadiah": "Obadiah",
+    "obad": "Obadiah",
+    "ob": "Obadiah",
+    "jonah": "Jonah",
+    "jnh": "Jonah",
+    "jon": "Jonah",
+    "micah": "Micah",
+    "mic": "Micah",
+    "mc": "Micah",
+    "nahum": "Nahum",
+    "nah": "Nahum",
+    "na": "Nahum",
+    "habakkuk": "Habakkuk",
+    "hab": "Habakkuk",
+    "hb": "Habakkuk",
+    "zephaniah": "Zephaniah",
+    "zeph": "Zephaniah",
+    "zep": "Zephaniah",
+    "zp": "Zephaniah",
+    "haggai": "Haggai",
+    "hag": "Haggai",
+    "hg": "Haggai",
+    "zechariah": "Zechariah",
+    "zech": "Zechariah",
+    "zec": "Zechariah",
+    "zc": "Zechariah",
+    "malachi": "Malachi",
+    "mal": "Malachi",
+    "ml": "Malachi",
+    "matthew": "Matthew",
+    "matt": "Matthew",
+    "mt": "Matthew",
+    "mark": "Mark",
+    "mrk": "Mark",
+    "mar": "Mark",
+    "mk": "Mark",
+    "mr": "Mark",
+    "marc": "Mark",
+    "luke": "Luke",
+    "luk": "Luke",
+    "lk": "Luke",
+    "john": "John",
+    "joh": "John",
+    "jhn": "John",
+    "jn": "John",
+    "acts": "Acts",
+    "act": "Acts",
+    "ac": "Acts",
+    "romans": "Romans",
+    "rom": "Romans",
+    "ro": "Romans",
+    "rm": "Romans",
+    # --- Add programmatically ---
+    "galatians": "Galatians",
+    "gal": "Galatians",
+    "ga": "Galatians",
+    "ephesians": "Ephesians",
+    "eph": "Ephesians",
+    "ephes": "Ephesians",
+    "philippians": "Philippians",
+    "phillipians": "Philippians",
+    "philipians": "Philippians",
+    "phillippians": "Philippians",
+    "phil": "Philippians",
+    "php": "Philippians",
+    "pp": "Philippians",
+    "colossians": "Colossians",
+    "col": "Colossians",
+    "co": "Colossians",
+    # --- Add programmatically ---
+    "titus": "Titus",
+    "tit": "Titus",
+    "ti": "Titus",
+    "philemon": "Philemon",
+    "philem": "Philemon",
+    "phm": "Philemon",
+    "pm": "Philemon",
+    "hebrews": "Hebrews",
+    "heb": "Hebrews",
+    "james": "James",
+    "jas": "James",
+    "jm": "James",
+    # --- Add programmatically ---
+    "jude": "Jude",
+    "jud": "Jude",
+    "Jd": "Jude",
+    "revelation": "Revelation",
+    "revelations": "Revelation",
+    "rev": "Revelation",
+    "re": "Revelation",
+    "the revelation": "Revelation",
+}
+for _first in ["1", "i", "1st", "first"]:
+    for _book in ["samuel", "sam", "sa", "sm", "s"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Samuel"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Samuel"
+    for _book in ["kings", "king", "kgs", "ki", "kin"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Kings"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Kings"
+    for _book in ["chronicles", "chron", "chr", "ch"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Chronicles"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Chronicles"
+    for _book in ["corinthians", "cor", "co"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Corinthians"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Corinthians"
+    for _book in ["thessalonians", "thess", "thes", "th"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Thessalonians"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Thessalonians"
+    for _book in ["timothy", "tim", "ti"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Timothy"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Timothy"
+    for _book in ["peter", "pet", "pe", "pt", "p"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Peter"
+        _canonical_book_name_dict[f"1{_book}"] = "1 Peter"
+    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
+        _canonical_book_name_dict[f"{_first} {_book}"] = "1 John"
+        _canonical_book_name_dict[f"1{_book}"] = "1 John"
+for _second in ["2", "ii", "2nd", "second"]:
+    for _book in ["samuel", "sam", "sa", "sm", "s"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Samuel"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Samuel"
+    for _book in ["kings", "king", "kgs", "ki", "kin"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Kings"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Kings"
+    for _book in ["chronicles", "chron", "chr", "ch"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Chronicles"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Chronicles"
+    for _book in ["corinthians", "cor", "co"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Corinthians"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Corinthians"
+    for _book in ["thessalonians", "thess", "thes", "th"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Thessalonians"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Thessalonians"
+    for _book in ["timothy", "tim", "ti"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Timothy"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Timothy"
+    for _book in ["peter", "pet", "pe", "pt", "p"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Peter"
+        _canonical_book_name_dict[f"2{_book}"] = "2 Peter"
+    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
+        _canonical_book_name_dict[f"{_second} {_book}"] = "2 John"
+        _canonical_book_name_dict[f"2{_book}"] = "2 John"
+for _third in ["3", "iii", "3rd", "third"]:
+    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
+        _canonical_book_name_dict[f"{_third} {_book}"] = "3 John"
+        _canonical_book_name_dict[f"3{_book}"] = "3 John"
+
+# endregion
+
+
 @dataclass(frozen=True)
 class BibleVerse:
     book: str
@@ -30,21 +279,27 @@ class BibleVerse:
     verse: int
     translation: str
 
+    _CANONICAL_BOOK_NAME = _canonical_book_name_dict
+
     def __str__(self) -> str:
         return f"{self.book} {self.chapter}:{self.verse} ({self.translation})"
 
     @staticmethod
     def parse(text: str) -> Optional[Tuple[List[BibleVerse], str]]:
         try:
-            books_regex = r"(Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1 Samuel|2 Samuel|1 Kings|2 Kings|1 Chronicles|2 Chronicles|Ezra|Nehemiah|Esther|Job|Psalm|Psalms|Proverbs|Ecclesiastes|Song of Solomon|Song of Songs|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Marc|Luke|John|Acts|Romans|1 Corinthians|2 Corinthians|Galatians|Ephesians|Philippians|Colossians|1 Thessalonians|2 Thessalonians|1 Timothy|2 Timothy|Titus|Philemon|Hebrews|James|1 Peter|2 Peter|1 John|2 John|3 John|Jude|Revelation|Revelations)"
+            books_regex = (
+                "(" + "|".join(BibleVerse._CANONICAL_BOOK_NAME.keys()) + ")\\.?"
+            )
             chapter_regex = r"(\d\d?\d?)"
             verse_range_regex = r"(?:\d{1,3}(?:-\d{1,3})?)"
             verses_regex = f"({verse_range_regex}(?:,{verse_range_regex})*)"
             # All the translations available on BibleGateway as of 2023-09-17
             translations = "KJ21|ASV|AMP|AMPC|BRG|CSB|CEB|CJB|CEV|DARBY|DLNT|DRA|ERV|EHV|ESV|ESVUK|EXB|GNV|GW|GNT|HCSB|ICB|ISV|PHILLIPS|JUB|KJV|AKJV|LSB|LEB|TLB|MSG|MEV|MOUNCE|NOG|NABRE|NASB|NASB1995|NCB|NCV|NET|NIRV|NIV|NIVUK|NKJV|NLV|NLT|NMB|NRSVA|NRSVACE|NRSVCE|NRSVUE|NTE|OJB|RGT|RSV|RSVCE|TLV|VOICE|WEB|WE|WYC|YLT"
-            translation_regex = r"(?: \(?(" + translations + r")\)?)?"
+            translation_regex = r"(?:\s+\(?(" + translations + r")\)?)?"
             verse_regex = re.compile(
-                f"{books_regex} {chapter_regex}:{verses_regex}{translation_regex}(.*)",
+                f"{books_regex} {chapter_regex}\\s*:\\s*{verses_regex}{translation_regex}(.*)".replace(
+                    " ", r"\s+"
+                ),
                 re.IGNORECASE,
             )
 
@@ -66,15 +321,12 @@ class BibleVerse:
 
     @staticmethod
     def _parse_book(book: str) -> str:
-        if book == "Psalms":
-            book = "Psalm"
-        elif book == "Song of Songs":
-            book = "Song of Solomon"
-        elif book == "Marc":
-            book = "Mark"
-        elif book == "Revelations":
-            book = "Revelation"
-        return book
+        book = book.strip()
+        if book.endswith("."):
+            book = book[:-1]
+        book = re.sub(r"\s+", " ", book)
+        book = book.lower()
+        return BibleVerse._CANONICAL_BOOK_NAME[book]
 
     @staticmethod
     def _parse_verses(raw_verses: str) -> List[int]:
@@ -211,19 +463,22 @@ class SlideBlueprintReader:
                     v: self._convert_bible_verse_to_blueprint(v) for v in verses
                 }
                 blueprints += blueprint_by_verse.values()
-                # Remove redundant text
-                verse_regexes = [
-                    f'(?:{v.verse})? ?(\\"|“|”)?{re.escape(b.body_text)}(\\"|“|”)?'
-                    for (v, b) in blueprint_by_verse.items()
-                ]
-                full_passage_regex = (
-                    r"\s+".join(verse_regexes).replace("\\ ", " ")
-                    # Allow line breaks between any words. While we're at it,
-                    # allow any other weird whitespace (double spaces, etc.)
-                    # too
-                    .replace(" ", r"(?:\s+)")
-                )
-                text = re.sub(full_passage_regex, "", text)
+                # Remove redundant text (e.g., verse text following verse
+                # reference)
+                for v, b in blueprint_by_verse.items():
+                    # Trailing punctuation is often omitted or changed
+                    has_trailing_punctuation = b.body_text[-1] in [",", "."]
+                    body_regex = (
+                        re.escape(b.body_text[:-1]) + r"(\.|,)?"
+                        if has_trailing_punctuation
+                        else re.escape(b.body_text)
+                    )
+                    regex = f'(?:{v.verse})? ?(\\"|“|”)?{body_regex}(\\"|“|”)?'.replace(
+                        r"\ ", " "
+                    ).replace(
+                        " ", r"(?:\s+)"
+                    )
+                    text = re.sub(regex, "", text)
         # Duplicate slides suggest there may be a typo in the message notes
         # In any case, there's no need to generate a slide multiple times
         firsts: Set[SlideBlueprint] = set()

@@ -25,14 +25,9 @@ class BibleVerseParsingTest(unittest.TestCase):
         )
 
     def test_psalm_119_176(self):
-        self.assertEqual(
-            BibleVerse.parse("Psalm 119:176 (NLT)"),
-            ([BibleVerse("Psalm", 119, 176, "NLT")], ""),
-        )
-        self.assertEqual(
-            BibleVerse.parse("Psalms 119:176 NLT"),
-            ([BibleVerse("Psalm", 119, 176, "NLT")], ""),
-        )
+        expected = ([BibleVerse("Psalm", 119, 176, "NLT")], "")
+        self.assertEqual(BibleVerse.parse("Psalm 119:176 (NLT)"), expected)
+        self.assertEqual(BibleVerse.parse("Psalms 119:176 NLT"), expected)
 
     def test_song_of_solomon_1_1(self):
         self.assertEqual(
@@ -47,8 +42,14 @@ class BibleVerseParsingTest(unittest.TestCase):
     def test_2kings_2_23(self):
         self.assertEqual(
             BibleVerse.parse("2 kings 2:23 (kjv)"),
-            ([BibleVerse("2 kings", 2, 23, "KJV")], ""),
+            ([BibleVerse("2 Kings", 2, 23, "KJV")], ""),
         )
+
+    def test_deuteronomy_11_31(self):
+        expected = ([BibleVerse("Deuteronomy", 11, 31, "NLT")], "")
+        self.assertEqual(BibleVerse.parse("Deuteronomy 11:31 (NLT)"), expected)
+        self.assertEqual(BibleVerse.parse("Deut 11:31 NLT"), expected)
+        self.assertEqual(BibleVerse.parse("deut. 11:31 NLT"), expected)
 
     def test_consecutive_verses(self):
         self.assertEqual(
