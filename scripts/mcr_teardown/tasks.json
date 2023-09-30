@@ -1,5 +1,5 @@
 {
-	"_comment": "For more information about the format of this file, see [TODO: update docs].",
+	"_comment": "For more information about the format of this file, see README.md in the autochecklist package.",
 	"name": "mcr_teardown",
 	"subtasks": [
 		{
