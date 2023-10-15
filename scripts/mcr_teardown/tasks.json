@@ -176,6 +176,10 @@
 				{
 					"name": "turn_off_ndi_controller",
 					"description": "Turn off the NDI controller."
+				},
+				{
+					"name": "turn_off_cam4",
+					"description": "Turn off camera 4 (the camera on the tripod)."
 				}
 			]
 		},
