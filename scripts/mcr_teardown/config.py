@@ -50,7 +50,7 @@ class McrTeardownConfig(BaseConfig):
 
     @property
     def rebroadcast_setup_url(self) -> str:
-        return f"https://dashboard.boxcast.com/#/new-event?streamSource=recording&sourceBroadcastId={self.boxcast_event_id}"
+        return f"https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId={self.boxcast_event_id}"
 
     @property
     def boxcast_edit_captions_url(self) -> str:

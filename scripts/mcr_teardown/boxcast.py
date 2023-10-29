@@ -7,10 +7,17 @@ from pathlib import Path
 from typing import Optional
 
 import autochecklist
-from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
+from autochecklist import (
+    CancellationToken,
+    Messenger,
+    ProblemLevel,
+    TaskStatus,
+    sleep_attentively,
+)
 from common import Credential, CredentialStore, InputPolicy, ReccWebDriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.select import Select
 
@@ -123,12 +130,12 @@ class BoxCastClient(ReccWebDriver):
             cancellation_token=cancellation_token,
             timeout=timedelta(seconds=10),
         )
-        email_textbox.send_keys(username)  # type: ignore
+        _send_keys(email_textbox, username)
 
         password_textbox = self.wait_for_single_element(
             By.ID, "password", cancellation_token=cancellation_token
         )
-        password_textbox.send_keys(password)  # type: ignore
+        _send_keys(password_textbox, password)
 
         login_button = self.wait_for_single_element(
             By.XPATH,
@@ -186,7 +193,6 @@ class BoxCastClientFactory:
             )
 
 
-# TODO: Use the new BoxCast UI
 def export_to_vimeo(
     client: BoxCastClient,
     event_url: str,
@@ -200,7 +206,7 @@ def export_to_vimeo(
         cancellation_token=cancellation_token,
         timeout=timedelta(minutes=60),
     )
-    download_or_export_button.click()  # type: ignore
+    download_or_export_button.click()
 
     vimeo_tab = client.wait_for_single_element(
         By.XPATH,
@@ -214,7 +220,7 @@ def export_to_vimeo(
         "//label[contains(., 'Export as User')]",
         cancellation_token=cancellation_token,
     )
-    user_dropdown_id = user_dropdown_label.get_attribute("for")  # type: ignore
+    user_dropdown_id = _get_attribute(user_dropdown_label, "for")
 
     user_dropdown = client.wait_for_single_element(
         By.XPATH,
@@ -246,7 +252,7 @@ def download_captions(
         cancellation_token=cancellation_token,
         timeout=timedelta(minutes=60),
     )
-    download_captions_button.click()  # type: ignore
+    download_captions_button.click()
     vtt_download_button = client.wait_for_single_element(
         By.XPATH,
         "//button[contains(., 'WebVTT File (.vtt)')]",
@@ -282,7 +288,7 @@ def upload_captions_to_boxcast(
         cancellation_token=cancellation_token,
         timeout=timedelta(seconds=10),
     )
-    settings_button.click()  # type: ignore
+    settings_button.click()
 
     replace_captions_option = client.wait_for_single_element(
         By.XPATH,
@@ -297,7 +303,7 @@ def upload_captions_to_boxcast(
         cancellation_token=cancellation_token,
         clickable=False,
     )
-    file_input.send_keys(str(file_path))  # type: ignore
+    _send_keys(file_input, file_path.as_posix())
 
     submit_button = client.wait_for_single_element(
         By.XPATH,
@@ -305,10 +311,9 @@ def upload_captions_to_boxcast(
         cancellation_token=cancellation_token,
         timeout=timedelta(seconds=10),
     )
-    submit_button.click()  # type: ignore
+    submit_button.click()
 
 
-# TODO: Use the new BoxCast UI
 def create_rebroadcast(
     rebroadcast_setup_url: str,
     source_broadcast_title: str,
@@ -326,74 +331,13 @@ def create_rebroadcast(
         cancellation_token,
     )
 
-    try:
-        _select_quick_entry_mode(client, messenger)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to check that the entry mode is 'Quick Entry': {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
     _set_event_name(rebroadcast_title, client, cancellation_token)
 
-    try:
-        _clear_event_description(client, cancellation_token)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to clear event description: {e}",
-            stacktrace=traceback.format_exc(),
-        )
+    # TODO: Check other things like event date, description, etc?
+    # I don't see a way to set the value of the date input once I located it.
+    # clear() and send_keys() just bring up the graphical date picker :(
 
-    try:
-        _set_event_start_date(
-            start_datetime.strftime("%m/%d/%Y"), client, cancellation_token
-        )
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to set event start date: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
-    _set_event_start_time(start_datetime.strftime("%H:%M"), client, cancellation_token)
-
-    try:
-        _make_event_non_recurring(client, cancellation_token)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to check that the rebroadcast is non-recurring: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
-    try:
-        _make_event_public(client, cancellation_token)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to check that the rebroadcast is public: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
-    try:
-        _clear_broadcast_destinations(client)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to check that there are no other destinations for this rebroadcast: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
-    try:
-        _show_advanced_settings(client, cancellation_token)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to show the advanced settings: {e}",
-            stacktrace=traceback.format_exc(),
-        )
+    _set_event_start_time(start_datetime, client, cancellation_token)
 
     try:
         _make_event_not_recorded(client, cancellation_token)
@@ -441,16 +385,15 @@ def _get_rebroadcast_page(
     Get the rebroadcast page and wait until the source broadcast is available.
     """
     retry_seconds = 60
-    while True:
+    max_retries = 60
+    for _ in range(max_retries):
         client.get(rebroadcast_setup_url, cancellation_token)
-
-        source_broadcast_element = client.wait_for_single_element(
-            By.TAG_NAME,
-            "recording-source-chooser",
-            cancellation_token=cancellation_token,
-            timeout=timedelta(seconds=10),
-        )
-        if "Source Broadcast Unavailable" in source_broadcast_element.text:
+        # Give the page a moment to load
+        sleep_attentively(timedelta(seconds=5), cancellation_token=cancellation_token)
+        by = By.XPATH
+        value = f"//a[contains(., '{expected_source_name}')]"
+        elements = client.find_elements(by, value)
+        if not elements:
             messenger.log_status(
                 TaskStatus.RUNNING,
                 f"The source broadcast is not yet available as of {datetime.now().strftime('%H:%M:%S')}. Retrying in {retry_seconds} seconds.",
@@ -458,7 +401,7 @@ def _get_rebroadcast_page(
             autochecklist.sleep_attentively(
                 timedelta(seconds=retry_seconds), cancellation_token
             )
-        elif expected_source_name in source_broadcast_element.text:
+        elif len(elements) == 1:
             messenger.log_status(
                 TaskStatus.RUNNING,
                 "Rebroadcast page loaded: source broadcast is as expected.",
@@ -466,128 +409,86 @@ def _get_rebroadcast_page(
             return
         else:
             raise ValueError(
-                "Unable to determine whether the source broadcast is available."
+                f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
             )
-
-
-def _select_quick_entry_mode(client: BoxCastClient, messenger: Messenger):
-    quick_entry_links = client.find_elements(
-        By.XPATH, "//a[contains(., 'Quick Entry')]"
+    raise ValueError(
+        f"The rebroadcast setup page did not load within {max_retries} attempts."
     )
-    wizard_links = client.find_elements(By.XPATH, "//a[contains(., 'Wizard')]")
-
-    if len(quick_entry_links) == 0 and len(wizard_links) == 1:
-        messenger.log_debug("Already in 'Quick Entry' mode.")
-    elif len(quick_entry_links) == 1 and len(wizard_links) == 0:
-        messenger.log_debug(
-            "Currently in 'Wizard' mode. Switching to 'Quick Entry' mode.",
-        )
-        quick_entry_links[0].click()
-    elif len(quick_entry_links) == 0 and len(wizard_links) == 0:
-        raise ValueError("Could not determine entry mode because no links were found.")
-    elif len(quick_entry_links) == 1 and len(wizard_links) == 1:
-        raise ValueError(
-            "Could not determine entry mode because links were found for both 'Quick Entry' and 'Wizard' modes."
-        )
-    else:
-        raise ValueError(
-            "Could not determine entry mode because there is more than one link containing 'Quick Entry' or more than one link containing 'Wizard'."
-        )
 
 
 def _set_event_name(
     name: str, client: BoxCastClient, cancellation_token: CancellationToken
 ):
-    broadcast_name_textbox = client.wait_for_single_element(
-        By.ID, "eventName", cancellation_token=cancellation_token
-    )
-    broadcast_name_textbox.clear()
-    broadcast_name_textbox.send_keys(name)  # type: ignore
-
-
-def _clear_event_description(
-    client: BoxCastClient, cancellation_token: CancellationToken
-):
-    description_textbox = client.wait_for_single_element(
-        By.ID, "eventDescription", cancellation_token=cancellation_token
-    )
-    description_textbox.clear()
-
-
-def _set_event_start_date(
-    date: str, client: BoxCastClient, cancellation_token: CancellationToken
-):
-    start_date_input = client.wait_for_single_element(
+    name_label = client.wait_for_single_element(
         By.XPATH,
-        "//label[contains(., 'Start Date')]/..//input",
+        "//label[contains(., 'Broadcast Name')]",
         cancellation_token=cancellation_token,
     )
-    start_date_input.clear()
-    start_date_input.send_keys(date)  # type: ignore
+    name_input = client.wait_for_single_element(
+        By.ID,
+        _get_attribute(name_label, "for"),
+        cancellation_token=cancellation_token,
+    )
+    name_input.clear()
+    _send_keys(name_input, name)
 
 
 def _set_event_start_time(
-    time: str, client: BoxCastClient, cancellation_token: CancellationToken
+    start_datetime: datetime,
+    client: BoxCastClient,
+    cancellation_token: CancellationToken,
 ):
+    time_12h = start_datetime.strftime("%I:%M %p")
+    # BoxCast removes leading 0, so we need to as well when comparing the
+    # expected and actual values
+    if time_12h.startswith("0"):
+        time_12h = time_12h[1:]
+
     start_time_input = client.wait_for_single_element(
         By.XPATH,
-        "//label[contains(., 'Start Time')]/..//input",
+        "//div[@id='schedule-date-time-starts-at']//input",
         cancellation_token=cancellation_token,
     )
-    start_time_input.clear()
-    start_time_input.send_keys(time)  # type: ignore
-
-
-def _make_event_non_recurring(
-    client: BoxCastClient, cancellation_token: CancellationToken
-):
-    recurring_broadcast_checkbox = client.wait_for_single_element(
-        By.XPATH,
-        "//recurrence-pattern[contains(., 'Make This a Recurring Broadcast')]//i",
-        cancellation_token=cancellation_token,
-    )
-    _set_checkbox_checked(recurring_broadcast_checkbox, False)
-
-
-def _make_event_public(client: BoxCastClient, cancellation_token: CancellationToken):
-    broadcast_public_button = client.wait_for_single_element(
-        By.XPATH,
-        "//label[contains(text(), 'Broadcast Type')]/..//label[contains(., 'Public')]",
-        cancellation_token=cancellation_token,
-    )
-    broadcast_public_button.click()
-
-
-def _clear_broadcast_destinations(client: BoxCastClient):
-    # TODO
-    raise NotImplementedError("This operation is not yet implemented.")
-
-
-def _show_advanced_settings(
-    client: BoxCastClient, cancellation_token: CancellationToken
-):
-    advanced_settings_elem = client.wait_for_single_element(
-        By.XPATH,
-        "//a[contains(., 'Advanced Settings')]",
-        cancellation_token=cancellation_token,
-    )
-    if "Show Advanced Settings" in advanced_settings_elem.text:
-        advanced_settings_elem.click()
-    elif "Hide Advanced Settings" in advanced_settings_elem.text:
-        pass
-    else:
-        raise ValueError("Could not find link to reveal advanced settings.")
+    # Time should normally not be longer than 8 characters, but use large
+    # safety margin because hitting backspace should be quick
+    for _ in range(100):
+        if not _get_attribute(start_time_input, "value"):
+            break
+        _send_keys(start_time_input, Keys.BACKSPACE)
+    if _get_attribute(start_time_input, "value"):
+        raise ValueError("Failed to clear the start time input.")
+    _send_keys(start_time_input, time_12h)
+    # Move focus away from the input element and then check that the value was
+    # accepted and not ignored
+    _send_keys(start_time_input, Keys.TAB)
+    actual_value = _get_attribute(start_time_input, "value")
+    if actual_value != time_12h:
+        raise ValueError(
+            f"Failed to set time: tried to write '{time_12h}' but the input's actual value is '{actual_value}'."
+        )
 
 
 def _make_event_not_recorded(
     client: BoxCastClient, cancellation_token: CancellationToken
 ):
-    record_broadcast_checkbox = client.wait_for_single_element(
+    recording_options_button = client.wait_for_single_element(
         By.XPATH,
-        "//label[contains(., 'Record Broadcast')]//i[1]",
+        "//button[contains(., 'Recording Options')]",
         cancellation_token=cancellation_token,
     )
-    _set_checkbox_checked(record_broadcast_checkbox, False)
+    recording_options_button.click()
+    record_broadcast_label = client.wait_for_single_element(
+        By.XPATH,
+        "//label[contains(., 'Record Broadcast')]",
+        cancellation_token=cancellation_token,
+    )
+    record_broadcast_checkbox = client.wait_for_single_element(
+        By.ID,
+        _get_attribute(record_broadcast_label, "for"),
+        cancellation_token=cancellation_token,
+    )
+    if _get_attribute(record_broadcast_checkbox, "checked") == "true":
+        record_broadcast_checkbox.click()
 
 
 def _press_schedule_broadcast_button(
@@ -601,17 +502,11 @@ def _press_schedule_broadcast_button(
     submit_button.click()
 
 
-def _set_checkbox_checked(checkbox: WebElement, should_check: bool):
-    html_class = checkbox.get_attribute("class")  # type: ignore
+def _get_attribute(element: WebElement, name: str) -> str:
+    # Use this helper to avoid having to turn off Pyright everywhere
+    return element.get_attribute(name)  # type: ignore
 
-    if "fa-check-square-o" in html_class:
-        already_checked = True
-    elif "fa-square-o" in html_class:
-        already_checked = False
-    else:
-        raise ValueError(
-            "Could not determine whether or not checkbox is currently checked."
-        )
 
-    if should_check != already_checked:
-        checkbox.click()
+def _send_keys(element: WebElement, keys: str):
+    # Use this helper to avoid having to turn off Pyright everywhere
+    element.send_keys(keys)  # type: ignore
