@@ -431,9 +431,10 @@ class SlideBlueprintReader:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
-        # The "Slide-" prefix is not used consistently, so just get rid of it
+        # Prefixes like "-", "Slide-", and "Title Slide -" are not used
+        # consistently, so just get rid of them
         text = re.sub(
-            "^(title )?slides? ?- ?", "", text, flags=re.IGNORECASE | re.MULTILINE
+            r"^((title )?slides?)?\s*-\s*", "", text, flags=re.IGNORECASE | re.MULTILINE
         )
         text = text.replace("\r\n", "\n")
         blueprints: List[SlideBlueprint] = []
