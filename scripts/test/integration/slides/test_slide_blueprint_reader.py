@@ -35,7 +35,9 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         #  - 2023-09-03: The text of Exodus 33:14 is copied incorrectly (e.g.,
         #    the message notes say "[...] go with you, and [...]" instead of
         #    "[...] go with you, Moses, and [...]").
-        #  - 2023-09-03: The Paul Heintzman quote spans multiple lines.
+        #  - 2023-09-03: The Paul Heintzman quote spans multiple lines. The
+        #    citation also starts with a hyphen, but those are removed (see the
+        #    2023-10-15 and 2023-10-22 notes).
         #  - 2023-09-10: The notes incorrectly cite Genesis 24:4 NLT twice but
         #    include the text for Genesis 24:7-8 the second time.
         #  - 2023-10-22: The slide "If you want someone [...]" uses "than"
