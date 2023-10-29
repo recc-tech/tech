@@ -38,6 +38,8 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         #  - 2023-09-03: The Paul Heintzman quote spans multiple lines.
         #  - 2023-09-10: The notes incorrectly cite Genesis 24:4 NLT twice but
         #    include the text for Genesis 24:7-8 the second time.
+        #  - 2023-10-22: The slide "If you want someone [...]" uses "than"
+        #    instead of "then" and is split across two lines for some reason.
         log_problem_mock = Mock()
         messenger = create_autospec(Messenger)
         messenger.log_problem = log_problem_mock
