@@ -7,6 +7,10 @@ assignees: recc-tech
 
 Documentation can become outdated if we don't maintain it. Below is a checklist for reviewing the documentation and weekly checklists.
 
+> 💡 Note 💡
+>
+> The [mlc](https://github.com/becheran/mlc) command can be used to scan for dead links. It may be a good idea to set up automated checks for this in the future.
+
 ## For Each Article in the Wiki
 
 Check that:
