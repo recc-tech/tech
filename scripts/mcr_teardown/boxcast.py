@@ -303,7 +303,9 @@ def upload_captions_to_boxcast(
         cancellation_token=cancellation_token,
         clickable=False,
     )
-    _send_keys(file_input, file_path.as_posix())
+    # Don't send file_path.as_posix(), otherwise BoxCast won't find the file
+    # for some reason
+    _send_keys(file_input, str(file_path))
 
     submit_button = client.wait_for_single_element(
         By.XPATH,
