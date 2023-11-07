@@ -9,35 +9,39 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 ## Setup
 
-- [ ] Turn on both projectors and make sure ProPresenter has the audience screen activated.
+- Turn things on:
+    - [ ] Turn on both projectors and make sure they're lined up properly.
+    - [ ] Make sure ProPresenter has the audience screen activated.
 - [ ] Download any new media from Planning Center Online. Move the files to `/Users/visuals/Documents/ProPresenter Assets`.
-- [ ] Set up the playlist according to the plan on Planning Center Online.
-    - [ ] Walk-in slides
-    - [ ] Videos
-    - [ ] MC welcome, announcements, and goodbye slides
+- Set up the playlist according to the plan on Planning Center Online.
     - [ ] Worship and reprise
+        - Make sure you have the "No NDI" look on the background loops.
     - [ ] Message
-- [ ] Look for special events on Planning Center Online (e.g., special announcements or videos).
+        - Make sure to use the right translation for scripture. _NOTE:_ in ProPresenter, you must set the translation first and then enter the book, chapter, and verses.
+    - [ ] Walk-in slides
+        - Make sure each slide has its "Go to Next Timer" set to five seconds and that the last one loops back to the beginning.
+    - [ ] MC welcome, announcements, and goodbye slides
+        - Make sure there's no "Go to Next Timer" for these slides.
+    - [ ] Videos
+    - [ ] For each slide, make sure you use the correct look:
+        - "Lyrics" for song lyrics
+        - "Scripture" for Bible verses
+        - "Message" for the sermon notes
+        - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
+- [ ] Look for special events in the plan on Planning Center Online (e.g., special presentations or videos).
 - [ ] Look for special requests (e.g., custom lyrics, scripture before worship) at tech@riversedge.life.
-
-## Checks
-
-- [ ] Check that all slides have the correct looks.
-    - All lyrics should have the lyrics look, scripture should have the scripture look, message notes should have the message notes look, and everything else (especially the background loop at the beginning of each song) should have the "No NDI" look.
-- [ ] Check that all slides look good on the projector and on NDI.
-- [ ] Check that the walk-in slides have their "Go to Next Timer" set to five seconds and that the last one loops back to the beginning.
-- [ ] Check that the MC announcement slides do _not_ have a "Go to Next Timer."
-- [ ] Check that the verses have the right translation.
-- [ ] If you have time, remove walk-in slides and MC announcements that are definitely outdated.
-- [ ] Check that the red light is off and the stage lights are on.
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
-- [ ] Check that the screens are level and that the projectors are lined up properly.
-
-## Start
-
+- [ ] Turn off the red light and the stage lights.
 - [ ] Play some music from Spotify.
 - [ ] Show the walk-in slides.
 - [ ] Turn on NDI Video Monitor and select NDI > Desktop-D9Q3BCP > vMix - Output 1.
+
+## Checks
+
+If you have time, check these things.
+
+- [ ] Check that all slides look good on the projector and on NDI (e.g., the text isn't too small).
+- [ ] Remove walk-in slides and MC announcements that are definitely outdated.
 
 ## General Reminders
 
@@ -45,4 +49,3 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - Lower MASTER LEVEL to 0 when a video is played and raise it back to 10 afterwards.
     - Lower CROSSFADERS Y to about 5 when the speaker reads scripture and raise it back to 10 afterwards.
 - If the speaker goes over time, flash the red light a few times and then leave it on.
- 
