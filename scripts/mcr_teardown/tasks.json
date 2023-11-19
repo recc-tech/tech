@@ -167,7 +167,7 @@
 				},
 				{
 					"name": "turn_off_cams",
-					"description": "Turn off camera 4 (the camera on the tripod) and camera 5 (the small camera on stage)."
+					"description": "Turn off camera 4 (the camera on the tripod)."
 				}
 			]
 		},
