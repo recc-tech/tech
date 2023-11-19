@@ -17,3 +17,5 @@ Note the following important files:
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Install the required external libraries by running `pip install -r requirements.txt`
+3. Set up the computer to run `run_scripts_update.bat` on startup.
+4. Create a desktop shortcut for each .bat file.
