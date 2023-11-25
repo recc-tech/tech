@@ -4,4 +4,5 @@
 :: You need to pass the /D flag because the MCR computer uses the D:/ drive.
 CD /D %~dp0
 
-python mcr_setup.py %*
+:: Start the command without a terminal window
+start pythonw mcr_setup.pyw

@@ -10,4 +10,5 @@
 :: You need to pass the /D flag because the MCR computer uses the D:/ drive.
 CD /D %~dp0
 
-python generate_slides.py %*
+:: Start the command without a terminal window
+start pythonw generate_slides.pyw
