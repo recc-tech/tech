@@ -13,7 +13,12 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import ReccWebDriver, parse_directory, parse_file
+from common import (
+    ReccWebDriver,
+    parse_directory,
+    parse_file,
+    run_with_or_without_terminal,
+)
 from slides import (
     BibleVerseFinder,
     Slide,
@@ -303,7 +308,6 @@ def _save_slides(slides: List[Slide], output_directory: Path, messenger: Messeng
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\nProgram cancelled.")
+    run_with_or_without_terminal(
+        main, error_file=Path(__file__).parent.joinpath("error.log")
+    )
