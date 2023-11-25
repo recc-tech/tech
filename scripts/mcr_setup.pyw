@@ -14,7 +14,7 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common.parsing_helpers import parse_directory
+from common import parse_directory, run_with_or_without_terminal
 from mcr_setup.config import McrSetupConfig
 
 _DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
@@ -125,4 +125,6 @@ def _parse_args() -> Namespace:
 
 
 if __name__ == "__main__":
-    main()
+    run_with_or_without_terminal(
+        main, error_file=Path(__file__).parent.joinpath("error.log")
+    )

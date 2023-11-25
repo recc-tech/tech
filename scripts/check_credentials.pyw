@@ -12,7 +12,13 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import Credential, CredentialStore, InputPolicy, parse_directory
+from common import (
+    Credential,
+    CredentialStore,
+    InputPolicy,
+    parse_directory,
+    run_with_or_without_terminal,
+)
 from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
 
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask the user to enter any missing or incorrect ones if necessary."
@@ -200,4 +206,6 @@ def _parse_args() -> Namespace:
 
 
 if __name__ == "__main__":
-    main()
+    run_with_or_without_terminal(
+        main, error_file=Path(__file__).parent.joinpath("error.log")
+    )

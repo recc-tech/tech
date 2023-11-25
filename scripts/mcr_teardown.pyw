@@ -20,7 +20,12 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import CredentialStore, parse_directory, parse_non_empty_string
+from common import (
+    CredentialStore,
+    parse_directory,
+    parse_non_empty_string,
+    run_with_or_without_terminal,
+)
 from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
 
 # TODO: Test the BoxCast code by turning off the WiFi after loading the page.
@@ -285,4 +290,6 @@ def _parse_boxcast_event_url(event_url: str) -> str:
 
 
 if __name__ == "__main__":
-    main()
+    run_with_or_without_terminal(
+        main, error_file=Path(__file__).parent.joinpath("error.log")
+    )
