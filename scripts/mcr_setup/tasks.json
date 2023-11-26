@@ -101,7 +101,7 @@
 		},
 		{
 			"name": "publish_sermon_notes",
-			"description": "Publish the sermon notes, first to the main event, then to the rebroadcast events on Church Online Platform. IMPORTANT: check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time).",
+			"description": "Publish the sermon notes to Church Online Platform, first to the main event, then to the rebroadcast events. IMPORTANT: check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time).",
 			"prerequisites": [
 				"download_assets",
 				"check_cop_events"
@@ -119,8 +119,7 @@
 				},
 				{
 					"name": "set_up_in_annex",
-					"description": "Copy the kids video to the laptop and set up the laptop and TV in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly.",
-					"prerequisites": []
+					"description": "Copy the kids video to the laptop and set up the laptop and TV in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly."
 				},
 				{
 					"name": "start_recording",
@@ -128,10 +127,6 @@
 					"prerequisites": [
 						"start_stream"
 					]
-				},
-				{
-					"name": "follow_planning_center_plan",
-					"description": "On Planning Center Online, open the live view of today's plan."
 				}
 			]
 		},
@@ -188,6 +183,13 @@
 				"check_live_feeds",
 				"save_vmix_preset",
 				"publish_sermon_notes"
+			]
+		},
+		{
+			"name": "follow_planning_center_plan",
+			"description": "On Planning Center Online, open the live view of today's plan.",
+			"prerequisites": [
+				"turn_everything_on"
 			]
 		}
 	]
