@@ -1,5 +1,5 @@
 {
-	"_comment": "For more information about the format of this file, see README.md in the autochecklist package..",
+	"_comment": "For more information about the format of this file, see README.md in the autochecklist package.",
 	"name": "mcr_setup",
 	"subtasks": [
 		{
@@ -14,19 +14,44 @@
 					"description": "Turn on the sound computer."
 				},
 				{
-					"name": "open_vmix",
-					"description": "Open last week's preset in vMix."
-				},
-				{
-					"name": "turn_on_external_output",
-					"description": "Turn on both monitors in the MCR and activate the external output in vMix.",
-					"prerequisites": [
-						"open_vmix"
-					]
+					"name": "activate_external_output",
+					"description": "Open last week's preset in vMix, turn on both monitors, and activate the external output in vMix."
 				},
 				{
 					"name": "turn_on_ndi_controller",
 					"description": "Turn on the NDI controller."
+				}
+			]
+		},
+		{
+			"name": "check_streaming_platforms",
+			"prerequisites": [
+				"turn_everything_on"
+			],
+			"subtasks": [
+				{
+					"name": "check_cop_events",
+					"description": "Check that the main event and rebroadcast events have been created *and have content*. If not, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform."
+				},
+				{
+					"name": "check_boxcast_events",
+					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If the events are not set up properly, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast."
+				}
+			]
+		},
+		{
+			"name": "check_live_feeds",
+			"prerequisites": [
+				"turn_everything_on"
+			],
+			"subtasks": [
+				{
+					"name": "check_cameras",
+					"description": "Check the cameras. If any of the band members are in a bad position (e.g., blocking someone else), ask them to move. If the cameras are laggy or unresponsive, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-ptz-cameras-arent-working."
+				},
+				{
+					"name": "check_sound",
+					"description": "Check that vMix is receiving sound from the MCR sound station. If not, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station."
 				}
 			]
 		},
@@ -38,36 +63,84 @@
 			"subtasks": [
 				{
 					"name": "download_assets",
-					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements)."
-				},
-				{
-					"name": "move_assets_by_service",
-					"description": "Move the Kids Connection video and sermon notes to %{ASSETS_BY_SERVICE_DIR}%.",
-					"prerequisites": [
-						"download_assets"
-					]
+					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{ASSETS_BY_SERVICE_DIR}%. Move the other new assets to %{ASSETS_BY_TYPE_DIR}%."
 				},
 				{
 					"name": "import_kids_video",
 					"description": "Import the Kids Connection video into the 'Videos' category in vMix and close the previous week's video. (Note: you can drag and drop the video from Windows File Explorer directly into vMix!)",
 					"prerequisites": [
-						"move_assets_by_service"
-					]
-				},
-				{
-					"name": "move_assets_by_type",
-					"description": "Move the other new assets to %{ASSETS_BY_TYPE_DIR}%.",
-					"prerequisites": [
 						"download_assets"
 					]
 				},
 				{
-					"name": "import_other_assets",
-					"description": "Import the other new assets into vMix.",
+					"name": "create_kids_connection_playlist",
+					"description": "In vMix, create a playlist containing the Kids Connection countdown, this week's Kids Connection video, and the pre-stream title loop.",
 					"prerequisites": [
-						"move_assets_by_type"
+						"import_kids_video"
 					]
 				},
+				{
+					"name": "restart_videos",
+					"description": "Restart all the videos and loops.",
+					"prerequisites": [
+						"create_kids_connection_playlist"
+					]
+				},
+				{
+					"name": "update_titles",
+					"description": "In vMix, update the pre-stream title loop, the speaker's title, the host's title, and the title for anyone else that will make an announcement. Test all the titles."
+				}
+			]
+		},
+		{
+			"name": "save_vmix_preset",
+			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{VMIX_PRESET_FILE}%.",
+			"prerequisites": [
+				"create_vmix_preset"
+			]
+		},
+		{
+			"name": "publish_sermon_notes",
+			"description": "Publish the sermon notes, first to the main event, then to the rebroadcast events on Church Online Platform. IMPORTANT: check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time).",
+			"prerequisites": [
+				"download_assets",
+				"check_cop_events"
+			]
+		},
+		{
+			"name": "event_start",
+			"prerequisites": [
+				"turn_everything_on"
+			],
+			"subtasks": [
+				{
+					"name": "start_stream",
+					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the Kids Connection playlist, and start the stream. Check in Church Online Platform's Host Tools that the stream is working."
+				},
+				{
+					"name": "set_up_in_annex",
+					"description": "Copy the kids video to the laptop and set up the laptop and TV in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly.",
+					"prerequisites": []
+				},
+				{
+					"name": "start_recording",
+					"description": "After the Kids Connection broadcast, start recording the stream.",
+					"prerequisites": [
+						"start_stream"
+					]
+				},
+				{
+					"name": "follow_planning_center_plan",
+					"description": "On Planning Center Online, open the live view of today's plan."
+				}
+			]
+		},
+		{
+			"name": "create_and_import_backup_slides",
+			"prerequisites": [
+				"create_vmix_preset"
+			],
+			"subtasks": [
 				{
 					"name": "download_message_notes",
 					"description": "Copy the message notes from Planning Center Online (the ones that say which slides to make) and save them in %{MESSAGE_NOTES_FILE}%."
@@ -85,115 +158,25 @@
 					"prerequisites": [
 						"generate_backup_slides"
 					]
+				}
+			]
+		},
+		{
+			"name": "manage_other_assets",
+			"prerequisites": [
+				"download_assets"
+			],
+			"subtasks": [
+				{
+					"name": "import_other_assets",
+					"description": "Import the other new assets into vMix.",
+					"prerequisites": [
+						"download_assets"
+					]
 				},
 				{
 					"name": "archive_old_assets",
-					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{ASSETS_BY_TYPE_ARCHIVE_DIR}%.",
-					"prerequisites": [
-						"download_assets",
-						"move_assets_by_service",
-						"move_assets_by_type"
-					]
-				},
-				{
-					"name": "create_kids_connection_triggers",
-					"description": "In vMix, create triggers to fade from the kids countdown loop to the kids video and from the kids video to the pre-stream title loop. Also test both triggers. This gives you time to do other things while the kids video is playing.",
-					"prerequisites": [
-						"import_kids_video"
-					]
-				},
-				{
-					"name": "restart_videos",
-					"description": "Restart all the videos and loops.",
-					"prerequisites": [
-						"create_kids_connection_triggers"
-					]
-				},
-				{
-					"name": "update_pre_stream_title",
-					"description": "In vMix, update the pre-stream title loop."
-				},
-				{
-					"name": "update_speaker_title",
-					"description": "In vMix, update the speaker's title.",
-					"prerequisites": [
-						"update_pre_stream_title"
-					]
-				},
-				{
-					"name": "update_host_title",
-					"description": "In vMix, update the host's title.",
-					"prerequisites": [
-						"update_speaker_title"
-					]
-				},
-				{
-					"name": "update_special_announcer_title",
-					"description": "In vMix, update the 'Special Announcer Title' if someone other than the host or speaker will be making an announcement.",
-					"prerequisites": [
-						"update_host_title"
-					]
-				},
-				{
-					"name": "test_titles",
-					"description": "In vMix, check that all the titles look good.",
-					"prerequisites": [
-						"update_special_announcer_title"
-					]
-				}
-			]
-		},
-		{
-			"name": "save_vmix_preset",
-			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{VMIX_PRESET_FILE}%.",
-			"prerequisites": [
-				"create_vmix_preset"
-			]
-		},
-		{
-			"name": "check_streaming_platforms",
-			"prerequisites": [
-				"turn_everything_on"
-			],
-			"subtasks": [
-				{
-					"name": "check_cop_events",
-					"description": "Check that the main event and rebroadcast events have been created *and have content*. If not, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform."
-				},
-				{
-					"name": "publish_main_sermon_notes",
-					"description": "Copy the sermon notes to the main event on Church Online Platform. IMPORTANT: check at the bottom of the page that you are ONLY modifying today's main event.",
-					"prerequisites": [
-						"move_assets_by_service",
-						"check_cop_events"
-					]
-				},
-				{
-					"name": "publish_rebroadcast_sermon_notes",
-					"description": "Copy the sermon notes to the rebroadcast events on Church Online Platform. IMPORTANT: check at the bottom of the page that you are ONLY modifying today's rebroadcasts.",
-					"prerequisites": [
-						"publish_main_sermon_notes"
-					]
-				},
-				{
-					"name": "check_boxcast_events",
-					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If the events are not set up properly, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast."
-				}
-			]
-		},
-		{
-			"name": "check_live_feeds",
-			"prerequisites": [
-				"turn_everything_on"
-			],
-			"subtasks": [
-				{
-					"name": "check_cameras",
-					"description": "Check the cameras. If any of the band members are in a bad position (e.g., blocking someone else), ask them to move. If the cameras are laggy or unresponsive, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-cameras-arent-working."
-				},
-				{
-					"name": "check_sound",
-					"description": "Check that vMix is receiving sound from the MCR sound station. If not, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station."
+					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{ASSETS_BY_TYPE_ARCHIVE_DIR}%."
 				}
 			]
 		},
@@ -201,33 +184,10 @@
 			"name": "check_github_checklist",
 			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
 			"prerequisites": [
-				"save_vmix_preset",
 				"check_streaming_platforms",
-				"check_live_feeds"
-			]
-		},
-		{
-			"name": "event_start",
-			"prerequisites": [
-				"turn_everything_on"
-			],
-			"subtasks": [
-				{
-					"name": "start_stream",
-					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the 5 minute countdown, and start the stream. Check in Church Online Platform's Host Tools that the stream is working."
-				},
-				{
-					"name": "set_up_in_annex",
-					"description": "Copy the kids video to the laptop and set up the laptop and TV in the Annex.",
-					"prerequisites": []
-				},
-				{
-					"name": "start_recording",
-					"description": "After the Kids Connection broadcast, start recording the stream.",
-					"prerequisites": [
-						"start_stream"
-					]
-				}
+				"check_live_feeds",
+				"save_vmix_preset",
+				"publish_sermon_notes"
 			]
 		}
 	]
