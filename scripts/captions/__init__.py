@@ -1,3 +1,4 @@
+import statistics
 from typing import List, Set
 
 from webvtt.structures import Caption
@@ -17,15 +18,18 @@ def remove_worship_captions(vtt: WebVTT) -> WebVTT:
 def _indices_to_remove_by_len(  # pyright: ignore[reportUnusedFunction]
     cues: List[Caption],
 ) -> Set[int]:
-    MIN_CUE_LEN = 50
     cue_lengths = [len(c.text) for c in cues]
-    return {
-        i
-        for i in range(1, len(cues) - 2)
-        if cue_lengths[i - 1] < MIN_CUE_LEN
-        and cue_lengths[i] < MIN_CUE_LEN
-        and cue_lengths[i + 1] < MIN_CUE_LEN
+    N = 2
+    indices_with_running_avg = range(N, len(cue_lengths) - N - 1)
+    running_avg_lens = {
+        i: statistics.mean(cue_lengths[i - N : i + N + 1])
+        for i in indices_with_running_avg
     }
+    # We expect the cue lengths to follow a bimodal distribution. Try to base
+    # the limit on the average of only the cues that we'll keep
+    avg_cue_len = statistics.mean(cue_lengths)
+    limit = 0.35 * statistics.mean([x for x in cue_lengths if x > avg_cue_len])
+    return {i for i in indices_with_running_avg if running_avg_lens[i] < limit}
 
 
 def _indices_to_remove_by_time_diff(  # pyright: ignore[reportUnusedFunction]

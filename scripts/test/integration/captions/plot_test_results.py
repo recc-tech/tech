@@ -19,11 +19,13 @@ def main():
     missing = [stats["missing"][w] for w in weeks]
     ax0.bar(weeks, missing)
     ax0.set_xticks(ticks=weeks, labels=weeks, rotation=90)
+    ax0.set_title("Missing cues")
 
     # Leftover
     leftover = [stats["leftover"][w] for w in weeks]
     ax1.bar(weeks, leftover)
     ax1.set_xticks(ticks=weeks, labels=weeks, rotation=90)
+    ax1.set_title("Leftover cues")
 
     fig.tight_layout()
     plt.show()
