@@ -104,10 +104,14 @@ class ConsoleMessenger(InputMessenger):
                 while True:
                     try:
                         message = f"{param.display_name}:"
+                        if param.default:
+                            message += f"\n[default: {param.default}]"
                         if param.description and first_attempt:
                             message += f"\n({param.description})"
                         message += "\n> "
                         raw_value = input_func(message)
+                        if not raw_value and param.default:
+                            raw_value = param.default
                         results[name] = param.parser(raw_value)
                         break
                     except ArgumentTypeError as e:

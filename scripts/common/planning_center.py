@@ -26,12 +26,12 @@ class PlanningCenterClient:
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
-        test_credentials: bool = True,
+        lazy_login: bool = False,
     ):
         self._messenger = messenger
         self._credential_store = credential_store
 
-        if test_credentials:
+        if not lazy_login:
             self._test_credentials(max_attempts=3)
 
     def find_plan_by_date(

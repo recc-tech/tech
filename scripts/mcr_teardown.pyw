@@ -4,8 +4,9 @@ import logging
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
+from datetime import date
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import mcr_teardown.tasks
 from autochecklist import (
@@ -22,6 +23,8 @@ from autochecklist import (
 )
 from common import (
     CredentialStore,
+    Plan,
+    PlanningCenterClient,
     parse_directory,
     parse_non_empty_string,
     run_with_or_without_terminal,
@@ -64,12 +67,26 @@ def main():
         try:
             messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
-            args = _get_missing_args(args, messenger)
+            credential_store = CredentialStore(messenger=messenger)
+
+            try:
+                planning_center_client = PlanningCenterClient(
+                    messenger=messenger,
+                    credential_store=credential_store,
+                    lazy_login=args.lazy_login,
+                )
+            except:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    "Failed to connect to the Planning Center API.",
+                    stacktrace=traceback.format_exc(),
+                )
+                planning_center_client = None
+
+            args = _get_missing_args(args, messenger, planning_center_client)
             config.message_series = args.message_series
             config.message_title = args.message_title
             config.boxcast_event_id = args.boxcast_event_id
-
-            credential_store = CredentialStore(messenger=messenger)
 
             vimeo_client = ReccVimeoClient(
                 messenger=messenger,
@@ -231,19 +248,37 @@ def _parse_command_line_args() -> Namespace:
     return args
 
 
-def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
+def _get_missing_args(
+    cmd_args: Namespace,
+    messenger: Messenger,
+    planning_center_client: Optional[PlanningCenterClient],
+) -> Namespace:
     params: Dict[str, Parameter] = {}
+    todays_plan: Optional[Plan] = None
+    if planning_center_client and not (
+        cmd_args.message_series and cmd_args.message_title
+    ):
+        try:
+            todays_plan = planning_center_client.find_plan_by_date(date.today())
+        except:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                "Failed to fetch today's plan from Planning Center.",
+                stacktrace=traceback.format_exc(),
+            )
     if not cmd_args.message_series:
         params["message_series"] = Parameter(
             "Message Series",
             parser=parse_non_empty_string,
             description='This is the name of the series to which today\'s sermon belongs. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the series was "Getting There".',
+            default="" if not todays_plan else todays_plan.series_title,
         )
     if not cmd_args.message_title:
         params["message_title"] = Parameter(
             "Message Title",
             parser=parse_non_empty_string,
             description='This is the title of today\'s sermon. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the title was "Avoiding Road Rage".',
+            default="" if not todays_plan else todays_plan.title,
         )
     if not cmd_args.boxcast_event_id:
         params["boxcast_event_id"] = Parameter(
@@ -269,6 +304,8 @@ def _get_missing_args(cmd_args: Namespace, messenger: Messenger) -> Namespace:
 
 
 def _parse_boxcast_event_url(event_url: str) -> str:
+    if not event_url:
+        raise ArgumentTypeError("Empty input. The event URL is required.")
     if all(c == "\x16" for c in event_url):
         # TODO: Make this same check everywhere? Write a custom input() function that adds this check?
         raise ArgumentTypeError(

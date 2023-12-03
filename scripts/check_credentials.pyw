@@ -172,7 +172,7 @@ def _try_login_to_planning_center(
         PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
-            test_credentials=True,
+            lazy_login=False,
         )
         messenger.log_status(
             TaskStatus.DONE, "Successfully connected to the Planning Center API."
