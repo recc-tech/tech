@@ -82,20 +82,8 @@ class BoxCastTestCase(unittest.TestCase):
         self.assertEqual(expected_captions, actual_captions)
         log_problem_mock.assert_not_called()
 
-        tasks.copy_captions_to_without_worship(config=config)
-        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
-            original_captions = f.read()
-        with open(
-            config.captions_without_worship_path, mode="r", encoding="utf-8"
-        ) as f:
-            captions_without_worship = f.read()
-        self.assertEqual(original_captions, captions_without_worship)
-        log_problem_mock.assert_not_called()
-
         tasks.copy_captions_to_final(config=config)
-        with open(
-            config.captions_without_worship_path, mode="r", encoding="utf-8"
-        ) as f:
+        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
             captions_without_worship = f.read()
         with open(config.final_captions_path, mode="r", encoding="utf-8") as f:
             final_captions = f.read()
