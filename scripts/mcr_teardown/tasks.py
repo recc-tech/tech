@@ -2,8 +2,10 @@ import shutil
 import stat
 from datetime import datetime
 
+import captions
 import mcr_teardown.boxcast as boxcast_tasks
 import mcr_teardown.vimeo as vimeo_tasks
+import webvtt
 from autochecklist import Messenger
 from mcr_teardown.boxcast import BoxCastClientFactory
 from mcr_teardown.config import McrTeardownConfig
@@ -135,26 +137,18 @@ def download_captions(
         )
 
 
-def copy_captions_to_without_worship(config: McrTeardownConfig):
+def copy_captions_to_final(config: McrTeardownConfig):
     if not config.original_captions_path.exists():
         raise ValueError(f"File '{config.original_captions_path}' does not exist.")
     # Copy the file first so that the new file isn't read-only
-    shutil.copy(
-        src=config.original_captions_path, dst=config.captions_without_worship_path
-    )
+    shutil.copy(src=config.original_captions_path, dst=config.final_captions_path)
     config.original_captions_path.chmod(stat.S_IREAD)
 
 
-def copy_captions_to_final(config: McrTeardownConfig):
-    if not config.captions_without_worship_path.exists():
-        raise ValueError(
-            f"File '{config.captions_without_worship_path}' does not exist."
-        )
-    # Copy the file first so that the new file isn't read-only
-    shutil.copy(
-        src=config.captions_without_worship_path, dst=config.final_captions_path
-    )
-    config.captions_without_worship_path.chmod(stat.S_IREAD)
+def remove_worship_captions(config: McrTeardownConfig):
+    original_vtt = webvtt.read(config.final_captions_path)
+    final_vtt = captions.remove_worship_captions(original_vtt)
+    final_vtt.save(config.final_captions_path)
 
 
 def upload_captions_to_boxcast(

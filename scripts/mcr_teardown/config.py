@@ -75,10 +75,6 @@ class McrTeardownConfig(BaseConfig):
         return self._captions_dir.joinpath("original.vtt")
 
     @property
-    def captions_without_worship_path(self) -> Path:
-        return self._captions_dir.joinpath("without_worship.vtt")
-
-    @property
     def final_captions_path(self) -> Path:
         return self._captions_dir.joinpath("final.vtt")
 
@@ -91,10 +87,6 @@ class McrTeardownConfig(BaseConfig):
             text.replace("%{REBROADCAST_TITLE}%", self.rebroadcast_title)
             .replace(
                 "%{ORIGINAL_CAPTIONS_PATH}%", self.original_captions_path.as_posix()
-            )
-            .replace(
-                "%{CAPTIONS_WITHOUT_WORSHIP_PATH}%",
-                self.captions_without_worship_path.as_posix(),
             )
             .replace("%{FINAL_CAPTIONS_PATH}%", self.final_captions_path.as_posix())
             .replace("%{LOG_FILE}%", self.log_file.as_posix())
