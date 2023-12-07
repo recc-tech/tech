@@ -2,8 +2,10 @@
 Code for interacting with the Planning Center Services API.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Any, Dict
 
 import requests
 from autochecklist import Messenger
@@ -20,6 +22,7 @@ class Plan:
 
 class PlanningCenterClient:
     BASE_URL = "https://api.planningcenteronline.com"
+    SERVICES_BASE_URL = f"{BASE_URL}/services/v2"
     SUNDAY_GATHERINGS_SERVICE_TYPE_ID = "882857"
 
     def __init__(
@@ -40,7 +43,12 @@ class PlanningCenterClient:
         today_str = dt.strftime("%Y-%m-%d")
         tomorrow_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
         response = requests.get(
-            url=f"{self.BASE_URL}/services/v2/service_types/{service_type}/plans?filter=before%2Cafter&after={today_str}&before={tomorrow_str}",
+            url=f"{self.SERVICES_BASE_URL}/service_types/{service_type}/plans",
+            params={
+                "filter": "before,after",
+                "before": tomorrow_str,
+                "after": today_str,
+            },
             auth=self._get_auth(),
         )
         if response.status_code // 100 != 2:
@@ -54,6 +62,34 @@ class PlanningCenterClient:
             title=plan["attributes"]["title"],
             series_title=plan["attributes"]["series_title"],
         )
+
+    def find_message_notes(
+        self, plan_id: str, service_type: str = SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+    ) -> str:
+        response = requests.get(
+            url=f"{self.SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/items",
+            params={"per_page": 100},
+            auth=self._get_auth(),
+        )
+        if response.status_code // 100 != 2:
+            raise ValueError(f"Request failed with status code {response.status_code}")
+        items = response.json()["data"]
+
+        def is_message_notes_item(item: Dict[str, Any]) -> bool:
+            if "attributes" not in item:
+                return False
+            if "title" not in item["attributes"] or not re.fullmatch(
+                "^message title:.*", item["attributes"]["title"], re.IGNORECASE
+            ):
+                return False
+            return True
+
+        message_items = [itm for itm in items if is_message_notes_item(itm)]
+        if len(message_items) != 1:
+            raise ValueError(
+                f"Found {len(message_items)} plan items which look like message notes."
+            )
+        return message_items[0]["attributes"]["description"]
 
     def _test_credentials(self, max_attempts: int):
         for attempt_num in range(1, max_attempts + 1):

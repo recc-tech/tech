@@ -3,6 +3,7 @@ import traceback
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+import mcr_setup.tasks
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -14,7 +15,12 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import parse_directory, run_with_or_without_terminal
+from common import (
+    CredentialStore,
+    PlanningCenterClient,
+    parse_directory,
+    run_with_or_without_terminal,
+)
 from mcr_setup.config import McrSetupConfig
 
 _DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
@@ -42,8 +48,13 @@ def main():
 
     should_messenger_finish = True
     try:
-        function_finder = FunctionFinder(None, [], messenger)
-
+        credential_store = CredentialStore(messenger)
+        planning_center_client = PlanningCenterClient(messenger, credential_store)
+        function_finder = FunctionFinder(
+            None if args.no_auto else mcr_setup.tasks,
+            [planning_center_client, config],
+            messenger,
+        )
         task_list_file = (
             Path(__file__).parent.joinpath("mcr_setup").joinpath("tasks.json")
         )
@@ -103,6 +114,11 @@ def _parse_args() -> Namespace:
         "--no-run",
         action="store_true",
         help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    advanced_args.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
     )
     advanced_args.add_argument(
         "--text-ui",
