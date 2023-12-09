@@ -4,7 +4,7 @@ import logging
 import re
 import traceback
 from argparse import ArgumentParser, ArgumentTypeError, Namespace
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -43,6 +43,7 @@ def main():
     config = McrTeardownConfig(
         home_dir=args.home_dir,
         downloads_dir=args.downloads_dir,
+        now=(datetime.combine(args.date, datetime.now().time()) if args.date else None),
     )
 
     file_messenger = FileMessenger(config.log_file)
@@ -83,7 +84,12 @@ def main():
                 )
                 planning_center_client = None
 
-            args = _get_missing_args(args, messenger, planning_center_client)
+            args = _get_missing_args(
+                args,
+                messenger,
+                planning_center_client,
+                today=args.date if args.date else date.today(),
+            )
             config.message_series = args.message_series
             config.message_title = args.message_title
             config.boxcast_event_id = args.boxcast_event_id
@@ -205,21 +211,6 @@ def _parse_command_line_args() -> Namespace:
         help="The downloads directory, where the browser automatically places files after downloading them.",
     )
     advanced_args.add_argument(
-        "--no-run",
-        action="store_true",
-        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
-    )
-    advanced_args.add_argument(
-        "--no-auto",
-        action="store_true",
-        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
-    )
-    advanced_args.add_argument(
-        "--show-browser",
-        action="store_true",
-        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
-    )
-    advanced_args.add_argument(
         "--text-ui",
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
@@ -233,6 +224,29 @@ def _parse_command_line_args() -> Namespace:
         "--lazy-login",
         action="store_true",
         help="If this flag is provided, then the script will not immediately log in to services like Vimeo and BoxCast. Instead, it will wait until that particular service is specifically requested.",
+    )
+
+    debug_args = parser.add_argument_group("Debug arguments")
+    debug_args.add_argument(
+        "--no-run",
+        action="store_true",
+        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    # TODO: Let the user choose *which* tasks to automate
+    debug_args.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
+    )
+    debug_args.add_argument(
+        "--show-browser",
+        action="store_true",
+        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
+    )
+    debug_args.add_argument(
+        "--date",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
+        help="Pretend the script is running on a different date.",
     )
 
     args = parser.parse_args()
@@ -252,6 +266,7 @@ def _get_missing_args(
     cmd_args: Namespace,
     messenger: Messenger,
     planning_center_client: Optional[PlanningCenterClient],
+    today: date,
 ) -> Namespace:
     params: Dict[str, Parameter] = {}
     todays_plan: Optional[Plan] = None
@@ -259,7 +274,7 @@ def _get_missing_args(
         cmd_args.message_series and cmd_args.message_title
     ):
         try:
-            todays_plan = planning_center_client.find_plan_by_date(date.today())
+            todays_plan = planning_center_client.find_plan_by_date(today)
         except:
             messenger.log_problem(
                 ProblemLevel.WARN,

@@ -1,6 +1,5 @@
 import asyncio
 import re
-from datetime import date
 from pathlib import Path
 from typing import List, Set, Tuple
 
@@ -9,7 +8,7 @@ from mcr_setup.config import McrSetupConfig
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):
-    today = date.today()
+    today = config.now.date()
     plan = client.find_plan_by_date(today)
     message_notes = client.find_message_notes(plan.id)
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
@@ -18,7 +17,7 @@ def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig)
 
 
 def download_assets(client: PlanningCenterClient, config: McrSetupConfig):
-    today = date.today()
+    today = config.now.date()
     plan = client.find_plan_by_date(today)
     attachments = client.find_attachments(plan.id)
 

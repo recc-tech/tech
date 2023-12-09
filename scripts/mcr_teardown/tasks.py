@@ -1,6 +1,5 @@
 import shutil
 import stat
-from datetime import datetime
 
 import captions
 import mcr_teardown.boxcast as boxcast_tasks
@@ -23,7 +22,7 @@ def create_rebroadcast_1pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=datetime.now().replace(hour=13, minute=0, second=0),
+            start_datetime=config.now.replace(hour=13, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
@@ -41,7 +40,7 @@ def create_rebroadcast_5pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=datetime.now().replace(hour=17, minute=0, second=0),
+            start_datetime=config.now.replace(hour=17, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
@@ -59,7 +58,7 @@ def create_rebroadcast_7pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=datetime.now().replace(hour=19, minute=0, second=0),
+            start_datetime=config.now.replace(hour=19, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
