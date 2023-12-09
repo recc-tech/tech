@@ -28,11 +28,11 @@ class WorshipCaptionRemovalTestCase(unittest.TestCase):
             with self.subTest(week):
                 if week == "2022-06-19":
                     self.skipTest(
-                        "This week seems to be an outlier in terms of leftover rate."
+                        "The week of 2022-06-19 is an outlier in terms of leftover rate."
                     )
-                if week >= "2023-11-26":
+                if week > "2023-12-03":
                     self.skipTest(
-                        "This week is after 2022-11-26, so its caption removal was likely done automatically."
+                        "This date is on or after 2023-12-03, so its caption removal was likely done automatically."
                     )
                 original_captions = webvtt.read(subdir.joinpath("original.vtt"))
                 expected_final_captions = webvtt.read(subdir.joinpath("final.vtt"))
