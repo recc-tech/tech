@@ -16,6 +16,7 @@ from common import (
     Credential,
     CredentialStore,
     InputPolicy,
+    PlanningCenterClient,
     parse_directory,
     run_with_or_without_terminal,
 )
@@ -66,6 +67,13 @@ def main():
         if "vimeo" in args.credentials:
             all_logins_succeeded = all_logins_succeeded and _try_login_to_vimeo(
                 credential_store=credential_store, messenger=messenger
+            )
+        if "planning_center" in args.credentials:
+            all_logins_succeeded = (
+                all_logins_succeeded
+                and _try_login_to_planning_center(
+                    credential_store=credential_store, messenger=messenger
+                )
             )
 
         if all_logins_succeeded:
@@ -155,6 +163,33 @@ def _try_login_to_boxcast(
         messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
 
 
+def _try_login_to_planning_center(
+    credential_store: CredentialStore, messenger: Messenger
+):
+    try:
+        messenger.set_current_task_name("log_into_planning_center")
+        messenger.log_status(TaskStatus.RUNNING, "Task started.")
+        PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            lazy_login=False,
+        )
+        messenger.log_status(
+            TaskStatus.DONE, "Successfully connected to the Planning Center API."
+        )
+        return True
+    except Exception as e:
+        messenger.log_problem(
+            ProblemLevel.ERROR,
+            f"An error occurred while trying to connect to the Planning Center API: {e}",
+            stacktrace=traceback.format_exc(),
+        )
+        messenger.log_status(TaskStatus.DONE, "Connection failed.")
+        return False
+    finally:
+        messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
+
+
 def _parse_args() -> Namespace:
     parser = ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
@@ -196,7 +231,7 @@ def _parse_args() -> Namespace:
 
     args = parser.parse_args()
     if not args.credentials:
-        args.credentials = ["boxcast", "vimeo"]
+        args.credentials = ["boxcast", "vimeo", "planning_center"]
     if args.verbose and not args.text_ui:
         parser.error(
             "The --verbose flag is only applicable when the --text-ui flag is also provided."

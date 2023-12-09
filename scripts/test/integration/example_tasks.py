@@ -1,6 +1,6 @@
 from typing import List
 
-from autochecklist.base_config import BaseConfig
+from autochecklist import BaseConfig
 
 
 class MyList:

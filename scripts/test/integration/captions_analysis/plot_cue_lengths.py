@@ -3,13 +3,11 @@
 import statistics
 import sys
 from pathlib import Path
-from typing import List, Set
 
 import matplotlib.pyplot as plt
 import webvtt
-from webvtt.structures import Caption
 
-PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("past_captions")
+PAST_CAPTIONS_DIR = Path(__file__).resolve().parent.parent.joinpath("captions_data")
 
 
 def main():

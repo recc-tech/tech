@@ -1,8 +1,10 @@
 import logging
 import traceback
 from argparse import ArgumentParser, Namespace
+from datetime import datetime
 from pathlib import Path
 
+import mcr_setup.tasks
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -14,7 +16,12 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import parse_directory, run_with_or_without_terminal
+from common import (
+    CredentialStore,
+    PlanningCenterClient,
+    parse_directory,
+    run_with_or_without_terminal,
+)
 from mcr_setup.config import McrSetupConfig
 
 _DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
@@ -23,7 +30,10 @@ _DESCRIPTION = "This script will guide you through the steps to setting up the M
 def main():
     args = _parse_args()
 
-    config = McrSetupConfig(home_dir=args.home_dir)
+    config = McrSetupConfig(
+        home_dir=args.home_dir,
+        now=(datetime.combine(args.date, datetime.now().time()) if args.date else None),
+    )
     file_messenger = FileMessenger(log_file=config.log_file)
     input_messenger = (
         ConsoleMessenger(
@@ -42,8 +52,13 @@ def main():
 
     should_messenger_finish = True
     try:
-        function_finder = FunctionFinder(None, [], messenger)
-
+        credential_store = CredentialStore(messenger)
+        planning_center_client = PlanningCenterClient(messenger, credential_store)
+        function_finder = FunctionFinder(
+            None if args.no_auto else mcr_setup.tasks,
+            [planning_center_client, config, credential_store, messenger],
+            messenger,
+        )
         task_list_file = (
             Path(__file__).parent.joinpath("mcr_setup").joinpath("tasks.json")
         )
@@ -100,11 +115,6 @@ def _parse_args() -> Namespace:
         help="The home directory.",
     )
     advanced_args.add_argument(
-        "--no-run",
-        action="store_true",
-        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
-    )
-    advanced_args.add_argument(
         "--text-ui",
         action="store_true",
         help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
@@ -113,6 +123,24 @@ def _parse_args() -> Namespace:
         "--verbose",
         action="store_true",
         help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+    )
+
+    debug_args = parser.add_argument_group("Debug arguments")
+    debug_args.add_argument(
+        "--no-run",
+        action="store_true",
+        help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
+    )
+    # TODO: Let the user choose *which* tasks to automate
+    debug_args.add_argument(
+        "--no-auto",
+        action="store_true",
+        help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
+    )
+    debug_args.add_argument(
+        "--date",
+        type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
+        help="Pretend the script is running on a different date.",
     )
 
     args = parser.parse_args()

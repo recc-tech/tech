@@ -70,6 +70,7 @@ class Parameter:
     parser: Callable[[str], object] = lambda x: x
     password: bool = False
     description: str = ""
+    default: str = ""
 
 
 class TaskStatus(Enum):

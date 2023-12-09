@@ -7,11 +7,14 @@ from typing import Dict
 import webvtt
 from captions import remove_worship_captions
 
-PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("past_captions")
-STATS_FILE = Path(__file__).parent.joinpath("worship_caption_removal_stats.json")
+PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("captions_data")
+STATS_FILE = Path(__file__).parent.joinpath(
+    "captions_analysis", "worship_caption_removal_stats.json"
+)
 # TODO: Adjust these
 MAX_MISSING = 8
 MAX_LEFTOVER_RATE = 0.6
+
 
 class WorshipCaptionRemovalTestCase(unittest.TestCase):
     def test(self):
@@ -22,17 +25,20 @@ class WorshipCaptionRemovalTestCase(unittest.TestCase):
         leftover_rate_by_week: Dict[str, float] = {}
         for subdir in weekly_dirs:
             week = subdir.stem
-            if week == "2022-06-19":
-                self.skipTest("This week seems to be an outlier in terms of leftover rate.")
-            if week >= "2023-11-26":
-                self.skipTest("This week is after 2022-11-26, so its caption removal was likely done automatically.")
             with self.subTest(week):
+                if week == "2022-06-19":
+                    self.skipTest(
+                        "This week seems to be an outlier in terms of leftover rate."
+                    )
+                if week >= "2023-11-26":
+                    self.skipTest(
+                        "This week is after 2022-11-26, so its caption removal was likely done automatically."
+                    )
                 original_captions = webvtt.read(subdir.joinpath("original.vtt"))
                 expected_final_captions = webvtt.read(subdir.joinpath("final.vtt"))
                 num_cues_to_remove = len(original_captions) - len(
                     expected_final_captions
                 )
-                # TODO: Remove worship captions from original and compare with final
                 actual_final_captions = remove_worship_captions(original_captions)
                 actual_caption_ids = [c.identifier for c in actual_final_captions]
                 expected_caption_ids = [c.identifier for c in expected_final_captions]

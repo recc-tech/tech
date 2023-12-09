@@ -489,6 +489,8 @@ class TkMessenger(InputMessenger):
                 else:
                     entry = Entry(entry_row, font=self._NORMAL_FONT)
                 entry.grid(row=0, column=1, padx=5)
+                if param.default:
+                    entry.insert(0, param.default)
                 entry_by_name[name] = entry
                 if param.description:
                     description_box = _CopyableText(

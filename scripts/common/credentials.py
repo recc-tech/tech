@@ -15,6 +15,8 @@ class Credential(Enum):
     VIMEO_ACCESS_TOKEN = ("vimeo_access_token", "Vimeo access token", True)
     VIMEO_CLIENT_ID = ("vimeo_client_id", "Vimeo client ID", True)
     VIMEO_CLIENT_SECRET = ("vimeo_client_secret", "Vimeo client secret", True)
+    PLANNING_CENTER_APP_ID = ("planning_center_app_id", "Planning Center app ID", True)
+    PLANNING_CENTER_SECRET = ("planning_center_secret", "Planning Center secret", True)
 
     @property
     def name(self) -> str:
@@ -59,9 +61,7 @@ class CredentialStore:
         credentials: List[Credential],
         request_input: InputPolicy,
     ) -> Dict[Credential, str]:
-        input_policy = (
-            self._request_input if self._request_input is not None else request_input
-        )
+        input_policy = self._request_input or request_input
         saved_credentials = {
             c: keyring.get_password(CredentialStore._KEYRING_APP_NAME, c.name)
             for c in credentials

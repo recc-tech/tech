@@ -1,11 +1,11 @@
-import test.integration.autochecklist.example_tasks as example_functions
 import unittest
 from pathlib import Path
-from test.integration.autochecklist.example_tasks import MyList, TestConfig
 from unittest.mock import ANY, call, create_autospec
 
-from autochecklist.messenger import Messenger, ProblemLevel
-from autochecklist.task import FunctionFinder, TaskGraph, TaskModel
+from autochecklist import FunctionFinder, Messenger, ProblemLevel, TaskGraph, TaskModel
+
+from . import example_tasks
+from .example_tasks import MyList, TestConfig
 
 
 class TaskGraphTestCase(unittest.TestCase):
@@ -22,7 +22,7 @@ class TaskGraphTestCase(unittest.TestCase):
         messenger.shutdown_requested = False
         config = TestConfig()
         function_finder = FunctionFinder(
-            module=example_functions, arguments=[my_list, config], messenger=messenger
+            module=example_tasks, arguments=[my_list, config], messenger=messenger
         )
 
         json_file = Path(__file__).parent.joinpath("example_tasks.json")

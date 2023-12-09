@@ -2,9 +2,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, create_autospec
 
-from autochecklist.messenger import Messenger, ProblemLevel
+from autochecklist import Messenger, ProblemLevel
 from common import ReccWebDriver
-from slides.read import BibleVerseFinder, SlideBlueprintReader
+from slides import BibleVerseFinder, SlideBlueprintReader
 
 
 class SlideBlueprintReaderTestCase(unittest.TestCase):
