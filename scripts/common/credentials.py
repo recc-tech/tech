@@ -61,9 +61,7 @@ class CredentialStore:
         credentials: List[Credential],
         request_input: InputPolicy,
     ) -> Dict[Credential, str]:
-        input_policy = (
-            self._request_input if self._request_input is not None else request_input
-        )
+        input_policy = self._request_input or request_input
         saved_credentials = {
             c: keyring.get_password(CredentialStore._KEYRING_APP_NAME, c.name)
             for c in credentials

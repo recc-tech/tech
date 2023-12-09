@@ -7,7 +7,7 @@ from common import ReccConfig
 
 class McrSetupConfig(ReccConfig):
     def __init__(self, home_dir: Path, now: Optional[datetime] = None):
-        super().__init__(home_dir, now if now is not None else datetime.now())
+        super().__init__(home_dir, now or datetime.now())
 
     @property
     def assets_by_service_dir(self) -> Path:

@@ -15,7 +15,7 @@ class McrTeardownConfig(ReccConfig):
         boxcast_event_id: str = "",
         now: Optional[datetime] = None
     ):
-        super().__init__(home_dir, now if now is not None else datetime.now())
+        super().__init__(home_dir, now or datetime.now())
 
         self._downloads_dir = downloads_dir.resolve()
         self.message_series = message_series.strip()
