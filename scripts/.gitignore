@@ -2,6 +2,7 @@
 .venv/
 htmlcov/
 /test/integration/captions/worship_caption_removal_stats.json
+/test/integration/common/temp/
 /test/integration/mcr_teardown/test_home/
 /test/integration/slides/actual_message_blueprints/
 /test/manual/home/

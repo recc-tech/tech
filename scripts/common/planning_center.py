@@ -2,11 +2,14 @@
 Code for interacting with the Planning Center Services API.
 """
 
+import asyncio
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict
+from pathlib import Path
+from typing import Any, Dict, List, Set, Tuple
 
+import aiohttp
 import requests
 from autochecklist import Messenger
 from common.credentials import Credential, CredentialStore, InputPolicy
@@ -18,6 +21,13 @@ class Plan:
     id: str
     title: str
     series_title: str
+
+
+@dataclass(frozen=True)
+class Attachment:
+    id: str
+    filename: str
+    content_type: str
 
 
 class PlanningCenterClient:
@@ -66,10 +76,11 @@ class PlanningCenterClient:
     def find_message_notes(
         self, plan_id: str, service_type: str = SUNDAY_GATHERINGS_SERVICE_TYPE_ID
     ) -> str:
+        app_id, secret = self._get_auth()
         response = requests.get(
             url=f"{self.SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/items",
             params={"per_page": 100},
-            auth=self._get_auth(),
+            auth=HTTPBasicAuth(app_id, secret),
         )
         if response.status_code // 100 != 2:
             raise ValueError(f"Request failed with status code {response.status_code}")
@@ -91,6 +102,40 @@ class PlanningCenterClient:
             )
         return message_items[0]["attributes"]["description"]
 
+    def find_attachments(
+        self, plan_id: str, service_type: str = SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+    ) -> Set[Attachment]:
+        app_id, secret = self._get_auth()
+        response = requests.get(
+            url=f"{self.SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/attachments",
+            params={"per_page": 100},
+            auth=HTTPBasicAuth(app_id, secret),
+        )
+        if response.status_code // 100 != 2:
+            raise ValueError(f"Request failed with status code {response.status_code}")
+        attachments_json = response.json()["data"]
+        return {
+            Attachment(
+                id=a["id"],
+                filename=a["attributes"]["filename"],
+                content_type=a["attributes"]["content_type"],
+            )
+            for a in attachments_json
+        }
+
+    async def download_attachments(self, downloads: List[Tuple[Attachment, Path]]):
+        app_id, secret = self._get_auth()
+        auth = aiohttp.BasicAuth(login=app_id, password=secret)
+        async with aiohttp.ClientSession() as session:
+            tasks = [
+                self._download_one_asset(attachment, destination, session, auth)
+                for attachment, destination in downloads
+            ]
+            await asyncio.gather(*tasks)
+        # Avoid RuntimeWarnings for unclosed resources
+        # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
+        await asyncio.sleep(0.25)
+
     def _test_credentials(self, max_attempts: int):
         for attempt_num in range(1, max_attempts + 1):
             url = f"{self.BASE_URL}/people/v2/me"
@@ -106,7 +151,7 @@ class PlanningCenterClient:
                     f"Test request to GET {url} failed with status code {response.status_code}."
                 )
 
-    def _get_auth(self) -> HTTPBasicAuth:
+    def _get_auth(self) -> Tuple[str, str]:
         credentials = self._credential_store.get_multiple(
             prompt="Enter the Planning Center credentials.",
             credentials=[
@@ -117,4 +162,31 @@ class PlanningCenterClient:
         )
         app_id = credentials[Credential.PLANNING_CENTER_APP_ID]
         secret = credentials[Credential.PLANNING_CENTER_SECRET]
-        return HTTPBasicAuth(app_id, secret)
+        return (app_id, secret)
+
+    async def _download_one_asset(
+        self,
+        attachment: Attachment,
+        destination: Path,
+        session: aiohttp.ClientSession,
+        auth: aiohttp.BasicAuth,
+    ) -> None:
+        # Get URL for file contents
+        link_url = f"{self.SERVICES_BASE_URL}/attachments/{attachment.id}/open"
+        async with session.post(link_url, auth=auth) as response:
+            if response.status // 100 != 2:
+                raise ValueError(
+                    f"Request to '{link_url}' for file '{destination.name}' failed with status {response.status}."
+                )
+            response_json = await response.json()
+            file_contents_url = response_json["data"]["attributes"]["attachment_url"]
+
+        # Get actual data
+        async with session.get(file_contents_url) as response:
+            if response.status // 100 != 2:
+                raise ValueError(
+                    f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."
+                )
+            with open(destination, "wb") as f:
+                async for data, _ in response.content.iter_chunks():
+                    f.write(data)

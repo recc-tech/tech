@@ -52,7 +52,7 @@ def main():
         planning_center_client = PlanningCenterClient(messenger, credential_store)
         function_finder = FunctionFinder(
             None if args.no_auto else mcr_setup.tasks,
-            [planning_center_client, config],
+            [planning_center_client, config, credential_store],
             messenger,
         )
         task_list_file = (

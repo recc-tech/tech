@@ -14,15 +14,21 @@ class McrSetupConfig(BaseConfig):
 
     @property
     def assets_by_service_dir(self) -> Path:
-        return (
-            self._home_dir.joinpath("vMix Assets")
-            .joinpath("By Service")
-            .joinpath(self._start_date_ymd)
+        return self._home_dir.joinpath(
+            "vMix Assets", "By Service", self._start_date_ymd
         )
 
     @property
     def assets_by_type_dir(self) -> Path:
-        return self._home_dir.joinpath("vMix Assets").joinpath("By Type")
+        return self._home_dir.joinpath("vMix Assets", "By Type")
+
+    @property
+    def assets_by_type_images_dir(self) -> Path:
+        return self.assets_by_type_dir.joinpath("Images")
+
+    @property
+    def assets_by_type_videos_dir(self) -> Path:
+        return self.assets_by_type_dir.joinpath("Videos")
 
     @property
     def assets_by_type_archive_dir(self) -> Path:
@@ -34,8 +40,8 @@ class McrSetupConfig(BaseConfig):
 
     @property
     def vmix_preset_file(self) -> Path:
-        return self._home_dir.joinpath("vMix Presets").joinpath(
-            f"{self._start_date_ymd} Live.vmix"
+        return self._home_dir.joinpath(
+            "vMix Presets", f"{self._start_date_ymd} Live.vmix"
         )
 
     # TODO: Move this to an ReccConfig class in the common package?

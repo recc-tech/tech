@@ -1,65 +1,30 @@
+import asyncio
+import filecmp
 import inspect
 import unittest
 from datetime import date
-from typing import Any
+from pathlib import Path
+from typing import Any, Tuple
 from unittest.mock import Mock
 
-import common.planning_center as pc
 from autochecklist import Messenger
 from common.credentials import CredentialStore
+from common.planning_center import Attachment, PlanningCenterClient
 
 
 class PlanningCenterTestCase(unittest.TestCase):
-    def test_find_plan_by_date(self):
-        messenger = Mock(spec=Messenger)
-        log_problem_mock = Mock()
-        messenger.log_problem = log_problem_mock
-
-        def input_mock(*args: Any, **kwargs: Any):
-            raise ValueError(
-                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
-            )
-
-        messenger.input_multiple = input_mock
-        messenger.input = input_mock
-        messenger.wait = input_mock
-        credential_store = CredentialStore(messenger)
-        client = pc.PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            # Use a different value from test_find_message_notes
-            lazy_login=False,
-        )
+    def test_find_plan_by_date(self) -> None:
+        client, log_problem_mock = self._create_client()
 
         plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
+
         self.assertEqual("66578821", plan.id)
         self.assertEqual("Rejected", plan.series_title)
         self.assertEqual("Rejected By God", plan.title)
-
         log_problem_mock.assert_not_called()
 
-    def test_find_message_notes(self):
-        messenger = Mock(spec=Messenger)
-        log_problem_mock = Mock()
-        messenger.log_problem = log_problem_mock
-
-        def input_mock(*args: Any, **kwargs: Any):
-            raise ValueError(
-                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
-            )
-
-        messenger.input_multiple = input_mock
-        messenger.input = input_mock
-        messenger.wait = input_mock
-        credential_store = CredentialStore(messenger)
-        client = pc.PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            # Use a different value from test_find_message_notes
-            lazy_login=False,
-        )
-
-        actual_notes = client.find_message_notes("66578821")
+    def test_find_message_notes(self) -> None:
+        client, log_problem_mock = self._create_client()
         expected_message_notes = inspect.cleandoc(
             """New Series: Let There Be Joy - Slide
             Rejected By God
@@ -86,6 +51,116 @@ class PlanningCenterTestCase(unittest.TestCase):
             You Carry Your Story of Past Illness And Healing.
             All We Need Is Jesus – Everyday He’s All We Need."""
         )
-        self.assertEqual(expected_message_notes, actual_notes)
 
+        actual_notes = client.find_message_notes("66578821")
+
+        self.assertEqual(expected_message_notes, actual_notes)
         log_problem_mock.assert_not_called()
+
+    def test_find_attachments(self) -> None:
+        client, log_problem_mock = self._create_client()
+        expected_attachments = {
+            Attachment(
+                id="158861295",
+                filename="Cultivate_Workshop_YvonneMasella.png",
+                content_type="image/png",
+            ),
+            Attachment(
+                id="158865975",
+                filename="Let There Be Joy.png",
+                content_type="image/png",
+            ),
+            Attachment(
+                id="158864736",
+                filename="MC Host Script.docx",
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+            Attachment(
+                id="158905502",
+                filename="Notes-Rejected-RejectedByGod.docx",
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+            Attachment(
+                id="158861297",
+                filename="See_You_Next_Week.png",
+                content_type="image/png",
+            ),
+            Attachment(
+                id="158861296",
+                filename="Thanks_For_Joining_Us.png",
+                content_type="image/png",
+            ),
+        }
+
+        actual_attachments = client.find_attachments("66578821")
+
+        self.assertEqual(expected_attachments, actual_attachments)
+        log_problem_mock.assert_not_called()
+
+    def test_download_assets(self) -> None:
+        client, log_problem_mock = self._create_client()
+        expected_png_path = Path(__file__).parent.joinpath(
+            "data", "See_You_Next_Week.png"
+        )
+        actual_png_path = Path(__file__).parent.joinpath(
+            "temp", "See_You_Next_Week.png"
+        )
+        expected_docx_path = Path(__file__).parent.joinpath(
+            "data", "Notes-Rejected-RejectedByGod.docx"
+        )
+        actual_docx_path = Path(__file__).parent.joinpath(
+            "temp", "Notes-Rejected-RejectedByGod.docx"
+        )
+        # Get rid of old files so tests don't pass if download failed!
+        actual_png_path.unlink(missing_ok=True)
+        actual_docx_path.unlink(missing_ok=True)
+        attachments = [
+            (
+                Attachment(
+                    id="158905502",
+                    filename="Notes-Rejected-RejectedByGod.docx",
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ),
+                actual_docx_path,
+            ),
+            (
+                Attachment(
+                    id="158861297",
+                    filename="See_You_Next_Week.png",
+                    content_type="image/png",
+                ),
+                actual_png_path,
+            ),
+        ]
+
+        asyncio.run(client.download_attachments(attachments), debug=True)
+
+        self.assertTrue(
+            filecmp.cmp(expected_docx_path, actual_docx_path), ".docx files must match."
+        )
+        self.assertTrue(
+            filecmp.cmp(expected_png_path, actual_png_path), ".png files must match."
+        )
+        log_problem_mock.assert_not_called()
+
+    def _create_client(self) -> Tuple[PlanningCenterClient, Mock]:
+        messenger = Mock(spec=Messenger)
+        log_problem_mock = Mock()
+        messenger.log_problem = log_problem_mock
+
+        def input_mock(*args: Any, **kwargs: Any):
+            raise ValueError(
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
+            )
+
+        messenger.input_multiple = input_mock
+        messenger.input = input_mock
+        messenger.wait = input_mock
+        credential_store = CredentialStore(messenger)
+        client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            # Use a different value from test_find_message_notes
+            lazy_login=False,
+        )
+        return client, log_problem_mock
