@@ -3,8 +3,8 @@ import re
 import shutil
 from pathlib import Path
 
-OLD_DIR = Path(__file__).parent.joinpath("raw_old_captions")
-NEW_DIR = Path(__file__).parent.joinpath("past_captions")
+OLD_DIR = Path(__file__).resolve().parent.parent.joinpath("raw_old_captions")
+NEW_DIR = Path(__file__).resolve().parent.parent.joinpath("captions_data")
 
 ORIGINAL_CAPTIONS_REGEX = re.compile(r"([a-z0-9]{20,20}_captions.vtt|original.vtt)")
 FINAL_CAPTIONS_REGEX = re.compile(

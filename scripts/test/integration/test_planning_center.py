@@ -8,8 +8,10 @@ from typing import Any, Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
-from common.credentials import CredentialStore
-from common.planning_center import Attachment, PlanningCenterClient
+from common import Attachment, CredentialStore, PlanningCenterClient
+
+DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
+TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
 
 
 class PlanningCenterTestCase(unittest.TestCase):
@@ -59,87 +61,64 @@ class PlanningCenterTestCase(unittest.TestCase):
 
     def test_find_attachments(self) -> None:
         client, log_problem_mock = self._create_client()
+        # It would be nice to test on a plan with more attachments (images,
+        # videos, etc.), but the attachments seem to disappear quite quickly
+        # after a service
         expected_attachments = {
             Attachment(
-                id="158861295",
-                filename="Cultivate_Workshop_YvonneMasella.png",
-                content_type="image/png",
-            ),
-            Attachment(
-                id="158865975",
-                filename="Let There Be Joy.png",
-                content_type="image/png",
-            ),
-            Attachment(
-                id="158864736",
+                id="145052830",
                 filename="MC Host Script.docx",
                 content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
             Attachment(
-                id="158905502",
-                filename="Notes-Rejected-RejectedByGod.docx",
+                id="145057054",
+                filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
                 content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ),
-            Attachment(
-                id="158861297",
-                filename="See_You_Next_Week.png",
-                content_type="image/png",
-            ),
-            Attachment(
-                id="158861296",
-                filename="Thanks_For_Joining_Us.png",
-                content_type="image/png",
             ),
         }
 
-        actual_attachments = client.find_attachments("66578821")
+        actual_attachments = client.find_attachments("64650350")
 
         self.assertEqual(expected_attachments, actual_attachments)
         log_problem_mock.assert_not_called()
 
     def test_download_assets(self) -> None:
         client, log_problem_mock = self._create_client()
-        expected_png_path = Path(__file__).parent.joinpath(
-            "data", "See_You_Next_Week.png"
-        )
-        actual_png_path = Path(__file__).parent.joinpath(
-            "temp", "See_You_Next_Week.png"
-        )
-        expected_docx_path = Path(__file__).parent.joinpath(
-            "data", "Notes-Rejected-RejectedByGod.docx"
-        )
-        actual_docx_path = Path(__file__).parent.joinpath(
-            "temp", "Notes-Rejected-RejectedByGod.docx"
-        )
+        expected_notes_path = DATA_DIR.joinpath("2023-04-16 Notes.docx")
+        actual_notes_path = TEMP_DIR.joinpath("2023-04-16 Notes.docx")
+        expected_script_path = DATA_DIR.joinpath("2023-04-16 MC Host Script.docx")
+        actual_script_path = TEMP_DIR.joinpath("2023-04-16 MC Host Script.docx")
         # Get rid of old files so tests don't pass if download failed!
-        actual_png_path.unlink(missing_ok=True)
-        actual_docx_path.unlink(missing_ok=True)
+        actual_notes_path.unlink(missing_ok=True)
+        actual_script_path.unlink(missing_ok=True)
         attachments = [
             (
                 Attachment(
-                    id="158905502",
-                    filename="Notes-Rejected-RejectedByGod.docx",
+                    id="145052830",
+                    filename="MC Host Script.docx",
                     content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
-                actual_docx_path,
+                actual_script_path,
             ),
             (
                 Attachment(
-                    id="158861297",
-                    filename="See_You_Next_Week.png",
-                    content_type="image/png",
+                    id="145057054",
+                    filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
+                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
-                actual_png_path,
+                actual_notes_path,
             ),
         ]
 
-        asyncio.run(client.download_attachments(attachments), debug=True)
+        asyncio.run(client.download_attachments(attachments))
 
         self.assertTrue(
-            filecmp.cmp(expected_docx_path, actual_docx_path), ".docx files must match."
+            filecmp.cmp(expected_notes_path, actual_notes_path),
+            "Message notes files must match.",
         )
         self.assertTrue(
-            filecmp.cmp(expected_png_path, actual_png_path), ".png files must match."
+            filecmp.cmp(expected_script_path, actual_script_path),
+            "MC host script files must match.",
         )
         log_problem_mock.assert_not_called()
 

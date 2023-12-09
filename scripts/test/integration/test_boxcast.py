@@ -5,10 +5,9 @@ from pathlib import Path
 from unittest.mock import Mock
 
 import mcr_teardown.tasks as tasks
-from autochecklist.messenger import Messenger
+from autochecklist import Messenger
 from common import Credential, CredentialStore, InputPolicy
-from mcr_teardown.boxcast import BoxCastClient, BoxCastClientFactory
-from mcr_teardown.config import McrTeardownConfig
+from mcr_teardown import BoxCastClient, BoxCastClientFactory, McrTeardownConfig
 
 EVENT_ID = "oajqcyzetaazjvduyqz5"
 BOXCAST_TEST_USERNAME = "tech@riversedge.life"
@@ -43,7 +42,7 @@ class BoxCastTestCase(unittest.TestCase):
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         cls.home_dir = (
-            Path(__file__).parent.joinpath("test_home").joinpath(f"{timestamp}_home")
+            Path(__file__).parent.joinpath("boxcast_test_home").joinpath(f"{timestamp}_home")
         )
         cls.home_dir.mkdir(exist_ok=True, parents=True)
 
@@ -74,7 +73,7 @@ class BoxCastTestCase(unittest.TestCase):
             config=config,
             messenger=messenger,
         )
-        expected_file = Path(__file__).parent.joinpath("captions.vtt")
+        expected_file = Path(__file__).parent.joinpath("boxcast_data", "captions.vtt")
         with open(expected_file, mode="r", encoding="utf-8") as f:
             expected_captions = f.read()
         with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
