@@ -113,11 +113,11 @@ class PlanningCenterTestCase(unittest.TestCase):
         asyncio.run(client.download_attachments(attachments))
 
         self.assertTrue(
-            filecmp.cmp(expected_notes_path, actual_notes_path),
+            filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),
             "Message notes files must match.",
         )
         self.assertTrue(
-            filecmp.cmp(expected_script_path, actual_script_path),
+            filecmp.cmp(expected_script_path, actual_script_path, shallow=False),
             "MC host script files must match.",
         )
         log_problem_mock.assert_not_called()
