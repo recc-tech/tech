@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Set, Tuple
 
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import Messenger, ProblemLevel, TaskStatus
 from common import Attachment, PlanningCenterClient
 from mcr_setup.config import McrSetupConfig
 
@@ -34,6 +34,7 @@ def download_assets(
     config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
 
     # Prepare for downloads
+    messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
     downloads: List[Tuple[Attachment, Path]] = []
     archived_files: List[Tuple[Path, Path]] = []
     if len(kids_video) != 1:
@@ -80,9 +81,14 @@ def download_assets(
         if not vid_path.exists():
             downloads.append((vid, vid_path))
 
+    messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     asyncio.run(client.download_attachments(downloads))
 
-    # New and existing files were the same: no need to keep archived copy
+    # If new and existing files were the same, no need to keep archived copy
+    if len(archived_files) > 0:
+        messenger.log_status(
+            TaskStatus.RUNNING, "Comparing new assets with existing ones."
+        )
     for old_path, archived_path in archived_files:
         same = filecmp.cmp(old_path, archived_path, shallow=False)
         if same:
