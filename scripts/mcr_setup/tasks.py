@@ -27,6 +27,7 @@ def download_assets(
     plan = client.find_plan_by_date(today)
     attachments = client.find_attachments(plan.id)
 
+    print(attachments)
     kids_video, sermon_notes, other_images, other_videos = _classify_attachments(
         attachments
     )
@@ -95,8 +96,9 @@ def download_assets(
             archived_path.unlink()
 
 
-_VIDEO_CONTENT_TYPES = {"video/av1", "video/mp4", "video/mpeg", "video/quicktime"}
-_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^Kids.*", flags=re.IGNORECASE)
+# TODO: Update these lists
+_VIDEO_CONTENT_TYPES = {"video/av1", "video/mp4", "video/mpeg", "video/quicktime", "application/mp4"}
+_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^kids.*", flags=re.IGNORECASE)
 _DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
