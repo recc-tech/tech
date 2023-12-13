@@ -9,6 +9,7 @@ from typing import List, Set, Tuple
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from common import Attachment, PlanningCenterClient
 from mcr_setup.config import McrSetupConfig
+from slides import SlideBlueprintReader, SlideGenerator
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):
@@ -18,6 +19,38 @@ def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig)
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
     with open(config.message_notes_file, "w", encoding="utf-8") as f:
         f.write(message_notes)
+
+
+def generate_backup_slides(
+    reader: SlideBlueprintReader,
+    generator: SlideGenerator,
+    config: McrSetupConfig,
+    messenger: Messenger,
+):
+    messenger.log_status(
+        TaskStatus.RUNNING,
+        f"Reading input from {config.message_notes_file.as_posix()}.",
+    )
+    blueprints = reader.load_message_notes(config.message_notes_file)
+
+    messenger.log_status(
+        TaskStatus.RUNNING,
+        f"Saving slide blueprints to {config.backup_slides_json_file}.",
+    )
+    reader.save_json(config.backup_slides_json_file, blueprints)
+
+    messenger.log_status(TaskStatus.RUNNING, f"Generating images.")
+    blueprints_with_prefix = [
+        b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
+        for i, b in enumerate(blueprints, start=1)
+    ]
+    slides = generator.generate_lower_third_slide(
+        blueprints_with_prefix, show_backdrop=True
+    )
+
+    messenger.log_status(TaskStatus.RUNNING, f"Saving images.")
+    for s in slides:
+        s.save(config.assets_by_service_dir)
 
 
 def download_assets(

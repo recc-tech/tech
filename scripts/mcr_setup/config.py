@@ -36,6 +36,10 @@ class McrSetupConfig(ReccConfig):
         return self.assets_by_service_dir.joinpath("message-notes.txt")
 
     @property
+    def backup_slides_json_file(self) -> Path:
+        return self.assets_by_service_dir.joinpath("slides.json")
+
+    @property
     def vmix_preset_file(self) -> Path:
         return self.home_dir.joinpath(
             "vMix Presets", f"{self.now.strftime('%Y-%m-%d')} Live.vmix"
@@ -45,7 +49,13 @@ class McrSetupConfig(ReccConfig):
     def log_file(self) -> Path:
         return self.log_dir.joinpath(
             f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')} mcr_setup.log"
-        ).resolve()
+        )
+
+    @property
+    def webdriver_log_file(self) -> Path:
+        return self.log_dir.joinpath(
+            f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')} mcr_setup_webdriver.log"
+        )
 
     def fill_placeholders(self, text: str) -> str:
         text = (

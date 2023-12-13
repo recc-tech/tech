@@ -3,6 +3,7 @@ import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import mcr_setup.tasks
 from autochecklist import (
@@ -19,10 +20,12 @@ from autochecklist import (
 from common import (
     CredentialStore,
     PlanningCenterClient,
+    ReccWebDriver,
     parse_directory,
     run_with_or_without_terminal,
 )
 from mcr_setup.config import McrSetupConfig
+from slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 
 _DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
 
@@ -51,12 +54,31 @@ def main():
     )
 
     should_messenger_finish = True
+    web_driver: Optional[ReccWebDriver] = None
     try:
+        messenger.log_status(TaskStatus.RUNNING, "Starting up the script...")
         credential_store = CredentialStore(messenger)
         planning_center_client = PlanningCenterClient(messenger, credential_store)
+        web_driver = ReccWebDriver(
+            headless=not args.show_browser, log_file=config.webdriver_log_file
+        )
+        bible_verse_finder = BibleVerseFinder(
+            web_driver,
+            messenger,
+            cancellation_token=None,
+        )
+        reader = SlideBlueprintReader(messenger, bible_verse_finder)
+        generator = SlideGenerator(messenger)
         function_finder = FunctionFinder(
             None if args.no_auto else mcr_setup.tasks,
-            [planning_center_client, config, credential_store, messenger],
+            [
+                planning_center_client,
+                config,
+                credential_store,
+                messenger,
+                reader,
+                generator,
+            ],
             messenger,
         )
         task_list_file = (
@@ -102,6 +124,8 @@ def main():
         should_messenger_finish = False
     finally:
         messenger.close(wait=should_messenger_finish)
+        if web_driver:
+            web_driver.quit()
 
 
 def _parse_args() -> Namespace:
@@ -136,6 +160,11 @@ def _parse_args() -> Namespace:
         "--no-auto",
         action="store_true",
         help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
+    )
+    debug_args.add_argument(
+        "--show-browser",
+        action="store_true",
+        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
     )
     debug_args.add_argument(
         "--date",
