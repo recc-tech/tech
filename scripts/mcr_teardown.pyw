@@ -34,7 +34,7 @@ from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClien
 # TODO: Test the BoxCast code by turning off the WiFi after loading the page.
 # TODO: Save progress in a file in case the script needs to be stopped and restarted?
 
-DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
+_DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station after a Sunday gathering."
 
 
 def main():
@@ -47,16 +47,15 @@ def main():
     )
 
     file_messenger = FileMessenger(config.log_file)
-    extended_description = f"{DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.resolve().as_posix()}."
     input_messenger = (
         ConsoleMessenger(
-            f"{extended_description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+            f"{_DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
             log_level=logging.INFO if args.verbose else logging.WARN,
         )
         if args.text_ui
         else TkMessenger(
             title="MCR Teardown",
-            description=f"{extended_description}\n\nIf you need to stop the script, close this window or the terminal window.",
+            description=_DESCRIPTION,
         )
     )
     messenger = Messenger(
@@ -161,7 +160,6 @@ def main():
         print("\nProgram cancelled.")
         should_messenger_finish = False
     finally:
-        # TODO: Shut down the task threads more gracefully (or at least give them the chance, if they're checking)?
         messenger.close(wait=should_messenger_finish)
 
 

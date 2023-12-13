@@ -22,7 +22,7 @@ from common import (
 )
 from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
 
-DESCRIPTION = "This script will test the credentials for various services we connect to and ask the user to enter any missing or incorrect ones if necessary."
+DESCRIPTION = "This script will test the credentials for various services we connect to and ask you to enter any missing or incorrect ones if necessary."
 
 
 def main():

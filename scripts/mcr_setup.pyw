@@ -27,7 +27,7 @@ from common import (
 from mcr_setup.config import McrSetupConfig
 from slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 
-_DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering. It is based on the checklist on GitHub (see https://github.com/recc-tech/tech/issues)."
+_DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering."
 
 
 def main():
@@ -40,13 +40,13 @@ def main():
     file_messenger = FileMessenger(log_file=config.log_file)
     input_messenger = (
         ConsoleMessenger(
-            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+            description=f"{_DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
             log_level=logging.INFO if args.verbose else logging.WARN,
         )
         if args.text_ui
         else TkMessenger(
             title="MCR Setup",
-            description=f"{_DESCRIPTION}\n\nIf you need to debug the program, see the log file at {config.log_file.as_posix()}.\n\nIf you need to stop the script, close this window or the terminal window.",
+            description=_DESCRIPTION,
         )
     )
     messenger = Messenger(
