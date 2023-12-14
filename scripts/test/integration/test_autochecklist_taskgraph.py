@@ -2,18 +2,26 @@ import unittest
 from pathlib import Path
 from unittest.mock import ANY, call, create_autospec
 
-from autochecklist import FunctionFinder, Messenger, ProblemLevel, TaskGraph, TaskModel
+from autochecklist import (
+    FunctionFinder,
+    Messenger,
+    ProblemLevel,
+    TaskGraph,
+    TaskModel,
+    UserResponse,
+)
 
-from . import example_tasks
-from .example_tasks import MyList, TestConfig
+from .autochecklist_data import example_tasks
+from .autochecklist_data.example_tasks import MyList, TestConfig
 
 
 class TaskGraphTestCase(unittest.TestCase):
     def test_task_graph(self):
         my_list = MyList()
 
-        def append_wait(*_: object):
+        def append_wait(*_args: object, **_kwargs: object):
             my_list.the_list.append("wait")
+            return UserResponse.DONE
 
         messenger = create_autospec(Messenger)
         # Have wait() append to the list so that we can check when it was
@@ -25,7 +33,9 @@ class TaskGraphTestCase(unittest.TestCase):
             module=example_tasks, arguments=[my_list, config], messenger=messenger
         )
 
-        json_file = Path(__file__).parent.joinpath("example_tasks.json")
+        json_file = Path(__file__).parent.joinpath(
+            "autochecklist_data", "example_tasks.json"
+        )
         model = TaskModel.load(json_file)
         graph = TaskGraph(
             model, messenger=messenger, function_finder=function_finder, config=config
@@ -41,8 +51,11 @@ class TaskGraphTestCase(unittest.TestCase):
         )
         messenger.wait.assert_has_calls(
             [
-                call(prompt=f"Add the value '{TestConfig.BAR}' to the list 🙂."),
-                call(prompt=f"This task will raise an error."),
+                call(
+                    prompt=f"Add the value '{TestConfig.BAR}' to the list 🙂.",
+                    allow_retry=False,
+                ),
+                call(prompt=f"This task will raise an error.", allow_retry=True),
             ],
             any_order=False,
         )

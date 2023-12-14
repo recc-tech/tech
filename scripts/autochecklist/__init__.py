@@ -17,6 +17,7 @@ from autochecklist.messenger import (
     TaskCancelledException,
     TaskStatus,
     TkMessenger,
+    UserResponse,
 )
 from autochecklist.task import FunctionFinder, TaskGraph, TaskModel
 from autochecklist.wait import sleep_attentively

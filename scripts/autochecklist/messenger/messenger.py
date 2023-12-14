@@ -11,6 +11,7 @@ from autochecklist.messenger.input_messenger import (
     Parameter,
     ProblemLevel,
     TaskStatus,
+    UserResponse,
 )
 
 T = TypeVar("T")
@@ -114,7 +115,7 @@ class Messenger:
     ) -> Dict[str, object]:
         return self._input_messenger.input_multiple(params, prompt, title)
 
-    def wait(self, prompt: str, task_name: str = ""):
+    def wait(self, prompt: str, task_name: str = "", allow_retry: bool = False) -> UserResponse:
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if actual_task_name:
@@ -123,7 +124,7 @@ class Messenger:
             else:
                 task_name_for_display = "UNKNOWN"
                 index = None
-        self._input_messenger.wait(task_name_for_display, index, prompt)
+        return self._input_messenger.wait(task_name_for_display, index, prompt, allow_retry)
 
     def allow_cancel(self, task_name: str = "") -> CancellationToken:
         """

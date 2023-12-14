@@ -7,6 +7,7 @@ from autochecklist.messenger.input_messenger import (
     Parameter,
     ProblemLevel,
     TaskStatus,
+    UserResponse,
 )
 from autochecklist.messenger.messenger import (
     CancellationToken,

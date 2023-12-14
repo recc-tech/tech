@@ -18,6 +18,7 @@ from autochecklist.messenger import (
     ProblemLevel,
     TaskCancelledException,
     TaskStatus,
+    UserResponse,
 )
 from autochecklist.wait import sleep_attentively
 
@@ -142,33 +143,41 @@ class _Task:
         """
 
     def run(self):
-        try:
-            self._run_automatically()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except NotImplementedError:
-            self._messenger.log_status(
-                TaskStatus.WAITING_FOR_USER,
-                f"This task is not automated. Requesting user input.",
-            )
-            self._run_manually()
-        except TaskCancelledException:
-            self._messenger.log_status(
-                TaskStatus.WAITING_FOR_USER,
-                f"The task was cancelled by the user. Requesting user input.",
-            )
-            self._run_manually()
-        except BaseException as e:
-            self._messenger.log_problem(
-                ProblemLevel.ERROR,
-                f"An error occurred while trying to complete the task automatically: {e}",
-                stacktrace=traceback.format_exc(),
-            )
-            self._messenger.log_status(
-                TaskStatus.WAITING_FOR_USER,
-                f"The task automation failed. Requesting user input.",
-            )
-            self._run_manually()
+        while True:
+            try:
+                self._run_automatically()
+                self._messenger.log_status(
+                    TaskStatus.DONE, f"Task completed automatically."
+                )
+                return
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except NotImplementedError:
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"This task is not automated. Requesting user input.",
+                )
+                is_done = self._run_manually(allow_retry=False)
+            except TaskCancelledException:
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"The task was cancelled by the user. Requesting user input.",
+                )
+                is_done = self._run_manually(allow_retry=True)
+            except BaseException as e:
+                self._messenger.log_problem(
+                    ProblemLevel.ERROR,
+                    f"An error occurred while trying to complete the task automatically: {e}",
+                    stacktrace=traceback.format_exc(),
+                )
+                self._messenger.log_status(
+                    TaskStatus.WAITING_FOR_USER,
+                    f"The task automation failed. Requesting user input.",
+                )
+                is_done = self._run_manually(allow_retry=True)
+            if is_done:
+                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+                return
 
     def _run_automatically(self):
         try:
@@ -176,20 +185,16 @@ class _Task:
                 raise NotImplementedError()
             self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
             self._run()
-            self._messenger.log_status(
-                TaskStatus.DONE,
-                f"Task completed automatically.",
-            )
         finally:
             # Disallow cancelling even if there's no task automation just in
             # case it somehow got enabled by accident (e.g., by another task
             # using the wrong name)
             self._messenger.disallow_cancel()
 
-    def _run_manually(self):
+    def _run_manually(self, allow_retry: bool) -> bool:
         self._messenger.disallow_cancel()
-        self._messenger.wait(self._description)
-        self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+        response = self._messenger.wait(self._description, allow_retry=allow_retry)
+        return response == UserResponse.DONE
 
 
 @dataclass(frozen=True)

@@ -48,7 +48,9 @@ class InputMessenger:
     def input_bool(self, prompt: str, title: str = "") -> bool:
         raise NotImplementedError()
 
-    def wait(self, task_name: str, index: Optional[int], prompt: str) -> None:
+    def wait(
+        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+    ) -> UserResponse:
         raise NotImplementedError()
 
     def add_command(
@@ -123,6 +125,15 @@ class ProblemLevel(Enum):
 
     def __str__(self):
         return self.name
+
+
+class UserResponse(Enum):
+    """User's response to a task needing to be completed manually."""
+
+    DONE = auto()
+    """The task has been completed manually."""
+    RETRY = auto()
+    """The task automation should be re-run."""
 
 
 def is_current_thread_main() -> bool:

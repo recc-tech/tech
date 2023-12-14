@@ -16,6 +16,7 @@ from autochecklist.messenger.input_messenger import (
     Parameter,
     ProblemLevel,
     TaskStatus,
+    UserResponse,
     interrupt_main_thread,
     is_current_thread_main,
 )
@@ -146,32 +147,61 @@ class ConsoleMessenger(InputMessenger):
             level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
         )
 
-    def wait(self, task_name: str, index: Optional[int], prompt: str):
+    def wait(
+        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+    ) -> UserResponse:
         prompt = prompt.strip()
         prompt = prompt if prompt.endswith(".") else f"{prompt}."
         prompt = f"- [{task_name}] {prompt}"
+        response: Optional[UserResponse] = None
 
         def wait_for_input():
-            while True:
-                try:
-                    # Ask for a password so that pressing keys other than ENTER
-                    # has no effect
-                    getpass(prompt)
+            nonlocal response, allow_retry, prompt
+            try:
+                if allow_retry:
+                    print(
+                        f"{prompt} Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually.",
+                    )
+                    while True:
+                        choice = input(">> ")
+                        if choice.lower() == "done":
+                            response = UserResponse.DONE
+                            return
+                        elif choice.lower() == "retry":
+                            response = UserResponse.RETRY
+                            return
+                        else:
+                            print(
+                                "Invalid choice. Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually."
+                            )
+                            continue
+                else:
+                    # Ask for a password so that pressing keys other than
+                    # ENTER has no visible effect
+                    getpass(f"{prompt} Press ENTER when you're done.")
+                    response = UserResponse.DONE
                     return
-                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
-                # the worker class can deal with all the cancellation-related
-                # issues
-                except (KeyboardInterrupt, EOFError):
-                    raise
-                except BaseException as e:
-                    print(f"An error occurred while taking input: {e}")
-                    return
+            # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
+            # the worker class can deal with all the cancellation-related
+            # issues
+            except (KeyboardInterrupt, EOFError):
+                raise
+            except BaseException as e:
+                print(
+                    f"An error occurred while taking input. Assuming the task was completed manually. {e}"
+                )
+                response = UserResponse.DONE
+                return
 
         self._worker.submit_input_job(
             level=_ConsoleIOJob.IN_WAIT,
             priority=math.inf if index is None else index,
             read_input=wait_for_input,
         )
+        # Response should always be set by this point, but set default just in
+        # case. Default to DONE rather than RETRY so that the script doesn't
+        # get stuck in an infinite loop
+        return response or UserResponse.DONE
 
     def close(self, wait: bool):
         self._worker.close(finish_existing_jobs=wait)

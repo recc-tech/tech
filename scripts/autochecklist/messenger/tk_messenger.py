@@ -6,7 +6,7 @@ import threading
 import tkinter as tk
 from argparse import ArgumentTypeError
 from pathlib import Path
-from threading import Lock, Semaphore, Thread
+from threading import Event, Lock, Semaphore, Thread
 from tkinter import Canvas, Menu, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar, cast
@@ -17,6 +17,7 @@ from autochecklist.messenger.input_messenger import (
     Parameter,
     ProblemLevel,
     TaskStatus,
+    UserResponse,
     interrupt_main_thread,
     is_current_thread_main,
 )
@@ -39,6 +40,7 @@ class TkMessenger(InputMessenger):
         self._is_main_thread_waiting_for_input = False
         self._is_shut_down = False
         self._waiting_locks: Set[Lock] = set()
+        self._waiting_events: Set[Event] = set()
         root_started = Semaphore(0)
         self._gui_thread = Thread(
             name="TkMessenger",
@@ -166,15 +168,25 @@ class TkMessenger(InputMessenger):
     def input_bool(self, prompt: str, title: str = "") -> bool:
         return messagebox.askyesno(title, prompt)  # type: ignore
 
-    def wait(self, task_name: str, index: Optional[int], prompt: str):
-        def handle_done_click(btn: Button):
-            btn.configure(state="disabled")
-            lock.release()
+    def wait(
+        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+    ) -> UserResponse:
+        response: Optional[UserResponse] = None
+        event = Event()
 
-        lock = Lock()
+        def handle_done_click():
+            nonlocal response, event
+            # Keep the first choice if the user somehow presses both quickly
+            response = response or UserResponse.DONE
+            event.set()
+
+        def handle_retry_click():
+            nonlocal response, event
+            response = response or UserResponse.RETRY
+            event.set()
+
         with self._mutex:
-            self._waiting_locks.add(lock)
-        lock.acquire()
+            self._waiting_events.add(event)
         with self._mutex:
             if self._is_shut_down:
                 raise KeyboardInterrupt()
@@ -182,17 +194,22 @@ class TkMessenger(InputMessenger):
                 index,
                 task_name=task_name,
                 message=prompt,
-                onclick=lambda btn: handle_done_click(btn),
+                on_click_done=handle_done_click,
+                on_click_retry=(handle_retry_click if allow_retry else None),
             )
             self._root_frame.update_scrollregion()
-        lock.acquire()
+        event.wait()
         with self._mutex:
             if self._is_shut_down:
                 raise KeyboardInterrupt()
-            self._waiting_locks.remove(lock)
+            self._waiting_events.remove(event)
             self._action_items_grid.delete_row(actual_index)
             # Update the scrollregion again in case it got smaller
             self._root_frame.update_scrollregion()
+        # Response should always be set here because the button click handlers
+        # set it, but set a default just in case. Default to DONE rather than 
+        # RETRY so the script doesn't get stuck in an infinite loop
+        return response or UserResponse.DONE
 
     def close(self, wait: bool):
         with self._mutex:
@@ -543,6 +560,8 @@ class TkMessenger(InputMessenger):
             for lock in self._waiting_locks:
                 if lock.locked():
                     lock.release()
+            for event in self._waiting_events:
+                event.set()
             self._tk.quit()
 
 
@@ -607,7 +626,7 @@ class _CopyableText(Text):
     Text widget that supports both text wrapping and copying its contents to the clipboard.
     """
 
-    def __init__(self, parent: Misc, *args: object, **kwargs: object):
+    def __init__(self, parent: Misc, **kwargs: object):
         super().__init__(
             parent,
             height=1,
@@ -615,8 +634,7 @@ class _CopyableText(Text):
             state="disabled",
             highlightthickness=0,
             borderwidth=0,
-            *args,
-            **kwargs,
+            **kwargs,  # type: ignore
         )
 
     def set_text(self, text: str):
@@ -658,12 +676,14 @@ class _ThickSeparator(Frame):
 
 
 class _ActionItemGrid(Frame):
-    _BTN_COLUMN = 0
-    _BTN_WIDTH = 10
-    _NAME_COLUMN = 1
+    _DONE_BTN_COLUMN = 0
+    _DONE_BTN_WIDTH = 7
+    _RETRY_BTN_COLUMN = 1
+    _RETRY_BTN_WIDTH = 7
+    _NAME_COLUMN = 2
     _NAME_WIDTH = 35
-    _MSG_COLUMN = 2
-    _MSG_WIDTH = 120
+    _MSG_COLUMN = 3
+    _MSG_WIDTH = 115
 
     def __init__(
         self,
@@ -687,7 +707,9 @@ class _ActionItemGrid(Frame):
         self._normal_font = normal_font
         self._header_font = header_font
 
-        self._widgets: Dict[int, Tuple[Button, _CopyableText, _CopyableText]] = {}
+        self._widgets: Dict[
+            int, Tuple[Button, Optional[Button], _CopyableText, _CopyableText]
+        ] = {}
         self._create_header()
 
     def add_row(
@@ -695,7 +717,8 @@ class _ActionItemGrid(Frame):
         index: Optional[int],
         task_name: str,
         message: str,
-        onclick: Callable[[Button], None],
+        on_click_done: Callable[[], None],
+        on_click_retry: Optional[Callable[[], None]],
     ) -> int:
         if index is None or index in self._widgets:
             # If the index is the same as an existing row, tkinter seems to
@@ -705,15 +728,30 @@ class _ActionItemGrid(Frame):
         else:
             actual_index = index
 
-        button = Button(self, text="Done", state="enabled", width=self._BTN_WIDTH)
-        button.configure(command=lambda: onclick(button))
-        button.grid(
+        done_button = Button(
+            self, text="Done", state="enabled", width=self._DONE_BTN_WIDTH
+        )
+        done_button.configure(command=on_click_done)
+        done_button.grid(
             # Increase the row number to account for the header
             row=actual_index + 2,
-            column=self._BTN_COLUMN,
+            column=self._DONE_BTN_COLUMN,
             padx=self._padx,
             pady=self._pady,
         )
+        if on_click_retry is not None:
+            retry_button = Button(
+                self, text="Retry", state="enabled", width=self._RETRY_BTN_WIDTH
+            )
+            retry_button.configure(command=on_click_retry)
+            retry_button.grid(
+                row=actual_index + 2,
+                column=self._RETRY_BTN_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+        else:
+            retry_button = None
         name_label = _CopyableText(
             self,
             width=self._NAME_WIDTH,
@@ -743,30 +781,44 @@ class _ActionItemGrid(Frame):
         )
         msg_label.set_text(message)
 
-        self._widgets[actual_index] = (button, name_label, msg_label)
+        self._widgets[actual_index] = (done_button, retry_button, name_label, msg_label)
 
         return actual_index
 
     def delete_row(self, index: int):
         if index not in self._widgets:
             return
-        (button, name_label, msg_label) = self._widgets[index]
-        button.destroy()
+        (done_button, retry_button, name_label, msg_label) = self._widgets[index]
+        done_button.destroy()
+        if retry_button is not None:
+            retry_button.destroy()
         name_label.destroy()
         msg_label.destroy()
+        del self._widgets[index]
 
     def _create_header(self):
-        # Include the empty header cell just to keep the UI stable whether or
-        # not the grid has entries
-        button_header_label = _CopyableText(
+        # Include the empty header cells for the buttons just to keep the UI
+        # stable whether or not the grid has entries
+        done_button_header_label = _CopyableText(
             self,
-            width=self._BTN_WIDTH,
+            width=self._DONE_BTN_WIDTH,
             font=self._header_font,
             background=self._background,
             foreground=self._foreground,
         )
-        button_header_label.grid(
-            row=0, column=self._BTN_COLUMN, padx=self._padx, pady=self._pady
+        done_button_header_label.grid(
+            row=0, column=self._DONE_BTN_COLUMN, padx=self._padx, pady=self._pady
+        )
+
+        retry_button_header_label = _CopyableText(
+            self,
+            width=self._RETRY_BTN_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        retry_button_header_label.grid(
+            row=0, column=self._RETRY_BTN_COLUMN, padx=self._padx, pady=self._pady
         )
 
         name_header_label = _CopyableText(
@@ -796,7 +848,7 @@ class _ActionItemGrid(Frame):
         separator = _ThickSeparator(
             self, thickness=3, orient="horizontal", colour="black"
         )
-        separator.grid(row=1, column=0, columnspan=3, sticky="EW")
+        separator.grid(row=1, column=0, columnspan=4, sticky="EW")
 
 
 class _TaskStatusGrid(Frame):
