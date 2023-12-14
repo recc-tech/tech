@@ -56,6 +56,8 @@ def generate_backup_slides(
 def download_assets(
     client: PlanningCenterClient, config: McrSetupConfig, messenger: Messenger
 ):
+    cancellation_token = messenger.allow_cancel()
+
     today = config.now.date()
     plan = client.find_plan_by_date(today)
     attachments = client.find_attachments(plan.id)
@@ -115,15 +117,25 @@ def download_assets(
             downloads.append((vid, vid_path))
 
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
-    asyncio.run(client.download_attachments(downloads))
+    try:
+        asyncio.run(client.download_attachments(downloads, cancellation_token))
+    except BaseException:
+        # The Planning Center client should take care of deleting
+        # partially-downloaded assets on error.
+        # Don't bother deleting assets that were successfully downloaded: the
+        # user can easily take care of those if needed.
+        for live_path, archived_path in archived_files:
+            shutil.move(archived_path, live_path)
+            archived_path.unlink(missing_ok=True)
+        raise
 
     # If new and existing files were the same, no need to keep archived copy
     if len(archived_files) > 0:
         messenger.log_status(
             TaskStatus.RUNNING, "Comparing new assets with existing ones."
         )
-    for old_path, archived_path in archived_files:
-        same = filecmp.cmp(old_path, archived_path, shallow=False)
+    for live_path, archived_path in archived_files:
+        same = filecmp.cmp(live_path, archived_path, shallow=False)
         if same:
             archived_path.unlink()
 

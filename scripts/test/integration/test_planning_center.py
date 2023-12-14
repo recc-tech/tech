@@ -110,7 +110,7 @@ class PlanningCenterTestCase(unittest.TestCase):
             ),
         ]
 
-        asyncio.run(client.download_attachments(attachments))
+        asyncio.run(client.download_attachments(attachments, cancellation_token=None))
 
         self.assertTrue(
             filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),

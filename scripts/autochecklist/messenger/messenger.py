@@ -189,6 +189,12 @@ class Messenger:
             self._input_messenger.remove_command(
                 task_name=actual_task_name, command_name="Cancel"
             )
+            # Need to unregister cancellation token in the task manager,
+            # otherwise, if a user cancels a task and then retries, the task
+            # will be given the same cancellation token which will still be
+            # cancelled
+            with self._task_manager_mutex:
+                self._task_manager.unset_cancellation_token(actual_task_name)
         except NotImplementedError:
             self.log_debug(
                 message="Could not disallow cancelling because the input messenger does not support it.",
@@ -275,6 +281,10 @@ class _TaskManager:
 
     def set_cancellation_token(self, task_name: str, token: CancellationToken):
         self._cancellation_token_by_task[task_name] = token
+
+    def unset_cancellation_token(self, task_name: str) -> None:
+        if task_name in self._cancellation_token_by_task:
+            del self._cancellation_token_by_task[task_name]
 
 
 class FileMessenger:

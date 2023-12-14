@@ -7,11 +7,11 @@ import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
 import requests
-from autochecklist import Messenger
+from autochecklist import CancellationToken, Messenger
 from common.credentials import Credential, CredentialStore, InputPolicy
 from requests.auth import HTTPBasicAuth
 
@@ -123,12 +123,18 @@ class PlanningCenterClient:
             for a in attachments_json
         }
 
-    async def download_attachments(self, downloads: List[Tuple[Attachment, Path]]):
+    async def download_attachments(
+        self,
+        downloads: List[Tuple[Attachment, Path]],
+        cancellation_token: Optional[CancellationToken],
+    ):
         app_id, secret = self._get_auth()
         auth = aiohttp.BasicAuth(login=app_id, password=secret)
         async with aiohttp.ClientSession() as session:
             tasks = [
-                self._download_one_asset(attachment, destination, session, auth)
+                self._download_one_asset(
+                    attachment, destination, session, auth, cancellation_token
+                )
                 for attachment, destination in downloads
             ]
             await asyncio.gather(*tasks)
@@ -170,6 +176,7 @@ class PlanningCenterClient:
         destination: Path,
         session: aiohttp.ClientSession,
         auth: aiohttp.BasicAuth,
+        cancellation_token: Optional[CancellationToken],
     ) -> None:
         # Get URL for file contents
         link_url = f"{self.SERVICES_BASE_URL}/attachments/{attachment.id}/open"
@@ -187,6 +194,13 @@ class PlanningCenterClient:
                 raise ValueError(
                     f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."
                 )
-            with open(destination, "wb") as f:
-                async for data, _ in response.content.iter_chunks():
-                    f.write(data)
+            try:
+                with open(destination, "wb") as f:
+                    async for data, _ in response.content.iter_chunks():
+                        if cancellation_token:
+                            cancellation_token.raise_if_cancelled()
+                        f.write(data)
+            except BaseException:
+                # Don't leave behind partially-downloaded files
+                destination.unlink(missing_ok=True)
+                raise

@@ -207,7 +207,7 @@ class TkMessenger(InputMessenger):
             # Update the scrollregion again in case it got smaller
             self._root_frame.update_scrollregion()
         # Response should always be set here because the button click handlers
-        # set it, but set a default just in case. Default to DONE rather than 
+        # set it, but set a default just in case. Default to DONE rather than
         # RETRY so the script doesn't get stuck in an infinite loop
         return response or UserResponse.DONE
 
@@ -789,12 +789,12 @@ class _ActionItemGrid(Frame):
         if index not in self._widgets:
             return
         (done_button, retry_button, name_label, msg_label) = self._widgets[index]
+        del self._widgets[index]
         done_button.destroy()
         if retry_button is not None:
             retry_button.destroy()
         name_label.destroy()
         msg_label.destroy()
-        del self._widgets[index]
 
     def _create_header(self):
         # Include the empty header cells for the buttons just to keep the UI
@@ -985,6 +985,7 @@ class _TaskStatusGrid(Frame):
     def remove_command(self, task_name: str, command_name: str):
         if (task_name, command_name) in self._command:
             existing_button = self._command[(task_name, command_name)]
+            del self._command[(task_name, command_name)]
             existing_button.destroy()
 
     def _create_header(self):
