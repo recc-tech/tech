@@ -259,10 +259,6 @@ class TkMessenger(InputMessenger):
             self._root_frame.update_scrollregion()
 
     def _run_gui(self, title: str, root_started: Semaphore, description: str):
-        # TODO: Make the GUI responsive. I would need to find a way of having
-        # the Text widgets fill the width of the screen, which doesn't seem to
-        # be available out of the box.
-
         # Try to make the GUI less blurry
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
@@ -1195,6 +1191,5 @@ class _ProblemGrid(Frame):
             return "#000000"
 
 
-# TODO: Is this necessary?
 class InputCancelledException(Exception):
     pass

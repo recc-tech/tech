@@ -16,12 +16,6 @@ from autochecklist.messenger.input_messenger import (
 
 T = TypeVar("T")
 
-# TODO: Use other synchronization primitives (e.g., Event, Condition) rather
-# than using Lock everywhere?
-# TODO: Write automated tests (cancelling the program is especially tricky to
-# get right)
-
-
 class Messenger:
     """
     Thread-safe class for logging and user interactions.

@@ -211,9 +211,6 @@ class ConsoleMessenger(InputMessenger):
         return self._worker.is_closed
 
 
-# TODO: Can I *prove* that this is thread-safe and handles cancellation properly?
-# - Notice that, from the moment close() sets self._is_shut_down = True, no new
-#   jobs can be added to the queue.
 class _ConsoleMessengerWorker:
     """
     Encapsulates all the tricky multithreading code for the `ConsoleMessenger`.

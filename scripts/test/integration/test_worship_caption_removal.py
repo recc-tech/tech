@@ -11,7 +11,6 @@ PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("captions_data")
 STATS_FILE = Path(__file__).parent.joinpath(
     "captions_analysis", "worship_caption_removal_stats.json"
 )
-# TODO: Adjust these
 MAX_MISSING = 8
 MAX_LEFTOVER_RATE = 0.6
 

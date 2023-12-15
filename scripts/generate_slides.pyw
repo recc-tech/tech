@@ -35,7 +35,6 @@ _LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
 
 def main():
-    # TODO: This isn't exiting when everything is done!
     cmd_args = _parse_args()
     output_directory: Path = cmd_args.out_dir
     home_directory: Path = cmd_args.home_dir
@@ -150,8 +149,6 @@ def _parse_args() -> Namespace:
         choices=[_FULLSCREEN_STYLE, _LOWER_THIRD_CLEAR_STYLE, _LOWER_THIRD_DARK_STYLE],
         help="Style of the slides.",
     )
-
-    # TODO: Add an option to clear out all the existing slides
 
     advanced_args = parser.add_argument_group("Advanced arguments")
     advanced_args.add_argument(

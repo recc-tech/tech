@@ -31,9 +31,6 @@ from common import (
 )
 from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
 
-# TODO: Test the BoxCast code by turning off the WiFi after loading the page.
-# TODO: Save progress in a file in case the script needs to be stopped and restarted?
-
 _DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station after a Sunday gathering."
 
 
@@ -168,7 +165,6 @@ def _parse_command_line_args() -> Namespace:
         description="Script to guide and automate the teardown process in the MCR."
     )
 
-    # TODO: Check whether the values are the same as in the previous week?
     parser.add_argument(
         "-s",
         "--message-series",
@@ -230,7 +226,6 @@ def _parse_command_line_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
     )
-    # TODO: Let the user choose *which* tasks to automate
     debug_args.add_argument(
         "--no-auto",
         action="store_true",

@@ -146,5 +146,3 @@ def interrupt_main_thread():
     # called, even if the main thread waits for several seconds! But printing
     # nothing doesn't work.
     print(" ", end="", flush=True)
-    # TODO: Should I have this function call taskkill /f as a fallback if
-    # close() isn't called within 5 seconds?

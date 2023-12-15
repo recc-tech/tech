@@ -155,7 +155,6 @@ def _parse_args() -> Namespace:
         action="store_true",
         help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
     )
-    # TODO: Let the user choose *which* tasks to automate
     debug_args.add_argument(
         "--no-auto",
         action="store_true",
