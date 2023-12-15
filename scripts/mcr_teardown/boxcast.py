@@ -25,7 +25,7 @@ from selenium.webdriver.support.select import Select
 class BoxCastClient(ReccWebDriver):
     _LOGIN_URL = "https://login.boxcast.com/login"
 
-    def __init__(
+    def __init__(  # pyright: ignore [reportInconsistentConstructor]
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
@@ -34,7 +34,7 @@ class BoxCastClient(ReccWebDriver):
         lazy_login: bool = False,
         log_file: Optional[Path] = None,
     ):
-        super().__init__(headless=headless, log_file=log_file)
+        super().__init__(messenger=messenger, headless=headless, log_file=log_file)
 
         self._messenger = messenger
         self._credential_store = credential_store
@@ -167,7 +167,7 @@ class BoxCastClientFactory:
         if not lazy_login:
             self._test_login(cancellation_token)
 
-    def get_client(self, cancellation_token: Optional[CancellationToken]):
+    def get_client(self, cancellation_token: Optional[CancellationToken]) -> BoxCastClient:
         if not self._log_directory:
             log_file = None
         else:

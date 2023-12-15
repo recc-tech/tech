@@ -9,23 +9,29 @@ from slides import BibleVerse, BibleVerseFinder
 class BibleVerseFindingTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls._messenger = mock.Mock()
+        # Save this in its own variable to get Pylance to stop complaining that the type is unknown
+        cls._log_problem_mock = mock.Mock()
+        cls._messenger.log_problem = cls._log_problem_mock
         # Create the driver once and reuse it for all tests because
         #  (1) creating a new WebDriver is slow
         #  (2) having a bunch of Firefox windows open is massively memory-intensive
-        cls._driver = ReccWebDriver(headless=True, log_file=None)
+        cls._driver = ReccWebDriver(
+            messenger=cls._messenger, headless=True, log_file=None
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls._driver.close()
 
     def setUp(self):
-        self._messenger = mock.Mock()
-        # Save this in its own variable to get Pylance to stop complaining that the type is unknown
-        self._log_problem_mock = mock.Mock()
-        self._messenger.log_problem = self._log_problem_mock
         self.finder = BibleVerseFinder(
             driver=self._driver, messenger=self._messenger, cancellation_token=None
         )
+
+    def tearDown(self) -> None:
+        # Prevent errors logged by one test from carrying over to other tests
+        self._log_problem_mock.reset_mock()
 
     def test_genesis_1_1_nlt(self):
         # Beginning of a chapter (so BibleGateway shows a large chapter number)

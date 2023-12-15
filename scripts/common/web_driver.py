@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import subprocess
 import time
+import traceback
 from datetime import timedelta
 from pathlib import Path
 from typing import Callable, Optional, Tuple, Type, TypeVar
 
-from autochecklist import CancellationToken
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from autochecklist import CancellationToken, Messenger, ProblemLevel
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    TimeoutException,
+    WebDriverException,
+)
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -18,7 +23,33 @@ T = TypeVar("T")
 
 
 class ReccWebDriver(WebDriver):
-    def __init__(self, headless: bool = True, log_file: Optional[Path] = None):
+    MAX_STARTUP_ATTEMPTS = 3
+
+    def __new__(cls, messenger: Messenger, *_args: object, **_kwargs: object):
+        attempts = 0
+        while True:
+            try:
+                return super().__new__(cls)
+            # Selenium sometimes raises
+            # "selenium.common.exceptions.WebDriverException: Message: Process
+            # unexpectedly closed with status 0" on startup!
+            except WebDriverException as e:
+                attempts += 1
+                if attempts >= cls.MAX_STARTUP_ATTEMPTS:
+                    raise
+                else:
+                    messenger.log_problem(
+                        ProblemLevel.WARN,
+                        f"Failed to create Selenium web driver instance: {e}",
+                        traceback.format_exc(),
+                    )
+
+    def __init__(  # pyright: ignore [reportInconsistentConstructor]
+        self,
+        messenger: Messenger,
+        headless: bool = True,
+        log_file: Optional[Path] = None,
+    ):
         options = Options()
         if headless:
             options.add_argument("-headless")  # type: ignore
@@ -27,7 +58,6 @@ class ReccWebDriver(WebDriver):
             # Hide the geckodriver terminal
             popen_kw={"creation_flags": subprocess.CREATE_NO_WINDOW},
         )
-        # TODO: This raises "selenium.common.exceptions.WebDriverException: Message: Process unexpectedly closed with status 0," but only at church and only the first time!
         super().__init__(options=options, service=service)  # type: ignore
 
     def wait(

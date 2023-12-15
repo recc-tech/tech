@@ -20,14 +20,23 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        cls.log_problem_mock = Mock()
+        cls.messenger = create_autospec(Messenger)
+        cls.messenger.log_problem = cls.log_problem_mock
         # Create the driver once and reuse it for all tests because
         #  (1) creating a new WebDriver is slow
         #  (2) having a bunch of Firefox windows open is massively memory-intensive
-        cls._driver = ReccWebDriver(headless=True, log_file=None)
+        cls._driver = ReccWebDriver(
+            messenger=cls.messenger, headless=True, log_file=None
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls._driver.close()
+
+    def tearDown(self) -> None:
+        # Prevent errors logged by one test from carrying over to other tests
+        self.log_problem_mock.reset_mock()
 
     def test_load_message_notes(self):
         # NOTE: The expected outputs sometimes reflect what is realistic, not
@@ -42,13 +51,12 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         #    include the text for Genesis 24:7-8 the second time.
         #  - 2023-10-22: The slide "If you want someone [...]" uses "than"
         #    instead of "then" and is split across two lines for some reason.
-        log_problem_mock = Mock()
-        messenger = create_autospec(Messenger)
-        messenger.log_problem = log_problem_mock
         finder = BibleVerseFinder(
-            driver=self._driver, messenger=messenger, cancellation_token=None
+            driver=self._driver, messenger=self.messenger, cancellation_token=None
         )
-        reader = SlideBlueprintReader(messenger=messenger, bible_verse_finder=finder)
+        reader = SlideBlueprintReader(
+            messenger=self.messenger, bible_verse_finder=finder
+        )
         raw_notes_paths = [
             x
             for x in self.RAW_NOTES_DIR.iterdir()
@@ -56,7 +64,7 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         ]
         self.assertGreater(len(raw_notes_paths), 0)
         for p in raw_notes_paths:
-            log_problem_mock.reset_mock()
+            self.log_problem_mock.reset_mock()
             with self.subTest(msg=p.relative_to(self.RAW_NOTES_DIR).as_posix()):
                 expected_blueprints_path = self.EXPECTED_BLUEPRINTS_DIR.joinpath(
                     p.stem + ".json"
@@ -73,20 +81,19 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
                 actual_blueprints = reader.load_json(actual_blueprints_path)
                 expected_blueprints = reader.load_json(expected_blueprints_path)
                 self.assertEqual(expected_blueprints, actual_blueprints)
-                log_problem_mock.assert_not_called()
+                self.log_problem_mock.assert_not_called()
 
     def test_load_message_notes_with_duplicates(self):
         warn_msg_by_file = {
             "2023-09-03": 'The message notes ask for multiple slides with body "“Be still, and know that I am God! I will be honored by every nation. I will be honored throughout the world.”", name "Psalm 46 10 NLT", and footer "Psalm 46:10 (NLT)". Is there a typo?',
             "2023-09-10": 'The message notes ask for multiple slides with body "Go instead to my homeland, to my relatives, and find a wife there for my son Isaac.”", name "Genesis 24 4 NLT", and footer "Genesis 24:4 (NLT)". Is there a typo?',
         }
-        log_problem_mock = Mock()
-        messenger = create_autospec(Messenger)
-        messenger.log_problem = log_problem_mock
         finder = BibleVerseFinder(
-            driver=self._driver, messenger=messenger, cancellation_token=None
+            driver=self._driver, messenger=self.messenger, cancellation_token=None
         )
-        reader = SlideBlueprintReader(messenger=messenger, bible_verse_finder=finder)
+        reader = SlideBlueprintReader(
+            messenger=self.messenger, bible_verse_finder=finder
+        )
         raw_notes_paths = [
             x
             for x in self.RAW_NOTES_DIR.iterdir()
@@ -94,7 +101,7 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         ]
         self.assertGreater(len(raw_notes_paths), 0)
         for p in raw_notes_paths:
-            log_problem_mock.reset_mock()
+            self.log_problem_mock.reset_mock()
             with self.subTest(msg=p.relative_to(self.RAW_NOTES_DIR).as_posix()):
                 expected_blueprints_path = self.EXPECTED_BLUEPRINTS_DIR.joinpath(
                     p.stem + ".json"
@@ -111,6 +118,6 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
                 actual_blueprints = reader.load_json(actual_blueprints_path)
                 expected_blueprints = reader.load_json(expected_blueprints_path)
                 self.assertEqual(expected_blueprints, actual_blueprints)
-                log_problem_mock.assert_called_once_with(
+                self.log_problem_mock.assert_called_once_with(
                     level=ProblemLevel.WARN, message=warn_msg_by_file[p.stem]
                 )
