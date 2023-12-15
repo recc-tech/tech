@@ -140,20 +140,27 @@ def download_assets(
             archived_path.unlink()
 
 
-# TODO: Update these lists
 _VIDEO_CONTENT_TYPES = {
+    "application/mp4",
+    "application/mxf",
     "video/av1",
+    "video/avi",
+    "video/h264",
+    "video/h264-rcdo",
+    "video/h264-svc",
     "video/mp4",
+    "video/mp4v-es",
     "video/mpeg",
     "video/quicktime",
-    "application/mp4",
+    "video/x-ms-asf",
+    "video/x-ms-wmv",
 }
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^kids.*", flags=re.IGNORECASE)
 _DOCX_CONTENT_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
 _SERMON_NOTES_REGEX = re.compile(r"^notes\s*-.*", flags=re.IGNORECASE)
-_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png"}
+_IMAGE_CONTENT_TYPES = {"image/bmp", "image/jpeg", "image/png", "image/tiff"}
 
 
 def _classify_attachments(
