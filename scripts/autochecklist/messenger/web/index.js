@@ -1,6 +1,3 @@
-console.log("Hello from index.js!");
-console.log(eel);
-
 eel.expose(set_title);
 function set_title(title) {
     // TODO: Implement this
@@ -45,7 +42,7 @@ function show_input_dialog(title, prompt, params) {
     console.log(`show_input_dialog("${title}", "${prompt}", ${JSON.stringify(params)})`);
     let output = {};
     for (const name in params) {
-        output[name] = "123";
+        output[name] = name == "pizza_topping" ? "pineapple" : "123";
     }
     console.log(output);
     eel.handle_input(output);
@@ -75,4 +72,16 @@ eel.expose(remove_command);
 function remove_command(task_name, command_name) {
     // TODO: Implement this
     console.log(`remove_command("${task_name}", "${command_name}")`);
+}
+
+eel.expose(show_script_done_message);
+function show_script_done_message() {
+    // TODO: Implement this
+    console.log("show_script_done_message()");
+}
+
+eel.expose(force_close);
+function force_close() {
+    // TODO: Implement this
+    console.log("force_close()");
 }

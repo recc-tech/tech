@@ -70,3 +70,10 @@ def add_command(task_name: str, command_name: str) -> None:
 
 def remove_command(task_name: str, command_name: str) -> None:
     eel.remove_command(task_name, command_name)
+
+def show_script_done_message() -> None:
+    eel.show_script_done_message()
+
+
+def force_close() -> None:
+    eel.force_close()
