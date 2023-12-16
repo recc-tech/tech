@@ -6,6 +6,7 @@ from pathlib import Path
 from .. import (
     BaseConfig,
     ConsoleMessenger,
+    EelMessenger,
     FileMessenger,
     FunctionFinder,
     Messenger,
@@ -94,6 +95,8 @@ def _main():
         ConsoleMessenger(description=_DESCRIPTION)
         if args.ui == "console"
         else TkMessenger(title="autochecklist demo", description=_DESCRIPTION)
+        if args.ui == "tk"
+        else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
     )
     messenger = Messenger(
         file_messenger=file_messenger, input_messenger=input_messenger
@@ -152,7 +155,9 @@ def _main():
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=_DESCRIPTION)
-    parser.add_argument("ui", choices=["console", "tk"], help="UI to use for the demo.")
+    parser.add_argument(
+        "ui", choices=["console", "tk", "eel"], help="UI to use for the demo."
+    )
     return parser.parse_args()
 
 

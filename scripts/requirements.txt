@@ -5,3 +5,4 @@ selenium==4.9.1
 pillow>=9.3
 pyperclip==1.8.2
 webvtt-py>=0.4
+eel>=0.16

@@ -2,6 +2,7 @@
 # pyright: basic
 
 from .console_messenger import ConsoleMessenger
+from .eel_messenger import EelMessenger
 from .input_messenger import (
     InputMessenger,
     Parameter,

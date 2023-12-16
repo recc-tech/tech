@@ -78,12 +78,12 @@ class TkMessenger(InputMessenger):
         parser: Callable[[str], T] = lambda x: x,
         prompt: str = "",
         title: str = "Input",
-    ) -> Optional[T]:
+    ) -> T:
         # simpledialog.askstring throws an exception each time :(
         # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
         param = Parameter(display_name, parser, password, description=prompt)
         results = self.input_multiple({"param": param}, prompt="", title=title)
-        return cast(Optional[T], results["param"])
+        return cast(T, results["param"])
 
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
