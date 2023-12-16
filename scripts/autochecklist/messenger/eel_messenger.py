@@ -46,8 +46,24 @@ def handle_user_action(task_name: str, response: str) -> None:
 
 @eel.expose
 def handle_command(task_name: str, command_name: str) -> None:
-    if EelMessenger._instance is not None:
-        EelMessenger._instance._handle_command(task_name, command_name)
+    # The command handler runs an arbitrary callback, which might get
+    # deadlocked. Run it in a separate thread so that it doesn't deadlock the
+    # entire GUI, at least.
+    instance = EelMessenger._instance
+    if instance is None:
+        return
+
+    def run_handler():
+        try:
+            instance._handle_command(task_name, command_name)
+        except KeyboardInterrupt:
+            # The EelMessenger might shut down before the callback completes.
+            # There's no point in dumping a stack trace to the console over
+            # that.
+            pass
+
+    thread = Thread(target=run_handler, daemon=True)
+    thread.start()
 
 
 # endregion
@@ -119,6 +135,9 @@ class EelMessenger(InputMessenger):
         return cast(T, results["param"])
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
+        # TODO: Test carefully that this input mutex doesn't cause any
+        # unintended behaviour. If necessary, assign a GUID to each input
+        # dialog so multiple input dialogs can be requested at once.
         with self._input_mutex:
             self._input_event.clear()
             with self._state_mutex:
