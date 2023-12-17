@@ -80,13 +80,16 @@ def demo_errors(messenger: Messenger):
     raise ValueError("This is what happens when a task throws an exception.")
 
 
-def demo_cancel(messenger: Messenger):
+def demo_cancel1(messenger: Messenger):
     messenger.log_status(
         TaskStatus.RUNNING, "This task will run for a long time. Try cancelling it."
     )
     token = messenger.allow_cancel()
     sleep_attentively(timeout=timedelta(minutes=5), cancellation_token=token)
 
+
+def demo_cancel2(messenger: Messenger):
+    demo_cancel1(messenger)
 
 def _main():
     args = _parse_args()
@@ -131,7 +134,12 @@ def _main():
                     prerequisites={"demo_input"},
                 ),
                 TaskModel(
-                    name="demo_cancel",
+                    name="demo_cancel1",
+                    description="This task will run for a long time. Try cancelling it.",
+                    prerequisites={"demo_errors"},
+                ),
+                TaskModel(
+                    name="demo_cancel2",
                     description="This task will run for a long time. Try cancelling it.",
                     prerequisites={"demo_errors"},
                 ),

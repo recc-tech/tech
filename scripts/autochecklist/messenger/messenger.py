@@ -16,6 +16,7 @@ from autochecklist.messenger.input_messenger import (
 
 T = TypeVar("T")
 
+
 class Messenger:
     """
     Thread-safe class for logging and user interactions.
@@ -109,7 +110,9 @@ class Messenger:
     ) -> Dict[str, object]:
         return self._input_messenger.input_multiple(params, prompt, title)
 
-    def wait(self, prompt: str, task_name: str = "", allow_retry: bool = False) -> UserResponse:
+    def wait(
+        self, prompt: str, task_name: str = "", allow_retry: bool = False
+    ) -> UserResponse:
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if actual_task_name:
@@ -118,7 +121,9 @@ class Messenger:
             else:
                 task_name_for_display = "UNKNOWN"
                 index = None
-        return self._input_messenger.wait(task_name_for_display, index, prompt, allow_retry)
+        return self._input_messenger.wait(
+            task_name_for_display, index, prompt, allow_retry
+        )
 
     def allow_cancel(self, task_name: str = "") -> CancellationToken:
         """
@@ -139,15 +144,25 @@ class Messenger:
                 token = CancellationToken()
             self._task_manager.set_cancellation_token(actual_task_name, token)
 
+        # Prevent the user from clicking multiple times
+        lock = Lock()
+
         def callback():
-            # TODO: Find a way of closing this in case the task completes
-            # before the user makes their choice?
-            should_cancel = self._input_messenger.input_bool(
-                title="Confirm cancel",
-                prompt="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
-            )
-            if not should_cancel:
+            if not lock.acquire(blocking=False):
                 return
+            try:
+                # TODO: Find a way of closing this in case the task completes
+                # before the user makes their choice?
+                should_cancel = self._input_messenger.input_bool(
+                    title="Confirm cancel",
+                    prompt="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
+                )
+                if not should_cancel:
+                    lock.release()
+                    return
+            except BaseException:
+                lock.release()
+                raise
             token.cancel()
             self.log_status(
                 status=TaskStatus.RUNNING,
