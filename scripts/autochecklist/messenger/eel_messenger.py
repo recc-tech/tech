@@ -27,23 +27,48 @@ T = TypeVar("T")
 
 
 @eel.expose
-def handle_input(values: Dict[str, str]) -> None:
-    if EelMessenger._instance is not None:
-        EelMessenger._instance._handle_input(values)
+def handle_input(key: int, values: Dict[str, str]) -> None:
+    instance = EelMessenger._instance
+    if instance is None:
+        return
+    # Run the handler in a separate thread to avoid blocking the main eel
+    # thread
+    thread = Thread(
+        target=lambda: instance._handle_input(key, values),
+        daemon=True,
+    )
+    thread.start()
 
 
 @eel.expose
-def handle_bool_input(value: bool) -> None:
-    if EelMessenger._instance is not None:
-        EelMessenger._instance._handle_bool_input(value)
+def handle_bool_input(key: int, value: bool) -> None:
+    instance = EelMessenger._instance
+    if instance is None:
+        return
+    # Run the handler in a separate thread to avoid blocking the main eel
+    # thread
+    thread = Thread(
+        target=lambda: instance._handle_bool_input(key, value),
+        daemon=True,
+    )
+    thread.start()
 
 
 @eel.expose
 def handle_user_action(task_name: str, response: str) -> None:
-    if EelMessenger._instance is not None:
-        EelMessenger._instance._handle_action(task_name, response)
+    instance = EelMessenger._instance
+    if instance is None:
+        return
+    # Run the handler in a separate thread to avoid blocking the main eel
+    # thread
+    thread = Thread(
+        target=lambda: instance._handle_action_item_response(task_name, response),
+        daemon=True,
+    )
+    thread.start()
 
 
+# TODO: Handle the user pressing the command button multiple times
 @eel.expose
 def handle_command(task_name: str, command_name: str) -> None:
     # The command handler runs an arbitrary callback, which might get
@@ -78,15 +103,17 @@ class EelMessenger(InputMessenger):
         return cls._instance
 
     def __init__(self, title: str, description: str) -> None:
+        self._state_mutex = Lock()
         self._is_waiting_for_close = False
         self._is_main_thread_waiting_for_input = False
         self._close_event = Event()
-        self._state_mutex = Lock()
-        self._input_mutex = Lock()
-        self._input_event = Event()
+        self._input_event_by_key: Dict[int, Event] = {}
+        self._input_by_key: Dict[int, object] = {}
         self._action_item_events: Dict[str, Event] = {}
         self._action_item_responses: Dict[str, UserResponse] = {}
-        self._commands: Dict[Tuple[str, str], Callable[[], None]] = {}
+        self._callback_by_command: Dict[Tuple[str, str], Callable[[], None]] = {}
+        self._current_key = 0
+        self._key_lock = Lock()
 
         # Call eel.init() in a blocking way, otherwise eel doesn't necessarily
         # have time to find all the exposed functions
@@ -102,16 +129,14 @@ class EelMessenger(InputMessenger):
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
-        with self._state_mutex:
-            if self.is_closed:
-                raise KeyboardInterrupt()
-            eeli.log_status(task_name, index, status, message)
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        eeli.log_status(task_name, index, status, message)
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        with self._state_mutex:
-            if self.is_closed:
-                raise KeyboardInterrupt()
-            eeli.log_problem(task_name, level, message)
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        eeli.log_problem(task_name, level, message)
 
     def close(self, wait: bool):
         with self._state_mutex:
@@ -120,7 +145,13 @@ class EelMessenger(InputMessenger):
             eeli.show_script_done_message()
         else:
             eeli.force_close()
-        self._close_event.wait()
+        # Loop so the main thread can still listen for CTRL+C
+        while True:
+            try:
+                if self._close_event.wait(timeout=1.0):
+                    return
+            except KeyboardInterrupt:
+                eeli.force_close()
 
     def input(
         self,
@@ -135,100 +166,120 @@ class EelMessenger(InputMessenger):
         return cast(T, results["param"])
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
-        # TODO: Test carefully that this input mutex doesn't cause any
-        # unintended behaviour. If necessary, assign a GUID to each input
-        # dialog so multiple input dialogs can be requested at once.
-        with self._input_mutex:
-            self._input_event.clear()
-            with self._state_mutex:
-                if self.is_closed:
-                    # The event may have been set by the close handler just
-                    # before this method called event.clear()
-                    raise KeyboardInterrupt()
-                if is_current_thread_main():
-                    self._is_main_thread_waiting_for_input = True
-            eeli.show_bool_input_dialog(prompt, title)
-            self._input_event.wait()
-            with self._state_mutex:
-                if self.is_closed:
-                    # The event may have been set by the close handler
-                    raise KeyboardInterrupt()
-                if is_current_thread_main():
-                    self._is_main_thread_waiting_for_input = False
-            return self._bool_input_value
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        i_am_main = is_current_thread_main()
+        key = self._get_unique_key()
+        with self._state_mutex:
+            if i_am_main:
+                self._is_main_thread_waiting_for_input = True
+            input_received_event = Event()
+            self._input_event_by_key[key] = input_received_event
+        eeli.show_bool_input_dialog(key, prompt, title)
+        input_received_event.wait()
+        with self._state_mutex:
+            if self.is_closed:
+                # The event may have been set by the close handler.
+                # Don't bother cleaning up the event and input since this means
+                # the script is shutting down anyway.
+                raise KeyboardInterrupt()
+            if i_am_main:
+                self._is_main_thread_waiting_for_input = False
+            choice = cast(bool, self._input_by_key[key])
+            del self._input_by_key[key]
+            del self._input_event_by_key[key]
+        return choice
 
-    def _handle_bool_input(self, value: bool) -> None:
-        self._bool_input_value = value
-        self._input_event.set()
+    def _handle_bool_input(self, key: int, value: bool) -> None:
+        with self._state_mutex:
+            try:
+                self._input_by_key[key] = value
+                self._input_event_by_key[key].set()
+            except:
+                # Should never happen, unless the JavaScript frontend is
+                # sending invalid messages
+                pass
 
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
     ) -> Dict[str, object]:
-        with self._input_mutex:
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        i_am_main = is_current_thread_main()
+        key = self._get_unique_key()
+        with self._state_mutex:
+            if i_am_main:
+                self._is_main_thread_waiting_for_input = True
+            input_received_event = Event()
+            self._input_event_by_key[key] = input_received_event
+        error_message_by_name = {t: "" for t in params}
+        output: Dict[str, object] = {}
+        while True:
+            eeli.show_input_dialog(key, title, prompt, params, error_message_by_name)
+            input_received_event.wait()
             with self._state_mutex:
+                # This check does need to be protected by the state mutex,
+                # otherwise the close handler may set the event but then have
+                # this method clear it and then wait indefinitely.
                 if self.is_closed:
+                    # The event may have been set by the close handler.
+                    # Don't bother cleaning up the event and input since this
+                    # means the script is shutting down anyway.
                     raise KeyboardInterrupt()
-                if is_current_thread_main():
-                    self._is_main_thread_waiting_for_input = True
-            error_message_by_name = {t: "" for t in params}
-            output: Dict[str, object] = {}
-            while True:
-                self._input_event.clear()
-                with self._state_mutex:
-                    if self.is_closed:
-                        # The event may have been set by the close handler just
-                        # before this method called event.clear()
-                        raise KeyboardInterrupt()
-                eeli.show_input_dialog(title, prompt, params, error_message_by_name)
-                self._input_event.wait()
-                with self._state_mutex:
-                    if self.is_closed:
-                        # The event may have been set by the close handler
-                        raise KeyboardInterrupt()
-                value_by_name = self._input_values
-                for name, value in value_by_name.items():
-                    parser = params[name].parser
-                    try:
-                        val = parser(value)
-                        error_message_by_name[name] = ""
-                        output[name] = val
-                    except ArgumentTypeError as e:
-                        error_message_by_name[name] = f"Invalid input: {e}"
-                    except Exception as e:
-                        error_message_by_name[name] = f"An error occurred: {e}"
-                if all([len(x) == 0 for x in error_message_by_name.values()]):
-                    break
-            with self._state_mutex:
-                if is_current_thread_main():
-                    self._is_main_thread_waiting_for_input = False
-            return output
+                input_received_event.clear()
+                value_by_name = cast(Dict[str, str], self._input_by_key[key])
+            for name, value in value_by_name.items():
+                parser = params[name].parser
+                try:
+                    val = parser(value)
+                    error_message_by_name[name] = ""
+                    output[name] = val
+                except ArgumentTypeError as e:
+                    error_message_by_name[name] = f"Invalid input: {e}"
+                except Exception as e:
+                    error_message_by_name[name] = f"An error occurred: {e}"
+            if all([x == "" for x in error_message_by_name.values()]):
+                break
+        with self._state_mutex:
+            if i_am_main:
+                self._is_main_thread_waiting_for_input = False
+            del self._input_by_key[key]
+            del self._input_event_by_key[key]
+        return output
 
-    def _handle_input(self, values: Dict[str, str]) -> None:
-        self._input_values = values
-        self._input_event.set()
+    def _handle_input(self, key: int, values: Dict[str, str]) -> None:
+        with self._state_mutex:
+            try:
+                self._input_by_key[key] = values
+                self._input_event_by_key[key].set()
+            except KeyError:
+                # Should never happen, unless the JavaScript frontend is
+                # sending invalid messages
+                pass
 
     def wait(
         self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
     ) -> UserResponse:
+        if self.is_closed:
+            raise KeyboardInterrupt()
         with self._state_mutex:
-            if self.is_closed:
-                raise KeyboardInterrupt()
             try:
                 # This should always raise a KeyError because tasks are
                 # assigned to exactly one thread and a single thread cannot
                 # call wait() multiple times at exactly the same time. But set
-                # the event anyway to avoid deadlocks.
+                # the event anyway, just in case, to avoid a method getting
+                # stuck waiting indefinitely.
                 self._action_item_events[task_name].set()
             except KeyError:
                 pass
-            self._action_item_events[task_name] = Event()
-            eeli.add_action_item(task_name, index, prompt, allow_retry)
-        self._action_item_events[task_name].wait()
+            response_received_event = Event()
+            self._action_item_events[task_name] = response_received_event
+        eeli.add_action_item(task_name, index, prompt, allow_retry)
+        response_received_event.wait()
         with self._state_mutex:
             # The event may have been set by the close handler
             if self.is_closed:
                 raise KeyboardInterrupt()
-            eeli.remove_action_item(task_name)
             try:
                 del self._action_item_events[task_name]
             except KeyError:
@@ -236,16 +287,16 @@ class EelMessenger(InputMessenger):
             try:
                 response = self._action_item_responses[task_name]
                 del self._action_item_responses[task_name]
-                return response
             except KeyError:
                 # Response should always be set by the handler function, but
                 # set a default just in case. Default to DONE rather than RETRY
                 # so the script doesn't get stuck in an infinite loop.
-                return UserResponse.DONE
+                response = UserResponse.DONE
+            return response
 
-    def _handle_action(self, task_name: str, response: str) -> None:
+    def _handle_action_item_response(self, task_name: str, response: str) -> None:
+        response = response.lower()
         with self._state_mutex:
-            response = response.lower()
             if response == "retry":
                 self._action_item_responses[task_name] = UserResponse.RETRY
             else:
@@ -253,32 +304,32 @@ class EelMessenger(InputMessenger):
             try:
                 self._action_item_events[task_name].set()
             except KeyError:
-                return
+                pass
 
     def add_command(
         self, task_name: str, command_name: str, callback: Callable[[], None]
     ) -> None:
+        if self.is_closed:
+            raise KeyboardInterrupt()
         with self._state_mutex:
-            if self.is_closed:
-                raise KeyboardInterrupt()
-            self._commands[task_name, command_name] = callback
-            eeli.add_command(task_name, command_name)
+            self._callback_by_command[task_name, command_name] = callback
+        eeli.add_command(task_name, command_name)
 
     def _handle_command(self, task_name: str, command_name: str) -> None:
         with self._state_mutex:
             try:
-                callback = self._commands[task_name, command_name]
+                callback = self._callback_by_command[task_name, command_name]
             except KeyError:
                 return
         callback()
 
     def remove_command(self, task_name: str, command_name: str) -> None:
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        eeli.remove_command(task_name, command_name)
         with self._state_mutex:
-            if self.is_closed:
-                raise KeyboardInterrupt()
-            eeli.remove_command(task_name, command_name)
             try:
-                del self._commands[task_name, command_name]
+                del self._callback_by_command[task_name, command_name]
             except KeyError:
                 pass
 
@@ -310,4 +361,10 @@ class EelMessenger(InputMessenger):
             # Release waiting threads so they can exit cleanly
             for e in self._action_item_events.values():
                 e.set()
-            self._input_event.set()
+            for e in self._input_event_by_key.values():
+                e.set()
+
+    def _get_unique_key(self) -> int:
+        with self._key_lock:
+            self._current_key += 1
+            return self._current_key

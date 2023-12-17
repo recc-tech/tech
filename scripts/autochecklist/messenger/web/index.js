@@ -22,30 +22,23 @@ function log_problem(task_name, level, message) {
     console.log(`log_problem("${task_name}", "${level}", "${message}")`);
 }
 
-eel.expose(input_str);
-function input_str(display_name, password, prompt, title, error_message) {
-    // TODO: Implement this
-    console.log(`input_str("${display_name}", ${password}, "${prompt}", "${title}", "${error_message}")`);
-    eel.handle_input_str("1");
-}
-
 eel.expose(show_bool_input_dialog);
-function show_bool_input_dialog(prompt, title) {
+function show_bool_input_dialog(key, prompt, title) {
     // TODO: Implement this
-    console.log(`show_bool_input_dialog("${prompt}", "${title}")`);
-    eel.handle_bool_input(true);
+    console.log(`show_bool_input_dialog(${key}, "${prompt}", "${title}")`);
+    eel.handle_bool_input(key, true);
 }
 
 eel.expose(show_input_dialog);
-function show_input_dialog(title, prompt, params) {
+function show_input_dialog(key, title, prompt, params) {
     // TODO: Implement this
-    console.log(`show_input_dialog("${title}", "${prompt}", ${JSON.stringify(params)})`);
-    let output = {};
+    console.log(`show_input_dialog(${key}, "${title}", "${prompt}", ${JSON.stringify(params)})`);
+    let inputs = {};
     for (const name in params) {
-        output[name] = name == "pizza_topping" ? "pineapple" : "123";
+        inputs[name] = name == "pizza_topping" ? "pineapple" : "123";
     }
-    console.log(output);
-    eel.handle_input(output);
+    console.log(inputs);
+    eel.handle_input(key, inputs);
 }
 
 eel.expose(add_action_item);
@@ -53,12 +46,6 @@ function add_action_item(task_name, index, prompt, allow_retry) {
     // TODO: Implement this
     console.log(`add_action_item("${task_name}", ${index}, "${prompt}", ${allow_retry})`);
     eel.handle_user_action(task_name, "DONE");
-}
-
-eel.expose(remove_action_item);
-function remove_action_item(task_name) {
-    // TODO: Implement this
-    console.log(`remove_action_item("${task_name}")`);
 }
 
 eel.expose(add_command);
@@ -82,6 +69,5 @@ function show_script_done_message() {
 
 eel.expose(force_close);
 function force_close() {
-    // TODO: Implement this
-    console.log("force_close()");
+    window.close();
 }
