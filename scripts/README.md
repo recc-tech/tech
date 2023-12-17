@@ -16,6 +16,7 @@ Note the following important files:
 ## Getting Started on a New Machine
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
-2. Install the required external libraries by running `pip install -r requirements.txt`
-3. Set up the computer to run `run_scripts_update.bat` on startup.
-4. Create a desktop shortcut for each .bat file.
+2. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this venv by using `source .venv/bin/activate` on MacOS, or using `.venv/Scripts/activate` on Windows.
+3. Install the required external libraries by running `pip install -r requirements.txt`
+4. Set up the computer to run `run_scripts_update.bat` on startup.
+5. Create a desktop shortcut for each .bat file.

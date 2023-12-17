@@ -260,7 +260,10 @@ class TkMessenger(InputMessenger):
 
     def _run_gui(self, title: str, root_started: Semaphore, description: str):
         # Try to make the GUI less blurry
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except:
+            pass
 
         self._tk = Tk()
         self._tk.title(title)
