@@ -131,20 +131,31 @@ class PlanningCenterClient:
         self,
         downloads: List[Tuple[Attachment, Path]],
         cancellation_token: Optional[CancellationToken],
-    ):
-        app_id, secret = self._get_auth()
-        auth = aiohttp.BasicAuth(login=app_id, password=secret)
-        async with aiohttp.ClientSession() as session:
-            tasks = [
-                self._download_one_asset(
-                    attachment, destination, session, auth, cancellation_token
-                )
-                for attachment, destination in downloads
-            ]
-            await asyncio.gather(*tasks)
+    ) -> List[Optional[BaseException]]:
+        """
+        Downloads each attachment to the corresponding path. Returns a list
+        containing, for each attachment, `None` if it was downloaded
+        successfully and an exception otherwise. The list of results will be in
+        the same order as the list of downloads.
+        """
+        results: List[Optional[BaseException]]
+        try:
+            app_id, secret = self._get_auth()
+            auth = aiohttp.BasicAuth(login=app_id, password=secret)
+            async with aiohttp.ClientSession() as session:
+                tasks = [
+                    self._download_one_asset(
+                        attachment, destination, session, auth, cancellation_token
+                    )
+                    for attachment, destination in downloads
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+        except BaseException as e:
+            results = [e for _ in downloads]
         # Avoid RuntimeWarnings for unclosed resources
         # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
         await asyncio.sleep(0.25)
+        return results
 
     def _test_credentials(self, max_attempts: int):
         for attempt_num in range(1, max_attempts + 1):

@@ -68,7 +68,9 @@ def main():
         messenger.log_status(TaskStatus.RUNNING, "Starting the script...")
 
         web_driver = ReccWebDriver(
-            headless=not cmd_args.show_browser, log_file=web_driver_log_file
+            messenger=messenger,
+            headless=not cmd_args.show_browser,
+            log_file=web_driver_log_file,
         )
         bible_verse_finder = BibleVerseFinder(
             # No need for a cancellation token since this script is linear and
