@@ -60,7 +60,9 @@ def main():
         credential_store = CredentialStore(messenger)
         planning_center_client = PlanningCenterClient(messenger, credential_store)
         web_driver = ReccWebDriver(
-            headless=not args.show_browser, log_file=config.webdriver_log_file
+            messenger=messenger,
+            headless=not args.show_browser,
+            log_file=config.webdriver_log_file,
         )
         bible_verse_finder = BibleVerseFinder(
             web_driver,
