@@ -13,10 +13,18 @@ Note the following important files:
 	- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
 	- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
 
-## Getting Started on a New Machine
+## Setting up a New Production Environment
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
-2. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this venv by using `source .venv/bin/activate` on MacOS, or using `.venv/Scripts/activate` on Windows.
+2. Move to the `scripts/` directory.
 3. Install the required external libraries by running `pip install -r requirements.txt`
 4. Set up the computer to run `run_scripts_update.bat` on startup.
 5. Create a desktop shortcut for each .bat file.
+
+## Setting up a new Development Environment
+
+1. Install Python. The scripts were developed and tested using Python 3.10.
+2. Move to the `scripts/` directory.
+3. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
+4. Install the required external libraries by running `pip install -r requirements.txt`
+5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements.txt`.
