@@ -10,12 +10,31 @@ import signal
 import threading
 from dataclasses import dataclass
 from enum import Enum, auto
+from threading import Thread
 from typing import Callable, Dict, Optional, TypeVar
 
 T = TypeVar("T")
 
 
 class InputMessenger:
+    def start(self, after_start: Callable[[], None]) -> None:
+        def run_main_worker() -> None:
+            self.wait_for_start()
+            after_start()
+
+        main_worker_thread = Thread(name="MainWorker", target=run_main_worker)
+        main_worker_thread.start()
+        self.run_main_loop()
+
+    def run_main_loop(self) -> None:
+        raise NotImplementedError()
+
+    def wait_for_start(self) -> None:
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        raise NotImplementedError()
+
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
@@ -23,12 +42,6 @@ class InputMessenger:
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         raise NotImplementedError()
-
-    def close(self, wait: bool):
-        """
-        Performs any cleanup that is required before exiting (e.g., making worker threads exit).
-        """
-        pass
 
     def input(
         self,
@@ -59,10 +72,6 @@ class InputMessenger:
         raise NotImplementedError()
 
     def remove_command(self, task_name: str, command_name: str) -> None:
-        raise NotImplementedError()
-
-    @property
-    def is_closed(self) -> bool:
         raise NotImplementedError()
 
 

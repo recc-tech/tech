@@ -5,7 +5,6 @@ import json
 import traceback
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import timedelta
 from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
@@ -20,7 +19,6 @@ from autochecklist.messenger import (
     TaskStatus,
     UserResponse,
 )
-from autochecklist.wait import sleep_attentively
 
 
 class TaskGraph:
@@ -62,14 +60,6 @@ class TaskGraph:
         for thread in self._threads:
             while thread.is_alive():
                 thread.join(timeout=0.5)
-
-        # In some cases when the user cancels the program, the task threads may
-        # all exit before the main thread receives the signal that the program
-        # is cancelled. This is most common when there is only one active
-        # thread and it was waiting for input. In that case, wait a bit to give
-        # the main thread time to receive the signal.
-        if self._messenger.is_closed:
-            sleep_attentively(timedelta(seconds=20), cancellation_token=None)
 
 
 class _TaskThread(Thread):

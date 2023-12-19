@@ -3,73 +3,122 @@ from __future__ import annotations
 import ctypes
 import subprocess
 import threading
-import tkinter as tk
+import tkinter
+import typing
 from argparse import ArgumentTypeError
+from dataclasses import dataclass
 from pathlib import Path
-from threading import Event, Lock, Semaphore, Thread
+from queue import Queue
+from threading import Lock
 from tkinter import Canvas, Menu, Misc, Text, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
-from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar, cast
+from typing import Any, Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
-import pyperclip  # type: ignore
-from autochecklist.messenger.input_messenger import (
+import pyperclip
+
+from .input_messenger import (
     InputMessenger,
     Parameter,
     ProblemLevel,
     TaskStatus,
     UserResponse,
-    interrupt_main_thread,
-    is_current_thread_main,
 )
 
 T = TypeVar("T")
 
 
+_BACKGROUND_COLOUR = "#EEEEEE"
+_FOREGROUND_COLOUR = "#000000"
+
+_NORMAL_FONT = "Calibri 12"
+_ITALIC_FONT = f"{_NORMAL_FONT} italic"
+_BOLD_FONT = f"{_NORMAL_FONT} bold"
+_H2_FONT = "Calibri 18 bold"
+
+
 class TkMessenger(InputMessenger):
-    _BACKGROUND_COLOUR = "#EEEEEE"
-    _FOREGROUND_COLOUR = "#000000"
+    _QUEUE_EVENT = "<<TaskQueued>>"
 
-    _NORMAL_FONT = "Calibri 12"
-    _ITALIC_FONT = f"{_NORMAL_FONT} italic"
-    _BOLD_FONT = f"{_NORMAL_FONT} bold"
-    _H2_FONT = "Calibri 18 bold"
-
-    def __init__(self, title: str, description: str):
+    def __init__(self, title: str, description: str) -> None:
+        self._title = title
+        self._description = description
+        self._start_event = threading.Event()
+        self._end_event = threading.Event()
         self._mutex = Lock()
-        self._close_called = False
-        self._is_main_thread_waiting_for_input = False
-        self._is_shut_down = False
-        self._waiting_locks: Set[Lock] = set()
-        self._waiting_events: Set[Event] = set()
-        root_started = Semaphore(0)
-        self._gui_thread = Thread(
-            name="TkMessenger",
-            target=lambda: self._run_gui(title, root_started, description),
-        )
-        self._gui_thread.start()
-        # Wait for the GUI to enter the main loop
-        root_started.acquire()
+        self._waiting_events: Set[threading.Event] = set()
+        self._queue: Queue[_GuiTask] = Queue()
+
+    def run_main_loop(self) -> None:
+        try:
+            self._create_gui()
+            self._tk.after(0, lambda: self._start_event.set())
+            self._tk.mainloop()
+        finally:
+            # Release all waiting threads so they can exit cleanly
+            for e in self._waiting_events:
+                e.set()
+            self._start_event.set()
+            self._end_event.set()
+
+    def _handle_queued_task(self) -> None:
+        try:
+            task = self._queue.get()
+            task.run()
+            if task.update_scrollregion:
+                self._handle_update_scrollregion()
+        except Exception as e:
+            print(f"Exception in custom event handler: {e}")
+
+    def wait_for_start(self) -> None:
+        self._start_event.wait()
+
+    @property
+    def is_closed(self) -> bool:
+        return self._end_event.is_set()
+
+    def close(self) -> None:
+        def show_goodbye_message() -> None:
+            self._action_items_grid.destroy()
+            goodbye_textbox = _CopyableText(
+                self._action_items_frame,
+                width=170,
+                height=0,
+                font=_NORMAL_FONT,
+                background=_BACKGROUND_COLOUR,
+                foreground=_FOREGROUND_COLOUR,
+            )
+            goodbye_textbox.grid(sticky="NW", pady=25)
+            goodbye_textbox.set_text("The program is done. Close this window to exit.")
+
+        if self.is_closed:
+            return
+        else:
+            self._tk.after_idle(show_goodbye_message)
+            self._end_event.wait()
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
-        with self._mutex:
-            if self._is_shut_down:
-                # TODO: Isn't there a race condition here? If the user presses
-                # CTRL+C at *just* the right moment, the main thread will
-                # receive two KeyboardInterrupts
-                raise KeyboardInterrupt()
+        if self.is_closed:
+            raise KeyboardInterrupt()
+
+        def do_log_status() -> None:
             self._task_statuses_grid.upsert_row(
                 index=index, task_name=task_name, status=status, message=message
             )
-            self._root_frame.update_scrollregion()
+
+        self._queue.put(_GuiTask(do_log_status, update_scrollregion=True))
+        self._tk.event_generate(self._QUEUE_EVENT)
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
+        if self.is_closed:
+            raise KeyboardInterrupt()
+
+        def do_log_problem() -> None:
             self._problems_grid.add_row(task_name, level, message)
-            self._root_frame.update_scrollregion()
+
+        self._queue.put(_GuiTask(do_log_problem, update_scrollregion=True))
+        self._tk.event_generate(self._QUEUE_EVENT)
 
     def input(
         self,
@@ -77,337 +126,426 @@ class TkMessenger(InputMessenger):
         password: bool,
         parser: Callable[[str], T] = lambda x: x,
         prompt: str = "",
-        title: str = "Input",
-    ) -> Optional[T]:
-        # simpledialog.askstring throws an exception each time :(
-        # https://stackoverflow.com/questions/53480400/tkinter-askstring-deleted-before-its-visibility-changed
+        title: str = "",
+    ) -> T:
         param = Parameter(display_name, parser, password, description=prompt)
         results = self.input_multiple({"param": param}, prompt="", title=title)
-        return cast(Optional[T], results["param"])
+        return typing.cast(T, results["param"])
 
     def input_multiple(
-        self, params: Dict[str, Parameter], prompt: str = "", title: str = "Input"
+        self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
     ) -> Dict[str, object]:
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
+        def handle_submit() -> None:
+            submit_event.set()
+
+        def handle_close() -> None:
+            nonlocal was_input_cancelled
+            # IMPORTANT: If this is changed to call another method with a
+            # custom boolean input dialog, it MUST NOT deadlock the main thread
+            # (e.g., by generating an event but then blocking on main).
+            should_exit = messagebox.askyesno(  # type: ignore
+                title="Confirm exit",
+                message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
+            )
+            if not should_exit:
+                return
+            was_input_cancelled = True
+            submit_event.set()
+
+        def create_input_dialog() -> None:
+            nonlocal input_frame, entry_by_key, error_label_by_key, submit_button
             (
-                w,
-                entry_by_name,
-                error_message_by_name,
-                submit_btn,
-            ) = self._create_input_window(title, prompt, params)
-            if is_current_thread_main():
-                self._is_main_thread_waiting_for_input = True
-        lock = Lock()
+                input_frame,
+                entry_by_key,
+                error_label_by_key,
+                submit_button,
+            ) = self._create_input_dialog(title=title, prompt=prompt, params=params)
+            input_frame.protocol("WM_DELETE_WINDOW", handle_close)
+            submit_button.bind("<Button-1>", lambda _: handle_submit())
+
+        def freeze_and_read_input_dialog() -> None:
+            submit_button.configure(state="disabled")
+            for key, entry in entry_by_key.items():
+                entry.configure(state="disabled")
+                input_by_key[key] = entry.get()
+            dialog_frozen_event.set()
+
+        def update_and_unfreeze_input_dialog(error_by_key: Dict[str, str]) -> None:
+            for key, label in error_label_by_key.items():
+                label.set_text(error_by_key[key])
+            for entry in entry_by_key.values():
+                entry.configure(state="enabled")
+            submit_button.configure(state="enabled")
+
+        def hide_input_dialog() -> None:
+            input_frame.destroy()
+
+        if self.is_closed:
+            raise KeyboardInterrupt()
+
+        submit_event = threading.Event()
+        dialog_frozen_event = threading.Event()
+        was_input_cancelled = False
+        input_frame: Toplevel
+        entry_by_key: Dict[str, Entry]
+        error_label_by_key: Dict[str, _CopyableText]
+        submit_button: Button
+        input_by_key = {key: "" for key in params}
+        parser_by_key = {key: p.parser for key, p in params.items()}
+
+        self._queue.put(_GuiTask(create_input_dialog, update_scrollregion=False))
+        self._tk.event_generate(self._QUEUE_EVENT)
         try:
-            cancelled = False
-            with self._mutex:
-                self._waiting_locks.add(lock)
-            lock.acquire()
-
-            def handle_close():
-                nonlocal cancelled
-                should_exit = messagebox.askyesno(  # type: ignore
-                    title="Confirm exit",
-                    message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
-                )
-                if not should_exit:
-                    return
-                cancelled = True
-                lock.release()
-
-            def handle_submit():
-                nonlocal submit_btn
-                submit_btn.configure(state="disabled")
-                lock.release()
-
-            w.protocol("WM_DELETE_WINDOW", handle_close)
-            submit_btn.bind("<Button-1>", lambda _: handle_submit())
-
             while True:
-                # Wait for the button to be pressed or for the window to be closed
-                submit_btn.configure(state="normal")
-                # TODO: What if the user presses the button right here? Or what
-                # if the user changes the values as the code below is reading it?
-                # In practice, I doubt this will ever come up though
-                lock.acquire()
-                with self._mutex:
-                    if self._is_shut_down:
-                        raise KeyboardInterrupt()
-                if cancelled:
+                self._wait_and_clear_event(submit_event)
+                # Make sure the user can't submit multiple times or edit the fields
+                # while they're being processed
+                self._queue.put(
+                    _GuiTask(freeze_and_read_input_dialog, update_scrollregion=False)
+                )
+                self._tk.event_generate(self._QUEUE_EVENT)
+                self._wait_and_clear_event(dialog_frozen_event)
+                # In case the user clicked twice before the dialog was frozen
+                submit_event.clear()
+                if was_input_cancelled:
                     raise InputCancelledException("The user closed the input dialog.")
-                output: Dict[str, object] = {}
-                error = False
-                for name, entry in entry_by_name.items():
-                    parser = params[name].parser
-                    try:
-                        val = parser(entry.get())
-                        error_message_by_name[name].set_text("")
-                        output[name] = val
-                    except ArgumentTypeError as e:
-                        error_message_by_name[name].set_text(f"Invalid input: {e}")
-                        error = True
-                    except Exception as e:
-                        error_message_by_name[name].set_text(f"An error occurred: {e}")
-                        error = True
-                if not error:
-                    return output
+                output_by_key, error_by_key = self._parse_inputs(
+                    input_by_key, parser_by_key
+                )
+                if all(e == "" for e in error_by_key.values()):
+                    break
+                else:
+                    self._queue.put(
+                        _GuiTask(
+                            lambda: update_and_unfreeze_input_dialog(error_by_key),
+                            update_scrollregion=False,
+                        )
+                    )
+                    self._tk.event_generate(self._QUEUE_EVENT)
+            return output_by_key
         finally:
-            with self._mutex:
-                if lock in self._waiting_locks:
-                    self._waiting_locks.remove(lock)
-                if is_current_thread_main():
-                    self._is_main_thread_waiting_for_input = False
-                # If quit() was already called then the entire GUI is already
-                # being destroyed. If this call to destroy() happens after the
-                # GUI mainloop exits, then this code will deadlock.
-                if not self._is_shut_down:
-                    w.destroy()
+            self._queue.put(_GuiTask(hide_input_dialog, update_scrollregion=False))
+            self._tk.event_generate(self._QUEUE_EVENT)
+
+    def _parse_inputs(
+        self,
+        input_by_key: Dict[str, str],
+        parser_by_key: Dict[str, Callable[[str], T]],
+    ) -> Tuple[Dict[str, Optional[T]], Dict[str, str]]:
+        output_by_key: Dict[str, Optional[T]] = {key: None for key in input_by_key}
+        error_by_key: Dict[str, str] = {key: "" for key in input_by_key}
+        for key, value in input_by_key.items():
+            try:
+                parse = parser_by_key[key]
+                output_by_key[key] = parse(value)
+            except KeyboardInterrupt:
+                raise
+            except ArgumentTypeError as e:
+                error_by_key[key] = f"Invalid input: {e}"
+            except BaseException as e:
+                error_by_key[key] = f"An error occurred during parsing: {e}"
+        return output_by_key, error_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
-        return messagebox.askyesno(title, prompt)  # type: ignore
+        return messagebox.askyesno(  # pyright: ignore[reportUnknownMemberType]
+            title, prompt
+        )
 
     def wait(
         self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
     ) -> UserResponse:
-        response: Optional[UserResponse] = None
-        event = Event()
+        if self.is_closed:
+            raise KeyboardInterrupt()
 
-        def handle_done_click():
-            nonlocal response, event
+        click_event = threading.Event()
+        response: Optional[UserResponse] = None
+        actual_index = index or -1
+
+        def handle_click_done() -> None:
+            nonlocal response
             # Keep the first choice if the user somehow presses both quickly
             response = response or UserResponse.DONE
-            event.set()
+            click_event.set()
 
-        def handle_retry_click():
-            nonlocal response, event
+        def handle_click_retry() -> None:
+            nonlocal response
             response = response or UserResponse.RETRY
-            event.set()
+            click_event.set()
 
-        with self._mutex:
-            self._waiting_events.add(event)
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
+        def do_add_action_item() -> None:
+            nonlocal actual_index
             actual_index = self._action_items_grid.add_row(
                 index,
-                task_name=task_name,
-                message=prompt,
-                on_click_done=handle_done_click,
-                on_click_retry=(handle_retry_click if allow_retry else None),
+                task_name,
+                prompt,
+                on_click_done=handle_click_done,
+                on_click_retry=handle_click_retry if allow_retry else None,
             )
-            self._root_frame.update_scrollregion()
-        event.wait()
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
-            self._waiting_events.remove(event)
+
+        def do_remove_action_item() -> None:
             self._action_items_grid.delete_row(actual_index)
-            # Update the scrollregion again in case it got smaller
-            self._root_frame.update_scrollregion()
+
+        self._queue.put(_GuiTask(do_add_action_item, update_scrollregion=True))
+        self._tk.event_generate(self._QUEUE_EVENT)
+        self._wait_and_clear_event(click_event)
+        self._queue.put(_GuiTask(do_remove_action_item, update_scrollregion=True))
+        self._tk.event_generate(self._QUEUE_EVENT)
+
         # Response should always be set here because the button click handlers
         # set it, but set a default just in case. Default to DONE rather than
-        # RETRY so the script doesn't get stuck in an infinite loop
+        # RETRY so the script doesn't get stuck in an infinite loop.
         return response or UserResponse.DONE
-
-    def close(self, wait: bool):
-        with self._mutex:
-            self._close_called = True
-            if not self._is_shut_down:
-                goodbye_message_textbox = _CopyableText(
-                    self._action_items_container,
-                    width=170,
-                    font=self._NORMAL_FONT,
-                    background=self._BACKGROUND_COLOUR,
-                    foreground=self._FOREGROUND_COLOUR,
-                )
-                goodbye_message_textbox.grid(sticky="W", pady=25)
-                goodbye_message_textbox.set_text(
-                    "The program is done. Close this window to exit."
-                )
-                self._root_frame.update_scrollregion()
-        if not wait:
-            self._quit()
-        self._gui_thread.join()
-
-    @property
-    def is_closed(self) -> bool:
-        with self._mutex:
-            return self._is_shut_down
 
     def add_command(
         self, task_name: str, command_name: str, callback: Callable[[], None]
     ) -> None:
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
-            self._task_statuses_grid.upsert_command(
-                task_name=task_name,
-                command_name=command_name,
-                callback=callback,
-            )
-            self._root_frame.update_scrollregion()
+        def do_add_command() -> None:
+            self._task_statuses_grid.upsert_command(task_name, command_name, callback)
+
+        self._queue.put(_GuiTask(do_add_command, update_scrollregion=False))
+        self._tk.event_generate(self._QUEUE_EVENT)
 
     def remove_command(self, task_name: str, command_name: str) -> None:
-        with self._mutex:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
-            self._task_statuses_grid.remove_command(
-                task_name=task_name, command_name=command_name
-            )
-            self._root_frame.update_scrollregion()
+        def do_remove_command() -> None:
+            self._task_statuses_grid.remove_command(task_name, command_name)
 
-    def _run_gui(self, title: str, root_started: Semaphore, description: str):
+        self._queue.put(_GuiTask(do_remove_command, update_scrollregion=False))
+        self._tk.event_generate(self._QUEUE_EVENT)
+
+    def _handle_update_scrollregion(self) -> None:
+        # Make sure the display has updated before recomputing the scrollregion size
+        self._tk.update_idletasks()
+        canvas = typing.cast(Canvas, self._scroll_frame.master)
+        region = canvas.bbox("all")
+        canvas.config(scrollregion=region)
+
+    def _confirm_exit(self):
+        should_exit = self.input_bool(
+            title="Confirm exit", prompt="Are you sure you want to exit?"
+        )
+        if should_exit:
+            self._tk.quit()
+
+    def _create_gui(self) -> None:
         # Try to make the GUI less blurry
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(1)
-        except:
+        except Exception:
             pass
 
         self._tk = Tk()
-        self._tk.title(title)
-        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
-        self._tk.config(background=self._BACKGROUND_COLOUR)
-        self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
-
+        self._tk.title(self._title)
         screen_height = self._tk.winfo_screenheight()
+        # Apparently tk.winfo_screenwidth() doesn't work very well on
+        # multi-monitor setups
         approx_screen_width = 16 * screen_height / 9
         window_width = int(approx_screen_width * 0.75)
-        window_height = (screen_height * 3) // 4
-        self._tk.geometry(f"{window_width}x{window_height}")
+        window_height = int(screen_height * 0.75)
+        self._tk.geometry(f"{window_width}x{window_height}+0+0")
+        self._scroll_frame = _create_scrollable_frame(
+            self._tk, self._handle_update_scrollregion, padding=25
+        )
+        # For some reason, `self._scroll_frame.pack(fill="both", expand=1)`
+        # causes canvas.bbox("all") to always return (0, 0, 1, 1)
 
-        self._root_frame = _ScrollableFrame(self._tk)
+        # -------------------- Behaviour --------------------
 
+        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._right_click_menu = self._create_right_click_menu()
+        self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
+        self._tk.bind_all(self._QUEUE_EVENT, func=lambda _: self._handle_queued_task())
 
+        # -------------------- Style --------------------
+
+        self._tk.config(background=_BACKGROUND_COLOUR)
         style = Style()
-        # TODO: Change button background?
         style.configure(  # type: ignore
             "TButton",
-            font=self._NORMAL_FONT,
+            font=_NORMAL_FONT,
         )
         style.configure(  # type: ignore
             "TFrame",
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
 
+        WIDTH = 170
+
+        # -------------------- Description --------------------
+
+        # TODO: Fixed-width text boxes kind of suck. What if I set an explicit
+        # width right before counting lines and then restored to sticky mode
+        # after?
         description_textbox = _CopyableText(
-            self._root_frame,
-            width=170,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._scroll_frame,
+            width=WIDTH,
+            font=_ITALIC_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
-        description_textbox.grid(sticky="NEW", pady=25)
-        description_textbox.set_text(description)
+        description_textbox.grid(sticky="NW", pady=25)
+        description_textbox.set_text(self._description)
+
+        # -------------------- Action items section --------------------
+
+        self._action_items_frame = Frame(self._scroll_frame)
+        self._action_items_frame.grid(sticky="NEW")
 
         action_items_header = _CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._action_items_frame,
+            width=WIDTH,
+            font=_H2_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
-        action_items_header.grid(sticky="NEW", pady=(50, 0))
+        action_items_header.grid(sticky="NW", pady=(50, 0))
         action_items_header.set_text("Action Items")
 
-        self._action_items_container = Frame(self._root_frame, style="Test.TFrame")
-        self._action_items_container.grid(sticky="NEW")
-
         action_items_description = _CopyableText(
-            self._action_items_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._action_items_frame,
+            width=WIDTH,
+            font=_ITALIC_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
-        action_items_description.grid(sticky="NEW", pady=25)
+        action_items_description.grid(sticky="NW", pady=25)
         action_items_description.set_text(
             "Tasks that you must perform manually are listed here."
         )
 
         self._action_items_grid = _ActionItemGrid(
-            self._action_items_container,
+            self._action_items_frame,
             outer_padding=5,
             padx=5,
             pady=5,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            normal_font=self._NORMAL_FONT,
-            header_font=self._BOLD_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+            normal_font=_NORMAL_FONT,
+            header_font=_BOLD_FONT,
         )
         self._action_items_grid.grid(sticky="NEW")
 
+        # -------------------- Task statuses section --------------------
+
         task_statuses_header = _CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._scroll_frame,
+            width=WIDTH,
+            font=_H2_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
         task_statuses_header.grid(sticky="NEW", pady=(50, 0))
         task_statuses_header.set_text("Task Statuses")
 
-        task_statuses_container = Frame(self._root_frame)
-        task_statuses_container.grid(sticky="NEW")
-
         task_statuses_description = _CopyableText(
-            task_statuses_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._scroll_frame,
+            width=WIDTH,
+            font=_ITALIC_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
         task_statuses_description.grid(sticky="NEW", pady=25)
         task_statuses_description.set_text("The status of each task is listed here.")
 
         self._task_statuses_grid = _TaskStatusGrid(
-            task_statuses_container,
+            self._scroll_frame,
             outer_padding=5,
             padx=5,
             pady=5,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            normal_font=self._NORMAL_FONT,
-            header_font=self._BOLD_FONT,
-            bold_font=self._BOLD_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+            normal_font=_NORMAL_FONT,
+            header_font=_BOLD_FONT,
+            bold_font=_BOLD_FONT,
         )
         self._task_statuses_grid.grid(sticky="NEW")
 
+        # -------------------- Problems section --------------------
+
         problems_header = _CopyableText(
-            self._root_frame,
-            font=self._H2_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._scroll_frame,
+            width=WIDTH,
+            font=_H2_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
         problems_header.grid(sticky="NEW", pady=(50, 0))
         problems_header.set_text("Problems")
 
-        self._problems_container = Frame(self._root_frame)
-        self._problems_container.grid(sticky="NEW")
-
         problems_description = _CopyableText(
-            self._problems_container,
-            font=self._ITALIC_FONT,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
+            self._scroll_frame,
+            width=WIDTH,
+            font=_ITALIC_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
         )
         problems_description.grid(sticky="NEW", pady=25)
         problems_description.set_text("Potential problems are listed here.")
 
         self._problems_grid = _ProblemGrid(
-            self._problems_container,
+            self._scroll_frame,
             outer_padding=5,
             padx=5,
             pady=5,
-            background=self._BACKGROUND_COLOUR,
-            foreground=self._FOREGROUND_COLOUR,
-            normal_font=self._NORMAL_FONT,
-            header_font=self._BOLD_FONT,
-            bold_font=self._BOLD_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+            normal_font=_NORMAL_FONT,
+            header_font=_BOLD_FONT,
+            bold_font=_BOLD_FONT,
         )
         self._problems_grid.grid(sticky="NEW")
 
-        self._tk.after(0, lambda: root_started.release())
-        self._tk.mainloop()
+    def _create_input_dialog(
+        self, title: str, prompt: str, params: Dict[str, Parameter]
+    ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, _CopyableText], Button]:
+        entry_by_name: Dict[str, Entry] = {}
+        error_message_by_name: Dict[str, _CopyableText] = {}
+        w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        try:
+            w.title(title)
+            if prompt:
+                prompt_box = Label(
+                    w, text=prompt, font=_ITALIC_FONT, padding=(0, 0, 0, 50)
+                )
+                prompt_box.grid()
+            for name, param in params.items():
+                param_frame = Frame(w)
+                param_frame.grid(pady=15)
+                entry_row = Frame(param_frame)
+                entry_row.grid()
+                name_label = Label(entry_row, text=param.display_name, font=_BOLD_FONT)
+                name_label.grid(row=0, column=0, padx=5)
+                if param.password:
+                    entry = Entry(entry_row, show="*", font=_NORMAL_FONT)
+                else:
+                    entry = Entry(entry_row, font=_NORMAL_FONT)
+                entry.grid(row=0, column=1, padx=5)
+                if param.default:
+                    entry.insert(0, param.default)
+                entry_by_name[name] = entry
+                if param.description:
+                    description_box = _CopyableText(
+                        param_frame,
+                        font=_ITALIC_FONT,
+                        background=_BACKGROUND_COLOUR,
+                        foreground=_FOREGROUND_COLOUR,
+                    )
+                    description_box.grid()
+                    description_box.set_text(param.description)
+                error_message = _CopyableText(
+                    param_frame,
+                    font=_NORMAL_FONT,
+                    background=_BACKGROUND_COLOUR,
+                    foreground="red",
+                )
+                error_message.grid()
+                error_message_by_name[name] = error_message
+            btn = Button(w, text="Done")
+            btn.grid()
+            return (w, entry_by_name, error_message_by_name, btn)
+        except:
+            w.destroy()
+            raise
 
     def _create_right_click_menu(self) -> Menu:
         menu = Menu(None, tearoff=0)
@@ -421,7 +559,7 @@ class TkMessenger(InputMessenger):
         # menu.add_command(label="Open in browser")
         return menu
 
-    def _show_right_click_menu(self, event: tk.Event[Misc]):
+    def _show_right_click_menu(self, event: tkinter.Event[Misc]):
         self._right_click_menu.entryconfig(
             "Copy",
             state="normal" if self._get_selected_text() else "disabled",
@@ -437,8 +575,9 @@ class TkMessenger(InputMessenger):
             text = self._get_selected_text()
             if not text:
                 return
-            pyperclip.copy(text)  # type: ignore
-        except Exception:
+            pyperclip.copy(text)
+        except Exception as e:
+            print(e)
             messagebox.showwarning(  # type: ignore
                 title="Failed to copy",
                 message="An error occurred. Please try again.",
@@ -451,7 +590,7 @@ class TkMessenger(InputMessenger):
                 return False
             path = Path(text)
             return path.is_file()
-        except:
+        except Exception:
             return False
 
     def _right_click_open_in_notepadpp(self):
@@ -478,146 +617,52 @@ class TkMessenger(InputMessenger):
         except Exception:
             return ""
 
-    def _create_input_window(
-        self, title: str, prompt: str, params: Dict[str, Parameter]
-    ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, _CopyableText], Button]:
-        entry_by_name: Dict[str, Entry] = {}
-        error_message_by_name: Dict[str, _CopyableText] = {}
-        w = Toplevel(self._tk, padx=10, pady=10, background=self._BACKGROUND_COLOUR)
-        try:
-            w.title(title)
-            if prompt:
-                prompt_box = Label(
-                    w, text=prompt, font=self._ITALIC_FONT, padding=(0, 0, 0, 50)
-                )
-                prompt_box.grid()
-            for name, param in params.items():
-                param_frame = Frame(w)
-                param_frame.grid(pady=15)
-                entry_row = Frame(param_frame)
-                entry_row.grid()
-                name_label = Label(
-                    entry_row, text=param.display_name, font=self._BOLD_FONT
-                )
-                name_label.grid(row=0, column=0, padx=5)
-                if param.password:
-                    entry = Entry(entry_row, show="*", font=self._NORMAL_FONT)
-                else:
-                    entry = Entry(entry_row, font=self._NORMAL_FONT)
-                entry.grid(row=0, column=1, padx=5)
-                if param.default:
-                    entry.insert(0, param.default)
-                entry_by_name[name] = entry
-                if param.description:
-                    description_box = _CopyableText(
-                        param_frame,
-                        font=self._ITALIC_FONT,
-                        background=self._BACKGROUND_COLOUR,
-                        foreground=self._FOREGROUND_COLOUR,
-                    )
-                    description_box.grid()
-                    description_box.set_text(param.description)
-                error_message = _CopyableText(
-                    param_frame,
-                    font=self._NORMAL_FONT,
-                    background=self._BACKGROUND_COLOUR,
-                    foreground="red",
-                )
-                error_message.grid()
-                error_message_by_name[name] = error_message
-            btn = Button(w, text="Done")
-            btn.grid()
-        except BaseException:
-            w.destroy()
-            raise
-        return (w, entry_by_name, error_message_by_name, btn)
-
-    def _confirm_exit(self):
-        should_exit = messagebox.askyesno(  # type: ignore
-            title="Confirm exit", message="Are you sure you want to exit?"
-        )
-        if should_exit:
-            with self._mutex:
-                # If the client called close(), it expects the user to close
-                # the window, so there's no need to notify it. But if it hasn't
-                # called close, it's probably not done yet and needs to be
-                # interrupted.
-                if (
-                    not self._close_called
-                    and not self._is_main_thread_waiting_for_input
-                ):
-                    interrupt_main_thread()
-            self._quit()
-
-    def _quit(self):
+    def _wait_and_clear_event(self, event: threading.Event) -> None:
         with self._mutex:
-            # If the GUI thread isn't alive, then probably _quit() was already
-            # called
-            if self._is_shut_down:
-                return
-            self._is_shut_down = True
-            for lock in self._waiting_locks:
-                if lock.locked():
-                    lock.release()
-            for event in self._waiting_events:
-                event.set()
-            self._tk.quit()
+            self._waiting_events.add(event)
+        event.wait()
+        event.clear()
+        with self._mutex:
+            self._waiting_events.remove(event)
+        if self.is_closed:
+            raise KeyboardInterrupt()
 
 
-class _ScrollableFrame(Frame):
-    def __init__(self, parent: Misc, *args: object, **kwargs: object):
-        # TODO: The fact that this widget places itself is pretty sketchy
+@dataclass
+class _GuiTask:
+    run: Callable[[], None]
+    update_scrollregion: bool
 
-        outer_frame = Frame(parent)
-        outer_frame.pack(fill="both", expand=1)
 
-        scrollbar = Scrollbar(outer_frame, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
-        self._canvas = Canvas(
-            outer_frame,
-            yscrollcommand=scrollbar.set,
-            borderwidth=0,
-            highlightthickness=0,
-        )
-        self._canvas.pack(side="left", fill="both", expand=1)
-        self._canvas.bind(
-            "<Configure>",
-            lambda e: self.update_scrollregion(),
-        )
-        scrollbar.config(command=self._canvas.yview)  # type: ignore
+def _create_scrollable_frame(
+    tk: Tk, update_scrollregion: Callable[[], None], padding: int
+) -> Frame:
+    outer_frame = Frame(tk)
+    outer_frame.pack(fill="both", expand=1)
 
-        # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
-        self._root = parent.winfo_toplevel()
-        self._root.bind_all(
-            "<MouseWheel>",
-            lambda e: self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
-        )
+    scrollbar = Scrollbar(outer_frame, orient="vertical")
+    scrollbar.pack(side="right", fill="y")
+    canvas = Canvas(
+        outer_frame,
+        yscrollcommand=scrollbar.set,
+        borderwidth=0,
+        highlightthickness=0,
+    )
+    canvas.pack(side="left", fill="both", expand=1)
+    canvas.bind("<Configure>", lambda e: update_scrollregion())
+    scrollbar.config(
+        command=canvas.yview  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+    )
 
-        if "padding" not in kwargs:
-            kwargs["padding"] = 25
-        super().__init__(self._canvas, *args, **kwargs)
-        self._canvas.create_window((0, 0), window=self, anchor="nw")
+    # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
+    tk.bind_all(
+        "<MouseWheel>",
+        lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
+    )
 
-        # To avoid race conditions, use a separate thread to update the scroll region
-        self._update_scrollregion = threading.Event()
-        scrollregion_updates_thread = Thread(
-            name="ScrollregionUpdates",
-            target=self._run_scrollregion_updates_thread,
-            daemon=True,
-        )
-        scrollregion_updates_thread.start()
-
-    def update_scrollregion(self):
-        self._update_scrollregion.set()
-
-    def _run_scrollregion_updates_thread(self):
-        while True:
-            self._update_scrollregion.wait()
-            self._update_scrollregion.clear()
-            # Make sure the display has updated before recomputing the scrollregion size
-            self._root.update_idletasks()
-            region = self._canvas.bbox("all")
-            self._canvas.config(scrollregion=region)
+    frame = Frame(canvas, padding=padding)
+    canvas.create_window((0, 0), window=frame, anchor="nw")
+    return frame
 
 
 class _CopyableText(Text):
@@ -625,16 +670,13 @@ class _CopyableText(Text):
     Text widget that supports both text wrapping and copying its contents to the clipboard.
     """
 
-    def __init__(self, parent: Misc, **kwargs: object):
-        super().__init__(
-            parent,
-            height=1,
-            wrap="word",
-            state="disabled",
-            highlightthickness=0,
-            borderwidth=0,
-            **kwargs,  # type: ignore
-        )
+    def __init__(self, parent: Misc, **kwargs: Any):
+        kwargs["height"] = 1
+        kwargs["wrap"] = "word"
+        kwargs["state"] = "disabled"
+        kwargs["highlightthickness"] = 0
+        kwargs["borderwidth"] = 0
+        super().__init__(parent, **kwargs)
 
     def set_text(self, text: str):
         """
