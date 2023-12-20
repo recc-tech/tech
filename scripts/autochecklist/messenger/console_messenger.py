@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import math
+import threading
 import typing
 from argparse import ArgumentTypeError
 from dataclasses import dataclass, field
 from getpass import getpass
 from queue import Empty, PriorityQueue
 from threading import Event, Lock
-from typing import Callable, Dict, Optional, Set, TypeVar
+from typing import Callable, Dict, Optional, Set, Tuple, TypeVar
 
 from .input_messenger import (
     InputMessenger,
@@ -25,6 +28,7 @@ class ConsoleMessenger(InputMessenger):
         self._start_event = Event()
         self._end_event = Event()
         self._mutex = Lock()
+        self._commands: Dict[Tuple[str, str], Callable[[], None]] = {}
         self._waiting_events: Set[Event] = set()
         self._queue: PriorityQueue[_QueueTask] = PriorityQueue()
 
@@ -32,6 +36,7 @@ class ConsoleMessenger(InputMessenger):
         try:
             print(f"{self._description}\n\nPress CTRL+C to see the menu.\n\n")
             should_exit = False
+            task: Optional[_QueueTask] = None
             while True:
                 try:
                     try:
@@ -48,9 +53,14 @@ class ConsoleMessenger(InputMessenger):
                     else:
                         task.run()
                 except (KeyboardInterrupt, EOFError):
-                    # TODO: Show list of commands here, quit on second CTRL+C
-                    print("\nProgram cancelled.")
-                    return
+                    try:
+                        if task is not None:
+                            # Re-run it after leaving the menu
+                            self._queue.put(task)
+                        self._run_menu()
+                    except (KeyboardInterrupt, EOFError) as e:
+                        print("\nProgram cancelled.")
+                        return
                 except Exception as e:
                     print(f"Error while running task from queue: {e}")
         finally:
@@ -59,6 +69,66 @@ class ConsoleMessenger(InputMessenger):
                 e.set()
             self._start_event.set()
             self._end_event.set()
+
+    def _run_menu(self) -> None:
+        command_by_key = self._get_and_display_menu()
+        while True:
+            choice = input(">> ")
+            if choice == "q":
+                raise KeyboardInterrupt()
+            elif choice == "p":
+                return
+            elif choice == "r":
+                command_by_key = self._get_and_display_menu()
+            elif choice in command_by_key:
+                try:
+                    with self._mutex:
+                        task, command = command_by_key[choice]
+                        callback = self._commands[task, command]
+                except KeyError:
+                    print("That command is no longer available.")
+                    continue
+                try:
+                    callback()
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                command_by_key = self._get_and_display_menu()
+
+    def _get_and_display_menu(self) -> Dict[str, Tuple[str, str]]:
+        with self._mutex:
+            task_command_pairs = sorted(self._commands.keys())
+        command_by_key: Dict[str, Tuple[str, str]] = {}
+        count = 1
+        print()
+        if len(task_command_pairs) == 0:
+            print("No commands available.")
+        else:
+            for task, command in task_command_pairs:
+                command_by_key[str(count)] = (task, command)
+                count += 1
+            task_header = "TASK"
+            command_header = "COMMAND"
+            key_header = "KEY"
+            max_task_len = max(len(task) for (task, _) in task_command_pairs)
+            max_task_len = max(len(task_header), max_task_len)
+            max_command_len = max(len(command) for (_, command) in task_command_pairs)
+            max_command_len = max(len(command_header), max_command_len)
+            print(
+                f"{task_header:<{max_task_len}} | {command_header:<{max_command_len}} | {key_header}"
+            )
+            for key, (task, command) in command_by_key.items():
+                print(f"{task:<{max_task_len}} | {command:<{max_command_len}} | {key}")
+        print()
+        instruction_lines = ["Options:"]
+        if len(task_command_pairs) > 0:
+            instruction_lines.append("- Enter the key for a command listed above.")
+        instruction_lines += [
+            "- r: refresh menu",
+            "- p: go back to script",
+            "- q: quit script",
+        ]
+        print("\n".join(instruction_lines))
+        return command_by_key
 
     def wait_for_start(self) -> None:
         self._start_event.set()
@@ -143,13 +213,14 @@ class ConsoleMessenger(InputMessenger):
                 first_attempt = True
                 while True:
                     try:
-                        message = f"{param.display_name}:"
-                        if param.default:
-                            message += f"\n[default: {param.default}]"
+                        default_message = (
+                            f" [default: {param.default}]" if param.default else ""
+                        )
+                        message = f"{param.display_name}{default_message}:"
                         if param.description and first_attempt:
                             message += f"\n({param.description})"
-                        message += "\n> "
-                        raw_value = input_func(message)
+                        print(message)
+                        raw_value = input_func(">> ")
                         if not raw_value and param.default:
                             raw_value = param.default
                         output_by_key[name] = param.parser(raw_value)
@@ -165,23 +236,21 @@ class ConsoleMessenger(InputMessenger):
                         print(f"An error occurred while taking input: {e}")
                     first_attempt = False
             submit_event.set()
-            return
 
         output_by_key: Dict[str, object] = {key: "" for key in params}
         submit_event = Event()
-        self._queue.put(
-            _QueueTask(
-                is_real=True,
-                index=0,
-                is_input=True,
-                run=read_input,
+        if _is_current_thread_main():
+            read_input()
+        else:
+            self._enqueue_and_wait(
+                _QueueTask(
+                    is_real=True,
+                    index=0,
+                    is_input=True,
+                    run=read_input,
+                ),
+                submit_event,
             )
-        )
-        with self._mutex:
-            self._waiting_events.add(submit_event)
-        submit_event.wait()
-        with self._mutex:
-            self._waiting_events.remove(submit_event)
         return output_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
@@ -212,19 +281,18 @@ class ConsoleMessenger(InputMessenger):
 
         submit_event = Event()
         choice: bool = True
-        self._queue.put(
-            _QueueTask(
-                is_real=True,
-                index=0,
-                is_input=True,
-                run=read_input,
+        if _is_current_thread_main():
+            read_input()
+        else:
+            self._enqueue_and_wait(
+                _QueueTask(
+                    is_real=True,
+                    index=0,
+                    is_input=True,
+                    run=read_input,
+                ),
+                submit_event,
             )
-        )
-        with self._mutex:
-            self._waiting_events.add(submit_event)
-        submit_event.wait()
-        with self._mutex:
-            self._waiting_events.remove(submit_event)
         return choice
 
     def wait(
@@ -293,27 +361,39 @@ class ConsoleMessenger(InputMessenger):
         prompt = f"\n({task_name}) {prompt}"
         response: Optional[UserResponse] = None
         input_received_event = Event()
-        self._queue.put(
-            _QueueTask(
-                is_real=True,
-                index=index if index is not None else math.inf,
-                is_input=True,
-                run=wait_for_input_with_retry if allow_retry else wait_for_input,
+        run = wait_for_input_with_retry if allow_retry else wait_for_input
+        if _is_current_thread_main():
+            run()
+        else:
+            self._enqueue_and_wait(
+                _QueueTask(
+                    is_real=True,
+                    index=index if index is not None else math.inf,
+                    is_input=True,
+                    run=run,
+                ),
+                input_received_event,
             )
-        )
-        with self._mutex:
-            self._waiting_events.add(input_received_event)
-        input_received_event.wait()
-        if self.is_closed:
-            raise KeyboardInterrupt()
-        with self._mutex:
-            self._waiting_events.remove(input_received_event)
         # Response should always be set by this point, but set default just in
         # case. Default to DONE rather than RETRY so that the script doesn't
         # get stuck in an infinite loop
         return response or UserResponse.DONE
 
-    def _wait_for_event(self, event: Event) -> None:
+    def add_command(
+        self, task_name: str, command_name: str, callback: Callable[[], None]
+    ) -> None:
+        with self._mutex:
+            self._commands[task_name, command_name] = callback
+
+    def remove_command(self, task_name: str, command_name: str) -> None:
+        with self._mutex:
+            try:
+                del self._commands[task_name, command_name]
+            except KeyError:
+                pass
+
+    def _enqueue_and_wait(self, task: _QueueTask, event: Event) -> None:
+        self._queue.put(task)
         with self._mutex:
             self._waiting_events.add(event)
         event.wait()
@@ -330,3 +410,7 @@ class _QueueTask:
     is_input: bool
     index: float
     run: Callable[[], None] = field(compare=False)
+
+
+def _is_current_thread_main() -> bool:
+    return threading.current_thread() is threading.main_thread()

@@ -5,9 +5,6 @@ Type definitions for the `InputMessenger` interface.
 from __future__ import annotations
 
 import logging
-import os
-import signal
-import threading
 from dataclasses import dataclass
 from enum import Enum, auto
 from threading import Thread
@@ -143,15 +140,3 @@ class UserResponse(Enum):
     """The task has been completed manually."""
     RETRY = auto()
     """The task automation should be re-run."""
-
-
-def is_current_thread_main() -> bool:
-    return threading.current_thread() is threading.main_thread()
-
-
-def interrupt_main_thread():
-    os.kill(os.getpid(), signal.CTRL_C_EVENT)
-    # It seems like the signal isn't delivered until print() is
-    # called, even if the main thread waits for several seconds! But printing
-    # nothing doesn't work.
-    print(" ", end="", flush=True)

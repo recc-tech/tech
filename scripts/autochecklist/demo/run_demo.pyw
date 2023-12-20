@@ -137,16 +137,6 @@ def _run_script(args: argparse.Namespace, messenger: Messenger) -> None:
                 ),
             ],
         )
-        # The ConsoleMessenger doesn't support cancelling tasks, so skip that one
-        if args.ui == "console":
-            task_model = TaskModel(
-                name=task_model.name,
-                subtasks=[
-                    t
-                    for t in task_model.subtasks
-                    if not t.name.startswith("demo_cancel")
-                ],
-            )
         task_graph = TaskGraph(task_model, messenger, function_finder, config)
         task_graph.run()
         messenger.log_status(TaskStatus.DONE, "Demo complete.")
