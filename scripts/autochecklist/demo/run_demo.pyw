@@ -2,8 +2,11 @@ import argparse
 import sys
 from datetime import timedelta
 from pathlib import Path
+from typing import Tuple, TypeVar
 
-from .. import (  # EelMessenger,
+T = TypeVar("T")
+
+from .. import (  # TODO; EelMessenger,
     BaseConfig,
     ConsoleMessenger,
     FileMessenger,
@@ -11,10 +14,10 @@ from .. import (  # EelMessenger,
     Messenger,
     Parameter,
     ProblemLevel,
-    TaskGraph,
     TaskModel,
     TaskStatus,
     TkMessenger,
+    run,
     sleep_attentively,
 )
 
@@ -92,59 +95,24 @@ def demo_cancel2(messenger: Messenger):
 
 
 def _main():
+    run(
+        error_file=Path(__file__).parent.joinpath("error.log"),
+        create_messenger=_create_messenger,
+        create_services=_create_services,
+        success_message="Demo complete.",
+    )
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=_DESCRIPTION)
+    parser.add_argument(
+        "ui", choices=["console", "tk", "eel"], help="UI to use for the demo."
+    )
+    return parser.parse_args()
+
+
+def _create_messenger() -> Messenger:
     args = _parse_args()
-    messenger = _create_messenger(args)
-    messenger.start(after_start=lambda: _run_script(args, messenger))
-
-
-def _run_script(args: argparse.Namespace, messenger: Messenger) -> None:
-    try:
-        messenger.log_status(TaskStatus.RUNNING, "Running demo.")
-        function_finder = FunctionFinder(
-            # Use the current module
-            module=sys.modules[__name__],
-            arguments=[messenger],
-            messenger=messenger,
-        )
-        config = BaseConfig()
-
-        task_model = TaskModel(
-            name="demo",
-            subtasks=[
-                TaskModel(
-                    name="demo_manual",
-                    description="This is what a non-automated task looks like.",
-                ),
-                TaskModel(
-                    name="demo_input",
-                    description="This task will ask for various kinds of input.",
-                    prerequisites={"demo_manual"},
-                ),
-                TaskModel(
-                    name="demo_errors",
-                    description="This task will always fail. Try retrying it once or twice, then press 'Done.'",
-                    prerequisites={"demo_input"},
-                ),
-                TaskModel(
-                    name="demo_cancel1",
-                    description="This task will run for a long time. Try cancelling it.",
-                    prerequisites={"demo_errors"},
-                ),
-                TaskModel(
-                    name="demo_cancel2",
-                    description="This task will run for a long time. Try cancelling it.",
-                    prerequisites={"demo_errors"},
-                ),
-            ],
-        )
-        task_graph = TaskGraph(task_model, messenger, function_finder, config)
-        task_graph.run()
-        messenger.log_status(TaskStatus.DONE, "Demo complete.")
-    finally:
-        messenger.close()
-
-
-def _create_messenger(args: argparse.Namespace) -> Messenger:
     file_messenger = FileMessenger(log_file=Path(__file__).parent.joinpath("demo.log"))
     input_messenger = (
         ConsoleMessenger(description=_DESCRIPTION, show_task_status=True)
@@ -159,12 +127,47 @@ def _create_messenger(args: argparse.Namespace) -> Messenger:
     return messenger
 
 
-def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=_DESCRIPTION)
-    parser.add_argument(
-        "ui", choices=["console", "tk", "eel"], help="UI to use for the demo."
+def _create_services(
+    messenger: Messenger,
+) -> Tuple[TaskModel, FunctionFinder, BaseConfig]:
+    messenger.log_status(TaskStatus.RUNNING, "Creating services.")
+    function_finder = FunctionFinder(
+        # Use the current module
+        module=sys.modules[__name__],
+        arguments=[messenger],
+        messenger=messenger,
     )
-    return parser.parse_args()
+    config = BaseConfig()
+    task_model = TaskModel(
+        name="demo",
+        subtasks=[
+            TaskModel(
+                name="demo_manual",
+                description="This is what a non-automated task looks like.",
+            ),
+            TaskModel(
+                name="demo_input",
+                description="This task will ask for various kinds of input.",
+                prerequisites={"demo_manual"},
+            ),
+            TaskModel(
+                name="demo_errors",
+                description="This task will always fail. Try retrying it once or twice, then press 'Done.'",
+                prerequisites={"demo_input"},
+            ),
+            TaskModel(
+                name="demo_cancel1",
+                description="This task will run for a long time. Try cancelling it.",
+                prerequisites={"demo_errors"},
+            ),
+            TaskModel(
+                name="demo_cancel2",
+                description="This task will run for a long time. Try cancelling it.",
+                prerequisites={"demo_errors"},
+            ),
+        ],
+    )
+    return task_model, function_finder, config
 
 
 if __name__ == "__main__":

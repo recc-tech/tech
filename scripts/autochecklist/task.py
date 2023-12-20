@@ -62,20 +62,20 @@ class TaskGraph:
             while thread.is_alive() and not self._messenger.is_closed:
                 thread.join(timeout=0.5)
             if self._messenger.is_closed:
-                self._cancel_all()
-                break
+                return self._cancel_all()
 
     def _cancel_all(self) -> None:
         self._messenger.cancel_all()
         start = time.monotonic()
-        timeout = 5
+        timeout = 30
         iter_threads = iter(self._threads)
-        while time.monotonic() - start < timeout:
+        while True:
             t = next(iter_threads, None)
             if t is None:
-                return
+                break
             # Each thread gets at `timeout` seconds to exit
             t.join(timeout=max(0, timeout + start - time.monotonic()))
+        raise KeyboardInterrupt()
 
 
 class _TaskThread(Thread):
