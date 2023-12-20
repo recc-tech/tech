@@ -69,10 +69,6 @@ class McrSetupScript(Script[McrSetupConfig]):
         )
 
         args = parser.parse_args()
-        if args.verbose and not args.text_ui:
-            parser.error(
-                "The --verbose flag is only applicable when the --text-ui flag is also provided."
-            )
 
         return McrSetupConfig(
             home_dir=args.home_dir,

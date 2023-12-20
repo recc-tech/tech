@@ -30,7 +30,7 @@ class Script(Generic[TConfig]):
         raise NotImplementedError()
 
     def shut_down(self, config: TConfig) -> None:
-        raise NotImplementedError()
+        pass
 
     @property
     def success_message(self) -> str:
