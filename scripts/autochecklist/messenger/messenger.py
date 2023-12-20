@@ -35,10 +35,12 @@ class Messenger:
         self._input_messenger = input_messenger
         self._task_manager = _TaskManager()
         self._task_manager_mutex = Lock()
-        self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
 
     def start(self, after_start: Callable[[], None]) -> None:
-        self._input_messenger.start(after_start)
+        def _after_start() -> None:
+            self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
+            after_start()
+        self._input_messenger.start(_after_start)
 
     def close(self) -> None:
         self._input_messenger.close()

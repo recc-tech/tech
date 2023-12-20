@@ -141,7 +141,11 @@ def _run_script(args: argparse.Namespace, messenger: Messenger) -> None:
         if args.ui == "console":
             task_model = TaskModel(
                 name=task_model.name,
-                subtasks=[t for t in task_model.subtasks if t.name != "demo_cancel"],
+                subtasks=[
+                    t
+                    for t in task_model.subtasks
+                    if not t.name.startswith("demo_cancel")
+                ],
             )
         task_graph = TaskGraph(task_model, messenger, function_finder, config)
         task_graph.run()
@@ -153,7 +157,7 @@ def _run_script(args: argparse.Namespace, messenger: Messenger) -> None:
 def _create_messenger(args: argparse.Namespace) -> Messenger:
     file_messenger = FileMessenger(log_file=Path(__file__).parent.joinpath("demo.log"))
     input_messenger = (
-        ConsoleMessenger(description=_DESCRIPTION)
+        ConsoleMessenger(description=_DESCRIPTION, show_task_status=True)
         if args.ui == "console"
         else TkMessenger(title="autochecklist demo", description=_DESCRIPTION)
         # if args.ui == "tk"

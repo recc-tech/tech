@@ -36,6 +36,8 @@ _BOLD_FONT = f"{_NORMAL_FONT} bold"
 _H2_FONT = "Calibri 18 bold"
 
 
+# TODO: This hangs when the user tries to cancel while a long-running task is
+# still going.
 class TkMessenger(InputMessenger):
     _QUEUE_EVENT = "<<TaskQueued>>"
 

@@ -1,64 +1,119 @@
-from __future__ import annotations
-
-import logging
 import math
+import typing
 from argparse import ArgumentTypeError
 from dataclasses import dataclass, field
-from datetime import datetime
 from getpass import getpass
-from logging import StreamHandler
 from queue import Empty, PriorityQueue
-from threading import Lock, Thread
-from typing import Callable, Dict, Literal, Optional, TypeVar, Union
+from threading import Event, Lock
+from typing import Callable, Dict, Optional, Set, TypeVar
 
-from autochecklist.messenger.input_messenger import (
+from .input_messenger import (
     InputMessenger,
     Parameter,
     ProblemLevel,
     TaskStatus,
     UserResponse,
-    interrupt_main_thread,
-    is_current_thread_main,
 )
 
 T = TypeVar("T")
 
 
 class ConsoleMessenger(InputMessenger):
-    def __init__(self, description: str, log_level: int = logging.INFO):
-        print(f"{description}\n\n")
+    def __init__(self, description: str, show_task_status: bool) -> None:
+        self._description = description
+        self._show_task_status = show_task_status
+        self._start_event = Event()
+        self._end_event = Event()
+        self._mutex = Lock()
+        self._waiting_events: Set[Event] = set()
+        self._queue: PriorityQueue[_QueueTask] = PriorityQueue()
 
-        handler = StreamHandler()
-        handler.setLevel(log_level)
-        handler.setFormatter(
-            logging.Formatter(fmt="[%(levelname)-8s] %(message)s"),
+    def run_main_loop(self) -> None:
+        try:
+            print(f"{self._description}\n\nPress CTRL+C to see the menu.\n\n")
+            should_exit = False
+            while True:
+                try:
+                    try:
+                        task = self._queue.get(timeout=0.5)
+                    except Empty:
+                        if should_exit:
+                            return
+                        else:
+                            continue
+                    if not task.is_real:
+                        should_exit = True
+                    elif should_exit and task.is_input:
+                        continue
+                    else:
+                        task.run()
+                except (KeyboardInterrupt, EOFError):
+                    # TODO: Show list of commands here, quit on second CTRL+C
+                    print("\nProgram cancelled.")
+                    return
+                except Exception as e:
+                    print(f"Error while running task from queue: {e}")
+        finally:
+            # Release all waiting threads so they can exit cleanly
+            for e in self._waiting_events:
+                e.set()
+            self._start_event.set()
+            self._end_event.set()
+
+    def wait_for_start(self) -> None:
+        self._start_event.set()
+
+    def close(self) -> None:
+        """
+        Signal to the messenger that it is time to exit. Queued output tasks
+        will be completed, but input tasks will be skipped.
+        """
+        self._queue.put(
+            _QueueTask(
+                is_real=False,
+                # The rest of the arguments are irrelevant
+                index=0,
+                is_input=False,
+                run=lambda: None,
+            )
         )
-        self._console_logger = logging.getLogger("console_messenger")
-        self._console_logger.setLevel(log_level)
-        self._console_logger.addHandler(handler)
 
-        self._worker = _ConsoleMessengerWorker()
+    @property
+    def is_closed(self) -> bool:
+        return self._end_event.is_set()
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
-        self._worker.submit_output_job(
-            level=_ConsoleIOJob.OUT_STATUS,
-            priority=math.inf if index is None else index,
-            run=lambda: self._console_logger.log(
-                level=logging.INFO,
-                msg=f"{task_name} is {status}. {message}",
-            ),
+        def do_log_status() -> None:
+            print(f"({task_name} | {status}) {message}")
+
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        if not self._show_task_status:
+            return
+        self._queue.put(
+            _QueueTask(
+                is_real=True,
+                index=index if index is not None else math.inf,
+                is_input=False,
+                run=do_log_status,
+            )
         )
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
-        self._worker.submit_output_job(
-            level=_ConsoleIOJob.OUT_ERROR,
-            priority=0,
-            run=lambda: self._console_logger.log(
-                level=level.to_log_level(),
-                msg=f"[{task_name}] {message}",
-            ),
+        def do_log_problem() -> None:
+            print(f"[{task_name} | {level}] {message}")
+
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        self._queue.put(
+            _QueueTask(
+                is_real=True,
+                index=0,
+                is_input=False,
+                run=do_log_problem,
+            )
         )
 
     def input(
@@ -69,36 +124,20 @@ class ConsoleMessenger(InputMessenger):
         prompt: str = "",
         title: str = "",
     ) -> T:
-        input_func = getpass if password else input
-
-        def read_input():
-            if prompt:
-                print(prompt)
-            while True:
-                try:
-                    parsed_value = parser(input_func(f"{display_name}:\n> "))
-                    return parsed_value
-                except ArgumentTypeError as e:
-                    print(f"Invalid input: {e}")
-                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
-                # the worker class can deal with all the cancellation-related
-                # issues
-                except (KeyboardInterrupt, EOFError):
-                    raise
-                except BaseException as e:
-                    print(f"An error occurred while taking input: {e}")
-
-        return self._worker.submit_input_job(
-            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
-        )
+        params = {
+            "param": Parameter(
+                display_name=display_name, parser=parser, password=password
+            )
+        }
+        output = self.input_multiple(params, prompt=prompt, title=title)
+        return typing.cast(T, output["param"])
 
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
     ) -> Dict[str, object]:
-        def read_input():
+        def read_input() -> None:
             if prompt:
-                print(prompt)
-            results: Dict[str, object] = {}
+                print(f"\n{prompt}")
             for name, param in params.items():
                 input_func = getpass if param.password else input
                 first_attempt = True
@@ -113,332 +152,181 @@ class ConsoleMessenger(InputMessenger):
                         raw_value = input_func(message)
                         if not raw_value and param.default:
                             raw_value = param.default
-                        results[name] = param.parser(raw_value)
+                        output_by_key[name] = param.parser(raw_value)
                         break
                     except ArgumentTypeError as e:
                         print(f"Invalid input: {e}")
                     # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
-                    # that the worker class can deal with all the
+                    # that the main loop can deal with all the
                     # cancellation-related issues
                     except (KeyboardInterrupt, EOFError):
                         raise
-                    except BaseException as e:
+                    except Exception as e:
                         print(f"An error occurred while taking input: {e}")
                     first_attempt = False
-            return results
+            submit_event.set()
+            return
 
-        return self._worker.submit_input_job(
-            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
+        output_by_key: Dict[str, object] = {key: "" for key in params}
+        submit_event = Event()
+        self._queue.put(
+            _QueueTask(
+                is_real=True,
+                index=0,
+                is_input=True,
+                run=read_input,
+            )
         )
+        with self._mutex:
+            self._waiting_events.add(submit_event)
+        submit_event.wait()
+        with self._mutex:
+            self._waiting_events.remove(submit_event)
+        return output_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
-        def read_input() -> bool:
-            print(f"{prompt} [Y/N]")
+        def read_input() -> None:
+            nonlocal choice
+            print(f"\n{prompt} [y/n]")
             while True:
-                result = input("> ")
-                if result.lower() in ["y", "yes"]:
-                    return True
-                elif result.lower() in ["n", "no"]:
-                    return False
-                else:
-                    print("Invalid input. Enter 'y' for yes or 'n' for no.")
+                try:
+                    result = input(">> ")
+                    if result.lower() in ["y", "yes"]:
+                        choice = True
+                        submit_event.set()
+                        return
+                    elif result.lower() in ["n", "no"]:
+                        choice = False
+                        submit_event.set()
+                        return
+                    else:
+                        print("Invalid input. Enter 'y' for yes or 'n' for no.")
+                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
+                # that the main loop can deal with all the
+                # cancellation-related issues
+                except (KeyboardInterrupt, EOFError):
+                    raise
+                except Exception as e:
+                    print(f"An error occurred while waiting for input: {e}")
+                    continue
 
-        return self._worker.submit_input_job(
-            level=_ConsoleIOJob.IN_INPUT, priority=0, read_input=read_input
+        submit_event = Event()
+        choice: bool = True
+        self._queue.put(
+            _QueueTask(
+                is_real=True,
+                index=0,
+                is_input=True,
+                run=read_input,
+            )
         )
+        with self._mutex:
+            self._waiting_events.add(submit_event)
+        submit_event.wait()
+        with self._mutex:
+            self._waiting_events.remove(submit_event)
+        return choice
 
     def wait(
         self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
     ) -> UserResponse:
-        prompt = prompt.strip()
-        prompt = prompt if prompt.endswith(".") else f"{prompt}."
-        prompt = f"- [{task_name}] {prompt}"
-        response: Optional[UserResponse] = None
-
-        def wait_for_input():
-            nonlocal response, allow_retry, prompt
-            try:
-                if allow_retry:
+        def wait_for_input_with_retry() -> None:
+            nonlocal response
+            print(
+                f"{prompt} Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually.",
+            )
+            while True:
+                try:
+                    choice = input(">> ")
+                    if choice.lower() == "done":
+                        response = UserResponse.DONE
+                        input_received_event.set()
+                        return
+                    elif choice.lower() == "retry":
+                        response = UserResponse.RETRY
+                        input_received_event.set()
+                        return
+                    else:
+                        print(
+                            "Invalid choice. Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually."
+                        )
+                        continue
+                # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
+                # that the main loop can deal with all the
+                # cancellation-related issues
+                except (KeyboardInterrupt, EOFError):
+                    raise
+                except Exception as e:
                     print(
-                        f"{prompt} Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually.",
+                        f"An error occurred while waiting for input. Assuming the task was completed manually. {e}"
                     )
-                    while True:
-                        choice = input(">> ")
-                        if choice.lower() == "done":
-                            response = UserResponse.DONE
-                            return
-                        elif choice.lower() == "retry":
-                            response = UserResponse.RETRY
-                            return
-                        else:
-                            print(
-                                "Invalid choice. Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually."
-                            )
-                            continue
-                else:
-                    # Ask for a password so that pressing keys other than
-                    # ENTER has no visible effect
-                    getpass(f"{prompt} Press ENTER when you're done.")
                     response = UserResponse.DONE
+                    input_received_event.set()
                     return
-            # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so that
-            # the worker class can deal with all the cancellation-related
-            # issues
+
+        def wait_for_input() -> None:
+            nonlocal response
+            try:
+                # Ask for a password so that pressing keys other than
+                # ENTER has no visible effect
+                getpass(f"{prompt} Press ENTER when you're done.\n>> ")
+                response = UserResponse.DONE
+                input_received_event.set()
+            # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
+            # that the main loop can deal with all the
+            # cancellation-related issues
             except (KeyboardInterrupt, EOFError):
                 raise
-            except BaseException as e:
+            except Exception as e:
                 print(
-                    f"An error occurred while taking input. Assuming the task was completed manually. {e}"
+                    f"An error occurred while waiting for input. Assuming the task was completed manually. {e}"
                 )
                 response = UserResponse.DONE
-                return
+                input_received_event.set()
 
-        self._worker.submit_input_job(
-            level=_ConsoleIOJob.IN_WAIT,
-            priority=math.inf if index is None else index,
-            read_input=wait_for_input,
+        prompt = prompt.strip()
+        prompt = (
+            prompt
+            if prompt.endswith(".") or prompt.endswith("'.") or prompt.endswith('".')
+            else f"{prompt}."
         )
+        prompt = f"\n({task_name}) {prompt}"
+        response: Optional[UserResponse] = None
+        input_received_event = Event()
+        self._queue.put(
+            _QueueTask(
+                is_real=True,
+                index=index if index is not None else math.inf,
+                is_input=True,
+                run=wait_for_input_with_retry if allow_retry else wait_for_input,
+            )
+        )
+        with self._mutex:
+            self._waiting_events.add(input_received_event)
+        input_received_event.wait()
+        if self.is_closed:
+            raise KeyboardInterrupt()
+        with self._mutex:
+            self._waiting_events.remove(input_received_event)
         # Response should always be set by this point, but set default just in
         # case. Default to DONE rather than RETRY so that the script doesn't
         # get stuck in an infinite loop
         return response or UserResponse.DONE
 
-    def close(self, wait: bool):
-        self._worker.close(finish_existing_jobs=wait)
-
-    @property
-    def is_closed(self) -> bool:
-        return self._worker.is_closed
-
-
-class _ConsoleMessengerWorker:
-    """
-    Encapsulates all the tricky multithreading code for the `ConsoleMessenger`.
-    """
-
-    def __init__(self):
-        # Push jobs to a queue and have a dedicated thread handle them. Jobs
-        # are handled in the following order:
-        #  1. Display errors and warnings (shown first).
-        #  2. Display task status updates.
-        #  3. Request user input.
-        #  4. Wait for user (shown last).
-        #
-        # For status updates and waiting for the user, jobs may also be sorted
-        # by their priority. Jobs with lower priority are shown first. Finally,
-        # if all else is equal, the job that was submitted earliest is done
-        # first.
-        self._queue: PriorityQueue[_ConsoleIOJob] = PriorityQueue()
-        self._is_shut_down = False
-        self._finish_existing_jobs = True
-        # If the worker thread immediately stops once it receives CTRL+C
-        # directly from input() or getpass(), it may end up stopping all the
-        # threads before the main thread even receives the re-sent signal. The
-        # main thread may then think all tasks finished successfully and try
-        # using a log_* method in the messenger.
-        self._wait_for_close_lock = Lock()
-        self._wait_for_close_lock.acquire()
-        # Even though PriorityQueue is thread-safe, use a lock to guard the
-        # queue AND self._is_shut_down.
-        #
-        # Suppose there was no lock and consider the case where the worker gets
-        # shut down completely after the calling thread checks
-        # self._is_shut_down but before the job is inserted into the queue. If
-        # the job is an input task, the calling thread would hang because the
-        # worker thread would no longer be processing jobs.
-        self._lock = Lock()
-        # Even though PriorityQueue is thread-safe, use a semaphore to handle
-        # new entries to the queue. This gives the code the chance to use the
-        # general lock *before* reading from the queue.
-        self._worker_thread = Thread(
-            name="ConsoleMessenger", target=self._run_worker_thread, daemon=True
-        )
-        self._worker_thread.start()
-
-    def submit_output_job(
-        self, level: OutputJobLevel, priority: float, run: Callable[[], None]
-    ):
-        job = _ConsoleIOJob(
-            level=level,
-            priority=priority,
-            timestamp=datetime.now(),
-            run=run,
-            is_from_main_thread=is_current_thread_main(),
-        )
-        with self._lock:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
-            self._queue.put(job)
-
-    def submit_input_job(
-        self, level: InputJobLevel, priority: float, read_input: Callable[[], T]
-    ) -> T:
-        lock = Lock()
-        lock.acquire()
-        # Set the value to None to get Pylance to stop complaining that it's
-        # unbound. The lock guarantees that the input function will get a
-        # chance to run before this function returns.
-        input_value: T = None  # type: ignore
-        ctrl_c: bool = False
-
-        def input_task():
-            nonlocal input_value, lock, ctrl_c
-            try:
-                while True:
-                    try:
-                        input_value = read_input()
-                        return
-                    except (KeyboardInterrupt, EOFError):
-                        ctrl_c = True
-                        raise
-                    except ArgumentTypeError as e:
-                        print(f"Invalid input: {e}")
-                    except BaseException as e:
-                        print(f"An error occurred while taking input: {e}")
-            finally:
-                lock.release()
-
-        job = _ConsoleIOJob(
-            level=level,
-            priority=priority,
-            timestamp=datetime.now(),
-            run=input_task,
-            is_from_main_thread=is_current_thread_main(),
-            lock=lock,
-        )
-        with self._lock:
-            if self._is_shut_down:
-                raise KeyboardInterrupt()
-            self._queue.put(job)
-
-        # Wait for the task to be done
-        lock.acquire()
-        if job.cancelled or ctrl_c:
+    def _wait_for_event(self, event: Event) -> None:
+        with self._mutex:
+            self._waiting_events.add(event)
+        event.wait()
+        with self._mutex:
+            self._waiting_events.remove(event)
+        if self.is_closed:
             raise KeyboardInterrupt()
-        else:
-            return input_value
-
-    def close(self, finish_existing_jobs: bool):
-        with self._lock:
-            # Check whether the lock is already locked just in case the client
-            # calls close() multiple times.
-            if self._wait_for_close_lock.locked():
-                self._wait_for_close_lock.release()
-            # If self._is_shut_down is true, either the user already called
-            # close() or the program was cancelled and the exception was
-            # received by the worker thread via input() or getpass(). In either
-            # case, there's nothing more to do.
-            if not self._is_shut_down:
-                self._finish_existing_jobs = finish_existing_jobs
-                self._is_shut_down = True
-
-                # Put a fake job in the queue to wake up the worker thread
-                def fake_run():
-                    raise RuntimeError(
-                        "This task shouldn't have been run! There is an issue with the ConsoleMessenger."
-                    )
-
-                self._queue.put(
-                    _ConsoleIOJob(
-                        level=_ConsoleIOJob.OUT_ERROR,
-                        priority=-math.inf,
-                        timestamp=datetime.min,
-                        run=fake_run,
-                        is_from_main_thread=is_current_thread_main(),
-                        is_fake=True,
-                    )
-                )
-        # Don't end the program until the worker thread is done. Funky things
-        # could happen if the worker is still trying to write to the console
-        # as the program is shutting down.
-        self._worker_thread.join()
-
-    @property
-    def is_closed(self) -> bool:
-        with self._lock:
-            return self._is_shut_down
-
-    def _run_worker_thread(self):
-        try:
-            while True:
-                # IMPORTANT: check for shutdown AFTER getting a job from the
-                # queue. Otherwise, the job might actually be the fake one
-                # placed in the queue by close() to wake up this loop.
-                job = self._queue.get(block=True)
-                with self._lock:
-                    if self._is_shut_down:
-                        # Put the job back in the queue so that it doesn't get
-                        # forgotten
-                        self._queue.put(job)
-                        break
-
-                try:
-                    job.run()
-                except (KeyboardInterrupt, EOFError):
-                    # For some reason, when the worker thread is running
-                    # input() or getpass(), pressing CTRL+C results in an
-                    # EOFError in this worker thread instead of a
-                    # KeyboardInterrupt in the main thread. Manually
-                    # re-trigger the CTRL+C for consistency.
-                    #
-                    # Need to set self._is_shut_down so that no new input tasks
-                    # are processed before close() is called.
-                    with self._lock:
-                        self._finish_existing_jobs = False
-                        self._is_shut_down = True
-                    # If the offending job was submitted by the main thread,
-                    # the main thread should already receive a
-                    # KeyboardInterrupt from submit_input_job. The second one
-                    # might be delivered while the first one is still being
-                    # handled, which results in ugly stack traces.
-                    if not job.is_from_main_thread:
-                        interrupt_main_thread()
-                    break
-                except BaseException:
-                    continue
-        finally:
-            self._wait_for_close_lock.acquire()
-            # Clear the queue so that input jobs can be released
-            while True:
-                try:
-                    job = self._queue.get(block=False)
-                except Empty:
-                    return
-                if job.is_fake:
-                    continue
-                if self._finish_existing_jobs and not job.is_input:
-                    try:
-                        job.run()
-                    except BaseException:
-                        pass
-                else:
-                    # The check for job.lock.locked() shouldn't be necessary, but
-                    # it doesn't hurt
-                    job.cancelled = True
-                    if job.lock is not None and job.lock.locked():
-                        job.lock.release()
 
 
-OutputJobLevel = Literal[0, 1]
-InputJobLevel = Literal[2, 3]
-
-
-@dataclass(order=True)
-class _ConsoleIOJob:
-    OUT_ERROR = 0
-    OUT_STATUS = 1
-    IN_INPUT = 2
-    IN_WAIT = 3
-
-    level: Union[OutputJobLevel, InputJobLevel]
-    priority: float
-    timestamp: datetime
-    run: Callable[[], object] = field(compare=False)
-    is_from_main_thread: bool = field(compare=False)
-    lock: Optional[Lock] = field(compare=False, default=None)
-    cancelled: bool = field(compare=False, default=False)
-    is_fake: bool = field(compare=False, default=False)
-
-    @property
-    def is_input(self):
-        return self.level in [self.IN_INPUT, self.IN_WAIT]
+@dataclass(frozen=True, order=True)
+class _QueueTask:
+    is_real: bool
+    """Set this to `False` to signal that it's time to exit."""
+    is_input: bool
+    index: float
+    run: Callable[[], None] = field(compare=False)
