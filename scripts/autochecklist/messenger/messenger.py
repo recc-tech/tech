@@ -42,6 +42,10 @@ class Messenger:
             after_start()
         self._input_messenger.start(_after_start)
 
+    @property
+    def is_closed(self) -> bool:
+        return self._input_messenger.is_closed
+
     def close(self) -> None:
         self._input_messenger.close()
 
@@ -209,6 +213,11 @@ class Messenger:
                 task_name=actual_task_name,
             )
 
+    def cancel_all(self) -> None:
+        """Cancel all tasks that are currently cancellable."""
+        with self._task_manager_mutex:
+            self._task_manager.cancel_all()
+
 
 class CancellationToken:
     def __init__(self):
@@ -281,6 +290,10 @@ class _TaskManager:
     def unset_cancellation_token(self, task_name: str) -> None:
         if task_name in self._cancellation_token_by_task:
             del self._cancellation_token_by_task[task_name]
+
+    def cancel_all(self) -> None:
+        for t in self._cancellation_token_by_task.values():
+            t.cancel()
 
 
 class FileMessenger:

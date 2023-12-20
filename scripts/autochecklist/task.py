@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import time
 import traceback
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -58,8 +59,23 @@ class TaskGraph:
         # Periodically stop waiting for the thread to check whether the user
         # wants to exit
         for thread in self._threads:
-            while thread.is_alive():
+            while thread.is_alive() and not self._messenger.is_closed:
                 thread.join(timeout=0.5)
+            if self._messenger.is_closed:
+                self._cancel_all()
+                break
+
+    def _cancel_all(self) -> None:
+        self._messenger.cancel_all()
+        start = time.monotonic()
+        timeout = 5
+        iter_threads = iter(self._threads)
+        while time.monotonic() - start < timeout:
+            t = next(iter_threads, None)
+            if t is None:
+                return
+            # Each thread gets at `timeout` seconds to exit
+            t.join(timeout=max(0, timeout + start - time.monotonic()))
 
 
 class _TaskThread(Thread):

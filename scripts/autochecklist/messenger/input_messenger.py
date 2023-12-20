@@ -29,6 +29,10 @@ class InputMessenger:
     def wait_for_start(self) -> None:
         raise NotImplementedError()
 
+    @property
+    def is_closed(self) -> bool:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
