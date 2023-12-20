@@ -19,6 +19,6 @@ from .messenger import (
     TkMessenger,
     UserResponse,
 )
-from .startup import run
+from .startup import DefaultScript, Script
 from .task import FunctionFinder, TaskGraph, TaskModel
 from .wait import sleep_attentively
