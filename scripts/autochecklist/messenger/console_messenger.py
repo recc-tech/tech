@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import threading
+import time
 import typing
 from argparse import ArgumentTypeError
 from dataclasses import dataclass, field
@@ -53,12 +54,20 @@ class ConsoleMessenger(InputMessenger):
                     else:
                         task.run()
                 except (KeyboardInterrupt, EOFError):
+                    # HACK: give time for asynchronous processes to settle down
+                    # or something. Without this, a KeyboardInterrupt from
+                    # task.run() occasionally just kills the entire program
+                    # (particularly when you come out of the menu and then
+                    # immediately go into a call to wait() where the user hits
+                    # CTRL+C).
+                    # https://stackoverflow.com/a/31131378
+                    time.sleep(0.25)
                     try:
                         if task is not None:
                             # Re-run it after leaving the menu
                             self._queue.put(task)
                         self._run_menu()
-                    except (KeyboardInterrupt, EOFError) as e:
+                    except (KeyboardInterrupt, EOFError):
                         print("\nProgram cancelled.")
                         return
                 except Exception as e:
