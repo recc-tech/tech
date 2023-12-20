@@ -1,14 +1,17 @@
-import logging
-import traceback
-from argparse import ArgumentParser, Namespace
+import sys
+from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
+from typing import List, Literal, Set, Tuple
 
+import common
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
+    FunctionFinder,
     Messenger,
-    ProblemLevel,
+    Script,
+    TaskModel,
     TaskStatus,
     TkMessenger,
 )
@@ -17,230 +20,196 @@ from common import (
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
-    parse_directory,
-    run_with_or_without_terminal,
+    ReccConfig,
 )
 from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
 
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask you to enter any missing or incorrect ones if necessary."
 
+# TODO: Show "Skip" instead of "Done" for these tasks (and others like get_vimeo_data in MCR teardown)
+# TODO: Allow setting more specific message than "Task completed automatically."
 
-def main():
-    args = _parse_args()
 
-    log_dir = args.home_dir.joinpath("Logs")
-    date_ymd = datetime.now().strftime("%Y-%m-%d")
-    current_time = datetime.now().strftime("%H-%M-%S")
-    log_file = log_dir.joinpath(f"{date_ymd} {current_time} check_credentials.log")
-    file_messenger = FileMessenger(log_file=log_file)
-    input_messenger = (
-        ConsoleMessenger(
-            description=DESCRIPTION,
-            log_level=logging.INFO if args.verbose else logging.WARN,
+class CheckCredentialsConfig(ReccConfig):
+    def __init__(
+        self,
+        credentials: Set[str],
+        force_input: bool,
+        show_browser: bool,
+        home_dir: Path,
+        now: datetime,
+        ui: Literal["console", "tk"],
+        verbose: bool,
+        no_run: bool,
+    ) -> None:
+        super().__init__(
+            home_dir=home_dir,
+            now=now,
+            ui=ui,
+            verbose=verbose,
+            no_run=no_run,
         )
-        if args.text_ui
-        else TkMessenger(title="Check Credentials", description=DESCRIPTION)
-    )
-    messenger = Messenger(
-        file_messenger=file_messenger, input_messenger=input_messenger
-    )
+        self.show_browser = show_browser
+        self.credentials = credentials
+        self.force_input = force_input
 
-    should_messenger_finish = True
-    try:
-        messenger.log_status(TaskStatus.RUNNING, "Script started.")
 
-        credential_store = CredentialStore(
-            messenger=messenger,
-            request_input=(
-                InputPolicy.ALWAYS if args.force_input else InputPolicy.AS_REQUIRED
-            ),
+class CheckCredentialsScript(Script[CheckCredentialsConfig]):
+    def create_config(self) -> CheckCredentialsConfig:
+        all_credentials = {"boxcast", "vimeo", "planning_center"}
+        parser = ArgumentParser(description=DESCRIPTION)
+        parser.add_argument(
+            "-c",
+            "--credentials",
+            action="append",
+            choices=all_credentials,
+            help="Which credentials to check.",
+        )
+        parser.add_argument(
+            "-f",
+            "--force-input",
+            action="store_true",
+            help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
         )
 
-        all_logins_succeeded = True
-        if "boxcast" in args.credentials:
-            all_logins_succeeded = all_logins_succeeded and _try_login_to_boxcast(
-                credential_store=credential_store,
-                messenger=messenger,
-                log_dir=log_dir,
-                show_browser=args.show_browser,
+        advanced_args = parser.add_argument_group("Advanced arguments")
+        advanced_args.add_argument(
+            "--home-dir",
+            type=common.parse_directory,
+            default="D:\\Users\\Tech\\Documents",
+            help="The home directory.",
+        )
+        advanced_args.add_argument(
+            "--ui",
+            choices=["console", "tk"],
+            default="tk",
+            help="User interface to use.",
+        )
+
+        debug_args = parser.add_argument_group("Debug arguments")
+        debug_args.add_argument(
+            "--verbose",
+            action="store_true",
+            help="This flag is only applicable when the console UI is used. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+        )
+        debug_args.add_argument(
+            "--show-browser",
+            action="store_true",
+            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
+        )
+
+        args = parser.parse_args()
+        return CheckCredentialsConfig(
+            credentials=set(args.credentials or all_credentials),
+            force_input=args.force_input,
+            show_browser=args.show_browser,
+            home_dir=args.home_dir,
+            now=datetime.now(),
+            ui=args.ui,
+            verbose=args.verbose,
+            no_run=False,
+        )
+
+    def create_messenger(self, config: CheckCredentialsConfig) -> Messenger:
+        log_dir = config.home_dir.joinpath("Logs")
+        date_ymd = datetime.now().strftime("%Y-%m-%d")
+        current_time = datetime.now().strftime("%H-%M-%S")
+        log_file = log_dir.joinpath(f"{date_ymd} {current_time} check_credentials.log")
+        file_messenger = FileMessenger(log_file=log_file)
+        input_messenger = (
+            ConsoleMessenger(description=DESCRIPTION, show_task_status=config.verbose)
+            if config.ui == "console"
+            else TkMessenger(title="Check Credentials", description=DESCRIPTION)
+        )
+        messenger = Messenger(file_messenger, input_messenger)
+        return messenger
+
+    def create_services(
+        self, config: CheckCredentialsConfig, messenger: Messenger
+    ) -> Tuple[TaskModel | Path, FunctionFinder]:
+        subtasks: List[TaskModel] = []
+        if "boxcast" in config.credentials:
+            subtasks.append(
+                TaskModel(
+                    name="log_into_boxcast",
+                    description="Failed to log into BoxCast.",
+                )
             )
-        if "vimeo" in args.credentials:
-            all_logins_succeeded = all_logins_succeeded and _try_login_to_vimeo(
-                credential_store=credential_store, messenger=messenger
+        if "planning_center" in config.credentials:
+            subtasks.append(
+                TaskModel(
+                    name="log_into_planning_center",
+                    description="Failed to connect to the Planning Center API.",
+                )
             )
-        if "planning_center" in args.credentials:
-            all_logins_succeeded = (
-                all_logins_succeeded
-                and _try_login_to_planning_center(
-                    credential_store=credential_store, messenger=messenger
+        if "vimeo" in config.credentials:
+            subtasks.append(
+                TaskModel(
+                    name="log_into_vimeo",
+                    description="Failed to connect to the Vimeo API.",
                 )
             )
 
-        if all_logins_succeeded:
-            messenger.log_status(TaskStatus.DONE, "Everything looks good!")
-        else:
-            messenger.log_status(
-                TaskStatus.DONE,
-                'Some logins failed. See the "Problems" section for more details.',
-            )
-    except KeyboardInterrupt:
-        print("\nProgram cancelled.")
-        should_messenger_finish = False
-    except BaseException as e:
-        messenger.log_problem(
-            ProblemLevel.FATAL,
-            f"An error occurred: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(
-            TaskStatus.DONE,
-            'An unexpected error forced the program to stop. See the "Problems" section for more details.',
-        )
-    finally:
-        messenger.close(wait=should_messenger_finish)
-
-
-def _try_login_to_vimeo(
-    credential_store: CredentialStore, messenger: Messenger
-) -> bool:
-    try:
-        messenger.set_current_task_name("log_into_vimeo")
-        messenger.log_status(TaskStatus.RUNNING, "Task started.")
-        ReccVimeoClient(
+        task_model = TaskModel(name="check_credentials", subtasks=subtasks)
+        credential_store = CredentialStore(
             messenger=messenger,
-            credential_store=credential_store,
-            cancellation_token=None,
-            # Since lazy_login = false, the login should be tested eagerly
-            lazy_login=False,
+            request_input=(
+                InputPolicy.ALWAYS if config.force_input else InputPolicy.AS_REQUIRED
+            ),
         )
-        messenger.log_status(TaskStatus.DONE, "Successfully connected to Vimeo.")
-        return True
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.ERROR,
-            f"An error occurred while trying to log into Vimeo: {e}",
-            stacktrace=traceback.format_exc(),
+        function_finder = FunctionFinder(
+            # Use the current module
+            module=sys.modules[__name__],
+            arguments=[messenger, credential_store, config],
+            messenger=messenger,
         )
-        messenger.log_status(TaskStatus.DONE, "Login failed.")
-        return False
-    finally:
-        messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
+        return task_model, function_finder
 
 
-def _try_login_to_boxcast(
+def log_into_vimeo(credential_store: CredentialStore, messenger: Messenger) -> None:
+    ReccVimeoClient(
+        messenger=messenger,
+        credential_store=credential_store,
+        cancellation_token=None,
+        # Since lazy_login = false, the login should be tested eagerly
+        lazy_login=False,
+    )
+    messenger.log_status(TaskStatus.DONE, "Successfully connected to Vimeo.")
+
+
+def log_into_boxcast(
     credential_store: CredentialStore,
     messenger: Messenger,
-    log_dir: Path,
-    show_browser: bool,
-) -> bool:
-    try:
-        messenger.set_current_task_name("log_into_boxcast")
-        messenger.log_status(TaskStatus.RUNNING, "Task started.")
-        BoxCastClientFactory(
-            messenger=messenger,
-            credential_store=credential_store,
-            cancellation_token=None,
-            headless=not show_browser,
-            # Since lazy_login = false, the login should be tested eagerly
-            lazy_login=False,
-            log_directory=log_dir,
-            log_file_name="check_credentials_web_driver",
-        )
-        messenger.log_status(
-            TaskStatus.DONE,
-            f"Successfully logged into BoxCast as {credential_store.get(Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER)}",
-        )
-        return True
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.ERROR,
-            f"An error occurred while trying to log into BoxCast: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(TaskStatus.DONE, "Login failed.")
-        return False
-    finally:
-        messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
+    config: CheckCredentialsConfig,
+) -> None:
+    BoxCastClientFactory(
+        messenger=messenger,
+        credential_store=credential_store,
+        cancellation_token=None,
+        headless=not config.show_browser,
+        # Since lazy_login = false, the login should be tested eagerly
+        lazy_login=False,
+        log_directory=config.log_dir,
+        log_file_name="check_credentials_web_driver",
+    )
+    messenger.log_status(
+        TaskStatus.DONE,
+        f"Successfully logged into BoxCast as {credential_store.get(Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER)}",
+    )
 
 
-def _try_login_to_planning_center(
+def log_into_planning_center(
     credential_store: CredentialStore, messenger: Messenger
-):
-    try:
-        messenger.set_current_task_name("log_into_planning_center")
-        messenger.log_status(TaskStatus.RUNNING, "Task started.")
-        PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            lazy_login=False,
-        )
-        messenger.log_status(
-            TaskStatus.DONE, "Successfully connected to the Planning Center API."
-        )
-        return True
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.ERROR,
-            f"An error occurred while trying to connect to the Planning Center API: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(TaskStatus.DONE, "Connection failed.")
-        return False
-    finally:
-        messenger.set_current_task_name(Messenger.ROOT_PSEUDOTASK_NAME)
-
-
-def _parse_args() -> Namespace:
-    parser = ArgumentParser(description=DESCRIPTION)
-    parser.add_argument(
-        "-f",
-        "--force-input",
-        action="store_true",
-        help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
+) -> None:
+    PlanningCenterClient(
+        messenger=messenger,
+        credential_store=credential_store,
+        lazy_login=False,
     )
-    parser.add_argument(
-        "-c",
-        "--credentials",
-        action="append",
-        choices=["boxcast", "vimeo"],
-        help="Which credentials to check.",
+    messenger.log_status(
+        TaskStatus.DONE, "Successfully connected to the Planning Center API."
     )
-
-    advanced_args = parser.add_argument_group("Advanced arguments")
-    advanced_args.add_argument(
-        "--home-dir",
-        type=parse_directory,
-        default="D:\\Users\\Tech\\Documents",
-        help="The home directory.",
-    )
-    advanced_args.add_argument(
-        "--show-browser",
-        action="store_true",
-        help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
-    )
-    advanced_args.add_argument(
-        "--text-ui",
-        action="store_true",
-        help="If this flag is provided, then user interactions will be performed via a simpler terminal-based UI.",
-    )
-    advanced_args.add_argument(
-        "--verbose",
-        action="store_true",
-        help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
-    )
-
-    args = parser.parse_args()
-    if not args.credentials:
-        args.credentials = ["boxcast", "vimeo", "planning_center"]
-    if args.verbose and not args.text_ui:
-        parser.error(
-            "The --verbose flag is only applicable when the --text-ui flag is also provided."
-        )
-
-    return args
 
 
 if __name__ == "__main__":
-    run_with_or_without_terminal(
-        main, error_file=Path(__file__).parent.joinpath("error.log")
-    )
+    CheckCredentialsScript().run()
