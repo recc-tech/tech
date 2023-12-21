@@ -53,6 +53,11 @@ class CheckCredentialsConfig(ReccConfig):
         self.credentials = credentials
         self.force_input = force_input
 
+    @property
+    def log_file(self) -> Path:
+        timestamp = f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')}"
+        return self.log_dir.joinpath(f"{timestamp} check_credentials.log")
+
 
 class CheckCredentialsScript(Script[CheckCredentialsConfig]):
     def create_config(self) -> CheckCredentialsConfig:
@@ -111,11 +116,7 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
         )
 
     def create_messenger(self, config: CheckCredentialsConfig) -> Messenger:
-        log_dir = config.home_dir.joinpath("Logs")
-        date_ymd = datetime.now().strftime("%Y-%m-%d")
-        current_time = datetime.now().strftime("%H-%M-%S")
-        log_file = log_dir.joinpath(f"{date_ymd} {current_time} check_credentials.log")
-        file_messenger = FileMessenger(log_file=log_file)
+        file_messenger = FileMessenger(log_file=config.log_file)
         input_messenger = (
             ConsoleMessenger(description=DESCRIPTION, show_task_status=config.verbose)
             if config.ui == "console"
@@ -190,7 +191,7 @@ def log_into_boxcast(
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
         log_directory=config.log_dir,
-        log_file_name="check_credentials_web_driver",
+        log_file_name="check_credentials_webdriver",
     )
     messenger.log_status(
         TaskStatus.DONE,
