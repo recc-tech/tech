@@ -123,6 +123,7 @@ class _Task:
         prerequisites: List[_Task],
         func: Optional[Callable[[], None]],
         description: str,
+        only_auto: bool,
         messenger: Messenger,
     ):
         self.name = name
@@ -143,6 +144,8 @@ class _Task:
         Instructions to show to the user in case the function raises an
         exception.
         """
+        self._only_auto = only_auto
+        """If `True`, this task cannot be completed manually."""
         self._messenger = messenger
         """
         Messenger to use for logging and input.
@@ -152,7 +155,10 @@ class _Task:
         while True:
             try:
                 self._run_automatically()
-                if self._messenger.get_status() != TaskStatus.DONE:
+                if self._messenger.get_status() not in {
+                    TaskStatus.DONE,
+                    TaskStatus.SKIPPED,
+                }:
                     self._messenger.log_status(
                         TaskStatus.DONE, f"Task completed automatically."
                     )
@@ -164,13 +170,13 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"This task is not automated. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=False)
+                response = self._run_manually(allow_retry=False)
             except TaskCancelledException:
                 self._messenger.log_status(
                     TaskStatus.WAITING_FOR_USER,
                     f"The task was cancelled by the user. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=True)
+                response = self._run_manually(allow_retry=True)
             except BaseException as e:
                 self._messenger.log_problem(
                     ProblemLevel.ERROR,
@@ -181,9 +187,12 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"The task automation failed. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=True)
-            if is_done:
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+                response = self._run_manually(allow_retry=True)
+            if response == UserResponse.DONE:
+                self._messenger.log_status(TaskStatus.DONE, "Task completed manually.")
+                return
+            if response == UserResponse.SKIP:
+                self._messenger.log_status(TaskStatus.SKIPPED, "Task skipped.")
                 return
 
     def _run_automatically(self):
@@ -198,10 +207,16 @@ class _Task:
             # using the wrong name)
             self._messenger.disallow_cancel()
 
-    def _run_manually(self, allow_retry: bool) -> bool:
-        self._messenger.disallow_cancel()
-        response = self._messenger.wait(self._description, allow_retry=allow_retry)
-        return response == UserResponse.DONE
+    def _run_manually(self, allow_retry: bool) -> UserResponse:
+        allowed_responses = {UserResponse.DONE, UserResponse.RETRY, UserResponse.SKIP}
+        if not allow_retry:
+            allowed_responses.remove(UserResponse.RETRY)
+        if self._only_auto:
+            allowed_responses.remove(UserResponse.DONE)
+        response = self._messenger.wait(
+            self._description, allowed_responses=allowed_responses
+        )
+        return response
 
 
 @dataclass(frozen=True)
@@ -212,6 +227,7 @@ class TaskModel:
     description: str = ""
     prerequisites: Set[str] = field(default_factory=set)
     subtasks: List[TaskModel] = field(default_factory=list)
+    only_auto: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "name", self.name.strip())
@@ -224,6 +240,10 @@ class TaskModel:
         if self.subtasks and self.description.strip():
             raise ValueError(
                 f"Task '{self.name}' has subtasks and a description. If a task has subtasks, its description will not be shown to the user. Prefix the field name with an underscore if you want to use it as a comment."
+            )
+        if self.subtasks and self.only_auto:
+            raise ValueError(
+                f"Task '{self.name}' has subtasks and only_auto=True. Tasks with subtasks will not be automated, so they cannot have only_auto=True."
             )
 
     @classmethod
@@ -442,6 +462,7 @@ def _normalize_prerequisites(
             description=task.description,
             prerequisites=expanded_prerequisites,
             subtasks=task.subtasks,
+            only_auto=task.only_auto,
         )
     else:
         return TaskModel(
@@ -452,6 +473,7 @@ def _normalize_prerequisites(
                 _normalize_prerequisites(t, combined_prerequisites, name_to_task)
                 for t in task.subtasks
             ],
+            only_auto=task.only_auto,
         )
 
 
@@ -560,6 +582,7 @@ def _remove_redundant_prerequisites(sorted_tasks: List[TaskModel]) -> List[TaskM
             description=t.description,
             prerequisites=required_direct_prerequisites[t.name],
             subtasks=[],
+            only_auto=t.only_auto,
         )
         for t in sorted_tasks
     ]
@@ -571,19 +594,22 @@ def _convert_models_to_tasks(
     finder: FunctionFinder,
     config: BaseConfig,
 ) -> List[_Task]:
-    name_to_func: Dict[str, Optional[Callable[[], None]]] = {
-        m.name: None for m in models
-    }
-    name_to_func |= finder.find_functions([m.name for m in models])
+    name_to_func = finder.find_functions([m.name for m in models])
     name_to_task: Dict[str, _Task] = {}
     tasks: List[_Task] = []
     for i, m in enumerate(models, start=1):
+        func = name_to_func.get(m.name, None)
+        if func is None and m.only_auto:
+            raise ValueError(
+                f"Task '{m.name}' has only_auto=True, but no automation was found for it."
+            )
         task = _Task(
             name=m.name,
             index=i,
             prerequisites=[name_to_task[p] for p in m.prerequisites],
-            func=name_to_func[m.name],
+            func=func,
             description=config.fill_placeholders(m.description),
+            only_auto=m.only_auto,
             messenger=messenger,
         )
         name_to_task[m.name] = task

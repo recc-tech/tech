@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from threading import Thread
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Optional, Set, TypeVar
 
 T = TypeVar("T")
 
@@ -63,7 +63,11 @@ class InputMessenger:
         raise NotImplementedError()
 
     def wait(
-        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+        self,
+        task_name: str,
+        index: Optional[int],
+        prompt: str,
+        allowed_responses: Set[UserResponse],
     ) -> UserResponse:
         raise NotImplementedError()
 
@@ -87,21 +91,15 @@ class Parameter:
 
 class TaskStatus(Enum):
     NOT_STARTED = auto()
-    """
-    The task has not yet started.
-    """
+    """The task has not yet started."""
     RUNNING = auto()
-    """
-    The automatic implementation of the task is running.
-    """
+    """The automatic implementation of the task is running."""
     WAITING_FOR_USER = auto()
-    """
-    Waiting for user input.
-    """
+    """Waiting for user input."""
     DONE = auto()
-    """
-    Task completed, either manually or automatically.
-    """
+    """Task completed, either manually or automatically."""
+    SKIPPED = auto()
+    """Task skipped."""
 
     def __str__(self):
         return self.name
@@ -144,3 +142,8 @@ class UserResponse(Enum):
     """The task has been completed manually."""
     RETRY = auto()
     """The task automation should be re-run."""
+    SKIP = auto()
+    """The task will not be completed."""
+
+    def __str__(self) -> str:
+        return self.name

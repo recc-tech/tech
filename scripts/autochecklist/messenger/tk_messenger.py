@@ -254,7 +254,11 @@ class TkMessenger(InputMessenger):
         return messagebox.askyesno(title, prompt)
 
     def wait(
-        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+        self,
+        task_name: str,
+        index: Optional[int],
+        prompt: str,
+        allowed_responses: Set[UserResponse],
     ) -> UserResponse:
         if self.is_closed:
             raise KeyboardInterrupt()
@@ -274,14 +278,38 @@ class TkMessenger(InputMessenger):
             response = response or UserResponse.RETRY
             click_event.set()
 
+        def handle_click_skip() -> None:
+            nonlocal response
+            # IMPORTANT: If this is changed to call another method with a
+            # custom boolean input dialog, it MUST NOT deadlock the main thread
+            # (e.g., by generating an event but then blocking on main).
+            should_skip = messagebox.askyesno(
+                title="Confirm exit",
+                message="Are you sure you want to skip this task?",
+            )
+            if not should_skip:
+                return
+            response = response or UserResponse.SKIP
+            click_event.set()
+
         def do_add_action_item() -> None:
             nonlocal actual_index
+            on_click_done = (
+                handle_click_done if UserResponse.DONE in allowed_responses else None
+            )
+            on_click_retry = (
+                handle_click_retry if UserResponse.RETRY in allowed_responses else None
+            )
+            on_click_skip = (
+                handle_click_skip if UserResponse.SKIP in allowed_responses else None
+            )
             actual_index = self._action_items_grid.add_row(
                 index,
                 task_name,
                 prompt,
-                on_click_done=handle_click_done,
-                on_click_retry=handle_click_retry if allow_retry else None,
+                on_click_done=on_click_done,
+                on_click_retry=on_click_retry,
+                on_click_skip=on_click_skip,
             )
 
         def do_remove_action_item() -> None:
@@ -722,10 +750,12 @@ class _ActionItemGrid(Frame):
     _DONE_BTN_WIDTH = 7
     _RETRY_BTN_COLUMN = 1
     _RETRY_BTN_WIDTH = 7
-    _NAME_COLUMN = 2
+    _SKIP_BTN_COLUMN = 2
+    _SKIP_BTN_WIDTH = 7
+    _NAME_COLUMN = 3
     _NAME_WIDTH = 35
-    _MSG_COLUMN = 3
-    _MSG_WIDTH = 115
+    _MSG_COLUMN = 4
+    _MSG_WIDTH = 108
 
     def __init__(
         self,
@@ -750,7 +780,14 @@ class _ActionItemGrid(Frame):
         self._header_font = header_font
 
         self._widgets: Dict[
-            int, Tuple[Button, Optional[Button], _CopyableText, _CopyableText]
+            int,
+            Tuple[
+                Optional[Button],
+                Optional[Button],
+                Optional[Button],
+                _CopyableText,
+                _CopyableText,
+            ],
         ] = {}
         self._create_header()
 
@@ -759,8 +796,9 @@ class _ActionItemGrid(Frame):
         index: Optional[int],
         task_name: str,
         message: str,
-        on_click_done: Callable[[], None],
+        on_click_done: Optional[Callable[[], None]],
         on_click_retry: Optional[Callable[[], None]],
+        on_click_skip: Optional[Callable[[], None]],
     ) -> int:
         if index is None or index in self._widgets:
             # If the index is the same as an existing row, tkinter seems to
@@ -770,21 +808,22 @@ class _ActionItemGrid(Frame):
         else:
             actual_index = index
 
-        done_button = Button(
-            self, text="Done", state="enabled", width=self._DONE_BTN_WIDTH
-        )
-        done_button.configure(command=on_click_done)
-        done_button.grid(
-            # Increase the row number to account for the header
-            row=actual_index + 2,
-            column=self._DONE_BTN_COLUMN,
-            padx=self._padx,
-            pady=self._pady,
-        )
-        if on_click_retry is not None:
-            retry_button = Button(
-                self, text="Retry", state="enabled", width=self._RETRY_BTN_WIDTH
+        if on_click_done is not None:
+            done_button = Button(
+                self, text="Done", state="enabled", width=self._DONE_BTN_WIDTH
             )
+            done_button.configure(command=on_click_done)
+            done_button.grid(
+                # Increase the row number to account for the header
+                row=actual_index + 2,
+                column=self._DONE_BTN_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+        else:
+            done_button = None
+        if on_click_retry is not None:
+            retry_button = Button(self, text="Retry", width=self._RETRY_BTN_WIDTH)
             retry_button.configure(command=on_click_retry)
             retry_button.grid(
                 row=actual_index + 2,
@@ -794,6 +833,17 @@ class _ActionItemGrid(Frame):
             )
         else:
             retry_button = None
+        if on_click_skip is not None:
+            skip_button = Button(self, text="Skip", width=self._SKIP_BTN_WIDTH)
+            skip_button.configure(command=on_click_skip)
+            skip_button.grid(
+                row=actual_index + 2,
+                column=self._SKIP_BTN_COLUMN,
+                padx=self._padx,
+                pady=self._pady,
+            )
+        else:
+            skip_button = None
         name_label = _CopyableText(
             self,
             width=self._NAME_WIDTH,
@@ -823,18 +873,27 @@ class _ActionItemGrid(Frame):
         )
         msg_label.set_text(message)
 
-        self._widgets[actual_index] = (done_button, retry_button, name_label, msg_label)
+        self._widgets[actual_index] = (
+            done_button,
+            retry_button,
+            skip_button,
+            name_label,
+            msg_label,
+        )
 
         return actual_index
 
     def delete_row(self, index: int):
         if index not in self._widgets:
             return
-        (done_button, retry_button, name_label, msg_label) = self._widgets[index]
+        (done_btn, retry_btn, skip_btn, name_label, msg_label) = self._widgets[index]
         del self._widgets[index]
-        done_button.destroy()
-        if retry_button is not None:
-            retry_button.destroy()
+        if done_btn is not None:
+            done_btn.destroy()
+        if retry_btn is not None:
+            retry_btn.destroy()
+        if skip_btn is not None:
+            skip_btn.destroy()
         name_label.destroy()
         msg_label.destroy()
 
@@ -890,7 +949,7 @@ class _ActionItemGrid(Frame):
         separator = _ThickSeparator(
             self, thickness=3, orient="horizontal", colour="black"
         )
-        separator.grid(row=1, column=0, columnspan=4, sticky="EW")
+        separator.grid(row=1, column=0, columnspan=5, sticky="EW")
 
 
 class _TaskStatusGrid(Frame):
@@ -1094,6 +1153,8 @@ class _TaskStatusGrid(Frame):
             return "#FF7700"
         elif status == TaskStatus.DONE:
             return "#009020"
+        elif status == TaskStatus.SKIPPED:
+            return "#FF0000"
         else:
             return "#000000"
 

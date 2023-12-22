@@ -26,8 +26,6 @@ from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
 
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask you to enter any missing or incorrect ones if necessary."
 
-# TODO: Show "Skip" instead of "Done" for these tasks (and others like get_vimeo_data in MCR teardown)
-
 
 class CheckCredentialsConfig(ReccConfig):
     def __init__(
@@ -182,10 +180,11 @@ def log_into_boxcast(
     messenger: Messenger,
     config: CheckCredentialsConfig,
 ) -> None:
+    cancellation_token = messenger.allow_cancel()
     BoxCastClientFactory(
         messenger=messenger,
         credential_store=credential_store,
-        cancellation_token=None,
+        cancellation_token=cancellation_token,
         headless=not config.show_browser,
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,

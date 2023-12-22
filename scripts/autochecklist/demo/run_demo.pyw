@@ -66,12 +66,8 @@ def demo_input(messenger: Messenger):
         title="Choose multiple",
     )
     messenger.log_status(
-        TaskStatus.RUNNING,
+        TaskStatus.DONE,
         f"You choose {inputs['pizza_topping']} on pizza and your password is '{inputs['pass']}'.",
-    )
-
-    sleep_attentively(
-        timeout=timedelta(seconds=10), cancellation_token=messenger.allow_cancel()
     )
 
 
@@ -84,7 +80,8 @@ def demo_errors(messenger: Messenger):
 
 def demo_cancel1(messenger: Messenger):
     messenger.log_status(
-        TaskStatus.RUNNING, "This task will run for a long time. Try cancelling it."
+        TaskStatus.RUNNING,
+        "This task will run for a long time. Furthermore, it cannot be done manually. Try cancelling it.",
     )
     token = messenger.allow_cancel()
     sleep_attentively(timeout=timedelta(minutes=5), cancellation_token=token)
@@ -161,13 +158,15 @@ class DemoScript(DefaultScript):
                 ),
                 TaskModel(
                     name="demo_cancel1",
-                    description="This task will run for a long time. Try cancelling it.",
+                    description="This task will run for a long time. Furthermore, it cannot be done manually.",
                     prerequisites={"demo_errors"},
+                    only_auto=True
                 ),
                 TaskModel(
                     name="demo_cancel2",
-                    description="This task will run for a long time. Try cancelling it.",
+                    description="This task will run for a long time. Furthermore, it cannot be done manually.",
                     prerequisites={"demo_errors"},
+                    only_auto=True
                 ),
             ],
         )

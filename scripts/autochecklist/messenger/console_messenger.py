@@ -322,13 +322,26 @@ class ConsoleMessenger(InputMessenger):
         return choice
 
     def wait(
-        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+        self,
+        task_name: str,
+        index: Optional[int],
+        prompt: str,
+        allowed_responses: Set[UserResponse],
     ) -> UserResponse:
-        def wait_for_input_with_retry() -> None:
+        def wait_for_input() -> None:
             nonlocal response
-            self._io.write(
-                f"{prompt} Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually.",
-            )
+            long_options = ""
+            if UserResponse.DONE in allowed_responses:
+                long_options += (
+                    "- Type 'done' if you have completed the task manually.\n"
+                )
+            if UserResponse.RETRY in allowed_responses:
+                long_options += "- Type 'retry' if you would like to try running the task automation again.\n"
+            if UserResponse.SKIP in allowed_responses:
+                long_options += "- Type 'skip' to skip this task.\n"
+            long_options = long_options.rstrip()
+            short_options = ", ".join([str(x).lower() for x in allowed_responses])
+            self._io.write(f"{prompt}\n{long_options}")
             while True:
                 try:
                     choice = self._io.read(">> ")
@@ -342,9 +355,14 @@ class ConsoleMessenger(InputMessenger):
                         self._io.write()
                         input_received_event.set()
                         return
+                    elif choice.lower() == "skip":
+                        response = UserResponse.SKIP
+                        self._io.write()
+                        input_received_event.set()
+                        return
                     else:
                         self._io.write(
-                            "Invalid choice. Type 'retry' if you would like to try completing the task automatically again. Type 'done' if you have completed the task manually."
+                            f"Invalid choice. Valid inputs: {short_options}."
                         )
                         continue
                 # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
@@ -360,27 +378,6 @@ class ConsoleMessenger(InputMessenger):
                     input_received_event.set()
                     return
 
-        def wait_for_input() -> None:
-            nonlocal response
-            try:
-                # Ask for a password so that pressing keys other than
-                # ENTER has no visible effect
-                self._io.read_password(f"{prompt} Press ENTER when you're done.\n>> ")
-                response = UserResponse.DONE
-                self._io.write()
-                input_received_event.set()
-            # IMPORTANT: Ignore both KeyboardInterrupt and EOFError so
-            # that the main loop can deal with all the
-            # cancellation-related issues
-            except (KeyboardInterrupt, EOFError):
-                raise
-            except Exception as e:
-                self._io.write(
-                    f"An error occurred while waiting for input. Assuming the task was completed manually. {e}\n"
-                )
-                response = UserResponse.DONE
-                input_received_event.set()
-
         prompt = prompt.strip()
         prompt = (
             prompt
@@ -390,16 +387,15 @@ class ConsoleMessenger(InputMessenger):
         prompt = f"\n({task_name}) {prompt}"
         response: Optional[UserResponse] = None
         input_received_event = Event()
-        run = wait_for_input_with_retry if allow_retry else wait_for_input
         if _is_current_thread_main():
-            run()
+            wait_for_input()
         else:
             self._enqueue_and_wait(
                 _QueueTask(
                     is_real=True,
                     index=index if index is not None else math.inf,
                     is_input=True,
-                    run=run,
+                    run=wait_for_input,
                 ),
                 input_received_event,
             )

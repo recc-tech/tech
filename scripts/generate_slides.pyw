@@ -150,16 +150,22 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
         task_model = TaskModel(
             name="main",
             subtasks=[
-                TaskModel(name="read_input", description="Failed to read input."),
+                TaskModel(
+                    name="read_input",
+                    description="Failed to read input.",
+                    only_auto=True,
+                ),
                 TaskModel(
                     name="save_json",
                     description="Failed to save blueprints.",
                     prerequisites={"read_input"},
+                    only_auto=True,
                 ),
                 TaskModel(
                     name="generate_slides",
                     description="Failed to make slides.",
                     prerequisites={"read_input"},
+                    only_auto=True,
                 ),
             ],
         )

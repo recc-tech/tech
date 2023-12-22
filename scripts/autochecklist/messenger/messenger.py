@@ -4,7 +4,7 @@ import logging
 from logging import FileHandler
 from pathlib import Path
 from threading import Lock, local
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Iterable, Optional, TypeVar
 
 from autochecklist.messenger.input_messenger import (
     InputMessenger,
@@ -134,7 +134,10 @@ class Messenger:
         return self._input_messenger.input_multiple(params, prompt, title)
 
     def wait(
-        self, prompt: str, task_name: str = "", allow_retry: bool = False
+        self,
+        prompt: str,
+        allowed_responses: Iterable[UserResponse] = (UserResponse.DONE,),
+        task_name: str = "",
     ) -> UserResponse:
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
@@ -145,7 +148,7 @@ class Messenger:
                 task_name_for_display = "UNKNOWN"
                 index = None
         return self._input_messenger.wait(
-            task_name_for_display, index, prompt, allow_retry
+            task_name_for_display, index, prompt, set(allowed_responses)
         )
 
     def allow_cancel(self, task_name: str = "") -> CancellationToken:
