@@ -32,9 +32,10 @@ jobs:
       run: black ./scripts --check
     - name: Run tests
       run: |
-        python -m unittest discover -t ./scripts -s ./scripts/test/unit
+        # Use grep to check that at least one test was run
+        python -m unittest discover -t ./scripts -s ./scripts/test/unit | grep --quiet '^Ran [1-9]\d* tests'
         # Skip the tests that require credentials
         # TODO: Provide credentials via environment variables from GitHub Secrets
         rm scripts/test/integration/test_boxcast.py
         rm scripts/test/integration/test_planning_center.py
-        python -m unittest discover -t ./scripts -s ./scripts/test/integration
+        python -m unittest discover -t ./scripts -s ./scripts/test/integration | grep --quiet '^Ran [1-9]\d* tests'
