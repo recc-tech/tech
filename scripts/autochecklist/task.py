@@ -152,9 +152,10 @@ class _Task:
         while True:
             try:
                 self._run_automatically()
-                self._messenger.log_status(
-                    TaskStatus.DONE, f"Task completed automatically."
-                )
+                if self._messenger.get_status() != TaskStatus.DONE:
+                    self._messenger.log_status(
+                        TaskStatus.DONE, f"Task completed automatically."
+                    )
                 return
             except (KeyboardInterrupt, SystemExit):
                 raise

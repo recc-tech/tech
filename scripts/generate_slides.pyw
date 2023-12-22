@@ -245,7 +245,7 @@ def save_json(
     )
     reader.save_json(config.json_file, config.blueprints)
     messenger.log_status(
-        TaskStatus.DONE, f"Slide contents saved to {config.json_file.as_posix()}."
+        TaskStatus.DONE, f"Slide blueprints saved to {config.json_file.as_posix()}."
     )
 
 

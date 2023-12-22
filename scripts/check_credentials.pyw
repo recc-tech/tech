@@ -27,7 +27,6 @@ from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask you to enter any missing or incorrect ones if necessary."
 
 # TODO: Show "Skip" instead of "Done" for these tasks (and others like get_vimeo_data in MCR teardown)
-# TODO: Allow setting more specific message than "Task completed automatically."
 
 
 class CheckCredentialsConfig(ReccConfig):

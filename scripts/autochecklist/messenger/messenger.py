@@ -79,6 +79,7 @@ class Messenger:
             if actual_task_name:
                 task_name_for_display = actual_task_name
                 index = self._task_manager.get_index(actual_task_name)
+                self._task_manager.record_status(actual_task_name, status)
             else:
                 task_name_for_display = "UNKNOWN"
                 index = None
@@ -87,6 +88,15 @@ class Messenger:
         if not file_only:
             self._input_messenger.log_status(
                 task_name_for_display, index, status, message
+            )
+
+    def get_status(self, task_name: str = "") -> Optional[TaskStatus]:
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            return (
+                self._task_manager.get_status(actual_task_name)
+                if actual_task_name
+                else None
             )
 
     # TODO: It would be nice to show not only the exception but the exception
@@ -256,6 +266,7 @@ class _TaskManager:
         # default
         self._index_by_task = {Messenger.ROOT_PSEUDOTASK_NAME: 0}
         self._cancellation_token_by_task: Dict[str, CancellationToken] = {}
+        self._status_by_task: Dict[str, TaskStatus] = {}
 
     def set_current_task_name(self, task_name: Optional[str]):
         self._local.current_task_name = task_name
@@ -269,7 +280,7 @@ class _TaskManager:
             self._index_by_task[Messenger.ROOT_PSEUDOTASK_NAME] = 0
 
     def get_task_name(self, task_name: str) -> Optional[str]:
-        return task_name if task_name else self._local.current_task_name
+        return task_name or self._local.current_task_name
 
     def get_index(self, task_name: str) -> Optional[int]:
         return (
@@ -295,6 +306,12 @@ class _TaskManager:
     def cancel_all(self) -> None:
         for t in self._cancellation_token_by_task.values():
             t.cancel()
+
+    def record_status(self, task_name: str, status: TaskStatus) -> None:
+        self._status_by_task[task_name] = status
+
+    def get_status(self, task_name: str) -> Optional[TaskStatus]:
+        return self._status_by_task.get(task_name, None)
 
 
 class FileMessenger:
