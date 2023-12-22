@@ -16,14 +16,22 @@ BOXCAST_TEST_USERNAME = "tech@riversedge.life"
 class BoxCastTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        def input_mock(*args: object, **kwargs: object):
+            raise ValueError(
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.pyw."
+            )
+
         cls.error_message = ""
         messenger = Mock(spec=Messenger)
+        messenger.input_multiple = input_mock
+        messenger.input = input_mock
+        messenger.wait = input_mock
         credential_store = CredentialStore(messenger)
         boxcast_username = credential_store.get(
             Credential.BOXCAST_USERNAME, request_input=InputPolicy.AS_REQUIRED
         )
         if boxcast_username != BOXCAST_TEST_USERNAME:
-            cls.error_message = f"Expected the BoxCast username to be '{BOXCAST_TEST_USERNAME}' but found username '{boxcast_username}'. Run python check_credentials.py --force-input to set the correct credentials."
+            cls.error_message = f"Expected the BoxCast username to be '{BOXCAST_TEST_USERNAME}' but found username '{boxcast_username}'. Run python check_credentials.pyw --force-input to set the correct credentials."
             return
         try:
             BoxCastClientFactory(
@@ -37,7 +45,7 @@ class BoxCastTestCase(unittest.TestCase):
             )
         except Exception as e:
             raise RuntimeError(
-                "Failed to log in to BoxCast. Run python check_credentials.py to set the correct credentials."
+                "Failed to log in to BoxCast. Run python check_credentials.pyw to set the correct credentials."
             ) from e
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")

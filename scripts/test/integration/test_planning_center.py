@@ -4,7 +4,7 @@ import inspect
 import unittest
 from datetime import date
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
@@ -133,9 +133,9 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock = Mock()
         messenger.log_problem = log_problem_mock
 
-        def input_mock(*args: Any, **kwargs: Any):
+        def input_mock(*args: object, **kwargs: object):
             raise ValueError(
-                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.pyw."
             )
 
         messenger.input_multiple = input_mock
