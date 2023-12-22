@@ -27,4 +27,4 @@ Note the following important files:
 2. Move to the `scripts/` directory.
 3. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
 4. Install the required external libraries by running `pip install -r requirements.txt`
-5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements.txt`.
+5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements-dev.txt`.
