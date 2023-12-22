@@ -42,7 +42,9 @@ class BoxCastTestCase(unittest.TestCase):
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         cls.home_dir = (
-            Path(__file__).parent.joinpath("boxcast_test_home").joinpath(f"{timestamp}_home")
+            Path(__file__)
+            .parent.joinpath("boxcast_test_home")
+            .joinpath(f"{timestamp}_home")
         )
         cls.home_dir.mkdir(exist_ok=True, parents=True)
 
@@ -63,9 +65,17 @@ class BoxCastTestCase(unittest.TestCase):
         boxcast_client_factory = Mock(spec=["get_client"])
         boxcast_client_factory.get_client.return_value = boxcast_client  # type: ignore
         config = McrTeardownConfig(
+            message_series="",
+            message_title="",
+            boxcast_event_id=EVENT_ID,
             home_dir=self.home_dir,
             downloads_dir=Path(os.environ["USERPROFILE"]).joinpath("Downloads"),
-            boxcast_event_id=EVENT_ID,
+            lazy_login=True,
+            now=datetime.now(),
+            show_browser=False,
+            ui="console",
+            verbose=False,
+            no_run=False,
         )
 
         tasks.download_captions(

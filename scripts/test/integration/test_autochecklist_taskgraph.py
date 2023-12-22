@@ -27,7 +27,7 @@ class TaskGraphTestCase(unittest.TestCase):
         # Have wait() append to the list so that we can check when it was
         # called
         messenger.wait.side_effect = append_wait
-        messenger.shutdown_requested = False
+        messenger.is_closed = False
         config = TestConfig()
         function_finder = FunctionFinder(
             module=example_tasks, arguments=[my_list, config], messenger=messenger
