@@ -98,7 +98,11 @@ class ReccWebDriver(WebDriver):
         # but potentially be obscured by another element (e.g., a dropdown menu)
         timeout: timedelta = timedelta(seconds=5),
     ) -> WebElement:
-        ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))
+        ec = (
+            EC.element_to_be_clickable((by, value))
+            if clickable
+            else EC.presence_of_element_located((by, value))
+        )
 
         try:
             self.wait(

@@ -39,7 +39,7 @@ class ConsoleMessenger(InputMessenger):
             startup_message = self._description.strip()
             if startup_message:
                 startup_message += "\n\n"
-            startup_message += "Press CTRL+C to see the menu.\n" 
+            startup_message += "Press CTRL+C to see the menu.\n"
             self._io.write(startup_message)
             should_exit = False
             task: Optional[_QueueTask] = None
