@@ -63,7 +63,7 @@ class BoxCastTestCase(unittest.TestCase):
             cancellation_token=None,
         )
         boxcast_client_factory = Mock(spec=["get_client"])
-        boxcast_client_factory.get_client.return_value = boxcast_client  # type: ignore
+        boxcast_client_factory.get_client.return_value = boxcast_client
         config = McrTeardownConfig(
             message_series="",
             message_title="",

@@ -53,7 +53,9 @@ class Script(Generic[TConfig]):
         # pythonw sets sys.stderr to None.
         # Open the file even when not using pythonw for easier debugging.
         with open(self.error_file, "w", encoding="utf-8") as se:
-            has_terminal = sys.stderr is not None  # type: ignore
+            has_terminal = (
+                sys.stderr is not None  # pyright: ignore[reportUnnecessaryComparison]
+            )
             if has_terminal:
                 self._run_main()
             else:

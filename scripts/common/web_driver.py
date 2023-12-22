@@ -52,13 +52,13 @@ class ReccWebDriver(WebDriver):
     ):
         options = Options()
         if headless:
-            options.add_argument("-headless")  # type: ignore
+            options.add_argument("-headless")
         service = Service(
             log_path=log_file.as_posix() if log_file else "NUL",
             # Hide the geckodriver terminal
             popen_kw={"creation_flags": subprocess.CREATE_NO_WINDOW},
         )
-        super().__init__(options=options, service=service)  # type: ignore
+        super().__init__(options=options, service=service)
 
     def wait(
         self,
@@ -98,11 +98,11 @@ class ReccWebDriver(WebDriver):
         # but potentially be obscured by another element (e.g., a dropdown menu)
         timeout: timedelta = timedelta(seconds=5),
     ) -> WebElement:
-        ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))  # type: ignore
+        ec = EC.element_to_be_clickable((by, value)) if clickable else EC.presence_of_element_located((by, value))
 
         try:
             self.wait(
-                condition=ec,  # type: ignore
+                condition=ec,
                 timeout=timeout,
                 message="",
                 cancellation_token=cancellation_token,

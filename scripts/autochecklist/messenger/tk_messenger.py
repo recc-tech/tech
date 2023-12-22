@@ -1,3 +1,5 @@
+# pyright: reportUnknownMemberType=false, reportUnknownArgumentType=false
+
 from __future__ import annotations
 
 import ctypes
@@ -145,7 +147,7 @@ class TkMessenger(InputMessenger):
             # IMPORTANT: If this is changed to call another method with a
             # custom boolean input dialog, it MUST NOT deadlock the main thread
             # (e.g., by generating an event but then blocking on main).
-            should_exit = messagebox.askyesno(  # type: ignore
+            should_exit = messagebox.askyesno(
                 title="Confirm exit",
                 message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
             )
@@ -249,9 +251,7 @@ class TkMessenger(InputMessenger):
         return output_by_key, error_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
-        return messagebox.askyesno(  # pyright: ignore[reportUnknownMemberType]
-            title, prompt
-        )
+        return messagebox.askyesno(title, prompt)
 
     def wait(
         self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
@@ -361,11 +361,11 @@ class TkMessenger(InputMessenger):
 
         self._tk.config(background=_BACKGROUND_COLOUR)
         style = Style()
-        style.configure(  # type: ignore
+        style.configure(
             "TButton",
             font=_NORMAL_FONT,
         )
-        style.configure(  # type: ignore
+        style.configure(
             "TFrame",
             background=_BACKGROUND_COLOUR,
             foreground=_FOREGROUND_COLOUR,
@@ -581,7 +581,7 @@ class TkMessenger(InputMessenger):
             pyperclip.copy(text)
         except Exception as e:
             print(e)
-            messagebox.showwarning(  # type: ignore
+            messagebox.showwarning(
                 title="Failed to copy",
                 message="An error occurred. Please try again.",
             )
@@ -605,7 +605,7 @@ class TkMessenger(InputMessenger):
             if path.is_file():
                 subprocess.run(f'notepad++.exe "{path.as_posix()}"')
         except Exception:
-            messagebox.showwarning(  # type: ignore
+            messagebox.showwarning(
                 title="Failed to open in Notepad++",
                 message="An error occurred. Please try again.",
             )
@@ -615,7 +615,7 @@ class TkMessenger(InputMessenger):
             # TODO: the selection doesn't get cleared when you click from one
             # text box to another :( If you click elsewhere, selection_get
             # still returns the previously-selected text.
-            text = str(self._tk.selection_get())  # type: ignore
+            text = str(self._tk.selection_get())
             return text
         except Exception:
             return ""
@@ -653,9 +653,7 @@ def _create_scrollable_frame(
     )
     canvas.pack(side="left", fill="both", expand=1)
     canvas.bind("<Configure>", lambda e: update_scrollregion())
-    scrollbar.config(
-        command=canvas.yview  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType]
-    )
+    scrollbar.config(command=canvas.yview)
 
     # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
     tk.bind_all(
@@ -716,7 +714,7 @@ class _ThickSeparator(Frame):
             super().__init__(parent, height=thickness, style=STYLE)
         else:
             super().__init__(parent, width=thickness, style=STYLE)
-        Style().configure(STYLE, background=colour)  # type: ignore
+        Style().configure(STYLE, background=colour)
 
 
 class _ActionItemGrid(Frame):

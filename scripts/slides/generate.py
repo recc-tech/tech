@@ -323,7 +323,7 @@ class SlideGenerator:
                 ProblemLevel.WARN,
                 f"The text in slide '{slide_name}' does not fit within the normal text box.",
             )
-        draw.text(  # type: ignore
+        draw.text(
             xy=xy,
             text=wrapped_text,
             fill=foreground,
@@ -382,4 +382,4 @@ def _extract_max_prefix(
 
 
 def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> _Bbox:
-    return _Bbox(*font.getbbox(text, stroke_width=stroke_width))  # type: ignore
+    return _Bbox(*font.getbbox(text, stroke_width=stroke_width))

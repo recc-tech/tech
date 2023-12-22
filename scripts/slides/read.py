@@ -369,7 +369,7 @@ class BibleVerseFinder:
                 raise NoSuchElementException(
                     f"No elements found for the given criteria (by = {by}, value = '{xpath}')."
                 )
-            text = "\n".join([p.get_attribute("innerText") for p in paragraphs])  # type: ignore
+            text = "\n".join([p.get_attribute("innerText") for p in paragraphs])
             return self._normalize(text)
         except Exception:
             self._messenger.log_problem(
@@ -402,7 +402,7 @@ class BibleVerseFinder:
                 f"//*[name()='svg']/*[name()='title'][contains(., '{title}')]/..",
                 cancellation_token=cancellation_token,
             )
-            checkbox_name = checkbox.get_attribute("name")  # type: ignore
+            checkbox_name = checkbox.get_attribute("name")
             if checkbox_name == "checked":
                 self._messenger.log_debug(
                     f"Checkbox for option '{title}' was checked. Disabling it now."

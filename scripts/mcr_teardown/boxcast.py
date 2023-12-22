@@ -167,7 +167,9 @@ class BoxCastClientFactory:
         if not lazy_login:
             self._test_login(cancellation_token)
 
-    def get_client(self, cancellation_token: Optional[CancellationToken]) -> BoxCastClient:
+    def get_client(
+        self, cancellation_token: Optional[CancellationToken]
+    ) -> BoxCastClient:
         if not self._log_directory:
             log_file = None
         else:
@@ -228,7 +230,7 @@ def export_to_vimeo(
         cancellation_token=cancellation_token,
     )
     user_dropdown_select = Select(user_dropdown)
-    user_dropdown_select.select_by_visible_text("River's Edge")  # type: ignore
+    user_dropdown_select.select_by_visible_text("River's Edge")
 
     vimeo_export_button = client.wait_for_single_element(
         By.XPATH,
@@ -506,9 +508,9 @@ def _press_schedule_broadcast_button(
 
 def _get_attribute(element: WebElement, name: str) -> str:
     # Use this helper to avoid having to turn off Pyright everywhere
-    return element.get_attribute(name)  # type: ignore
+    return element.get_attribute(name)
 
 
 def _send_keys(element: WebElement, keys: str):
     # Use this helper to avoid having to turn off Pyright everywhere
-    element.send_keys(keys)  # type: ignore
+    element.send_keys(keys)
