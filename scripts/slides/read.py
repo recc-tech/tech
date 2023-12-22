@@ -514,6 +514,7 @@ class SlideBlueprintReader:
 
     def save_json(self, file: Path, slides: List[SlideBlueprint]):
         slides_dicts = [s.__dict__ for s in slides]
+        file.parent.mkdir(exist_ok=True, parents=True)
         with open(file, mode="w", encoding="utf-8") as f:
             json.dump({"slides": slides_dicts}, f, indent="\t")
 
