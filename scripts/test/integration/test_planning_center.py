@@ -91,6 +91,9 @@ class PlanningCenterTestCase(unittest.TestCase):
         # Get rid of old files so tests don't pass if download failed!
         actual_notes_path.unlink(missing_ok=True)
         actual_script_path.unlink(missing_ok=True)
+        # The client expects the directories to actually exist
+        DATA_DIR.mkdir(exist_ok=True)
+        TEMP_DIR.mkdir(exist_ok=True)
         attachments = [
             (
                 Attachment(
@@ -110,8 +113,11 @@ class PlanningCenterTestCase(unittest.TestCase):
             ),
         ]
 
-        asyncio.run(client.download_attachments(attachments, cancellation_token=None))
+        results = asyncio.run(
+            client.download_attachments(attachments, cancellation_token=None)
+        )
 
+        self.assertEqual([None, None], results)
         self.assertTrue(
             filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),
             "Message notes files must match.",
