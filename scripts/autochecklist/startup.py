@@ -146,10 +146,10 @@ class Script(Generic[TConfig]):
 
 
 class DefaultScript(Script[BaseConfig]):
-    def _default_create_config(self) -> BaseConfig:
+    def create_config(self) -> BaseConfig:
         return BaseConfig()
 
-    def _default_create_messenger(self, config: BaseConfig) -> Messenger:
+    def create_messenger(self, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(Path("autochecklist.log"))
         input_messenger = (
             TkMessenger("Autochecklist", "")
@@ -158,7 +158,7 @@ class DefaultScript(Script[BaseConfig]):
         )
         return Messenger(file_messenger, input_messenger)
 
-    def _default_create_services(
+    def create_services(
         self, config: BaseConfig, messenger: Messenger
     ) -> Tuple[Path, FunctionFinder]:
         function_finder = FunctionFinder(module=None, arguments=[], messenger=messenger)
