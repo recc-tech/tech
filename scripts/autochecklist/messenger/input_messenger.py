@@ -79,6 +79,17 @@ class InputMessenger:
     def remove_command(self, task_name: str, command_name: str) -> None:
         raise NotImplementedError()
 
+    def create_progress_bar(
+        self, display_name: str, max_value: float, units: str
+    ) -> int:
+        raise NotImplementedError()
+
+    def update_progress_bar(self, key: int, progress: float) -> None:
+        raise NotImplementedError()
+
+    def delete_progress_bar(self, key: int) -> None:
+        raise NotImplementedError()
+
 
 @dataclass
 class Parameter:
