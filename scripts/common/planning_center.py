@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
 import requests
+from aiohttp import ClientTimeout
 from autochecklist import CancellationToken, Messenger
 from common.credentials import Credential, CredentialStore, InputPolicy
 from requests.auth import HTTPBasicAuth
@@ -224,7 +225,9 @@ class PlanningCenterClient:
                 ]
 
             # Get actual data
-            async with session.get(file_contents_url) as response:
+            # Increase the timeout because we often read large videos
+            timeout = ClientTimeout(total=30 * 60)
+            async with session.get(file_contents_url, timeout=timeout) as response:
                 if response.status // 100 != 2:
                     raise ValueError(
                         f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."
