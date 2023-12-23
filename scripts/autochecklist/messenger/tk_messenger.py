@@ -148,7 +148,7 @@ class TkMessenger(InputMessenger):
             # custom boolean input dialog, it MUST NOT deadlock the main thread
             # (e.g., by generating an event but then blocking on main).
             should_exit = messagebox.askyesno(
-                title="Confirm exit",
+                title="Confirm close",
                 message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
             )
             if not should_exit:
@@ -284,7 +284,7 @@ class TkMessenger(InputMessenger):
             # custom boolean input dialog, it MUST NOT deadlock the main thread
             # (e.g., by generating an event but then blocking on main).
             should_skip = messagebox.askyesno(
-                title="Confirm exit",
+                title="Confirm skip",
                 message="Are you sure you want to skip this task?",
             )
             if not should_skip:
@@ -920,6 +920,17 @@ class _ActionItemGrid(Frame):
         )
         retry_button_header_label.grid(
             row=0, column=self._RETRY_BTN_COLUMN, padx=self._padx, pady=self._pady
+        )
+
+        skip_button_header_label = _CopyableText(
+            self,
+            width=self._SKIP_BTN_WIDTH,
+            font=self._header_font,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        skip_button_header_label.grid(
+            row=0, column=self._SKIP_BTN_COLUMN, padx=self._padx, pady=self._pady
         )
 
         name_header_label = _CopyableText(
