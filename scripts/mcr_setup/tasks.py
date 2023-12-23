@@ -142,7 +142,7 @@ def download_assets(
             if results[i] is not None:
                 messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"Download to '{live_path.as_posix()}' failed: {results[i]}",
+                    f"Download to '{live_path.as_posix()}' failed: {results[i]} ({type(results[i]).__name__}).",
                 )
             if results[i] is not None and archive_path is not None:
                 # Restore from archive
@@ -155,12 +155,14 @@ def download_assets(
         except BaseException as e:
             messenger.log_problem(
                 ProblemLevel.WARN,
-                f"Failed to check download '{live_path.as_posix()}: {e}'",
+                f"Failed to check download '{live_path.as_posix()}': {e}",
                 traceback.format_exc(),
             )
 
     if results[0] is not None:
-        raise Exception("Failed to download the Kids Connection video.") from results[0]
+        raise Exception(
+            f"Failed to download the Kids Connection video: {results[0]} ({type(results[0]).__name__})."
+        ) from results[0]
 
 
 _VIDEO_CONTENT_TYPES = {
