@@ -4,10 +4,10 @@
 
 Note the following important files:
 
-- _Top-level .pyw files._ These are command-line programs that can be run to perform common tasks, such as generating backup slides.
-	- Run `foo.pyw` using `python foo.pyw` or `pythonw foo.pyw`.
-	- See the description and extra options for `foo.pyw` by running `python foo.pyw --help`.
-- _Top-level .bat files._ For each top-level Python file (e.g., `foo.pyw`) there should be a corresponding batch file (e.g., `run_foo.bat`) that can be run from any directory to run the corresponding Python script. This is useful for creating desktop shortcuts.
+- _Top-level .py files._ These are command-line programs that can be run to perform common tasks, such as generating backup slides.
+	- Run `foo.py` using `python foo.py` or `pythonw foo.py`.
+	- See the description and extra options for `foo.py` by running `python foo.py --help`.
+- _Top-level .bat files._ For each top-level Python file (e.g., `foo.py`) there should be a corresponding batch file (e.g., `run_foo.bat`) that can be run from any directory to run the corresponding Python script. This is useful for creating desktop shortcuts.
 - Subdirectories._ Code required by the top-level Python scripts is organized into packages (i.e., subdirectories). Each one should have a file `__init__.py` that summarizes the purpose of that package.
 - `/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
 	- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.

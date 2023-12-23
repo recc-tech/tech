@@ -11,4 +11,4 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw check_credentials.pyw
+start pythonw check_credentials.py

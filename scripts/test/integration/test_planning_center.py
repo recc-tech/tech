@@ -135,7 +135,7 @@ class PlanningCenterTestCase(unittest.TestCase):
 
         def input_mock(*args: object, **kwargs: object):
             raise ValueError(
-                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.pyw."
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
             )
 
         messenger.input_multiple = input_mock

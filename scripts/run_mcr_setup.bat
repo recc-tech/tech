@@ -5,4 +5,4 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw mcr_setup.pyw
+start pythonw mcr_setup.py
