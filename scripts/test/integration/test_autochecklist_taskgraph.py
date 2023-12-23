@@ -53,9 +53,12 @@ class TaskGraphTestCase(unittest.TestCase):
             [
                 call(
                     prompt=f"Add the value '{TestConfig.BAR}' to the list 🙂.",
-                    allow_retry=False,
+                    allowed_responses={UserResponse.SKIP, UserResponse.DONE},
                 ),
-                call(prompt=f"This task will raise an error.", allow_retry=True),
+                call(
+                    prompt=f"This task will raise an error.",
+                    allowed_responses={UserResponse.SKIP, UserResponse.RETRY},
+                ),
             ],
             any_order=False,
         )

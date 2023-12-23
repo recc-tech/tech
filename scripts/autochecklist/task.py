@@ -4,13 +4,12 @@ import inspect
 import json
 import time
 import traceback
-from collections import defaultdict
 from dataclasses import dataclass, field
 from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from autochecklist.base_config import BaseConfig
 from autochecklist.messenger import (
@@ -259,16 +258,30 @@ class TaskModel:
             raise ValueError(
                 f"Expected a task in the form of a Python dictionary, but found an object of type '{type(task)}'."
             )
-        t: Dict[str, object] = task
-        task_dict: DefaultDict[str, object] = defaultdict(lambda: None, t)
+        task_dict: Dict[str, object] = task
 
-        name = "" if task_dict["name"] is None else str(task_dict["name"])
+        name = task_dict.get("name", "")
+        if not isinstance(name, str):
+            raise ValueError(
+                f"Expected task name to be a string, but found '{str(name)}' (of type {type(name)})."
+            )
+        description = task_dict.get("description", "")
+        if not isinstance(description, str):
+            raise ValueError(
+                f"Expected task description to be a string, but task '{name}' has a description of type {type(description)}."
+            )
+        only_auto = task_dict.get("only_auto", False)
+        if not isinstance(only_auto, bool):
+            raise ValueError(
+                f"Expected only_auto to be a string, but task '{name}' has a value of type {type(only_auto)}."
+            )
 
         unknown_fields = {
             key
             for key in task_dict
             if not str(key).startswith("_")
-            and key not in {"name", "description", "prerequisites", "subtasks"}
+            and key
+            not in {"name", "description", "prerequisites", "subtasks", "only_auto"}
         }
         if unknown_fields:
             raise ValueError(
@@ -277,13 +290,12 @@ class TaskModel:
 
         return cls(
             name=name,
-            description=(
-                ""
-                if task_dict["description"] is None
-                else str(task_dict["description"])
+            description=description,
+            prerequisites=cls._parse_prerequisites(
+                task_dict.get("prerequisites", None)
             ),
-            prerequisites=cls._parse_prerequisites(task_dict["prerequisites"]),
-            subtasks=cls._parse_subtasks(task_dict["subtasks"]),
+            subtasks=cls._parse_subtasks(task_dict.get("subtasks", None)),
+            only_auto=only_auto,
         )
 
     @classmethod
