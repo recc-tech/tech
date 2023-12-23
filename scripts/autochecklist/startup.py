@@ -160,7 +160,7 @@ class DefaultScript(Script[BaseConfig]):
 
     def create_services(
         self, config: BaseConfig, messenger: Messenger
-    ) -> Tuple[Path, FunctionFinder]:
+    ) -> Tuple[Union[Path, TaskModel], FunctionFinder]:
         function_finder = FunctionFinder(module=None, arguments=[], messenger=messenger)
         return Path("tasks.json"), function_finder
 

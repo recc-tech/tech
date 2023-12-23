@@ -160,13 +160,13 @@ class DemoScript(DefaultScript):
                     name="demo_cancel1",
                     description="This task will run for a long time. Furthermore, it cannot be done manually.",
                     prerequisites={"demo_errors"},
-                    only_auto=True
+                    only_auto=True,
                 ),
                 TaskModel(
                     name="demo_cancel2",
                     description="This task will run for a long time. Furthermore, it cannot be done manually.",
                     prerequisites={"demo_errors"},
-                    only_auto=True
+                    only_auto=True,
                 ),
             ],
         )
