@@ -9,7 +9,7 @@ import autochecklist
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
 from common import Credential, CredentialStore, InputPolicy
 from requests import Response
-from vimeo import VimeoClient  # type: ignore
+from vimeo.client import VimeoClient
 
 NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
 """
@@ -49,34 +49,34 @@ class ReccVimeoClient:
     def get(
         self,
         url: str,
-        params: Dict[str, Any],
+        params: Optional[Dict[str, Any]],
         timeout: float = REQUEST_TIMEOUT_SECONDS,
     ) -> Response:
-        return self._client.get(url, params=params, timeout=timeout)  # type: ignore
+        return self._client.get(url, params=params, timeout=timeout)
 
     def post(
         self,
         url: str,
-        data: Union[bytes, Dict[str, Any]],
+        data: Union[None, bytes, Dict[str, Any]],
         timeout: float = REQUEST_TIMEOUT_SECONDS,
     ) -> Response:
-        return self._client.post(url, data=data, timeout=timeout)  # type: ignore
+        return self._client.post(url, data=data, timeout=timeout)
 
     def put(
         self,
         url: str,
-        data: Union[bytes, Dict[str, Any]],
+        data: Union[None, bytes, Dict[str, Any]],
         timeout: float = REQUEST_TIMEOUT_SECONDS,
     ) -> Response:
-        return self._client.put(url, data=data, timeout=timeout)  # type: ignore
+        return self._client.put(url, data=data, timeout=timeout)
 
     def patch(
         self,
         url: str,
-        data: Union[bytes, Dict[str, Any]],
+        data: Union[None, bytes, Dict[str, Any]],
         timeout: float = REQUEST_TIMEOUT_SECONDS,
     ) -> Response:
-        return self._client.patch(url, data=data, timeout=timeout)  # type: ignore
+        return self._client.patch(url, data=data, timeout=timeout)
 
     def _login_with_retries(
         self, max_attempts: int, cancellation_token: Optional[CancellationToken]
@@ -107,7 +107,9 @@ class ReccVimeoClient:
                 key=client_id,
                 secret=client_secret,
             )
-            response: Response = client.get("/tutorial")  # type: ignore
+            response: Response = client.get(
+                "/tutorial", params={}, timeout=self.REQUEST_TIMEOUT_SECONDS
+            )
             if response.status_code == 200:
                 self._messenger.log_status(
                     TaskStatus.RUNNING,

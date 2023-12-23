@@ -4,7 +4,7 @@ import logging
 from logging import FileHandler
 from pathlib import Path
 from threading import Lock, local
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, Iterable, Optional, TypeVar
 
 from autochecklist.messenger.input_messenger import (
     InputMessenger,
@@ -15,6 +15,7 @@ from autochecklist.messenger.input_messenger import (
 )
 
 T = TypeVar("T")
+
 
 class Messenger:
     """
@@ -34,7 +35,20 @@ class Messenger:
         self._input_messenger = input_messenger
         self._task_manager = _TaskManager()
         self._task_manager_mutex = Lock()
-        self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
+
+    def start(self, after_start: Callable[[], None]) -> None:
+        def _after_start() -> None:
+            self.set_current_task_name(self.ROOT_PSEUDOTASK_NAME)
+            after_start()
+
+        self._input_messenger.start(_after_start)
+
+    @property
+    def is_closed(self) -> bool:
+        return self._input_messenger.is_closed
+
+    def close(self) -> None:
+        self._input_messenger.close()
 
     def set_current_task_name(self, task_name: Optional[str]):
         with self._task_manager_mutex:
@@ -65,6 +79,7 @@ class Messenger:
             if actual_task_name:
                 task_name_for_display = actual_task_name
                 index = self._task_manager.get_index(actual_task_name)
+                self._task_manager.record_status(actual_task_name, status)
             else:
                 task_name_for_display = "UNKNOWN"
                 index = None
@@ -73,6 +88,15 @@ class Messenger:
         if not file_only:
             self._input_messenger.log_status(
                 task_name_for_display, index, status, message
+            )
+
+    def get_status(self, task_name: str = "") -> Optional[TaskStatus]:
+        with self._task_manager_mutex:
+            actual_task_name = self._task_manager.get_task_name(task_name)
+            return (
+                self._task_manager.get_status(actual_task_name)
+                if actual_task_name
+                else None
             )
 
     # TODO: It would be nice to show not only the exception but the exception
@@ -109,7 +133,12 @@ class Messenger:
     ) -> Dict[str, object]:
         return self._input_messenger.input_multiple(params, prompt, title)
 
-    def wait(self, prompt: str, task_name: str = "", allow_retry: bool = False) -> UserResponse:
+    def wait(
+        self,
+        prompt: str,
+        allowed_responses: Iterable[UserResponse] = (UserResponse.DONE,),
+        task_name: str = "",
+    ) -> UserResponse:
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if actual_task_name:
@@ -118,7 +147,9 @@ class Messenger:
             else:
                 task_name_for_display = "UNKNOWN"
                 index = None
-        return self._input_messenger.wait(task_name_for_display, index, prompt, allow_retry)
+        return self._input_messenger.wait(
+            task_name_for_display, index, prompt, set(allowed_responses)
+        )
 
     def allow_cancel(self, task_name: str = "") -> CancellationToken:
         """
@@ -140,6 +171,7 @@ class Messenger:
             self._task_manager.set_cancellation_token(actual_task_name, token)
 
         def callback():
+            # TODO: This needs to be built-in
             should_cancel = self._input_messenger.input_bool(
                 title="Confirm cancel",
                 prompt="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
@@ -195,17 +227,10 @@ class Messenger:
                 task_name=actual_task_name,
             )
 
-    def close(self, wait: bool):
-        """
-        If `wait` is `False`, the messenger will stop immediately, (as opposed
-        to, for example, finishing IO operations that were started but not yet
-        completed or waiting for the user to close the window.
-        """
-        self._input_messenger.close(wait)
-
-    @property
-    def is_closed(self) -> bool:
-        return self._input_messenger.is_closed
+    def cancel_all(self) -> None:
+        """Cancel all tasks that are currently cancellable."""
+        with self._task_manager_mutex:
+            self._task_manager.cancel_all()
 
 
 class CancellationToken:
@@ -244,6 +269,7 @@ class _TaskManager:
         # default
         self._index_by_task = {Messenger.ROOT_PSEUDOTASK_NAME: 0}
         self._cancellation_token_by_task: Dict[str, CancellationToken] = {}
+        self._status_by_task: Dict[str, TaskStatus] = {}
 
     def set_current_task_name(self, task_name: Optional[str]):
         self._local.current_task_name = task_name
@@ -257,7 +283,7 @@ class _TaskManager:
             self._index_by_task[Messenger.ROOT_PSEUDOTASK_NAME] = 0
 
     def get_task_name(self, task_name: str) -> Optional[str]:
-        return task_name if task_name else self._local.current_task_name
+        return task_name or self._local.current_task_name
 
     def get_index(self, task_name: str) -> Optional[int]:
         return (
@@ -279,6 +305,16 @@ class _TaskManager:
     def unset_cancellation_token(self, task_name: str) -> None:
         if task_name in self._cancellation_token_by_task:
             del self._cancellation_token_by_task[task_name]
+
+    def cancel_all(self) -> None:
+        for t in self._cancellation_token_by_task.values():
+            t.cancel()
+
+    def record_status(self, task_name: str, status: TaskStatus) -> None:
+        self._status_by_task[task_name] = status
+
+    def get_status(self, task_name: str) -> Optional[TaskStatus]:
+        return self._status_by_task.get(task_name, None)
 
 
 class FileMessenger:

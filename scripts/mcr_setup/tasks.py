@@ -53,6 +53,11 @@ def generate_backup_slides(
     for s in slides:
         s.save(config.assets_by_service_dir)
 
+    messenger.log_status(
+        TaskStatus.DONE,
+        f"Generated {len(slides)} slides in {config.assets_by_service_dir.as_posix()}.",
+    )
+
 
 def download_assets(
     client: PlanningCenterClient, config: McrSetupConfig, messenger: Messenger

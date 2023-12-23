@@ -5,8 +5,8 @@ A reusable framework for making interactive and partially automated checklists.
 # Ignore the unused import warnings
 # pyright: basic
 
-from autochecklist.base_config import BaseConfig
-from autochecklist.messenger import (
+from .base_config import BaseConfig
+from .messenger import (
     CancellationToken,
     ConsoleMessenger,
     FileMessenger,
@@ -19,5 +19,6 @@ from autochecklist.messenger import (
     TkMessenger,
     UserResponse,
 )
-from autochecklist.task import FunctionFinder, TaskGraph, TaskModel
-from autochecklist.wait import sleep_attentively
+from .startup import DefaultScript, Script
+from .task import FunctionFinder, TaskGraph, TaskModel
+from .wait import sleep_attentively

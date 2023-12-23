@@ -5,17 +5,37 @@ Type definitions for the `InputMessenger` interface.
 from __future__ import annotations
 
 import logging
-import os
-import signal
-import threading
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Callable, Dict, Optional, TypeVar
+from threading import Thread
+from typing import Callable, Dict, Optional, Set, TypeVar
 
 T = TypeVar("T")
 
 
 class InputMessenger:
+    def start(self, after_start: Callable[[], None]) -> None:
+        def run_main_worker() -> None:
+            self.wait_for_start()
+            after_start()
+
+        main_worker_thread = Thread(name="MainWorker", target=run_main_worker)
+        main_worker_thread.start()
+        self.run_main_loop()
+
+    def run_main_loop(self) -> None:
+        raise NotImplementedError()
+
+    def wait_for_start(self) -> None:
+        raise NotImplementedError()
+
+    @property
+    def is_closed(self) -> bool:
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        raise NotImplementedError()
+
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
@@ -23,12 +43,6 @@ class InputMessenger:
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
         raise NotImplementedError()
-
-    def close(self, wait: bool):
-        """
-        Performs any cleanup that is required before exiting (e.g., making worker threads exit).
-        """
-        pass
 
     def input(
         self,
@@ -49,7 +63,11 @@ class InputMessenger:
         raise NotImplementedError()
 
     def wait(
-        self, task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+        self,
+        task_name: str,
+        index: Optional[int],
+        prompt: str,
+        allowed_responses: Set[UserResponse],
     ) -> UserResponse:
         raise NotImplementedError()
 
@@ -59,10 +77,6 @@ class InputMessenger:
         raise NotImplementedError()
 
     def remove_command(self, task_name: str, command_name: str) -> None:
-        raise NotImplementedError()
-
-    @property
-    def is_closed(self) -> bool:
         raise NotImplementedError()
 
 
@@ -77,21 +91,15 @@ class Parameter:
 
 class TaskStatus(Enum):
     NOT_STARTED = auto()
-    """
-    The task has not yet started.
-    """
+    """The task has not yet started."""
     RUNNING = auto()
-    """
-    The automatic implementation of the task is running.
-    """
+    """The automatic implementation of the task is running."""
     WAITING_FOR_USER = auto()
-    """
-    Waiting for user input.
-    """
+    """Waiting for user input."""
     DONE = auto()
-    """
-    Task completed, either manually or automatically.
-    """
+    """Task completed, either manually or automatically."""
+    SKIPPED = auto()
+    """Task skipped."""
 
     def __str__(self):
         return self.name
@@ -134,15 +142,8 @@ class UserResponse(Enum):
     """The task has been completed manually."""
     RETRY = auto()
     """The task automation should be re-run."""
+    SKIP = auto()
+    """The task will not be completed."""
 
-
-def is_current_thread_main() -> bool:
-    return threading.current_thread() is threading.main_thread()
-
-
-def interrupt_main_thread():
-    os.kill(os.getpid(), signal.CTRL_C_EVENT)
-    # It seems like the signal isn't delivered until print() is
-    # called, even if the main thread waits for several seconds! But printing
-    # nothing doesn't work.
-    print(" ", end="", flush=True)
+    def __str__(self) -> str:
+        return self.name

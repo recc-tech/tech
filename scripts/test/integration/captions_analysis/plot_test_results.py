@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-import matplotlib.pyplot as plt  # type: ignore
+import matplotlib.pyplot as plt
 
 STATS_FILE = Path(__file__).parent.joinpath("worship_caption_removal_stats.json")
 

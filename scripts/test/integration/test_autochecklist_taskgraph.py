@@ -27,7 +27,7 @@ class TaskGraphTestCase(unittest.TestCase):
         # Have wait() append to the list so that we can check when it was
         # called
         messenger.wait.side_effect = append_wait
-        messenger.shutdown_requested = False
+        messenger.is_closed = False
         config = TestConfig()
         function_finder = FunctionFinder(
             module=example_tasks, arguments=[my_list, config], messenger=messenger
@@ -53,9 +53,12 @@ class TaskGraphTestCase(unittest.TestCase):
             [
                 call(
                     prompt=f"Add the value '{TestConfig.BAR}' to the list 🙂.",
-                    allow_retry=False,
+                    allowed_responses={UserResponse.SKIP, UserResponse.DONE},
                 ),
-                call(prompt=f"This task will raise an error.", allow_retry=True),
+                call(
+                    prompt=f"This task will raise an error.",
+                    allowed_responses={UserResponse.SKIP, UserResponse.RETRY},
+                ),
             ],
             any_order=False,
         )

@@ -30,7 +30,7 @@ class TaskGraphTestCase(unittest.TestCase):
         task = TaskModel(
             name="root",
             subtasks=[
-                TaskModel(name="a", description="D A"),
+                TaskModel(name="a", description="D A", only_auto=True),
                 TaskModel(name="b", description="D B", prerequisites={"a"}),
                 # The dependency of task c on task a is redundant. The
                 # TaskGraph constructor should ignore it and put everything in
@@ -50,7 +50,11 @@ class TaskGraphTestCase(unittest.TestCase):
                 name="C",
                 tasks=[
                     TaskData(
-                        name="a", description="D A*", index=1, func=sentinel.func_a
+                        name="a",
+                        description="D A*",
+                        index=1,
+                        func=sentinel.func_a,
+                        only_auto=True,
                     ),
                     TaskData(name="b", description="D B*", index=2),
                     TaskData(name="c", description="D C*", index=3),
@@ -258,6 +262,7 @@ class ThreadData:
                     description=ta._description,
                     index=ta.index,
                     func=ta._run,
+                    only_auto=ta._only_auto,
                 )
                 for ta in thread.tasks
             ],
@@ -271,6 +276,7 @@ class TaskData:
     description: str
     index: int
     func: object = None
+    only_auto: bool = False
 
 
 def _get_noop_messenger() -> Messenger:

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from common import ReccConfig
 
@@ -8,16 +8,25 @@ from common import ReccConfig
 class McrTeardownConfig(ReccConfig):
     def __init__(
         self,
+        message_series: str,
+        message_title: str,
+        boxcast_event_id: str,
         home_dir: Path,
         downloads_dir: Path,
-        message_series: str = "",
-        message_title: str = "",
-        boxcast_event_id: str = "",
-        now: Optional[datetime] = None
+        lazy_login: bool,
+        now: datetime,
+        show_browser: bool,
+        ui: Literal["console", "tk"],
+        verbose: bool,
+        no_run: bool,
     ):
-        super().__init__(home_dir, now or datetime.now())
+        super().__init__(
+            home_dir=home_dir, now=now, ui=ui, verbose=verbose, no_run=no_run
+        )
 
         self._downloads_dir = downloads_dir.resolve()
+        self.lazy_login = lazy_login
+        self.show_browser = show_browser
         self.message_series = message_series.strip()
         self.message_title = message_title.strip()
         self.boxcast_event_id = boxcast_event_id

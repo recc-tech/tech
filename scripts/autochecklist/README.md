@@ -15,7 +15,8 @@ The task list can be stored in a JSON file and then loaded into a `TaskGraph`. T
 			"name": "subtask",
 			...
 		}
-	]
+	],
+	"only_auto": true
 }
 ```
 
@@ -23,6 +24,7 @@ The task list can be stored in a JSON file and then loaded into a `TaskGraph`. T
 - The `description` contains the instructions that will be shown to the user if the task must be completed manually.
 - The `prerequisites` field is a list of the names of tasks that must be completed before the current task can be completed.
 - The `subtasks` field can be used to break a task into smaller, more concrete steps. Only tasks without subtasks will be shown to the user, so there's no need to give a description for tasks with subtasks. However, you can still use tasks that have subtasks as a prerequisite. In that case, *all* the subtasks must be completed before the next task can start. Furthermore, a task with subtasks can have prerequisites. In that case, none of the subtasks will start before the prerequisite is completed.
+- The `only_auto` field can be used to say that a task cannot be performed manually.
 
 ## Automating Tasks
 
