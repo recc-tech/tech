@@ -122,11 +122,11 @@ def download_assets(
         if not vid_path.exists():
             downloads.append((vid, vid_path, None))
 
-    # TODO: Show progress bar while downloading
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     results = asyncio.run(
         client.download_attachments(
             downloads=[(a, p) for (a, p, _) in downloads],
+            messenger=messenger,
             cancellation_token=cancellation_token,
         )
     )
