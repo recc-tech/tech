@@ -24,6 +24,7 @@ from .. import (  # TODO; EelMessenger,
 
 _DESCRIPTION = "This is a demo of the autochecklist package."
 
+
 def demo_input(messenger: Messenger) -> None:
     def require_number(x: str) -> str:
         if all([not c.isnumeric() for c in x]):
@@ -243,5 +244,9 @@ class DemoScript(DefaultScript):
         return task_model, function_finder
 
 
-if __name__ == "__main__":
+def main():
     DemoScript().run()
+
+
+if __name__ == "__main__":
+    main()
