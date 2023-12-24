@@ -1,4 +1,5 @@
 import argparse
+import random
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -24,7 +25,7 @@ from .. import (  # TODO; EelMessenger,
 _DESCRIPTION = "This is a demo of the autochecklist package."
 
 
-def demo_input(messenger: Messenger):
+def demo_input(messenger: Messenger) -> None:
     def require_number(x: str) -> str:
         if all([not c.isnumeric() for c in x]):
             raise argparse.ArgumentTypeError("At least one digit is required.")
@@ -71,14 +72,64 @@ def demo_input(messenger: Messenger):
     )
 
 
-def demo_errors(messenger: Messenger):
+def demo_errors(messenger: Messenger) -> None:
     messenger.log_problem(ProblemLevel.WARN, "This is what a warning looks like.")
     messenger.log_problem(ProblemLevel.ERROR, "This is what an error looks like.")
     messenger.log_problem(ProblemLevel.FATAL, "This is what a fatal error looks like.")
     raise ValueError("This is what happens when a task throws an exception.")
 
 
-def demo_cancel1(messenger: Messenger):
+def demo_progress1(messenger: Messenger) -> None:
+    job1_max = 42
+    job1_progress = 0
+    job2_max = 100
+    job2_progress = 0
+    cancellation_token = messenger.allow_cancel()
+    job1_key = messenger.create_progress_bar(display_name="Job 1.1", max_value=job1_max)
+    job2_key = messenger.create_progress_bar(display_name="Job 1.2", max_value=job2_max)
+    try:
+        messenger.log_status(TaskStatus.RUNNING, "Showing progress bars.")
+        while job1_progress < job1_max or job2_progress < job2_max:
+            sleep_attentively(
+                timeout=timedelta(seconds=1), cancellation_token=cancellation_token
+            )
+            if job1_progress < job1_max:
+                job1_progress += random.uniform(job1_max / 4, job1_max / 2)
+                messenger.update_progress_bar(job1_key, job1_progress)
+            if job2_progress < job2_max:
+                job2_progress += random.uniform(job2_max / 6, job2_max / 4)
+                messenger.update_progress_bar(job2_key, job2_progress)
+    finally:
+        messenger.delete_progress_bar(job1_key)
+        messenger.delete_progress_bar(job2_key)
+
+
+def demo_progress2(messenger: Messenger) -> None:
+    job1_max = 42
+    job1_progress = 0
+    job2_max = 100
+    job2_progress = 0
+    cancellation_token = messenger.allow_cancel()
+    job1_key = messenger.create_progress_bar(display_name="Job 2.1", max_value=job1_max)
+    job2_key = messenger.create_progress_bar(display_name="Job 2.2", max_value=job2_max)
+    try:
+        messenger.log_status(TaskStatus.RUNNING, "Showing progress bars.")
+        while job1_progress < job1_max or job2_progress < job2_max:
+            sleep_attentively(
+                timeout=timedelta(seconds=1), cancellation_token=cancellation_token
+            )
+            if job1_progress < job1_max:
+                job1_progress += random.uniform(job1_max / 8, job1_max / 6)
+                messenger.update_progress_bar(job1_key, job1_progress)
+            if job2_progress < job2_max:
+                job2_progress += random.uniform(job2_max / 10, job2_max / 8)
+                messenger.update_progress_bar(job2_key, job2_progress)
+    finally:
+        messenger.delete_progress_bar(job1_key)
+        messenger.delete_progress_bar(job2_key)
+
+
+def demo_cancel1(messenger: Messenger) -> None:
     messenger.log_status(
         TaskStatus.RUNNING,
         "This task will run for a long time. Furthermore, it cannot be done manually. Try cancelling it.",
@@ -87,7 +138,7 @@ def demo_cancel1(messenger: Messenger):
     sleep_attentively(timeout=timedelta(minutes=5), cancellation_token=token)
 
 
-def demo_cancel2(messenger: Messenger):
+def demo_cancel2(messenger: Messenger) -> None:
     demo_cancel1(messenger)
 
 
@@ -157,21 +208,45 @@ class DemoScript(DefaultScript):
                     prerequisites={"demo_input"},
                 ),
                 TaskModel(
-                    name="demo_cancel1",
-                    description="This task will run for a long time. Furthermore, it cannot be done manually.",
+                    name="demo_progress",
                     prerequisites={"demo_errors"},
-                    only_auto=True,
+                    subtasks=[
+                        TaskModel(
+                            name="demo_progress1",
+                            description="This task will show a few progress bars. It cannot be done manually.",
+                            only_auto=True,
+                        ),
+                        TaskModel(
+                            name="demo_progress2",
+                            description="This task will show a few progress bars. It cannot be done manually.",
+                            only_auto=True,
+                        ),
+                    ],
                 ),
                 TaskModel(
-                    name="demo_cancel2",
-                    description="This task will run for a long time. Furthermore, it cannot be done manually.",
-                    prerequisites={"demo_errors"},
-                    only_auto=True,
+                    name="demo_cancel",
+                    prerequisites={"demo_progress"},
+                    subtasks=[
+                        TaskModel(
+                            name="demo_cancel1",
+                            description="This task will run for a long time. It cannot be done manually.",
+                            only_auto=True,
+                        ),
+                        TaskModel(
+                            name="demo_cancel2",
+                            description="This task will run for a long time. It cannot be done manually.",
+                            only_auto=True,
+                        ),
+                    ],
                 ),
             ],
         )
         return task_model, function_finder
 
 
-if __name__ == "__main__":
+def main():
     DemoScript().run()
+
+
+if __name__ == "__main__":
+    main()

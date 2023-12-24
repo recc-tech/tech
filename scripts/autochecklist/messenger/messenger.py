@@ -186,17 +186,15 @@ class Messenger:
             )
             self.disallow_cancel(task_name=actual_task_name or "")
 
-        try:
-            self._input_messenger.add_command(
-                task_name=actual_task_name,
-                command_name="Cancel",
-                callback=callback,
-            )
-        except NotImplementedError:
-            self.log_debug(
-                message="Could not allow cancelling because the input messenger does not support it.",
-                task_name=actual_task_name,
-            )
+        self._input_messenger.add_command(
+            task_name=actual_task_name,
+            command_name="Cancel",
+            callback=callback,
+        )
+        self.log_debug(
+            message="Could not allow cancelling because the input messenger does not support it.",
+            task_name=actual_task_name,
+        )
         return token
 
     def disallow_cancel(self, task_name: str = ""):
@@ -211,26 +209,45 @@ class Messenger:
                     task_name=task_name,
                 )
                 return
-        try:
-            self._input_messenger.remove_command(
-                task_name=actual_task_name, command_name="Cancel"
-            )
-            # Need to unregister cancellation token in the task manager,
-            # otherwise, if a user cancels a task and then retries, the task
-            # will be given the same cancellation token which will still be
-            # cancelled
-            with self._task_manager_mutex:
-                self._task_manager.unset_cancellation_token(actual_task_name)
-        except NotImplementedError:
-            self.log_debug(
-                message="Could not disallow cancelling because the input messenger does not support it.",
-                task_name=actual_task_name,
-            )
+        self._input_messenger.remove_command(
+            task_name=actual_task_name, command_name="Cancel"
+        )
+        # Need to unregister cancellation token in the task manager,
+        # otherwise, if a user cancels a task and then retries, the task
+        # will be given the same cancellation token which will still be
+        # cancelled
+        with self._task_manager_mutex:
+            self._task_manager.unset_cancellation_token(actual_task_name)
 
     def cancel_all(self) -> None:
         """Cancel all tasks that are currently cancellable."""
         with self._task_manager_mutex:
             self._task_manager.cancel_all()
+
+    def create_progress_bar(
+        self, display_name: str, max_value: float, units: str = ""
+    ) -> int:
+        # NOTE: the progress bar cannot be identified by the task name because
+        # one task might have multiple progress bars (e.g., while downloading
+        # multiple files).
+        try:
+            return self._input_messenger.create_progress_bar(
+                display_name, max_value, units
+            )
+        except NotImplementedError:
+            return -1
+
+    def update_progress_bar(self, key: int, progress: float) -> None:
+        try:
+            self._input_messenger.update_progress_bar(key, progress)
+        except NotImplementedError:
+            pass
+
+    def delete_progress_bar(self, key: int) -> None:
+        try:
+            self._input_messenger.delete_progress_bar(key)
+        except NotImplementedError:
+            pass
 
 
 class CancellationToken:

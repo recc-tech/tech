@@ -2,6 +2,10 @@
 
 autochecklist is a framework for making interactive and partially-automated checklists.
 
+## Demo
+
+To see a demo, run `python -m autochecklist`.
+
 ## The Format of the Task List
 
 The task list can be stored in a JSON file and then loaded into a `TaskGraph`. The script expects the task list to be a JSON object with the following structure. If you want to add extra fields (e.g., as comments), prefix them with an underscore.

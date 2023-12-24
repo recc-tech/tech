@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
 import requests
+from aiohttp import ClientTimeout
 from autochecklist import CancellationToken, Messenger
 from common.credentials import Credential, CredentialStore, InputPolicy
 from requests.auth import HTTPBasicAuth
@@ -28,6 +29,7 @@ class Attachment:
     id: str
     filename: str
     content_type: str
+    num_bytes: int
 
 
 class PlanningCenterClient:
@@ -123,6 +125,7 @@ class PlanningCenterClient:
                 id=a["id"],
                 filename=a["attributes"]["filename"],
                 content_type=a["attributes"]["content_type"],
+                num_bytes=a["attributes"]["file_size"],
             )
             for a in attachments_json
         }
@@ -130,6 +133,7 @@ class PlanningCenterClient:
     async def download_attachments(
         self,
         downloads: List[Tuple[Attachment, Path]],
+        messenger: Messenger,
         cancellation_token: Optional[CancellationToken],
     ) -> List[Optional[BaseException]]:
         """
@@ -145,7 +149,12 @@ class PlanningCenterClient:
             async with aiohttp.ClientSession() as session:
                 tasks = [
                     self._download_one_asset(
-                        attachment, destination, session, auth, cancellation_token
+                        attachment,
+                        destination,
+                        session,
+                        auth,
+                        messenger,
+                        cancellation_token,
                     )
                     for attachment, destination in downloads
                 ]
@@ -193,31 +202,49 @@ class PlanningCenterClient:
         destination: Path,
         session: aiohttp.ClientSession,
         auth: aiohttp.BasicAuth,
+        messenger: Messenger,
         cancellation_token: Optional[CancellationToken],
     ) -> None:
-        # Get URL for file contents
-        link_url = f"{self._SERVICES_BASE_URL}/attachments/{attachment.id}/open"
-        async with session.post(link_url, auth=auth) as response:
-            if response.status // 100 != 2:
-                raise ValueError(
-                    f"Request to '{link_url}' for file '{destination.name}' failed with status {response.status}."
-                )
-            response_json = await response.json()
-            file_contents_url = response_json["data"]["attributes"]["attachment_url"]
+        key = messenger.create_progress_bar(
+            display_name=attachment.filename,
+            max_value=attachment.num_bytes / 1_000_000,
+            units="MB",
+        )
+        downloaded_bytes = 0
+        try:
+            # Get URL for file contents
+            link_url = f"{self._SERVICES_BASE_URL}/attachments/{attachment.id}/open"
+            async with session.post(link_url, auth=auth) as response:
+                if response.status // 100 != 2:
+                    raise ValueError(
+                        f"Request to '{link_url}' for file '{destination.name}' failed with status {response.status}."
+                    )
+                response_json = await response.json()
+                file_contents_url = response_json["data"]["attributes"][
+                    "attachment_url"
+                ]
 
-        # Get actual data
-        async with session.get(file_contents_url) as response:
-            if response.status // 100 != 2:
-                raise ValueError(
-                    f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."
-                )
-            try:
-                with open(destination, "wb") as f:
-                    async for data, _ in response.content.iter_chunks():
-                        if cancellation_token:
-                            cancellation_token.raise_if_cancelled()
-                        f.write(data)
-            except BaseException:
-                # Don't leave behind partially-downloaded files
-                destination.unlink(missing_ok=True)
-                raise
+            # Get actual data
+            # Increase the timeout because we often read large videos
+            timeout = ClientTimeout(total=30 * 60)
+            async with session.get(file_contents_url, timeout=timeout) as response:
+                if response.status // 100 != 2:
+                    raise ValueError(
+                        f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."
+                    )
+                try:
+                    with open(destination, "wb") as f:
+                        async for data, _ in response.content.iter_chunks():
+                            if cancellation_token:
+                                cancellation_token.raise_if_cancelled()
+                            f.write(data)
+                            downloaded_bytes += len(data)
+                            messenger.update_progress_bar(
+                                key, downloaded_bytes / 1_000_000
+                            )
+                except BaseException:
+                    # Don't leave behind partially-downloaded files
+                    destination.unlink(missing_ok=True)
+                    raise
+        finally:
+            messenger.delete_progress_bar(key)

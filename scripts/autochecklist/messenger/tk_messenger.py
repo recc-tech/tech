@@ -13,7 +13,7 @@ from pathlib import Path
 from queue import Queue
 from threading import Lock
 from tkinter import Canvas, Menu, Misc, Text, Tk, Toplevel, messagebox
-from tkinter.ttk import Button, Entry, Frame, Label, Scrollbar, Style
+from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Scrollbar, Style
 from typing import Any, Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
 import pyperclip
@@ -38,8 +38,6 @@ _BOLD_FONT = f"{_NORMAL_FONT} bold"
 _H2_FONT = "Calibri 18 bold"
 
 
-# TODO: This hangs when the user tries to cancel while a long-running task is
-# still going.
 class TkMessenger(InputMessenger):
     _QUEUE_EVENT = "<<TaskQueued>>"
 
@@ -342,6 +340,19 @@ class TkMessenger(InputMessenger):
         self._queue.put(_GuiTask(do_remove_command, update_scrollregion=False))
         self._tk.event_generate(self._QUEUE_EVENT)
 
+    def create_progress_bar(
+        self, display_name: str, max_value: float, units: str
+    ) -> int:
+        return self._progress_bar_group.create_progress_bar(
+            display_name, max_value, units
+        )
+
+    def update_progress_bar(self, key: int, progress: float) -> None:
+        self._progress_bar_group.update_progress_bar(key, progress)
+
+    def delete_progress_bar(self, key: int) -> None:
+        self._progress_bar_group.delete_progress_bar(key)
+
     def _handle_update_scrollregion(self) -> None:
         # Make sure the display has updated before recomputing the scrollregion size
         self._tk.update_idletasks()
@@ -382,6 +393,13 @@ class TkMessenger(InputMessenger):
 
         self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._right_click_menu = self._create_right_click_menu()
+        self._progress_bar_group = _ProgressBarGroup(
+            self._tk,
+            padx=10,
+            pady=10,
+            background=_BACKGROUND_COLOUR,
+            width=int(0.5 * window_width),
+        )
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
         self._tk.bind_all(self._QUEUE_EVENT, func=lambda _: self._handle_queued_task())
 
@@ -1307,6 +1325,95 @@ class _ProblemGrid(Frame):
             return "#990000"
         else:
             return "#000000"
+
+
+class _ProgressBarGroup(Toplevel):
+    def __init__(
+        self,
+        parent: Misc,
+        padx: int,
+        pady: int,
+        background: str,
+        width: int,
+    ) -> None:
+        self._mutex = Lock()
+        self._key_gen = 0
+        self._bar_by_key: Dict[int, Tuple[Progressbar, Label, Label, float, str]] = {}
+        self._length = int(width - 2 * padx)
+        self._background = background
+        super().__init__(
+            parent,
+            padx=padx,
+            pady=pady,
+            background=background,
+            width=width,
+        )
+        # Disable closing
+        self.protocol("WM_DELETE_WINDOW", lambda: None)
+        self._hide()
+        self.title("Progress")
+
+    def create_progress_bar(
+        self, display_name: str, max_value: float, units: str
+    ) -> int:
+        with self._mutex:
+            key = self._get_unique_key()
+            name_label = Label(
+                self,
+                text=display_name,
+                background=self._background,
+                font=_NORMAL_FONT,
+            )
+            name_label.grid(row=2 * key, columnspan=2)
+            progress_label = Label(
+                self,
+                background=self._background,
+                text=f"[0.00/{max_value:.2f} {units}]",
+                font=_NORMAL_FONT,
+            )
+            progress_label.grid(row=2 * key + 1, column=0)
+            bar = Progressbar(
+                self,
+                length=self._length,
+                orient="horizontal",
+                mode="determinate",
+            )
+            bar.grid(row=2 * key + 1, column=1, ipady=20)
+            self._bar_by_key[key] = (bar, name_label, progress_label, max_value, units)
+            if len(self._bar_by_key.values()) == 1:
+                self._show()
+            return key
+
+    def update_progress_bar(self, key: int, progress: float) -> None:
+        with self._mutex:
+            try:
+                bar, _, label, max_value, units = self._bar_by_key[key]
+            except KeyError:
+                return
+            bar["value"] = min(100, 100 * progress / max_value)
+            label.config(text=f"[{progress:.2f}/{max_value:.2f} {units}]")
+
+    def delete_progress_bar(self, key: int) -> None:
+        with self._mutex:
+            bar = self._bar_by_key.pop(key, None)
+            if not bar:
+                return
+            if len(self._bar_by_key.values()) == 0:
+                self._hide()
+            (bar, name_label, progress_label, _, _) = bar
+            bar.destroy()
+            name_label.destroy()
+            progress_label.destroy()
+
+    def _show(self) -> None:
+        self.deiconify()
+
+    def _hide(self) -> None:
+        self.withdraw()
+
+    def _get_unique_key(self) -> int:
+        self._key_gen += 1
+        return self._key_gen
 
 
 class InputCancelledException(Exception):
