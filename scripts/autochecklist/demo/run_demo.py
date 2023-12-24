@@ -7,10 +7,11 @@ from typing import Tuple, TypeVar
 
 T = TypeVar("T")
 
-from .. import (  # TODO; EelMessenger,
+from .. import (
     BaseConfig,
     ConsoleMessenger,
     DefaultScript,
+    EelMessenger,
     FileMessenger,
     FunctionFinder,
     Messenger,
@@ -173,8 +174,8 @@ class DemoScript(DefaultScript):
             ConsoleMessenger(description=_DESCRIPTION, show_task_status=config.verbose)
             if config.ui == "console"
             else TkMessenger(title="autochecklist demo", description=_DESCRIPTION)
-            # if args.ui == "tk"
-            # else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
+            if config.ui == "tk"
+            else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
         )
         messenger = Messenger(
             file_messenger=file_messenger, input_messenger=input_messenger

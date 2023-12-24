@@ -3,11 +3,11 @@ Provides access to JavaScript functions required by the eel messenger in a more
 type-safe way.
 """
 # pyright: basic, reportGeneralTypeIssues=false
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 import eel
 
-from .input_messenger import Parameter, ProblemLevel, TaskStatus
+from .input_messenger import Parameter, ProblemLevel, TaskStatus, UserResponse
 
 
 def set_title(title: str) -> None:
@@ -57,9 +57,12 @@ def show_input_dialog(
 
 
 def add_action_item(
-    task_name: str, index: Optional[int], prompt: str, allow_retry: bool
+    task_name: str,
+    index: Optional[int],
+    prompt: str,
+    allowed_responses: Set[UserResponse],
 ) -> None:
-    eel.add_action_item(task_name, index, prompt, allow_retry)
+    eel.add_action_item(task_name, index, prompt, [str(r) for r in allowed_responses])
 
 
 def add_command(task_name: str, command_name: str) -> None:
@@ -74,5 +77,13 @@ def show_script_done_message() -> None:
     eel.show_script_done_message()
 
 
-def force_close() -> None:
-    eel.force_close()
+def create_progress_bar(display_name: str, max_value: float, units: str) -> int:
+    return eel.create_progress_bar(display_name, max_value, units)()
+
+
+def update_progress_bar(key: int, progress: float) -> None:
+    eel.update_progress_bar(key, progress)
+
+
+def delete_progress_bar(key: int) -> None:
+    eel.delete_progress_bar(key)

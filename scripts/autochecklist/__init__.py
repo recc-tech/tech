@@ -9,6 +9,7 @@ from .base_config import BaseConfig
 from .messenger import (
     CancellationToken,
     ConsoleMessenger,
+    EelMessenger,
     FileMessenger,
     InputMessenger,
     Messenger,
