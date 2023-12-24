@@ -4,7 +4,7 @@ import inspect
 import unittest
 from datetime import date
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
@@ -16,7 +16,7 @@ TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
 
 class PlanningCenterTestCase(unittest.TestCase):
     def test_find_plan_by_date(self) -> None:
-        client, log_problem_mock = self._create_client()
+        client, _, log_problem_mock = self._create_client()
 
         plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
 
@@ -26,7 +26,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_find_message_notes(self) -> None:
-        client, log_problem_mock = self._create_client()
+        client, _, log_problem_mock = self._create_client()
         expected_message_notes = inspect.cleandoc(
             """New Series: Let There Be Joy - Slide
             Rejected By God
@@ -60,7 +60,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_find_attachments(self) -> None:
-        client, log_problem_mock = self._create_client()
+        client, _, log_problem_mock = self._create_client()
         # It would be nice to test on a plan with more attachments (images,
         # videos, etc.), but the attachments seem to disappear quite quickly
         # after a service
@@ -69,11 +69,13 @@ class PlanningCenterTestCase(unittest.TestCase):
                 id="145052830",
                 filename="MC Host Script.docx",
                 content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                num_bytes=26_743,
             ),
             Attachment(
                 id="145057054",
                 filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
                 content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                num_bytes=17_167,
             ),
         }
 
@@ -83,7 +85,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_download_assets(self) -> None:
-        client, log_problem_mock = self._create_client()
+        client, messenger, log_problem_mock = self._create_client()
         expected_notes_path = DATA_DIR.joinpath("2023-04-16 Notes.docx")
         actual_notes_path = TEMP_DIR.joinpath("2023-04-16 Notes.docx")
         expected_script_path = DATA_DIR.joinpath("2023-04-16 MC Host Script.docx")
@@ -91,12 +93,16 @@ class PlanningCenterTestCase(unittest.TestCase):
         # Get rid of old files so tests don't pass if download failed!
         actual_notes_path.unlink(missing_ok=True)
         actual_script_path.unlink(missing_ok=True)
+        # The client expects the directories to actually exist
+        DATA_DIR.mkdir(exist_ok=True)
+        TEMP_DIR.mkdir(exist_ok=True)
         attachments = [
             (
                 Attachment(
                     id="145052830",
                     filename="MC Host Script.docx",
                     content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    num_bytes=26_743,
                 ),
                 actual_script_path,
             ),
@@ -105,13 +111,19 @@ class PlanningCenterTestCase(unittest.TestCase):
                     id="145057054",
                     filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
                     content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    num_bytes=17_167,
                 ),
                 actual_notes_path,
             ),
         ]
 
-        asyncio.run(client.download_attachments(attachments, cancellation_token=None))
+        results = asyncio.run(
+            client.download_attachments(
+                attachments, messenger=messenger, cancellation_token=None
+            )
+        )
 
+        self.assertEqual([None, None], results)
         self.assertTrue(
             filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),
             "Message notes files must match.",
@@ -122,12 +134,12 @@ class PlanningCenterTestCase(unittest.TestCase):
         )
         log_problem_mock.assert_not_called()
 
-    def _create_client(self) -> Tuple[PlanningCenterClient, Mock]:
+    def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:
         messenger = Mock(spec=Messenger)
         log_problem_mock = Mock()
         messenger.log_problem = log_problem_mock
 
-        def input_mock(*args: Any, **kwargs: Any):
+        def input_mock(*args: object, **kwargs: object):
             raise ValueError(
                 "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
             )
@@ -142,4 +154,4 @@ class PlanningCenterTestCase(unittest.TestCase):
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )
-        return client, log_problem_mock
+        return client, messenger, log_problem_mock

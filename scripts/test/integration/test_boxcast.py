@@ -16,8 +16,16 @@ BOXCAST_TEST_USERNAME = "tech@riversedge.life"
 class BoxCastTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        def input_mock(*args: object, **kwargs: object):
+            raise ValueError(
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
+            )
+
         cls.error_message = ""
         messenger = Mock(spec=Messenger)
+        messenger.input_multiple = input_mock
+        messenger.input = input_mock
+        messenger.wait = input_mock
         credential_store = CredentialStore(messenger)
         boxcast_username = credential_store.get(
             Credential.BOXCAST_USERNAME, request_input=InputPolicy.AS_REQUIRED
@@ -42,7 +50,9 @@ class BoxCastTestCase(unittest.TestCase):
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         cls.home_dir = (
-            Path(__file__).parent.joinpath("boxcast_test_home").joinpath(f"{timestamp}_home")
+            Path(__file__)
+            .parent.joinpath("boxcast_test_home")
+            .joinpath(f"{timestamp}_home")
         )
         cls.home_dir.mkdir(exist_ok=True, parents=True)
 
@@ -61,11 +71,19 @@ class BoxCastTestCase(unittest.TestCase):
             cancellation_token=None,
         )
         boxcast_client_factory = Mock(spec=["get_client"])
-        boxcast_client_factory.get_client.return_value = boxcast_client  # type: ignore
+        boxcast_client_factory.get_client.return_value = boxcast_client
         config = McrTeardownConfig(
+            message_series="",
+            message_title="",
+            boxcast_event_id=EVENT_ID,
             home_dir=self.home_dir,
             downloads_dir=Path(os.environ["USERPROFILE"]).joinpath("Downloads"),
-            boxcast_event_id=EVENT_ID,
+            lazy_login=True,
+            now=datetime.now(),
+            show_browser=False,
+            ui="console",
+            verbose=False,
+            no_run=False,
         )
 
         tasks.download_captions(

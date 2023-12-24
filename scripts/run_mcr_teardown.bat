@@ -11,4 +11,4 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw mcr_teardown.pyw
+start pythonw mcr_teardown.py

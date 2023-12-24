@@ -11,4 +11,4 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw generate_slides.pyw
+start pythonw generate_slides.py

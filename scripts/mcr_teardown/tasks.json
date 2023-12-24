@@ -65,10 +65,11 @@
 						},
 						{
 							"name": "get_vimeo_video_data",
-							"description": "The Vimeo video data could not be retrieved automatically. The following Vimeo-related tasks will need to be completed manually. See the logs for details (%{LOG_FILE}%).",
+							"description": "The Vimeo video data could not be retrieved automatically. The following Vimeo-related tasks will need to be completed manually.",
 							"prerequisites": [
 								"export_to_vimeo"
-							]
+							],
+							"only_auto": true
 						},
 						{
 							"name": "rename_video_on_vimeo",

@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import inspect
 import json
+import time
 import traceback
-from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import timedelta
 from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
-from typing import Any, Callable, DefaultDict, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from autochecklist.base_config import BaseConfig
 from autochecklist.messenger import (
@@ -20,7 +19,6 @@ from autochecklist.messenger import (
     TaskStatus,
     UserResponse,
 )
-from autochecklist.wait import sleep_attentively
 
 
 class TaskGraph:
@@ -60,16 +58,23 @@ class TaskGraph:
         # Periodically stop waiting for the thread to check whether the user
         # wants to exit
         for thread in self._threads:
-            while thread.is_alive():
+            while thread.is_alive() and not self._messenger.is_closed:
                 thread.join(timeout=0.5)
+            if self._messenger.is_closed:
+                return self._cancel_all()
 
-        # In some cases when the user cancels the program, the task threads may
-        # all exit before the main thread receives the signal that the program
-        # is cancelled. This is most common when there is only one active
-        # thread and it was waiting for input. In that case, wait a bit to give
-        # the main thread time to receive the signal.
-        if self._messenger.is_closed:
-            sleep_attentively(timedelta(seconds=20), cancellation_token=None)
+    def _cancel_all(self) -> None:
+        self._messenger.cancel_all()
+        start = time.monotonic()
+        timeout = 30
+        iter_threads = iter(self._threads)
+        while True:
+            t = next(iter_threads, None)
+            if t is None:
+                break
+            # Each thread gets at `timeout` seconds to exit
+            t.join(timeout=max(0, timeout + start - time.monotonic()))
+        raise KeyboardInterrupt()
 
 
 class _TaskThread(Thread):
@@ -117,6 +122,7 @@ class _Task:
         prerequisites: List[_Task],
         func: Optional[Callable[[], None]],
         description: str,
+        only_auto: bool,
         messenger: Messenger,
     ):
         self.name = name
@@ -137,6 +143,8 @@ class _Task:
         Instructions to show to the user in case the function raises an
         exception.
         """
+        self._only_auto = only_auto
+        """If `True`, this task cannot be completed manually."""
         self._messenger = messenger
         """
         Messenger to use for logging and input.
@@ -146,9 +154,13 @@ class _Task:
         while True:
             try:
                 self._run_automatically()
-                self._messenger.log_status(
-                    TaskStatus.DONE, f"Task completed automatically."
-                )
+                if self._messenger.get_status() not in {
+                    TaskStatus.DONE,
+                    TaskStatus.SKIPPED,
+                }:
+                    self._messenger.log_status(
+                        TaskStatus.DONE, f"Task completed automatically."
+                    )
                 return
             except (KeyboardInterrupt, SystemExit):
                 raise
@@ -157,13 +169,13 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"This task is not automated. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=False)
+                response = self._run_manually(allow_retry=False)
             except TaskCancelledException:
                 self._messenger.log_status(
                     TaskStatus.WAITING_FOR_USER,
                     f"The task was cancelled by the user. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=True)
+                response = self._run_manually(allow_retry=True)
             except BaseException as e:
                 self._messenger.log_problem(
                     ProblemLevel.ERROR,
@@ -174,9 +186,12 @@ class _Task:
                     TaskStatus.WAITING_FOR_USER,
                     f"The task automation failed. Requesting user input.",
                 )
-                is_done = self._run_manually(allow_retry=True)
-            if is_done:
-                self._messenger.log_status(TaskStatus.DONE, f"Task completed manually.")
+                response = self._run_manually(allow_retry=True)
+            if response == UserResponse.DONE:
+                self._messenger.log_status(TaskStatus.DONE, "Task completed manually.")
+                return
+            if response == UserResponse.SKIP:
+                self._messenger.log_status(TaskStatus.SKIPPED, "Task skipped.")
                 return
 
     def _run_automatically(self):
@@ -191,10 +206,16 @@ class _Task:
             # using the wrong name)
             self._messenger.disallow_cancel()
 
-    def _run_manually(self, allow_retry: bool) -> bool:
-        self._messenger.disallow_cancel()
-        response = self._messenger.wait(self._description, allow_retry=allow_retry)
-        return response == UserResponse.DONE
+    def _run_manually(self, allow_retry: bool) -> UserResponse:
+        allowed_responses = {UserResponse.DONE, UserResponse.RETRY, UserResponse.SKIP}
+        if not allow_retry:
+            allowed_responses.remove(UserResponse.RETRY)
+        if self._only_auto:
+            allowed_responses.remove(UserResponse.DONE)
+        response = self._messenger.wait(
+            self._description, allowed_responses=allowed_responses
+        )
+        return response
 
 
 @dataclass(frozen=True)
@@ -205,6 +226,7 @@ class TaskModel:
     description: str = ""
     prerequisites: Set[str] = field(default_factory=set)
     subtasks: List[TaskModel] = field(default_factory=list)
+    only_auto: bool = False
 
     def __post_init__(self):
         object.__setattr__(self, "name", self.name.strip())
@@ -217,6 +239,10 @@ class TaskModel:
         if self.subtasks and self.description.strip():
             raise ValueError(
                 f"Task '{self.name}' has subtasks and a description. If a task has subtasks, its description will not be shown to the user. Prefix the field name with an underscore if you want to use it as a comment."
+            )
+        if self.subtasks and self.only_auto:
+            raise ValueError(
+                f"Task '{self.name}' has subtasks and only_auto=True. Tasks with subtasks will not be automated, so they cannot have only_auto=True."
             )
 
     @classmethod
@@ -232,16 +258,30 @@ class TaskModel:
             raise ValueError(
                 f"Expected a task in the form of a Python dictionary, but found an object of type '{type(task)}'."
             )
-        t: Dict[str, object] = task
-        task_dict: DefaultDict[str, object] = defaultdict(lambda: None, t)
+        task_dict: Dict[str, object] = task
 
-        name = "" if task_dict["name"] is None else str(task_dict["name"])
+        name = task_dict.get("name", "")
+        if not isinstance(name, str):
+            raise ValueError(
+                f"Expected task name to be a string, but found '{str(name)}' (of type {type(name)})."
+            )
+        description = task_dict.get("description", "")
+        if not isinstance(description, str):
+            raise ValueError(
+                f"Expected task description to be a string, but task '{name}' has a description of type {type(description)}."
+            )
+        only_auto = task_dict.get("only_auto", False)
+        if not isinstance(only_auto, bool):
+            raise ValueError(
+                f"Expected only_auto to be a string, but task '{name}' has a value of type {type(only_auto)}."
+            )
 
         unknown_fields = {
             key
             for key in task_dict
             if not str(key).startswith("_")
-            and key not in {"name", "description", "prerequisites", "subtasks"}
+            and key
+            not in {"name", "description", "prerequisites", "subtasks", "only_auto"}
         }
         if unknown_fields:
             raise ValueError(
@@ -250,13 +290,12 @@ class TaskModel:
 
         return cls(
             name=name,
-            description=(
-                ""
-                if task_dict["description"] is None
-                else str(task_dict["description"])
+            description=description,
+            prerequisites=cls._parse_prerequisites(
+                task_dict.get("prerequisites", None)
             ),
-            prerequisites=cls._parse_prerequisites(task_dict["prerequisites"]),
-            subtasks=cls._parse_subtasks(task_dict["subtasks"]),
+            subtasks=cls._parse_subtasks(task_dict.get("subtasks", None)),
+            only_auto=only_auto,
         )
 
     @classmethod
@@ -435,6 +474,7 @@ def _normalize_prerequisites(
             description=task.description,
             prerequisites=expanded_prerequisites,
             subtasks=task.subtasks,
+            only_auto=task.only_auto,
         )
     else:
         return TaskModel(
@@ -445,6 +485,7 @@ def _normalize_prerequisites(
                 _normalize_prerequisites(t, combined_prerequisites, name_to_task)
                 for t in task.subtasks
             ],
+            only_auto=task.only_auto,
         )
 
 
@@ -553,6 +594,7 @@ def _remove_redundant_prerequisites(sorted_tasks: List[TaskModel]) -> List[TaskM
             description=t.description,
             prerequisites=required_direct_prerequisites[t.name],
             subtasks=[],
+            only_auto=t.only_auto,
         )
         for t in sorted_tasks
     ]
@@ -564,19 +606,22 @@ def _convert_models_to_tasks(
     finder: FunctionFinder,
     config: BaseConfig,
 ) -> List[_Task]:
-    name_to_func: Dict[str, Optional[Callable[[], None]]] = {
-        m.name: None for m in models
-    }
-    name_to_func |= finder.find_functions([m.name for m in models])
+    name_to_func = finder.find_functions([m.name for m in models])
     name_to_task: Dict[str, _Task] = {}
     tasks: List[_Task] = []
     for i, m in enumerate(models, start=1):
+        func = name_to_func.get(m.name, None)
+        if func is None and m.only_auto:
+            raise ValueError(
+                f"Task '{m.name}' has only_auto=True, but no automation was found for it."
+            )
         task = _Task(
             name=m.name,
             index=i,
             prerequisites=[name_to_task[p] for p in m.prerequisites],
-            func=name_to_func[m.name],
+            func=func,
             description=config.fill_placeholders(m.description),
+            only_auto=m.only_auto,
             messenger=messenger,
         )
         name_to_task[m.name] = task

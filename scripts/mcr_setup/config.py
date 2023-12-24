@@ -1,13 +1,28 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Literal
 
 from common import ReccConfig
 
 
 class McrSetupConfig(ReccConfig):
-    def __init__(self, home_dir: Path, now: Optional[datetime] = None):
-        super().__init__(home_dir, now or datetime.now())
+    def __init__(
+        self,
+        home_dir: Path,
+        ui: Literal["console", "tk"],
+        verbose: bool,
+        no_run: bool,
+        show_browser: bool,
+        now: datetime,
+    ):
+        super().__init__(
+            home_dir=home_dir,
+            now=now or datetime.now(),
+            ui=ui,
+            verbose=verbose,
+            no_run=no_run,
+        )
+        self.show_browser = show_browser
 
     @property
     def assets_by_service_dir(self) -> Path:

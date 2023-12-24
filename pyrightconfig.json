@@ -1,0 +1,9 @@
+{
+	"typeCheckingMode": "strict",
+	"stubPath": "./scripts/typings",
+	"reportUnknownArgumentType": "information",
+	"reportUnknownLambdaType": "information",
+	"reportUnknownMemberType": "information",
+	"reportUnknownParameterType": "information",
+	"reportUnknownVariableType": "information",
+}

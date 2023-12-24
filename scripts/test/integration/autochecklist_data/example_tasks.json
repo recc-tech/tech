@@ -20,7 +20,8 @@
 					"description": "This task will raise an error.",
 					"prerequisites": [
 						"add_bar"
-					]
+					],
+					"only_auto": true
 				}
 			]
 		},
