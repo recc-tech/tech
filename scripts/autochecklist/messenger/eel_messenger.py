@@ -253,6 +253,8 @@ class EelMessenger(InputMessenger):
     def _handle_input(self, key: int, values: Dict[str, str]) -> None:
         with self._state_mutex:
             try:
+                # TODO: What if the JavaScript doesn't return a value for every
+                # name?
                 self._input_by_key[key] = values
                 self._input_event_by_key[key].set()
             except KeyError:

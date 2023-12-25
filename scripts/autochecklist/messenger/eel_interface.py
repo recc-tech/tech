@@ -45,8 +45,8 @@ def show_input_dialog(
         prompt,
         {
             t: {
-                "display_name": p.display_name,
-                "password": p.password,
+                "label": p.display_name,
+                "is_password": p.password,
                 "description": p.description,
                 "default": p.default,
                 "error_message": error_messages[t] if t in error_messages else "",
