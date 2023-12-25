@@ -1,0 +1,9 @@
+{
+  "name": "eel-messenger",
+  "scripts": {
+    "lint": "npx eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0"
+  }
+}

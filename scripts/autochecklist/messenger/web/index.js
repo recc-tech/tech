@@ -1,7 +1,7 @@
 eel.expose(set_title);
 /**
  * Set the title of the whole page.
- * 
+ *
  * @param {string} title - The new title.
  */
 function set_title(title) {
@@ -12,7 +12,7 @@ function set_title(title) {
 eel.expose(set_description);
 /**
  * Set the description for the current script.
- * 
+ *
  * @param {string} description - The new description.
  */
 function set_description(description) {
@@ -23,7 +23,7 @@ function set_description(description) {
 eel.expose(log_status);
 /**
  * Update the status of a task.
- * 
+ *
  * @param {string} task_name
  * The unique name of the task to update.
  * @param {number | null} index
@@ -37,13 +37,14 @@ eel.expose(log_status);
  */
 function log_status(task_name, index, status, message) {
     // TODO: Implement this
-    console.log(`log_status("${task_name}", ${index}, "${status}", "${message}")`);
+    console.log(
+        `log_status("${task_name}", ${index}, "${status}", "${message}")`);
 }
 
 eel.expose(log_problem);
 /**
  * Show that a problem has occurred.
- * 
+ *
  * @param {string} task_name
  * The unique name of the affected task.
  * @param {string} level
@@ -60,7 +61,7 @@ function log_problem(task_name, level, message) {
 eel.expose(show_bool_input_dialog);
 /**
  * Create an input dialog that lets the user choose yes or no.
- * 
+ *
  * @param {number} key
  * A unique number that identifies this input dialog in case multiple dialogs
  * are opened at once.
@@ -81,7 +82,7 @@ function show_bool_input_dialog(key, prompt, title) {
 eel.expose(show_input_dialog);
 /**
  * Show an input dialog with multiple string input fields.
- * 
+ *
  * @param {number} key
  * A unique number that identifies this input dialog in case multiple dialogs
  * are opened at once.
@@ -104,7 +105,9 @@ eel.expose(show_input_dialog);
  */
 function show_input_dialog(key, title, prompt, params) {
     // TODO: Implement this
-    console.log(`show_input_dialog(${key}, "${title}", "${prompt}", ${JSON.stringify(params)})`);
+    console.log(
+        `show_input_dialog(${key}, "${title}", "${prompt}", `
+        + `${JSON.stringify(params)})`);
     // Once the user submits all the inputs, call eel.handle_input with the
     // same key and an object containing, for each input field, the display
     // name as key and the user's input as value.
@@ -119,7 +122,7 @@ function show_input_dialog(key, title, prompt, params) {
 eel.expose(add_action_item);
 /**
  * Show the user that an action is required of them.
- * 
+ *
  * @param {string} task_name
  * The unique name of the task for which user action is required.
  * @param {number | null} index
@@ -128,12 +131,14 @@ eel.expose(add_action_item);
  * @param {string} prompt
  * A message explaining what the user must do.
  * @param {[string]} allowed_responses
- * The responses that the user can give. Possible elements: `"DONE"`, `"RETRY"`,
- * `"SKIP"`.
+ * The responses that the user can give. Possible elements: `"DONE"`,
+ * `"RETRY"`, `"SKIP"`.
  */
 function add_action_item(task_name, index, prompt, allowed_responses) {
     // TODO: Implement this
-    console.log(`add_action_item("${task_name}", ${index}, "${prompt}", [${allowed_responses.map((x) => `"${x}"`)}])`);
+    console.log(
+        `add_action_item("${task_name}", ${index}, "${prompt}", `
+        + `[${allowed_responses.map((x) => `"${x}"`)}])`);
     // Once the user makes their choice, asynchronously return the value by
     // calling eel.handle_user_action with the same task name and the choice
     // ("DONE", "RETRY", or "SKIP"). Also remove the action item immediately.
@@ -143,7 +148,7 @@ function add_action_item(task_name, index, prompt, allowed_responses) {
 eel.expose(add_command);
 /**
  * Give the user the option to invoke a command (e.g., cancelling a task).
- * 
+ *
  * @param {string} task_name
  * The unique name of the task that the command applies to.
  * @param {string} command_name
@@ -160,7 +165,7 @@ function add_command(task_name, command_name) {
 eel.expose(remove_command);
 /**
  * Remove a previously-added command.
- * 
+ *
  * @param {string} task_name
  * The unique name of the task that the command applies to.
  * @param {string} command_name
@@ -185,7 +190,7 @@ eel.expose(create_progress_bar);
 /**
  * Create a new progress bar. Returns a key that can be used to refer to this
  * progress bar for subsequent operations.
- * 
+ *
  * @param {string} display_name
  * A user-friendly name for the progress bar.
  * @param {number} max_value
@@ -196,14 +201,15 @@ eel.expose(create_progress_bar);
  */
 function create_progress_bar(display_name, max_value, units) {
     // TODO: Implement this
-    console.log(`create_progress_bar("${display_name}", ${max_value}, "${units}")`);
+    console.log(
+        `create_progress_bar("${display_name}", ${max_value}, "${units}")`);
     return get_unique_key();
 }
 
 eel.expose(update_progress_bar);
 /**
  * Update the progress for an existing progress bar.
- * 
+ *
  * @param {number} key
  * The key returned by `create_progress_bar` that identifies the progress bar.
  * @param {number} progress
@@ -217,7 +223,7 @@ function update_progress_bar(key, progress) {
 eel.expose(delete_progress_bar);
 /**
  * Delete a progress bar.
- * 
+ *
  * @param {number} key
  * The key returned by `create_progress_bar` that identifies the progress bar.
  */
@@ -230,7 +236,7 @@ const key_generation_array = new Uint32Array([0]);
 /**
  * Generate an integer that can be used as a unique identifier. Calling this
  * function multiple times will not produce the same value.
- * 
+ *
  * @returns {number}
  */
 function get_unique_key() {
