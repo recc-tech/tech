@@ -26,5 +26,7 @@ Note the following important files:
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
 3. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
-4. Install the required external libraries by running `pip install -r requirements.txt`
-5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements-dev.txt`.
+4. Install the required external Python libraries by running `pip install -r requirements.txt`
+5. Install the required Python development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements-dev.txt`.
+6. Move into the `autochecklist/messenger/web/` directory.
+7. Install the required JavaScript dependencies using `npm install`.
