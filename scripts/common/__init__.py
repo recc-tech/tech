@@ -2,8 +2,7 @@
 Code that is shared by the packages for multiple scripts.
 """
 
-# Ignore the unused import warnings
-# pyright: basic
+# pyright: reportUnusedImport=false
 
 from common.config import ReccConfig
 from common.credentials import Credential, CredentialStore, InputPolicy

@@ -2,8 +2,7 @@
 A reusable framework for making interactive and partially automated checklists.
 """
 
-# Ignore the unused import warnings
-# pyright: basic
+# pyright: reportUnusedImport=false
 
 from .base_config import BaseConfig
 from .messenger import (

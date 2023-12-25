@@ -1,5 +1,4 @@
-# Ignore the unused import warnings
-# pyright: basic
+# pyright: reportUnusedImport=false
 
 from autochecklist.messenger.console_messenger import ConsoleMessenger
 from autochecklist.messenger.input_messenger import (
