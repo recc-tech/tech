@@ -125,8 +125,6 @@ class EelMessenger(InputMessenger):
         eeli.set_title(self._title)
         eeli.set_description(self._description)
         eel.start("index.html", close_callback=self._handle_close)
-        # TODO: start never seems to return! Possibly a deadlock in the cancel
-        # callback when it calls input_bool()
 
     def wait_for_start(self) -> None:
         self._start_event.wait()
