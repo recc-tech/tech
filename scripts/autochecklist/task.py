@@ -631,7 +631,9 @@ def _convert_models_to_tasks(
             raise ValueError(
                 f"Task '{m.name}' has only_auto=True, but no automation was found for it."
             )
-        if func is None and m.name in auto_tasks:
+        if func is None and m.name in auto_tasks and config.auto_tasks is not None:
+            # If config.auto_tasks is not None it means the user explicitly
+            # listed this task, even though it's not automated.
             raise ValueError(
                 f"The list of tasks to automate includes '{m.name}', but {m.name} is not automated in the first place."
             )

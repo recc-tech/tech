@@ -19,7 +19,10 @@ class BaseConfig:
         self.verbose = verbose
         self.no_run = no_run
         self.auto_tasks = auto_tasks
-        """Whitelist of tasks that can be automated."""
+        """
+        Whitelist of tasks that can be automated. `None` means all tasks that
+        can be automated should be automated.
+        """
 
     def fill_placeholders(self, text: str) -> str:
         if "%{" in text or "}%" in text:
