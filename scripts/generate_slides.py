@@ -43,7 +43,12 @@ class GenerateSlidesConfig(ReccConfig):
         no_run: bool,
     ) -> None:
         super().__init__(
-            home_dir=home_dir, now=now, ui=ui, verbose=verbose, no_run=no_run
+            home_dir=home_dir,
+            now=now,
+            ui=ui,
+            verbose=verbose,
+            no_run=no_run,
+            auto_tasks=None,
         )
         self.out_dir = out_dir
         self.styles = styles

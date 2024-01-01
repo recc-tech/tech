@@ -84,6 +84,7 @@ class BoxCastTestCase(unittest.TestCase):
             ui="console",
             verbose=False,
             no_run=False,
+            auto_tasks=None,
         )
 
         tasks.download_captions(
