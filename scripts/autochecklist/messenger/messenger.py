@@ -167,7 +167,6 @@ class Messenger:
             self._task_manager.set_cancellation_token(actual_task_name, token)
 
         def callback():
-            # TODO: This needs to be built-in
             should_cancel = self._input_messenger.input_bool(
                 title="Confirm cancel",
                 prompt="Are you sure you want to cancel the automation for this task? You will be asked to complete the task manually instead.",
