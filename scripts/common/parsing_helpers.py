@@ -26,7 +26,6 @@ def parse_directory(path_str: str, create: bool = False) -> Path:
         raise ArgumentTypeError(message)
     if not path.is_dir():
         raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
-    # TODO: Check whether the path is accessible?
 
     path = path.resolve()
     return path
@@ -39,7 +38,6 @@ def parse_file(filename: str, extension: str = "") -> Path:
         raise ArgumentTypeError(f"Path '{filename}' does not exist.")
     if not path.is_file():
         raise ArgumentTypeError(f"Path '{filename}' is not a file.")
-    # TODO: Check whether the path is accessible?
 
     if extension:
         if path.suffix != extension:

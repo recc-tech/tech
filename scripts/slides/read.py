@@ -560,7 +560,6 @@ class SlideBlueprintReader:
 
 
 def _convert_song_verse_to_blueprints(verse: str) -> List[SlideBlueprint]:
-    # TODO: Split the verse if it's too long. A simple solution would be to go by number of lines, but really we would need to call the SlideGenerator somehow to check how much text can fit
     return [SlideBlueprint(body_text=verse, footer_text="", name="")]
 
 

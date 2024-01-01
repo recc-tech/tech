@@ -99,10 +99,6 @@ class Messenger:
                 else None
             )
 
-    # TODO: It would be nice to show not only the exception but the exception
-    # type. For example, `str(key_error)` may just show `the_key` when
-    # `KeyError: 'the_key'` would be clearer. Ideally the solution should be
-    # easy to use everywhere without copy-pasting.
     def log_problem(
         self,
         level: ProblemLevel,

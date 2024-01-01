@@ -337,10 +337,6 @@ def create_rebroadcast(
 
     _set_event_name(rebroadcast_title, client, cancellation_token)
 
-    # TODO: Check other things like event date, description, etc?
-    # I don't see a way to set the value of the date input once I located it.
-    # clear() and send_keys() just bring up the graphical date picker :(
-
     _set_event_start_time(start_datetime, client, cancellation_token)
 
     try:

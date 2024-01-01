@@ -421,9 +421,6 @@ class TkMessenger(InputMessenger):
 
         # -------------------- Description --------------------
 
-        # TODO: Fixed-width text boxes kind of suck. What if I set an explicit
-        # width right before counting lines and then restored to sticky mode
-        # after?
         if self._description.strip():
             description_textbox = _CopyableText(
                 self._scroll_frame,

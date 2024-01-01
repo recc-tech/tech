@@ -4,8 +4,6 @@ from typing import List, Set
 from webvtt.structures import Caption
 from webvtt.webvtt import WebVTT
 
-# TODO: Also spell check (or at least apply the substitutions in substitutions.csv)
-
 
 def remove_worship_captions(vtt: WebVTT) -> WebVTT:
     indices_to_remove = _indices_to_remove_by_len(vtt.captions)
