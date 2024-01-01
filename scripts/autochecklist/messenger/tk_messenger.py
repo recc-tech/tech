@@ -595,73 +595,54 @@ class TkMessenger(InputMessenger):
 
     def _create_right_click_menu(self) -> Menu:
         menu = Menu(None, tearoff=0)
-        menu.add_command(label="Copy", command=self._right_click_copy)
-        menu.add_command(
-            label="Open in Notepad++", command=self._right_click_open_in_notepadpp
-        )
-        # TODO: Add more menu options
-        # menu.add_command(label="Cut")
-        # menu.add_command(label="Paste", command=pyperclip.paste)
-        # menu.add_command(label="Open in browser")
+        menu.add_command(label="Copy")
+        menu.add_command(label="Open in Notepad++")
         return menu
 
     def _show_right_click_menu(self, event: tkinter.Event[Misc]):
+        def try_copy(text: str) -> None:
+            try:
+                pyperclip.copy(text)
+            except Exception:
+                messagebox.showwarning(
+                    title="Failed to copy",
+                    message="An error occurred. Please try again.",
+                )
+
+        def try_open_in_notepadpp(path: Path) -> None:
+            try:
+                # Use Popen so this doesn't block
+                subprocess.Popen(["notepad++.exe", path.as_posix()])
+            except Exception:
+                messagebox.showwarning(
+                    title="Failed to open in Notepad++",
+                    message="An error occurred. Please try again.",
+                )
+
+        try:
+            # If nothing is selected, this should raise a TclError.
+            # For some reason, that doesn't seem to happen after you click
+            # from one _CopyableText widget to another :(
+            # If you click elsewhere, selection_get still returns the
+            # previously-selected text.
+            # Other functions like selection_own_get().get("sel.first",
+            # "sel.last") also return the previously-selected text.
+            selected_text = str(self._tk.selection_get())
+        except Exception:
+            selected_text = ""
         self._right_click_menu.entryconfig(
             "Copy",
-            state="normal" if self._get_selected_text() else "disabled",
+            state="normal" if selected_text else "disabled",
+            command=lambda: try_copy(selected_text),
         )
+        path = Path(selected_text)
+        can_be_opened = selected_text and (path.is_file() or path.parent.is_dir())
         self._right_click_menu.entryconfig(
             "Open in Notepad++",
-            state="normal" if self._is_selected_text_a_filename() else "disabled",
+            state="normal" if can_be_opened else "disabled",
+            command=lambda: try_open_in_notepadpp(path),
         )
         self._right_click_menu.tk_popup(x=event.x_root, y=event.y_root)
-
-    def _right_click_copy(self):
-        try:
-            text = self._get_selected_text()
-            if not text:
-                return
-            pyperclip.copy(text)
-        except Exception as e:
-            print(e)
-            messagebox.showwarning(
-                title="Failed to copy",
-                message="An error occurred. Please try again.",
-            )
-
-    def _is_selected_text_a_filename(self) -> bool:
-        try:
-            text = self._get_selected_text()
-            if not text:
-                return False
-            path = Path(text)
-            return path.is_file()
-        except Exception:
-            return False
-
-    def _right_click_open_in_notepadpp(self):
-        try:
-            text = self._get_selected_text()
-            if not text:
-                return
-            path = Path(text)
-            if path.is_file():
-                subprocess.run(f'notepad++.exe "{path.as_posix()}"')
-        except Exception:
-            messagebox.showwarning(
-                title="Failed to open in Notepad++",
-                message="An error occurred. Please try again.",
-            )
-
-    def _get_selected_text(self) -> str:
-        try:
-            # TODO: the selection doesn't get cleared when you click from one
-            # text box to another :( If you click elsewhere, selection_get
-            # still returns the previously-selected text.
-            text = str(self._tk.selection_get())
-            return text
-        except Exception:
-            return ""
 
     def _wait_and_clear_event(self, event: threading.Event) -> None:
         with self._mutex:
