@@ -22,6 +22,7 @@ class TaskGraphTestCase(unittest.TestCase):
 
         config = create_autospec(BaseConfig)
         config.fill_placeholders.side_effect = fill_placeholders
+        config.auto_tasks = None
         function_finder = create_autospec(FunctionFinder)
         # The value for task c is deliberately omitted. The TaskGraph
         # constructor should use None for missing keys.
@@ -289,6 +290,7 @@ def _get_noop_config() -> BaseConfig:
 
     config = create_autospec(BaseConfig)
     config.fill_placeholders.side_effect = identity
+    config.auto_tasks = None
     return config
 
 
