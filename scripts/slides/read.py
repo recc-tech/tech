@@ -19,7 +19,6 @@ SAFE_FILENAME_CHARACTERS = re.compile("^[a-z0-9-_ &,]$", re.IGNORECASE)
 # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry)
 # In practice, it should be safe to save files with a length of 50; we won't
 # put the slides in directories whose length exceeds 200 characters.
-# TODO: warn the user if the output directory is too long.
 MAX_FILENAME_LEN = 50
 
 
