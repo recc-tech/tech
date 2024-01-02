@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Set, Tuple
 
+import common
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -14,7 +15,7 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import ReccConfig, ReccWebDriver, parse_directory
+from common import ReccConfig, ReccWebDriver
 from slides import (
     BibleVerseFinder,
     Slide,
@@ -89,7 +90,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             "-o",
             "--out-dir",
             default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
-            type=lambda x: parse_directory(x, create=True),
+            type=lambda x: common.parse_directory(x, create=True),
             help="Directory in which to place the generated images.",
         )
         parser.add_argument(
@@ -107,7 +108,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
         advanced_args = parser.add_argument_group("Advanced arguments")
         advanced_args.add_argument(
             "--home-dir",
-            type=parse_directory,
+            type=common.parse_directory,
             default="D:\\Users\\Tech\\Documents",
             help="The home directory.",
         )
@@ -193,8 +194,6 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             module=sys.modules[__name__],
             arguments=[
                 messenger,
-                self._web_driver,
-                bible_verse_finder,
                 reader,
                 generator,
                 config,

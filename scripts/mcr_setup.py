@@ -132,7 +132,6 @@ class McrSetupScript(Script[McrSetupConfig]):
             [
                 planning_center_client,
                 config,
-                credential_store,
                 messenger,
                 reader,
                 generator,

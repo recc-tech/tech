@@ -346,6 +346,7 @@ class FunctionFinder:
     ):
         self._module = module
         self._arguments = arguments
+        self._is_argument_used = {id(a): False for a in self._arguments}
         self._messenger = messenger
 
     def find_functions(
@@ -371,6 +372,14 @@ class FunctionFinder:
         function_assignments = {
             name: self._find_function_with_args(name) for name in names
         }
+
+        unused_args = {a for a in self._arguments if not self._is_argument_used[id(a)]}
+        if unused_args:
+            message = (
+                "The following arguments are not used by any task implementations: "
+                + "".join([f"\n * {repr(a)}" for a in unused_args])
+            )
+            self._messenger.log_problem(ProblemLevel.WARN, message)
 
         auto_tasks = {k for (k, v) in function_assignments.items() if v is not None}
         self._messenger.log_debug(
@@ -413,7 +422,6 @@ class FunctionFinder:
 
     def _find_arguments(self, signature: Signature) -> Dict[str, object]:
         params = signature.parameters.values()
-        # TODO: Check for unused args
         return {p.name: self._find_single_argument(p) for p in params}
 
     def _find_single_argument(self, param: Parameter) -> Any:
@@ -427,7 +435,9 @@ class FunctionFinder:
                 f"Parameter '{param.name}' is ambiguous - there are multiple arguments that could be assigned to it."
             )
         else:
-            return matching_args[0]
+            arg = matching_args[0]
+            self._is_argument_used[id(arg)] = True
+            return arg
 
     def _detect_unused_functions(self, used_function_names: List[str]) -> Set[str]:
         all_functions = inspect.getmembers(self._module, inspect.isfunction)
