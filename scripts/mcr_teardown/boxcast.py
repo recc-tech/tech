@@ -48,7 +48,7 @@ class BoxCastClient(ReccWebDriver):
         return driver
 
     # TODO: reportInconsistentConstructor shouldn't be necessary here
-    def __init__(  # pyright: ignore [reportInconsistentConstructor]
+    def __init__(
         self,
         messenger: Messenger,
         credential_store: CredentialStore,

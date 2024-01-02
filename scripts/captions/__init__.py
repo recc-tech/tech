@@ -13,7 +13,7 @@ def remove_worship_captions(vtt: WebVTT) -> WebVTT:
     return WebVTT(captions=cues_to_keep)
 
 
-def _indices_to_remove_by_len(  # pyright: ignore[reportUnusedFunction]
+def _indices_to_remove_by_len(
     cues: List[Caption],
 ) -> Set[int]:
     cue_lengths = [len(c.text) for c in cues]
