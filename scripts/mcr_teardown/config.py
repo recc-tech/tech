@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Set
 
 from common import ReccConfig
 
@@ -19,9 +19,15 @@ class McrTeardownConfig(ReccConfig):
         ui: Literal["console", "tk"],
         verbose: bool,
         no_run: bool,
+        auto_tasks: Optional[Set[str]],
     ):
         super().__init__(
-            home_dir=home_dir, now=now, ui=ui, verbose=verbose, no_run=no_run
+            home_dir=home_dir,
+            now=now,
+            ui=ui,
+            verbose=verbose,
+            no_run=no_run,
+            auto_tasks=auto_tasks,
         )
 
         self._downloads_dir = downloads_dir.resolve()

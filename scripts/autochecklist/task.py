@@ -21,6 +21,12 @@ from autochecklist.messenger import (
 )
 
 
+class TaskNotAutomatedError(Exception):
+    def __init__(self, message: str = "", allow_retry: bool = False) -> None:
+        self.message = message
+        self.allow_retry = allow_retry
+
+
 class TaskGraph:
     def __init__(
         self,
@@ -164,12 +170,12 @@ class _Task:
                 return
             except (KeyboardInterrupt, SystemExit):
                 raise
-            except NotImplementedError:
+            except TaskNotAutomatedError as e:
                 self._messenger.log_status(
                     TaskStatus.WAITING_FOR_USER,
-                    f"This task is not automated. Requesting user input.",
+                    e.message or "This task is not automated.",
                 )
-                response = self._run_manually(allow_retry=False)
+                response = self._run_manually(allow_retry=e.allow_retry)
             except TaskCancelledException:
                 self._messenger.log_status(
                     TaskStatus.WAITING_FOR_USER,
@@ -197,7 +203,7 @@ class _Task:
     def _run_automatically(self):
         try:
             if self._run is None:
-                raise NotImplementedError()
+                raise TaskNotAutomatedError()
             self._messenger.log_status(TaskStatus.RUNNING, f"Task started.")
             self._run()
         finally:
@@ -230,8 +236,11 @@ class TaskModel:
 
     def __post_init__(self):
         object.__setattr__(self, "name", self.name.strip())
-        if not self.name.strip():
+        if not self.name:
             raise ValueError("Every task must have a non-blank name.")
+        # Needed for the --auto command-line argument
+        if self.name.lower() == "none":
+            raise ValueError("'none' cannot be used as a task name.")
         if not self.subtasks and not self.description.strip():
             raise ValueError(
                 f"Task '{self.name}' has no description. Tasks without subtasks must have a description."
@@ -337,6 +346,7 @@ class FunctionFinder:
     ):
         self._module = module
         self._arguments = arguments
+        self._is_argument_used = {id(a): False for a in self._arguments}
         self._messenger = messenger
 
     def find_functions(
@@ -362,6 +372,14 @@ class FunctionFinder:
         function_assignments = {
             name: self._find_function_with_args(name) for name in names
         }
+
+        unused_args = {a for a in self._arguments if not self._is_argument_used[id(a)]}
+        if unused_args:
+            message = (
+                "The following arguments are not used by any task implementations: "
+                + "".join([f"\n * {repr(a)}" for a in unused_args])
+            )
+            self._messenger.log_problem(ProblemLevel.WARN, message)
 
         auto_tasks = {k for (k, v) in function_assignments.items() if v is not None}
         self._messenger.log_debug(
@@ -404,7 +422,6 @@ class FunctionFinder:
 
     def _find_arguments(self, signature: Signature) -> Dict[str, object]:
         params = signature.parameters.values()
-        # TODO: Check for unused args
         return {p.name: self._find_single_argument(p) for p in params}
 
     def _find_single_argument(self, param: Parameter) -> Any:
@@ -418,7 +435,9 @@ class FunctionFinder:
                 f"Parameter '{param.name}' is ambiguous - there are multiple arguments that could be assigned to it."
             )
         else:
-            return matching_args[0]
+            arg = matching_args[0]
+            self._is_argument_used[id(arg)] = True
+            return arg
 
     def _detect_unused_functions(self, used_function_names: List[str]) -> Set[str]:
         all_functions = inspect.getmembers(self._module, inspect.isfunction)
@@ -606,7 +625,14 @@ def _convert_models_to_tasks(
     finder: FunctionFinder,
     config: BaseConfig,
 ) -> List[_Task]:
-    name_to_func = finder.find_functions([m.name for m in models])
+    all_task_names = {m.name for m in models}
+    auto_tasks = all_task_names if config.auto_tasks is None else config.auto_tasks
+    invalid_auto_tasks = [t for t in auto_tasks if t not in all_task_names]
+    if invalid_auto_tasks:
+        raise ValueError(
+            f"The list of tasks to automate includes the following values, which are not valid task names: {','.join(invalid_auto_tasks)}."
+        )
+    name_to_func = finder.find_functions(list(all_task_names))
     name_to_task: Dict[str, _Task] = {}
     tasks: List[_Task] = []
     for i, m in enumerate(models, start=1):
@@ -615,6 +641,14 @@ def _convert_models_to_tasks(
             raise ValueError(
                 f"Task '{m.name}' has only_auto=True, but no automation was found for it."
             )
+        if func is None and m.name in auto_tasks and config.auto_tasks is not None:
+            # If config.auto_tasks is not None it means the user explicitly
+            # listed this task, even though it's not automated.
+            raise ValueError(
+                f"The list of tasks to automate includes '{m.name}', but {m.name} is not automated in the first place."
+            )
+        if func is not None and m.name not in auto_tasks:
+            func = _wrap_non_auto_task(func)
         task = _Task(
             name=m.name,
             index=i,
@@ -627,6 +661,22 @@ def _convert_models_to_tasks(
         name_to_task[m.name] = task
         tasks.append(task)
     return tasks
+
+
+def _wrap_non_auto_task(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        nonlocal called
+        if called:
+            f()
+        else:
+            called = True
+            raise TaskNotAutomatedError(
+                "Task automation skipped because this task is not in the list of tasks to automate. You can retry if you want the task to be automated after all.",
+                allow_retry=True,
+            )
+
+    called = False
+    return g
 
 
 def _assign_tasks_to_threads(

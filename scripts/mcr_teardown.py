@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 import traceback
+import typing
 from argparse import ArgumentParser, ArgumentTypeError
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import mcr_teardown.tasks
 from autochecklist import (
@@ -98,12 +99,12 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             action="store_true",
             help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
         )
-        # TODO
-        # debug_args.add_argument(
-        #     "--no-auto",
-        #     action="store_true",
-        #     help="If this flag is provided, no tasks will be completed automatically - user input will be required for each one.",
-        # )
+        debug_args.add_argument(
+            "--auto",
+            action="append",
+            default=None,
+            help="Specify which tasks to automate. You can also provide 'none' to automate none of the tasks. By default, all tasks that can be automated are automated.",
+        )
         debug_args.add_argument(
             "--show-browser",
             action="store_true",
@@ -120,6 +121,13 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             args.boxcast_event_id = args.boxcast_event_url
         # For some reason Pylance complains about the del keyword but not delattr
         delattr(args, "boxcast_event_url")
+        if args.auto is not None:
+            if "none" in args.auto and len(args.auto) > 1:
+                parser.error(
+                    "If 'none' is included in --auto, it must be the only value."
+                )
+            if args.auto == ["none"]:
+                args.auto = typing.cast(List[str], [])
 
         return McrTeardownConfig(
             message_series=args.message_series or "",
@@ -137,6 +145,7 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             ),
             verbose=args.verbose,
             no_run=args.no_run,
+            auto_tasks=set(args.auto) if args.auto is not None else None,
         )
 
     def create_messenger(self, config: McrTeardownConfig) -> Messenger:
@@ -178,8 +187,6 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             log_file_name="mcr_teardown_web_driver",
         )
         function_finder = FunctionFinder(
-            # TODO
-            # module=None if config.no_auto else mcr_teardown.tasks,
             module=mcr_teardown.tasks,
             arguments=[boxcast_client_factory, config, messenger, vimeo_client],
             messenger=messenger,

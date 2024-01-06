@@ -25,14 +25,31 @@ T = TypeVar("T")
 class ReccWebDriver(WebDriver):
     MAX_STARTUP_ATTEMPTS = 3
 
-    def __new__(cls, messenger: Messenger, *_args: object, **_kwargs: object):
+    def __new__(
+        cls,
+        messenger: Messenger,
+        headless: bool = True,
+        log_file: Optional[Path] = None,
+    ):
+        # Selenium sometimes raises
+        # "selenium.common.exceptions.WebDriverException: Message: Process
+        # unexpectedly closed with status 0" on startup!
+        # The issue seems to happen specifically in super().__init__(...), not
+        # in super().__new__(), so the try ... except must include that line.
+        # I'm not sure it's safe to call super().__init__(...) multiple times
+        # on the same object, so I'd rather construct a new instance from
+        # scratch.
+        # But if I move that to a new() classmethod, subclasses whose
+        # constructors take different arguments will need to override those
+        # methods in an incompatible manner.
+        # Furthermore, a new() classmethod is awkward because clients might
+        # forget about it and use the constructor directly.
         attempts = 0
         while True:
             try:
-                return super().__new__(cls)
-            # Selenium sometimes raises
-            # "selenium.common.exceptions.WebDriverException: Message: Process
-            # unexpectedly closed with status 0" on startup!
+                driver = super().__new__(cls)
+                driver.__initialize(headless=headless, log_file=log_file)
+                return driver
             except WebDriverException as e:
                 attempts += 1
                 if attempts >= cls.MAX_STARTUP_ATTEMPTS:
@@ -44,12 +61,15 @@ class ReccWebDriver(WebDriver):
                         traceback.format_exc(),
                     )
 
-    def __init__(  # pyright: ignore [reportInconsistentConstructor]
+    def __init__(
         self,
         messenger: Messenger,
         headless: bool = True,
         log_file: Optional[Path] = None,
     ):
+        pass
+
+    def __initialize(self, headless: bool, log_file: Optional[Path]):
         options = Options()
         if headless:
             options.add_argument("-headless")

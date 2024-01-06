@@ -16,9 +16,6 @@ def create_rebroadcast_1pm(
     config: McrTeardownConfig,
     messenger: Messenger,
 ):
-    # TODO: These tasks may fail at the very last step and the user may retry.
-    # Ideally, avoid creating duplicate events (or at least warn the user about
-    # it)
     cancellation_token = messenger.allow_cancel()
     with boxcast_client_factory.get_client(cancellation_token) as client:
         boxcast_tasks.create_rebroadcast(

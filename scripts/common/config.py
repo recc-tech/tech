@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional, Set
 
 from autochecklist import BaseConfig
 
@@ -13,8 +13,9 @@ class ReccConfig(BaseConfig):
         ui: Literal["console", "tk"],
         verbose: bool,
         no_run: bool,
+        auto_tasks: Optional[Set[str]],
     ) -> None:
-        super().__init__(ui=ui, verbose=verbose, no_run=no_run)
+        super().__init__(ui=ui, verbose=verbose, no_run=no_run, auto_tasks=auto_tasks)
         self._home_dir = home_dir.resolve()
         self._now = now
 

@@ -1,5 +1,3 @@
-# pyright: basic
-
 import statistics
 import sys
 from pathlib import Path

@@ -45,6 +45,7 @@ class CheckCredentialsConfig(ReccConfig):
             ui=ui,
             verbose=verbose,
             no_run=no_run,
+            auto_tasks=None,
         )
         self.show_browser = show_browser
         self.credentials = credentials

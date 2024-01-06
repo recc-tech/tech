@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional, Set
 
 from common import ReccConfig
 
@@ -12,6 +12,7 @@ class McrSetupConfig(ReccConfig):
         ui: Literal["console", "tk"],
         verbose: bool,
         no_run: bool,
+        auto_tasks: Optional[Set[str]],
         show_browser: bool,
         now: datetime,
     ):
@@ -21,6 +22,7 @@ class McrSetupConfig(ReccConfig):
             ui=ui,
             verbose=verbose,
             no_run=no_run,
+            auto_tasks=auto_tasks,
         )
         self.show_browser = show_browser
 

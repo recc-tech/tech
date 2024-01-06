@@ -6,4 +6,6 @@
 	"reportUnknownMemberType": "information",
 	"reportUnknownParameterType": "information",
 	"reportUnknownVariableType": "information",
+	"reportUnnecessaryTypeIgnoreComment": "warning",
+	"enableTypeIgnoreComments": false
 }

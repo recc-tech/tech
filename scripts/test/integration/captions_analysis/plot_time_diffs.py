@@ -1,5 +1,3 @@
-# pyright: basic
-
 import sys
 from pathlib import Path
 
@@ -22,7 +20,7 @@ def main():
         for i in range(len(original_vtt) - 1)
     ]
 
-    fig, ax = plt.subplots()
+    _, ax = plt.subplots()
     ax.bar(
         list(range(len(original_vtt) - 1)),
         time_diff,

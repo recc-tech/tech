@@ -28,7 +28,7 @@ class TaskGraphTestCase(unittest.TestCase):
         # called
         messenger.wait.side_effect = append_wait
         messenger.is_closed = False
-        config = TestConfig()
+        config = TestConfig(ui="tk", verbose=False, no_run=False, auto_tasks=None)
         function_finder = FunctionFinder(
             module=example_tasks, arguments=[my_list, config], messenger=messenger
         )

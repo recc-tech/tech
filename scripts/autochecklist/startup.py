@@ -147,7 +147,7 @@ class Script(Generic[TConfig]):
 
 class DefaultScript(Script[BaseConfig]):
     def create_config(self) -> BaseConfig:
-        return BaseConfig()
+        return BaseConfig(ui="tk", verbose=False, no_run=False, auto_tasks=None)
 
     def create_messenger(self, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(Path("autochecklist.log"))

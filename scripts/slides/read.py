@@ -19,7 +19,6 @@ SAFE_FILENAME_CHARACTERS = re.compile("^[a-z0-9-_ &,]$", re.IGNORECASE)
 # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry)
 # In practice, it should be safe to save files with a length of 50; we won't
 # put the slides in directories whose length exceeds 200 characters.
-# TODO: warn the user if the output directory is too long.
 MAX_FILENAME_LEN = 50
 
 
@@ -560,7 +559,6 @@ class SlideBlueprintReader:
 
 
 def _convert_song_verse_to_blueprints(verse: str) -> List[SlideBlueprint]:
-    # TODO: Split the verse if it's too long. A simple solution would be to go by number of lines, but really we would need to call the SlideGenerator somehow to check how much text can fit
     return [SlideBlueprint(body_text=verse, footer_text="", name="")]
 
 

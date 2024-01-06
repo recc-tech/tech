@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import shutil
 import time
 import traceback
@@ -25,7 +27,28 @@ from selenium.webdriver.support.select import Select
 class BoxCastClient(ReccWebDriver):
     _LOGIN_URL = "https://login.boxcast.com/login"
 
-    def __init__(  # pyright: ignore [reportInconsistentConstructor]
+    def __new__(
+        cls,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        cancellation_token: Optional[CancellationToken],
+        headless: bool = True,
+        lazy_login: bool = False,
+        log_file: Optional[Path] = None,
+    ) -> BoxCastClient:
+        driver = super().__new__(
+            cls, messenger=messenger, headless=headless, log_file=log_file
+        )
+        driver.__initialize(
+            messenger=messenger,
+            credential_store=credential_store,
+            cancellation_token=cancellation_token,
+            lazy_login=lazy_login,
+        )
+        return driver
+
+    # TODO: reportInconsistentConstructor shouldn't be necessary here
+    def __init__(
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
@@ -34,8 +57,15 @@ class BoxCastClient(ReccWebDriver):
         lazy_login: bool = False,
         log_file: Optional[Path] = None,
     ):
-        super().__init__(messenger=messenger, headless=headless, log_file=log_file)
+        pass
 
+    def __initialize(
+        self,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        cancellation_token: Optional[CancellationToken],
+        lazy_login: bool = False,
+    ) -> None:
         self._messenger = messenger
         self._credential_store = credential_store
 
@@ -336,10 +366,6 @@ def create_rebroadcast(
     )
 
     _set_event_name(rebroadcast_title, client, cancellation_token)
-
-    # TODO: Check other things like event date, description, etc?
-    # I don't see a way to set the value of the date input once I located it.
-    # clear() and send_keys() just bring up the graphical date picker :(
 
     _set_event_start_time(start_datetime, client, cancellation_token)
 

@@ -2,7 +2,6 @@
 Code specific to the MCR setup process.
 """
 
-# Ignore the unused import warnings
-# pyright: basic
+# pyright: reportUnusedImport=false
 
 from mcr_setup.config import McrSetupConfig
