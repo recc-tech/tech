@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
-from common import Attachment, PlanningCenterClient
+from common import Attachment, FileType, PlanningCenterClient
 from mcr_setup.config import McrSetupConfig
 from slides import SlideBlueprintReader, SlideGenerator
 
@@ -165,27 +165,8 @@ def download_assets(
         ) from results[0]
 
 
-_VIDEO_CONTENT_TYPES = {
-    "application/mp4",
-    "application/mxf",
-    "video/av1",
-    "video/avi",
-    "video/h264",
-    "video/h264-rcdo",
-    "video/h264-svc",
-    "video/mp4",
-    "video/mp4v-es",
-    "video/mpeg",
-    "video/quicktime",
-    "video/x-ms-asf",
-    "video/x-ms-wmv",
-}
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^kids.*", flags=re.IGNORECASE)
-_DOCX_CONTENT_TYPE = (
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-)
 _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
-_IMAGE_CONTENT_TYPES = {"image/bmp", "image/jpeg", "image/png", "image/tiff"}
 
 
 def _classify_attachments(
@@ -193,27 +174,23 @@ def _classify_attachments(
 ) -> Tuple[
     Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
 ]:
-    kids_videos = {
-        a
-        for a in attachments
-        if a.content_type.lower() in _VIDEO_CONTENT_TYPES
-        and _KIDS_VIDEO_FILENAME_REGEX.fullmatch(a.filename)
-    }
+    def is_kids_video(a: Attachment) -> bool:
+        return a.file_type == FileType.VIDEO and bool(
+            _KIDS_VIDEO_FILENAME_REGEX.fullmatch(a.filename)
+        )
+
+    def is_sermon_notes(a: Attachment) -> bool:
+        return a.file_type == FileType.DOCX and bool(
+            _SERMON_NOTES_REGEX.fullmatch(a.filename)
+        )
+
+    kids_videos = {a for a in attachments if is_kids_video(a)}
     attachments -= kids_videos
-    notes = {
-        a
-        for a in attachments
-        if a.content_type.lower() == _DOCX_CONTENT_TYPE
-        and _SERMON_NOTES_REGEX.fullmatch(a.filename)
-    }
+    notes = {a for a in attachments if is_sermon_notes(a)}
     attachments -= notes
-    other_images = {
-        a for a in attachments if a.content_type.lower() in _IMAGE_CONTENT_TYPES
-    }
+    other_images = {a for a in attachments if a.file_type == FileType.IMAGE}
     attachments -= other_images
-    other_videos = {
-        a for a in attachments if a.content_type.lower() in _VIDEO_CONTENT_TYPES
-    }
+    other_videos = {a for a in attachments if a.file_type == FileType.VIDEO}
     attachments -= other_videos
     return kids_videos, notes, other_images, other_videos, attachments
 

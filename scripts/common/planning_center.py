@@ -6,6 +6,7 @@ import asyncio
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -24,12 +25,36 @@ class Plan:
     series_title: str
 
 
+class FileType(Enum):
+    VIDEO = auto()
+    IMAGE = auto()
+    DOCX = auto()
+    OTHER = auto()
+
+
+_DOCX_MIME_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
+
 @dataclass(frozen=True)
 class Attachment:
     id: str
     filename: str
-    content_type: str
     num_bytes: int
+    pco_filetype: str
+    mime_type: str
+
+    @property
+    def file_type(self) -> FileType:
+        if self.pco_filetype.lower() == "video":
+            return FileType.VIDEO
+        elif self.pco_filetype.lower() == "image":
+            return FileType.IMAGE
+        elif self.mime_type.lower() == _DOCX_MIME_TYPE:
+            return FileType.DOCX
+        else:
+            return FileType.OTHER
 
 
 class PlanningCenterClient:
@@ -124,8 +149,9 @@ class PlanningCenterClient:
             Attachment(
                 id=a["id"],
                 filename=a["attributes"]["filename"],
-                content_type=a["attributes"]["content_type"],
                 num_bytes=a["attributes"]["file_size"],
+                pco_filetype=a["attributes"]["filetype"],
+                mime_type=a["attributes"]["content_type"],
             )
             for a in attachments_json
         }
