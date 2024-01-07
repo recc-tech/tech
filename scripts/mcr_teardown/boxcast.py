@@ -47,7 +47,6 @@ class BoxCastClient(ReccWebDriver):
         )
         return driver
 
-    # TODO: reportInconsistentConstructor shouldn't be necessary here
     def __init__(
         self,
         messenger: Messenger,
