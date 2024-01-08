@@ -1,11 +1,9 @@
 import asyncio
-import filecmp
 import re
 import shutil
-import traceback
-from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from common import Attachment, FileType, PlanningCenterClient
@@ -64,105 +62,86 @@ def download_assets(
 ):
     cancellation_token = messenger.allow_cancel()
 
+    messenger.log_status(TaskStatus.RUNNING, "Identifying attachments.")
     today = config.now.date()
     plan = client.find_plan_by_date(today)
     attachments = client.find_attachments(plan.id)
-
     (
         kids_video,
         sermon_notes,
         other_images,
         other_videos,
         unknown_attachments,
-    ) = _classify_attachments(attachments)
+    ) = _classify_attachments(attachments, messenger)
     messenger.log_debug(
         f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
     )
 
-    config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+    # TODO: Check that kids video has correct week number
 
-    # Prepare for downloads
     # IMPORTANT: the kids video must be the first thing in the downloads list
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
-    downloads: List[Tuple[Attachment, Path, Optional[Path]]] = []
-    if len(kids_video) != 1:
-        raise ValueError(
-            f"Found {len(kids_video)} attachments that look like the Kids Connection video."
-        )
-    kids_video = _any(kids_video)
+    downloads: List[Tuple[Attachment, Path]] = []
     kids_video_path = config.assets_by_service_dir.joinpath(kids_video.filename)
-    downloads.append((kids_video, kids_video_path, None))
-    if len(sermon_notes) != 1:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(sermon_notes)} attachments that look like sermon notes.",
-        )
+    downloads.append((kids_video, kids_video_path))
     for sn in sermon_notes:
-        sermon_notes_path = config.assets_by_service_dir.joinpath(sn.filename)
-        downloads.append((sn, sermon_notes_path, None))
+        downloads.append((sn, config.assets_by_service_dir.joinpath(sn.filename)))
     for img in other_images:
-        img_path = config.assets_by_type_images_dir.joinpath(img.filename)
-        if img_path.exists():
-            timestamp = (
-                f"{today.strftime('%Y-%m-%d')} {datetime.now().strftime('%H-%M-%S-%f')}"
-            )
-            # Microseconds --> milliseconds
-            timestamp = timestamp[:-3]
-            name = f"{img_path.stem} (archived {timestamp}){img_path.suffix}"
-            archived_img_path = config.assets_by_type_archive_dir.joinpath(name)
-            # Copy instead of moving in case an error occurs before the new
-            # file is downloaded
-            shutil.copyfile(img_path, archived_img_path)
-        else:
-            archived_img_path = None
-        downloads.append((img, img_path, archived_img_path))
+        downloads.append((img, config.temp_assets_dir.joinpath(img.filename)))
     for vid in other_videos:
         vid_path = config.assets_by_type_videos_dir.joinpath(vid.filename)
         # Assume the existing video is already correct
         if not vid_path.exists():
-            downloads.append((vid, vid_path, None))
+            downloads.append((vid, vid_path))
+    config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+    # Just in case
+    config.assets_by_type_videos_dir.mkdir(exist_ok=True, parents=True)
+    config.assets_by_type_images_dir.mkdir(exist_ok=True, parents=True)
+    config.temp_assets_dir.mkdir(exist_ok=True, parents=True)
 
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     results = asyncio.run(
-        client.download_attachments(
-            downloads=[(a, p) for (a, p, _) in downloads],
-            messenger=messenger,
-            cancellation_token=cancellation_token,
-        )
+        client.download_attachments(downloads, messenger, cancellation_token)
     )
-
-    messenger.log_status(TaskStatus.RUNNING, "Checking downloaded assets.")
-    for i, (_, live_path, archive_path) in enumerate(downloads):
-        if i == 0:
-            # Deal with the kids video last so an exception can be thrown
-            continue
-        if i >= len(results):
-            break
-        try:
-            if results[i] is not None:
-                messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"Download to '{live_path.as_posix()}' failed: {results[i]} ({type(results[i]).__name__}).",
-                )
-            if results[i] is not None and archive_path is not None:
-                # Restore from archive
-                shutil.move(src=archive_path, dst=live_path)
-            elif results[i] is None and archive_path is not None:
-                same = filecmp.cmp(live_path, archive_path, shallow=False)
-                if same:
-                    # No need to keep archived copy
-                    archive_path.unlink(missing_ok=True)
-        except BaseException as e:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to check download '{live_path.as_posix()}': {e}",
-                traceback.format_exc(),
-            )
-
     if results[0] is not None:
         raise Exception(
             f"Failed to download the Kids Connection video: {results[0]} ({type(results[0]).__name__})."
         ) from results[0]
+    for (_, path), result in zip(downloads, results):
+        if result is not None:
+            # TODO: Refactor log_problem to take exception object as input
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Download to '{path.as_posix()}' failed: {results} ({type(result).__name__}).",
+            )
+    successful_image_downloads = [
+        p for (a, p), r in zip(downloads, results) if r is None and a in other_images
+    ]
+
+    messenger.log_status(
+        TaskStatus.RUNNING, "Moving new images into the assets folder."
+    )
+    results = _merge_files(successful_image_downloads, config.assets_by_type_images_dir)
+    for p, r in zip(successful_image_downloads, results):
+        match r:
+            case MergeFileResult.SUCCESS:
+                messenger.log_debug(
+                    f"{p.name} was successfully moved to the assets folder."
+                )
+            case MergeFileResult.ALREADY_EXISTS:
+                messenger.log_debug(
+                    f"{p.name} has the same contents as an existing file, so it was not moved to the assets folder."
+                )
+            case MergeFileResult.RENAME_FAILED:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"Failed to move {p.name} to the assets folder because no suitable name could be found (all attempted ones were already taken).",
+                )
+            case MergeFileResult.RENAMED:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
+                )
 
 
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^kids.*", flags=re.IGNORECASE)
@@ -170,9 +149,9 @@ _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 
 
 def _classify_attachments(
-    attachments: Set[Attachment],
+    attachments: Set[Attachment], messenger: Messenger
 ) -> Tuple[
-    Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
+    Attachment, Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
 ]:
     def is_kids_video(a: Attachment) -> bool:
         return a.file_type == FileType.VIDEO and bool(
@@ -192,10 +171,81 @@ def _classify_attachments(
     attachments -= other_images
     other_videos = {a for a in attachments if a.file_type == FileType.VIDEO}
     attachments -= other_videos
-    return kids_videos, notes, other_images, other_videos, attachments
+
+    if len(notes) != 1:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(notes)} attachments that look like sermon notes.",
+        )
+    if len(kids_videos) != 1:
+        raise ValueError(
+            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
+        )
+    kids_video = _any(kids_videos)
+
+    return kids_video, notes, other_images, other_videos, attachments
 
 
 def _any(s: Set[Attachment]) -> Attachment:
     for x in s:
         return x
     raise ValueError("Empty sequence.")
+
+
+class MergeFileResult(Enum):
+    SUCCESS = auto()
+    """The file was moved to the target directory."""
+    ALREADY_EXISTS = auto()
+    """The file matches an existing one."""
+    RENAMED = auto()
+    """
+    The file was moved to the target directory, but its original name was
+    already taken.
+    """
+    RENAME_FAILED = auto()
+    """
+    The file could not be moved to the target directory because no suitable
+    name could be found that did not overwrite an existing file.
+    """
+
+
+def _merge_files(files: List[Path], dir: Path) -> List[MergeFileResult]:
+    """
+    Merge the given set of files into the given directory.
+    If a file has the same contents as any of the files already in `dir`,
+    delete it.
+    Otherwise, move it into `dir`.
+    If an existing file already has the same name, rename the new file.
+    """
+    existing_image_contents = {p.read_bytes() for p in dir.iterdir() if p.is_file()}
+    results: List[MergeFileResult] = []
+    for p in files:
+        if p.read_bytes() in existing_image_contents:
+            p.unlink()
+            results.append(MergeFileResult.ALREADY_EXISTS)
+        else:
+            required_attempts = _move_without_overwriting(p, dir, max_attempts=100)
+            if required_attempts < 0:
+                results.append(MergeFileResult.RENAME_FAILED)
+            elif required_attempts == 0:
+                results.append(MergeFileResult.SUCCESS)
+            else:
+                results.append(MergeFileResult.RENAMED)
+    return results
+
+
+def _move_without_overwriting(file: Path, dest_dir: Path, max_attempts: int) -> int:
+    suffix = file.suffix
+    stem = file.stem
+    required_attempts = -1
+    for i in range(max_attempts + 1):
+        new_filepath = (
+            dest_dir.joinpath(f"{stem}{suffix}")
+            if i == 0
+            else dest_dir.joinpath(f"{stem}-{i}{suffix}")
+        )
+        if not new_filepath.exists():
+            shutil.move(file, new_filepath)
+            required_attempts = i
+            break
+    return required_attempts

@@ -45,6 +45,10 @@ class McrSetupConfig(ReccConfig):
         return self.assets_by_type_dir.joinpath("Videos")
 
     @property
+    def temp_assets_dir(self) -> Path:
+        return self.assets_by_type_dir.joinpath("Temp")
+
+    @property
     def assets_by_type_archive_dir(self) -> Path:
         return self.assets_by_type_dir.joinpath("Archive")
 
