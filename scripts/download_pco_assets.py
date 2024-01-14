@@ -80,6 +80,14 @@ class DownloadAssetsConfig(ReccConfig):
             f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')} download_pco_assets.log"
         )
 
+    @property
+    def download_kids_video(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def download_notes_docx(self) -> bool:
+        return self.station == "mcr"
+
 
 class DownloadAssetsScript(Script[DownloadAssetsConfig]):
     def create_config(self) -> DownloadAssetsConfig:
@@ -121,7 +129,7 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
         )
 
     def create_messenger(self, config: DownloadAssetsConfig) -> Messenger:
-        file_messenger = FileMessenger(Path("autochecklist.log"))
+        file_messenger = FileMessenger(config.log_file)
         input_messenger = (
             TkMessenger("Autochecklist", _DESCRIPTION)
             if config.ui == "tk"
@@ -161,6 +169,8 @@ def download_pco_assets(
         temp_assets_dir=config.temp_assets_dir,
         assets_by_type_videos_dir=config.assets_by_type_videos_dir,
         assets_by_type_images_dir=config.assets_by_type_images_dir,
+        download_kids_video=config.download_kids_video,
+        download_notes_docx=config.download_notes_docx,
     )
 
 

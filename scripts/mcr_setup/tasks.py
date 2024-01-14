@@ -61,4 +61,6 @@ def download_assets(
         temp_assets_dir=config.temp_assets_dir,
         assets_by_type_videos_dir=config.assets_by_type_videos_dir,
         assets_by_type_images_dir=config.assets_by_type_images_dir,
+        download_kids_video=True,
+        download_notes_docx=True,
     )

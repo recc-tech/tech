@@ -19,6 +19,8 @@ def download_pco_assets(
     temp_assets_dir: Path,
     assets_by_type_videos_dir: Path,
     assets_by_type_images_dir: Path,
+    download_kids_video: bool,
+    download_notes_docx: bool,
 ):
     cancellation_token = messenger.allow_cancel()
 
@@ -36,15 +38,16 @@ def download_pco_assets(
         f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
     )
 
-    _check_kids_video_week_num(kids_video, today, messenger)
-
     # IMPORTANT: the kids video must be the first thing in the downloads list
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
     downloads: List[Tuple[Attachment, Path]] = []
-    kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-    downloads.append((kids_video, kids_video_path))
-    for sn in sermon_notes:
-        downloads.append((sn, assets_by_service_dir.joinpath(sn.filename)))
+    if download_kids_video:
+        _check_kids_video_week_num(kids_video, today, messenger)
+        kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
+        downloads.append((kids_video, kids_video_path))
+    if download_notes_docx:
+        for sn in sermon_notes:
+            downloads.append((sn, assets_by_service_dir.joinpath(sn.filename)))
     for img in other_images:
         downloads.append((img, temp_assets_dir.joinpath(img.filename)))
     for vid in other_videos:
@@ -58,11 +61,15 @@ def download_pco_assets(
     assets_by_type_images_dir.mkdir(exist_ok=True, parents=True)
     temp_assets_dir.mkdir(exist_ok=True, parents=True)
 
+    if len(downloads) == 0:
+        messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
+        return
+
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     results = asyncio.run(
         client.download_attachments(downloads, messenger, cancellation_token)
     )
-    if results[0] is not None:
+    if download_kids_video and results[0] is not None:
         raise Exception(
             f"Failed to download the Kids Connection video: {results[0]} ({type(results[0]).__name__})."
         ) from results[0]
