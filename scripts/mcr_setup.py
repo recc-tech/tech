@@ -13,9 +13,9 @@ from autochecklist import (
     Script,
     TkMessenger,
 )
-from common import CredentialStore, PlanningCenterClient, ReccWebDriver, parse_directory
+from lib import CredentialStore, PlanningCenterClient, ReccWebDriver, parse_directory
+from lib.slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 from mcr_setup.config import McrSetupConfig
-from slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 
 _DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering."
 

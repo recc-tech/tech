@@ -2,7 +2,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Literal, Optional, Set
 
-from common import ReccConfig
+from lib import ReccConfig
 
 
 class McrTeardownConfig(ReccConfig):

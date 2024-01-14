@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Set, Tuple
 
-import common
+import lib
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -15,8 +15,8 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import ReccConfig, ReccWebDriver
-from slides import (
+from lib import ReccConfig, ReccWebDriver
+from lib.slides import (
     BibleVerseFinder,
     Slide,
     SlideBlueprint,
@@ -90,7 +90,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             "-o",
             "--out-dir",
             default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
-            type=lambda x: common.parse_directory(x, create=True),
+            type=lambda x: lib.parse_directory(x, create=True),
             help="Directory in which to place the generated images.",
         )
         parser.add_argument(
@@ -108,7 +108,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
         advanced_args = parser.add_argument_group("Advanced arguments")
         advanced_args.add_argument(
             "--home-dir",
-            type=common.parse_directory,
+            type=lib.parse_directory,
             default="D:\\Users\\Tech\\Documents",
             help="The home directory.",
         )

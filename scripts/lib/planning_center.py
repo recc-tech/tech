@@ -14,8 +14,9 @@ import aiohttp
 import requests
 from aiohttp import ClientTimeout
 from autochecklist import CancellationToken, Messenger
-from common.credentials import Credential, CredentialStore, InputPolicy
 from requests.auth import HTTPBasicAuth
+
+from .credentials import Credential, CredentialStore, InputPolicy
 
 
 @dataclass(frozen=True)

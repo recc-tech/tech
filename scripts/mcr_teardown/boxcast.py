@@ -16,7 +16,7 @@ from autochecklist import (
     TaskStatus,
     sleep_attentively,
 )
-from common import Credential, CredentialStore, InputPolicy, ReccWebDriver
+from lib import Credential, CredentialStore, InputPolicy, ReccWebDriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys

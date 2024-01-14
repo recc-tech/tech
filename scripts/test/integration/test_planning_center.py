@@ -8,7 +8,7 @@ from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
-from common import Attachment, CredentialStore, PlanningCenterClient
+from lib import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
 TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")

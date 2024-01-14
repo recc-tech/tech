@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 
 import webvtt
-from captions import remove_worship_captions
+from lib import remove_worship_captions
 
 PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("captions_data")
 STATS_FILE = Path(__file__).parent.joinpath(

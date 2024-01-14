@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Set, Tuple
 
-import common
+import lib
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -15,7 +15,7 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import (
+from lib import (
     Credential,
     CredentialStore,
     InputPolicy,
@@ -78,7 +78,7 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
         advanced_args = parser.add_argument_group("Advanced arguments")
         advanced_args.add_argument(
             "--home-dir",
-            type=common.parse_directory,
+            type=lib.parse_directory,
             default="D:\\Users\\Tech\\Documents",
             help="The home directory.",
         )
