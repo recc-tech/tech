@@ -1,7 +1,8 @@
 aiohttp>=3.9
 keyring==23.13.1
-PyVimeo==1.1.0
-selenium==4.9.1
+matplotlib>=3.8
 pillow>=9.3
 pyperclip==1.8.2
+PyVimeo==1.1.0
+selenium==4.9.1
 webvtt-py>=0.4

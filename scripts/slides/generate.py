@@ -6,14 +6,40 @@ from pathlib import Path
 from typing import List, Literal, Tuple
 
 from autochecklist import Messenger, ProblemLevel
+from matplotlib.font_manager import FontManager, FontProperties
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
+
+
+def make_font(
+    family: List[str],
+    style: Literal["normal", "italic", "oblique"],
+    size: int,
+    manager: FontManager,
+) -> FreeTypeFont:
+    properties = FontProperties(family=family, style=style)
+    path = manager.findfont(properties)
+    return ImageFont.truetype(path, size=size)
+
 
 IMG_WIDTH = 1920
 IMG_HEIGHT = 1080
 OUTER_MARGIN = 100
 INNER_MARGIN = 25
-FONT_FACE = "calibri.ttf"
+FONT_FAMILY = ["Helvetica", "Calibri", "sans-serif"]
+FONT_MANAGER = FontManager()
+LT_BODY_FONT = make_font(
+    family=FONT_FAMILY, style="normal", size=48, manager=FONT_MANAGER
+)
+LT_SUBTITLE_FONT = make_font(
+    family=FONT_FAMILY, style="oblique", size=40, manager=FONT_MANAGER
+)
+FS_BODY_FONT = make_font(
+    family=FONT_FAMILY, style="normal", size=72, manager=FONT_MANAGER
+)
+FS_SUBTITLE_FONT = make_font(
+    family=FONT_FAMILY, style="oblique", size=60, manager=FONT_MANAGER
+)
 
 
 @dataclass(frozen=True)
@@ -70,37 +96,25 @@ class SlideGenerator:
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
-        # ImageFont.truetype opens a font file and keeps it open. Load the
-        # fonts once here instead of loading them in
-        # _generate_fullscreen_slide_with[out]_footer to avoid opening too many
-        # files.
-        # https://pillow.readthedocs.io/en/stable/reference/ImageFont.html#PIL.ImageFont.truetype
-        body_font = ImageFont.truetype(FONT_FACE, size=72)
-        footer_font = ImageFont.truetype(FONT_FACE, size=60)
-
         return [
             self._generate_fullscreen_slide_with_footer(
-                b, body_font=body_font, footer_font=footer_font
+                b, body_font=FS_BODY_FONT, footer_font=FS_SUBTITLE_FONT
             )
             if b.footer_text
-            else self._generate_fullscreen_slide_without_footer(b, font=body_font)
+            else self._generate_fullscreen_slide_without_footer(b, font=FS_BODY_FONT)
             for b in blueprints
         ]
 
     def generate_lower_third_slide(
         self, blueprints: List[SlideBlueprint], show_backdrop: bool
     ) -> List[Slide]:
-        body_font = ImageFont.truetype(FONT_FACE, size=48)
-        footer_font = ImageFont.truetype(FONT_FACE, size=44)
-        no_footer_font = ImageFont.truetype(FONT_FACE, size=56)
-
         return [
             self._generate_lower_third_slide_with_footer(
-                b, show_backdrop, body_font=body_font, footer_font=footer_font
+                b, show_backdrop, body_font=LT_BODY_FONT, footer_font=LT_SUBTITLE_FONT
             )
             if b.footer_text
             else self._generate_lower_third_slide_without_footer(
-                b, show_backdrop, font=no_footer_font
+                b, show_backdrop, font=LT_BODY_FONT
             )
             for b in blueprints
         ]

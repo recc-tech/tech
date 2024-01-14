@@ -132,6 +132,7 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
                 TaskModel(
                     name="log_into_boxcast",
                     description="Failed to log into BoxCast.",
+                    only_auto=True,
                 )
             )
         if "planning_center" in config.credentials:
@@ -139,6 +140,7 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
                 TaskModel(
                     name="log_into_planning_center",
                     description="Failed to connect to the Planning Center API.",
+                    only_auto=True,
                 )
             )
         if "vimeo" in config.credentials:
@@ -146,6 +148,7 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
                 TaskModel(
                     name="log_into_vimeo",
                     description="Failed to connect to the Vimeo API.",
+                    only_auto=True,
                 )
             )
 

@@ -1,5 +1,9 @@
+# pyright: reportUnnecessaryTypeIgnoreComment=false
+# This is needed so platform-specific code (subprocess.CREATE_NO_WINDOW) can type-check
 from __future__ import annotations
 
+import os
+import platform
 import subprocess
 import time
 import traceback
@@ -73,10 +77,17 @@ class ReccWebDriver(WebDriver):
         options = Options()
         if headless:
             options.add_argument("-headless")
-        service = Service(
-            log_path=log_file.as_posix() if log_file else "NUL",
+        if platform.system() == "Windows":
             # Hide the geckodriver terminal
-            popen_kw={"creation_flags": subprocess.CREATE_NO_WINDOW},
+            creation_flags = (
+                subprocess.CREATE_NO_WINDOW  # pyright: ignore [reportGeneralTypeIssues]
+            )
+        else:
+            # subprocess.CREATE_NO_WINDOW is only available on Windows
+            creation_flags = 0
+        service = Service(
+            log_path=log_file.as_posix() if log_file else os.devnull,
+            popen_kw={"creation_flags": creation_flags},
         )
         super().__init__(options=options, service=service)
 

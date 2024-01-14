@@ -29,7 +29,9 @@ jobs:
     - name: Type check
       run: pyright ./scripts --warnings
     - name: Check code style
-      run: black ./scripts --check
+      run: |
+        black ./scripts --check --verbose
+        isort ./scripts --check --verbose
     - name: Run tests
       shell: bash
       run: |
