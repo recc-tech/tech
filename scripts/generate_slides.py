@@ -37,18 +37,16 @@ class GenerateSlidesConfig(ReccConfig):
         home_dir: Path,
         out_dir: Path,
         styles: Set[str],
-        now: datetime,
         show_browser: bool,
         ui: Literal["console", "tk"],
         verbose: bool,
-        no_run: bool,
     ) -> None:
         super().__init__(
             home_dir=home_dir,
-            now=now,
+            now=datetime.now(),
             ui=ui,
             verbose=verbose,
-            no_run=no_run,
+            no_run=False,
             auto_tasks=None,
         )
         self.out_dir = out_dir
@@ -134,11 +132,9 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             home_dir=args.home_dir,
             out_dir=args.out_dir,
             styles=set(args.style or {_LOWER_THIRD_DARK_STYLE}),
-            now=datetime.now(),
             show_browser=args.show_browser,
             ui=args.ui,
             verbose=args.verbose,
-            no_run=False,
         )
 
     def create_messenger(self, config: GenerateSlidesConfig) -> Messenger:
