@@ -1,4 +1,3 @@
-import os
 import unittest
 from datetime import datetime
 from pathlib import Path
@@ -77,7 +76,7 @@ class BoxCastTestCase(unittest.TestCase):
             message_title="",
             boxcast_event_id=EVENT_ID,
             home_dir=self.home_dir,
-            downloads_dir=Path(os.environ["USERPROFILE"]).joinpath("Downloads"),
+            downloads_dir=Path.home().joinpath("Downloads"),
             lazy_login=True,
             now=datetime.now(),
             show_browser=False,
