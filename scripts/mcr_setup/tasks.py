@@ -1,6 +1,7 @@
 import asyncio
 import re
 import shutil
+from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
 from typing import List, Set, Tuple
@@ -77,7 +78,7 @@ def download_assets(
         f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
     )
 
-    # TODO: Check that kids video has correct week number
+    _check_kids_video_week_num(kids_video, today, messenger)
 
     # IMPORTANT: the kids video must be the first thing in the downloads list
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
@@ -190,6 +191,37 @@ def _any(s: Set[Attachment]) -> Attachment:
     for x in s:
         return x
     raise ValueError("Empty sequence.")
+
+
+def _check_kids_video_week_num(
+    video: Attachment, today: date, messenger: Messenger
+) -> None:
+    m = re.search(r"w(\d)", video.filename, flags=re.IGNORECASE)
+    if not m:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            "Unable to determine week number from Kids Connection video filename.",
+        )
+        return
+    actual_num = int(m[1])
+    expected_num = _get_week_num(today)
+    if actual_num != expected_num:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"The current week number is {expected_num}, but the Kids Connection video seems to be from week {actual_num}.",
+        )
+    else:
+        messenger.log_debug(
+            f"Kids Connection video is from week {actual_num}, as expected."
+        )
+
+
+def _get_week_num(day: date) -> int:
+    for i in range(1, 5):
+        d = day - timedelta(days=7 * i)
+        if d.month != day.month:
+            return i
+    return 5
 
 
 class MergeFileResult(Enum):
