@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-import ctypes
+try:
+    from ctypes.windll.shcore import (  # pyright: ignore[reportMissingImports]
+        SetProcessDpiAwareness,
+    )
+except ImportError:
+    SetProcessDpiAwareness: Callable[[int], None] = lambda _: None
+
 import subprocess
 import threading
 import tkinter
@@ -27,7 +33,6 @@ from .input_messenger import (
 )
 
 T = TypeVar("T")
-
 
 _BACKGROUND_COLOUR = "#EEEEEE"
 _FOREGROUND_COLOUR = "#000000"
@@ -370,7 +375,7 @@ class TkMessenger(InputMessenger):
     def _create_gui(self) -> None:
         # Try to make the GUI less blurry
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            SetProcessDpiAwareness(1)
         except Exception:
             pass
 
