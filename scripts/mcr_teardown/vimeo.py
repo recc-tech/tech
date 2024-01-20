@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import autochecklist
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
-from common import Credential, CredentialStore, InputPolicy
+from lib import Credential, CredentialStore, InputPolicy
 from requests import Response
 from vimeo.client import VimeoClient
 

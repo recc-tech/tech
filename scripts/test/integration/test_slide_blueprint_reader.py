@@ -3,8 +3,8 @@ from pathlib import Path
 from unittest.mock import Mock, create_autospec
 
 from autochecklist import Messenger, ProblemLevel
-from common import ReccWebDriver
-from slides import BibleVerseFinder, SlideBlueprintReader
+from lib import ReccWebDriver
+from lib.slides import BibleVerseFinder, SlideBlueprintReader
 
 
 class SlideBlueprintReaderTestCase(unittest.TestCase):

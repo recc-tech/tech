@@ -1,7 +1,7 @@
 import shutil
 import stat
 
-import captions
+import lib
 import mcr_teardown.boxcast as boxcast_tasks
 import mcr_teardown.vimeo as vimeo_tasks
 import webvtt
@@ -146,7 +146,7 @@ def copy_captions_to_final(config: McrTeardownConfig):
 
 def remove_worship_captions(config: McrTeardownConfig):
     original_vtt = webvtt.read(config.final_captions_path)
-    final_vtt = captions.remove_worship_captions(original_vtt)
+    final_vtt = lib.remove_worship_captions(original_vtt)
     final_vtt.save(config.final_captions_path)
 
 

@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal, Optional, Set
 
-from common import ReccConfig
+from lib import ReccConfig
 
 
 class McrSetupConfig(ReccConfig):
@@ -43,6 +43,10 @@ class McrSetupConfig(ReccConfig):
     @property
     def assets_by_type_videos_dir(self) -> Path:
         return self.assets_by_type_dir.joinpath("Videos")
+
+    @property
+    def temp_assets_dir(self) -> Path:
+        return self.assets_by_type_dir.joinpath("Temp")
 
     @property
     def assets_by_type_archive_dir(self) -> Path:

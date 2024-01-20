@@ -8,7 +8,7 @@ from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
-from common import Attachment, CredentialStore, PlanningCenterClient
+from lib import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
 TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
@@ -68,14 +68,16 @@ class PlanningCenterTestCase(unittest.TestCase):
             Attachment(
                 id="145052830",
                 filename="MC Host Script.docx",
-                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 num_bytes=26_743,
+                pco_filetype="file",
+                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
             Attachment(
                 id="145057054",
                 filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
-                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 num_bytes=17_167,
+                pco_filetype="file",
+                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
         }
 
@@ -101,8 +103,9 @@ class PlanningCenterTestCase(unittest.TestCase):
                 Attachment(
                     id="145052830",
                     filename="MC Host Script.docx",
-                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     num_bytes=26_743,
+                    pco_filetype="file",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
                 actual_script_path,
             ),
@@ -110,8 +113,9 @@ class PlanningCenterTestCase(unittest.TestCase):
                 Attachment(
                     id="145057054",
                     filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
-                    content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     num_bytes=17_167,
+                    pco_filetype="file",
+                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
                 actual_notes_path,
             ),

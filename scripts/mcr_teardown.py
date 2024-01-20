@@ -20,7 +20,7 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from common import (
+from lib import (
     CredentialStore,
     PlanningCenterClient,
     parse_directory,

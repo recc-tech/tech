@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Literal, Optional, Set, Tuple
 
-import common
+import lib
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -15,8 +15,8 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from common import ReccConfig, ReccWebDriver
-from slides import (
+from lib import ReccConfig, ReccWebDriver
+from lib.slides import (
     BibleVerseFinder,
     Slide,
     SlideBlueprint,
@@ -37,18 +37,16 @@ class GenerateSlidesConfig(ReccConfig):
         home_dir: Path,
         out_dir: Path,
         styles: Set[str],
-        now: datetime,
         show_browser: bool,
         ui: Literal["console", "tk"],
         verbose: bool,
-        no_run: bool,
     ) -> None:
         super().__init__(
             home_dir=home_dir,
-            now=now,
+            now=datetime.now(),
             ui=ui,
             verbose=verbose,
-            no_run=no_run,
+            no_run=False,
             auto_tasks=None,
         )
         self.out_dir = out_dir
@@ -90,7 +88,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             "-o",
             "--out-dir",
             default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
-            type=lambda x: common.parse_directory(x, create=True),
+            type=lambda x: lib.parse_directory(x, create=True),
             help="Directory in which to place the generated images.",
         )
         parser.add_argument(
@@ -108,7 +106,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
         advanced_args = parser.add_argument_group("Advanced arguments")
         advanced_args.add_argument(
             "--home-dir",
-            type=common.parse_directory,
+            type=lib.parse_directory,
             default="D:\\Users\\Tech\\Documents",
             help="The home directory.",
         )
@@ -134,11 +132,9 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             home_dir=args.home_dir,
             out_dir=args.out_dir,
             styles=set(args.style or {_LOWER_THIRD_DARK_STYLE}),
-            now=datetime.now(),
             show_browser=args.show_browser,
             ui=args.ui,
             verbose=args.verbose,
-            no_run=False,
         )
 
     def create_messenger(self, config: GenerateSlidesConfig) -> Messenger:

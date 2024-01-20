@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Go to the scripts directory
+cd $(readlink -f $(dirname $0))
+
+python3 download_pco_assets.py

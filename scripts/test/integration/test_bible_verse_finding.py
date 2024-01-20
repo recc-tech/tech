@@ -2,8 +2,8 @@ import unittest
 import unittest.mock as mock
 
 from autochecklist import ProblemLevel
-from common import ReccWebDriver
-from slides import BibleVerse, BibleVerseFinder
+from lib import ReccWebDriver
+from lib.slides import BibleVerse, BibleVerseFinder
 
 
 class BibleVerseFindingTest(unittest.TestCase):
