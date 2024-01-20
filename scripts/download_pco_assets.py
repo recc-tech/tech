@@ -29,10 +29,11 @@ class DownloadAssetsConfig(ReccConfig):
         ui: Literal["console", "tk"],
         verbose: bool,
         station: Literal["foh", "mcr"],
+        now: datetime,
     ) -> None:
         super().__init__(
             home_dir=home_dir,
-            now=datetime.now(),
+            now=now,
             ui=ui,
             verbose=verbose,
             no_run=False,
@@ -113,10 +114,17 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
             default="tk",
             help="User interface to use.",
         )
-        advanced_args.add_argument(
+
+        debug_args = parser.add_argument_group("Debug arguments")
+        debug_args.add_argument(
             "--verbose",
             action="store_true",
             help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
+        )
+        debug_args.add_argument(
+            "--date",
+            type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
+            help="Pretend the script is running on a different date.",
         )
 
         args = parser.parse_args()
@@ -126,6 +134,11 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
             ui=args.ui,
             verbose=args.verbose,
             station=args.station,
+            now=(
+                datetime.combine(args.date, datetime.now().time())
+                if args.date
+                else datetime.now()
+            ),
         )
 
     def create_messenger(self, config: DownloadAssetsConfig) -> Messenger:
