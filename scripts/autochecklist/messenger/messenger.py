@@ -186,10 +186,6 @@ class Messenger:
             command_name="Cancel",
             callback=callback,
         )
-        self.log_debug(
-            message="Could not allow cancelling because the input messenger does not support it.",
-            task_name=actual_task_name,
-        )
         return token
 
     def disallow_cancel(self, task_name: str = ""):
