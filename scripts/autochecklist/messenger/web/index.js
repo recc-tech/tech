@@ -5,8 +5,7 @@ eel.expose(set_title);
  * @param {string} title - The new title.
  */
 function set_title(title) {
-    // TODO: Implement this
-    console.log(`set_title("${title}")`);
+    document.title = title;
 }
 
 eel.expose(set_description);
@@ -16,8 +15,8 @@ eel.expose(set_description);
  * @param {string} description - The new description.
  */
 function set_description(description) {
-    // TODO: Implement this
-    console.log(`set_description("${description}")`);
+    const targetElement = document.getElementById("script-description");
+    targetElement.innerText = description;
 }
 
 eel.expose(log_status);
@@ -36,9 +35,45 @@ eel.expose(log_status);
  * More details about what's currently happening.
  */
 function log_status(task_name, index, status, message) {
-    // TODO: Implement this
-    console.log(
-        `log_status("${task_name}", ${index}, "${status}", "${message}")`);
+    const tbody = document.getElementById("task-rows");
+    let tr = document.getElementById(`tr-${task_name}`);
+    if (!tr) {
+        tr = document.createElement('tr');
+        tr.id = `tr-${task_name}`;
+        tbody.appendChild(tr);
+    }
+
+    // This is where the button would go for each task
+    let tdButton = document.getElementById(`tdbutton-${task_name}`);
+    if (!tdButton) {
+        tdButton = document.createElement('td');
+        tdButton.id = `tdbutton-${task_name}`;
+        tr.appendChild(tdButton);
+    }
+
+    let tdTaskName = document.getElementById(`tdTaskName-${task_name}`);
+    if (!tdTaskName) {
+        tdTaskName = document.createElement('td');
+        tdTaskName.id = `tdTaskName-${task_name}`;
+        tr.appendChild(tdTaskName);
+    }
+    tdTaskName.innerText = task_name;
+
+    let tdStatus = document.getElementById(`tdStatus-${task_name}`);
+    if (!tdStatus) {
+        tdStatus = document.createElement('td');
+        tdStatus.id = `tdStatus-${task_name}`;
+        tr.appendChild(tdStatus);
+    }
+    tdStatus.innerText = status;
+
+    let tdMessage = document.getElementById(`tdMessage-${task_name}`);
+    if (!tdMessage) {
+        tdMessage = document.createElement('td');
+        tdMessage.id = `tdMessage-${task_name}`;
+        tr.appendChild(tdMessage);
+    }
+    tdMessage.innerText = message;
 }
 
 eel.expose(log_problem);
