@@ -8,6 +8,8 @@ from pathlib import Path
 from threading import Event, Lock, Thread
 from typing import Callable, Dict, Optional, Set, Tuple, TypeVar
 
+import os
+import signal
 import eel
 
 from . import eel_interface as eeli
@@ -151,6 +153,9 @@ class EelMessenger(InputMessenger):
                 e.set()
             for e in self._input_event_by_key.values():
                 e.set()
+        # eel.start() doesn't stop on its own and I can't find a better way to
+        # stop the Bottle server :/
+        os.kill(os.getpid(), signal.SIGINT)
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str

@@ -88,6 +88,8 @@ class Script(Generic[TConfig]):
             messenger.start(after_start=lambda: self._run_worker(config, messenger))
         except Exception as e:
             print(f"Failed to run messenger: {e}", file=sys.stderr)
+        except KeyboardInterrupt:
+            print("\nProgram cancelled.")
 
     def _run_worker(self, config: TConfig, messenger: Messenger) -> None:
         try:

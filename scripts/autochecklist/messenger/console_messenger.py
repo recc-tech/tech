@@ -72,9 +72,8 @@ class ConsoleMessenger(InputMessenger):
                             # Re-run it after leaving the menu
                             self._queue.put(task)
                         self._run_menu()
-                    except (KeyboardInterrupt, EOFError):
-                        self._io.write("\nProgram cancelled.")
-                        return
+                    except (KeyboardInterrupt, EOFError) as e:
+                        raise KeyboardInterrupt() from e
                 except Exception as e:
                     self._io.write(f"Error while running task from queue: {e}")
         finally:
