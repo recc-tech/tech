@@ -27,7 +27,7 @@ class Messenger:
     received the event and is already in the process of shutting down.
     """
 
-    ROOT_PSEUDOTASK_NAME = "SCRIPT MAIN"
+    ROOT_PSEUDOTASK_NAME = "SCRIPT_MAIN"
     """Default display name for the main thread."""
 
     def __init__(self, file_messenger: FileMessenger, input_messenger: InputMessenger):
@@ -51,6 +51,8 @@ class Messenger:
         self._input_messenger.close()
 
     def set_current_task_name(self, task_name: Optional[str]):
+        if task_name is not None and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             self._task_manager.set_current_task_name(task_name)
 
@@ -59,6 +61,8 @@ class Messenger:
             self._task_manager.set_task_index_table(task_index_table)
 
     def log_debug(self, message: str, task_name: str = ""):
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             task_name = self._task_manager.get_task_name(task_name) or "UNKNOWN"
         self._file_messenger.log(
@@ -74,6 +78,8 @@ class Messenger:
         task_name: str = "",
         file_only: bool = False,
     ):
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if actual_task_name:
@@ -110,6 +116,8 @@ class Messenger:
         stacktrace: str = "",
         task_name: str = "",
     ):
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             task_name = self._task_manager.get_task_name(task_name) or "UNKNOWN"
         details = f"\n{stacktrace}" if stacktrace else ""
@@ -139,6 +147,8 @@ class Messenger:
         allowed_responses: Iterable[UserResponse] = (UserResponse.DONE,),
         task_name: str = "",
     ) -> UserResponse:
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if actual_task_name:
@@ -155,6 +165,8 @@ class Messenger:
         """
         Allow the user to cancel a task.
         """
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if not actual_task_name:
@@ -212,6 +224,8 @@ class Messenger:
         """
         Remove the ability to cancel a task if cancelling was allowed.
         """
+        if task_name and not self.is_valid_task_name(task_name):
+            raise ValueError(f"'{task_name}' is not a valid task name.")
         with self._task_manager_mutex:
             actual_task_name = self._task_manager.get_task_name(task_name)
             if not actual_task_name:
@@ -259,6 +273,23 @@ class Messenger:
             self._input_messenger.delete_progress_bar(key)
         except NotImplementedError:
             pass
+
+    @staticmethod
+    def is_valid_task_name(task_name: str) -> bool:
+        """
+        A task name is valid iff it starts with an ASCII letter and contains
+        only ASCII letters, digits, and underscores.
+
+        This is to ensure the task name can be used as part of an HTML ID or as
+        a Python function name.
+        """
+        return (
+            isinstance(task_name, str)  # pyright: ignore[reportUnnecessaryIsInstance]
+            and task_name.isascii()
+            and len(task_name) > 0
+            and task_name[0].isalpha()
+            and all(c.isalpha or c.isdigit() or c == "_" for c in task_name)
+        )
 
 
 class CancellationToken:

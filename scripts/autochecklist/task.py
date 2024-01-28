@@ -229,7 +229,8 @@ class TaskModel:
     only_auto: bool = False
 
     def __post_init__(self):
-        object.__setattr__(self, "name", self.name.strip())
+        if not Messenger.is_valid_task_name(self.name):
+            raise ValueError(f"'{self.name}' is not a valid task name.")
         if not self.name.strip():
             raise ValueError("Every task must have a non-blank name.")
         if not self.subtasks and not self.description.strip():
