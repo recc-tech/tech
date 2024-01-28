@@ -1,3 +1,9 @@
+if (typeof eel === "undefined") {
+    var eel = {
+        expose: () => {}
+    };
+}
+
 eel.expose(set_title);
 /**
  * Set the title of the whole page.
