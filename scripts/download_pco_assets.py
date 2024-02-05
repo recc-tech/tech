@@ -30,6 +30,7 @@ class DownloadAssetsConfig(ReccConfig):
         verbose: bool,
         station: Literal["foh", "mcr"],
         now: datetime,
+        dry_run: bool,
     ) -> None:
         super().__init__(
             home_dir=home_dir,
@@ -40,6 +41,7 @@ class DownloadAssetsConfig(ReccConfig):
             auto_tasks=None,
         )
         self.station = station
+        self.dry_run = dry_run
 
     @property
     def assets_by_service_dir(self) -> Path:
@@ -126,6 +128,11 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
             type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
             help="Pretend the script is running on a different date.",
         )
+        debug_args.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Detect available assets without actually downloading any.",
+        )
 
         args = parser.parse_args()
 
@@ -139,6 +146,7 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
                 if args.date
                 else datetime.now()
             ),
+            dry_run=args.dry_run,
         )
 
     def create_messenger(self, config: DownloadAssetsConfig) -> Messenger:
@@ -184,6 +192,7 @@ def download_pco_assets(
         assets_by_type_images_dir=config.assets_by_type_images_dir,
         download_kids_video=config.download_kids_video,
         download_notes_docx=config.download_notes_docx,
+        dry_run=config.dry_run
     )
 
 

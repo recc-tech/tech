@@ -21,6 +21,7 @@ def download_pco_assets(
     assets_by_type_images_dir: Path,
     download_kids_video: bool,
     download_notes_docx: bool,
+    dry_run: bool,
 ):
     cancellation_token = messenger.allow_cancel()
 
@@ -37,6 +38,10 @@ def download_pco_assets(
     messenger.log_debug(
         f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
     )
+
+    if dry_run:
+        messenger.log_debug("Skipping downloading assets: dry run.")
+        return
 
     # IMPORTANT: the kids video must be the first thing in the downloads list
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
