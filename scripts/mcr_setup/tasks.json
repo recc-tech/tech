@@ -66,17 +66,10 @@
 					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{ASSETS_BY_SERVICE_DIR}%. Move the other new assets to %{ASSETS_BY_TYPE_DIR}%."
 				},
 				{
-					"name": "import_kids_video",
-					"description": "Import the Kids Connection video into the 'Videos' category in vMix and close the previous week's video. (Note: you can drag and drop the video from Windows File Explorer directly into vMix!)",
+					"name": "create_kids_connection_playlist",
+					"description": "In vMix, replace last week's kids video with this week's video in the Kids Connection list input.",
 					"prerequisites": [
 						"download_assets"
-					]
-				},
-				{
-					"name": "create_kids_connection_playlist",
-					"description": "In vMix, create a playlist containing the Kids Connection countdown, this week's Kids Connection video, and the pre-stream title loop.",
-					"prerequisites": [
-						"import_kids_video"
 					]
 				},
 				{
