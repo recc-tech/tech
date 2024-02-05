@@ -107,7 +107,11 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
         advanced_args.add_argument(
             "--home-dir",
             type=lib.parse_directory,
-            default="D:\\Users\\Tech\\Documents",
+            default=(
+                "/Users/visuals/Documents"
+                if platform.system() == "Darwin"
+                else "D:\\Users\\Tech\\Documents"
+            ),
             help="The home directory.",
         )
         advanced_args.add_argument(
@@ -192,7 +196,7 @@ def download_pco_assets(
         assets_by_type_images_dir=config.assets_by_type_images_dir,
         download_kids_video=config.download_kids_video,
         download_notes_docx=config.download_notes_docx,
-        dry_run=config.dry_run
+        dry_run=config.dry_run,
     )
 
 
