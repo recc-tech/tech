@@ -115,7 +115,7 @@ def download_pco_assets(
                 )
 
 
-_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"^kids.*", flags=re.IGNORECASE)
+_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
 _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 
 
@@ -126,7 +126,7 @@ def _classify_attachments(
 ]:
     def is_kids_video(a: Attachment) -> bool:
         return a.file_type == FileType.VIDEO and bool(
-            _KIDS_VIDEO_FILENAME_REGEX.fullmatch(a.filename)
+            _KIDS_VIDEO_FILENAME_REGEX.search(a.filename)
         )
 
     def is_sermon_notes(a: Attachment) -> bool:
@@ -134,6 +134,8 @@ def _classify_attachments(
             _SERMON_NOTES_REGEX.fullmatch(a.filename)
         )
 
+    # Don't mutate the input
+    attachments = set(attachments)
     kids_videos = {a for a in attachments if is_kids_video(a)}
     attachments -= kids_videos
     notes = {a for a in attachments if is_sermon_notes(a)}
