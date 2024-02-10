@@ -1,8 +1,9 @@
 # pyright: reportPrivateUsage=false
 
 import unittest
-from lib.download_pco_assets import Attachment, _classify_attachments
 from unittest.mock import Mock
+
+from lib.download_pco_assets import Attachment, _classify_attachments
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
