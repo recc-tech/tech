@@ -63,4 +63,5 @@ def download_assets(
         assets_by_type_images_dir=config.assets_by_type_images_dir,
         download_kids_video=True,
         download_notes_docx=True,
+        dry_run=False,
     )
