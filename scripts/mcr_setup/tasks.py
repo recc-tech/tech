@@ -36,7 +36,7 @@ def generate_backup_slides(
         b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
         for i, b in enumerate(blueprints, start=1)
     ]
-    slides = generator.generate_lower_third_slide(
+    slides = generator.generate_lower_third_slides(
         blueprints_with_prefix, show_backdrop=True
     )
 
