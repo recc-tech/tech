@@ -29,12 +29,22 @@ def download_pco_assets(
     plan = client.find_plan_by_date(today)
     attachments = client.find_attachments(plan.id)
     (
-        kids_video,
+        kids_videos,
         sermon_notes,
         other_images,
         other_videos,
         unknown_attachments,
     ) = _classify_attachments(attachments, messenger)
+    if len(sermon_notes) != 1:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+        )
+    if len(kids_videos) != 1 and download_kids_video:
+        raise ValueError(
+            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
+        )
+    kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
     messenger.log_debug(
         f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
     )
@@ -47,6 +57,9 @@ def download_pco_assets(
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
     downloads: List[Tuple[Attachment, Path]] = []
     if download_kids_video:
+        # Should never happen, but check to make Pyright happy
+        if kids_video is None:
+            raise ValueError("Missing kids video.")
         _check_kids_video_week_num(kids_video, today, messenger)
         kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
         downloads.append((kids_video, kids_video_path))
@@ -122,7 +135,7 @@ _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 def _classify_attachments(
     attachments: Set[Attachment], messenger: Messenger
 ) -> Tuple[
-    Attachment, Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
+    Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
 ]:
     def is_kids_video(a: Attachment) -> bool:
         return a.file_type == FileType.VIDEO and bool(
@@ -145,18 +158,7 @@ def _classify_attachments(
     other_videos = {a for a in attachments if a.file_type == FileType.VIDEO}
     attachments -= other_videos
 
-    if len(notes) != 1:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(notes)} attachments that look like sermon notes.",
-        )
-    if len(kids_videos) != 1:
-        raise ValueError(
-            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
-        )
-    kids_video = _any(kids_videos)
-
-    return kids_video, notes, other_images, other_videos, attachments
+    return kids_videos, notes, other_images, other_videos, attachments
 
 
 def _any(s: Set[Attachment]) -> Attachment:
