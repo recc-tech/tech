@@ -20,13 +20,14 @@ class VmixInputType(Enum):
     NDI = "NDI"
     CAPTURE = "Capture"
     COLOUR = "Colour"
+    PLACEHOLDER = "Placeholder"
     UNKNOWN = "UNKNOWN"
 
     @staticmethod
     def parse(t: str) -> VmixInputType:
         try:
             return VmixInputType(t)
-        except KeyError:
+        except Exception:
             return VmixInputType.UNKNOWN
 
 
