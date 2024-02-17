@@ -98,28 +98,22 @@ class PlanningCenterTestCase(unittest.TestCase):
         # The client expects the directories to actually exist
         DATA_DIR.mkdir(exist_ok=True)
         TEMP_DIR.mkdir(exist_ok=True)
-        attachments = [
-            (
-                Attachment(
-                    id="145052830",
-                    filename="MC Host Script.docx",
-                    num_bytes=26_743,
-                    pco_filetype="file",
-                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ),
-                actual_script_path,
+        attachments = {
+            actual_script_path: Attachment(
+                id="145052830",
+                filename="MC Host Script.docx",
+                num_bytes=26_743,
+                pco_filetype="file",
+                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
-            (
-                Attachment(
-                    id="145057054",
-                    filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
-                    num_bytes=17_167,
-                    pco_filetype="file",
-                    mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                ),
-                actual_notes_path,
+            actual_notes_path: Attachment(
+                id="145057054",
+                filename="Notes - Easter Experience - The Unexpected Road Trip.docx",
+                num_bytes=17_167,
+                pco_filetype="file",
+                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ),
-        ]
+        }
 
         results = asyncio.run(
             client.download_attachments(

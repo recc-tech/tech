@@ -1,14 +1,18 @@
 import asyncio
 import re
 import shutil
+import typing
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 
 from .planning_center import Attachment, FileType, PlanningCenterClient
+
+_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
+_SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 
 
 def download_pco_assets(
@@ -25,81 +29,58 @@ def download_pco_assets(
 ) -> Optional[Path]:
     cancellation_token = messenger.allow_cancel()
 
-    messenger.log_status(TaskStatus.RUNNING, "Identifying attachments.")
-    plan = client.find_plan_by_date(today)
-    attachments = client.find_attachments(plan.id)
-    (
-        kids_videos,
-        sermon_notes,
-        other_images,
-        other_videos,
-        unknown_attachments,
-    ) = _classify_attachments(attachments, messenger)
-    if len(sermon_notes) != 1:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(sermon_notes)} attachments that look like sermon notes.",
-        )
-    if len(kids_videos) != 1 and download_kids_video:
-        raise ValueError(
-            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
-        )
-    kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
-    messenger.log_debug(
-        f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
+    (downloads, kids_video_path) = _plan_downloads(
+        client=client,
+        messenger=messenger,
+        today=today,
+        assets_by_service_dir=assets_by_service_dir,
+        temp_assets_dir=temp_assets_dir,
+        assets_by_type_videos_dir=assets_by_type_videos_dir,
+        download_kids_video=download_kids_video,
+        download_notes_docx=download_notes_docx,
     )
 
+    if len(downloads) == 0:
+        messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
+        return
     if dry_run:
         messenger.log_debug("Skipping downloading assets: dry run.")
         return None
 
-    # IMPORTANT: the kids video must be the first thing in the downloads list
-    messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
-    downloads: List[Tuple[Attachment, Path]] = []
-    if download_kids_video:
-        # Should never happen, but check to make Pyright happy
-        if kids_video is None:
-            raise ValueError("Missing kids video.")
-        _check_kids_video_week_num(kids_video, today, messenger)
-        kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-        downloads.append((kids_video, kids_video_path))
-    if download_notes_docx:
-        for sn in sermon_notes:
-            downloads.append((sn, assets_by_service_dir.joinpath(sn.filename)))
-    for img in other_images:
-        downloads.append((img, temp_assets_dir.joinpath(img.filename)))
-    for vid in other_videos:
-        vid_path = assets_by_type_videos_dir.joinpath(vid.filename)
-        # Assume the existing video is already correct
-        if not vid_path.exists():
-            downloads.append((vid, vid_path))
     assets_by_service_dir.mkdir(exist_ok=True, parents=True)
     # Just in case
     assets_by_type_videos_dir.mkdir(exist_ok=True, parents=True)
     assets_by_type_images_dir.mkdir(exist_ok=True, parents=True)
     temp_assets_dir.mkdir(exist_ok=True, parents=True)
 
-    if len(downloads) == 0:
-        messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
-        return None
-
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     results = asyncio.run(
         client.download_attachments(downloads, messenger, cancellation_token)
     )
-    if download_kids_video and results[0] is not None:
-        raise Exception(
-            f"Failed to download the Kids Connection video: {results[0]} ({type(results[0]).__name__})."
-        ) from results[0]
-    for (_, path), result in zip(downloads, results):
-        if result is not None:
+    if download_kids_video:
+        if kids_video_path is None:
+            raise ValueError("Internal error: the kids video path is not known.")
+        kids_video_result = results[kids_video_path]
+        if kids_video_result is not None:
+            raise Exception(
+                f"Failed to download the Kids Connection video: {kids_video_result} ({type(kids_video_result).__name__})."
+            ) from kids_video_result
+    for path in downloads.keys():
+        if path not in results:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"The result of the download to '{path.as_posix()}' is unknown.",
+            )
+        elif results[path] is not None:
             # TODO: Refactor log_problem to take exception object as input
             messenger.log_problem(
                 ProblemLevel.WARN,
-                f"Download to '{path.as_posix()}' failed: {results} ({type(result).__name__}).",
+                f"Download to '{path.as_posix()}' failed: {results[path]} ({type(results[path]).__name__}).",
             )
     successful_image_downloads = [
-        p for (a, p), r in zip(downloads, results) if r is None and a in other_images
+        p
+        for p in downloads.keys()
+        if results.get(p, None) is None and p.is_relative_to(temp_assets_dir)
     ]
 
     messenger.log_status(
@@ -128,14 +109,69 @@ def download_pco_assets(
                 )
 
     if download_kids_video:
-        (_, path) = downloads[0]
-        return path
+        return typing.cast(Path, kids_video_path)
     else:
         return None
 
 
-_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
-_SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
+def _plan_downloads(
+    client: PlanningCenterClient,
+    messenger: Messenger,
+    today: date,
+    assets_by_service_dir: Path,
+    temp_assets_dir: Path,
+    assets_by_type_videos_dir: Path,
+    download_kids_video: bool,
+    download_notes_docx: bool,
+) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
+    messenger.log_status(
+        TaskStatus.RUNNING, "Looking for attachments in Planning Center."
+    )
+    plan = client.find_plan_by_date(today)
+    attachments = client.find_attachments(plan.id)
+    (
+        kids_videos,
+        sermon_notes,
+        other_images,
+        other_videos,
+        unknown_attachments,
+    ) = _classify_attachments(attachments, messenger)
+    if len(sermon_notes) != 1 and download_notes_docx:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+        )
+    if len(kids_videos) != 1 and download_kids_video:
+        raise ValueError(
+            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
+        )
+    kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
+    messenger.log_debug(
+        f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
+    )
+
+    messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
+    downloads: Dict[Path, Attachment] = {}
+    kids_video_path = None
+    if download_kids_video:
+        # Should never happen, but check to make Pyright happy
+        if kids_video is None:
+            raise ValueError("Missing kids video.")
+        _check_kids_video_week_num(kids_video, today, messenger)
+        kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
+        downloads[kids_video_path] = kids_video
+    if download_notes_docx:
+        for sn in sermon_notes:
+            downloads[assets_by_service_dir.joinpath(sn.filename)] = sn
+    for img in other_images:
+        downloads[temp_assets_dir.joinpath(img.filename)] = img
+    for vid in other_videos:
+        vid_path = assets_by_type_videos_dir.joinpath(vid.filename)
+        # Assume the existing video is already correct
+        if not vid_path.exists():
+            downloads[vid_path] = vid
+
+    return (downloads, kids_video_path)
 
 
 def _classify_attachments(

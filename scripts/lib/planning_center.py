@@ -165,17 +165,18 @@ class PlanningCenterClient:
 
     async def download_attachments(
         self,
-        downloads: List[Tuple[Attachment, Path]],
+        downloads: Dict[Path, Attachment],
         messenger: Messenger,
         cancellation_token: Optional[CancellationToken],
-    ) -> List[Optional[BaseException]]:
+    ) -> Dict[Path, Optional[BaseException]]:
         """
-        Downloads each attachment to the corresponding path. Returns a list
-        containing, for each attachment, `None` if it was downloaded
-        successfully and an exception otherwise. The list of results will be in
-        the same order as the list of downloads.
+        Downloads each attachment to the corresponding path. Returns a dict
+        containing, for each path, `None` if the attachment was downloaded
+        successfully and an exception otherwise.
         """
         results: List[Optional[BaseException]]
+        downloads_list = list(downloads.items())
+        paths = [p for (p, _) in downloads_list]
         try:
             app_id, secret = self._get_auth()
             auth = aiohttp.BasicAuth(login=app_id, password=secret)
@@ -189,7 +190,7 @@ class PlanningCenterClient:
                         messenger,
                         cancellation_token,
                     )
-                    for attachment, destination in downloads
+                    for destination, attachment in downloads_list
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
         except BaseException as e:
@@ -197,7 +198,7 @@ class PlanningCenterClient:
         # Avoid RuntimeWarnings for unclosed resources
         # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
         await asyncio.sleep(0.25)
-        return results
+        return {p: r for (p, r) in zip(paths, results)}
 
     def find_presenters(
         self, plan_id: str, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
