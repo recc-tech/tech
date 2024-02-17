@@ -8,13 +8,15 @@ from lib.download_pco_assets import Attachment, _classify_attachments
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
     def test_classify_attachments(self):
-        kids_video = Attachment(
-            id="163865496",
-            filename="Kids_OnlineExperience_W1.mp4",
-            num_bytes=547786017,
-            pco_filetype="video",
-            mime_type="application/mp4",
-        )
+        kids_video = {
+            Attachment(
+                id="163865496",
+                filename="Kids_OnlineExperience_W1.mp4",
+                num_bytes=547786017,
+                pco_filetype="video",
+                mime_type="application/mp4",
+            )
+        }
         notes = {
             Attachment(
                 id="163869600",
@@ -65,7 +67,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
                 mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             )
         }
-        all_attachments = {kids_video}.union(notes, images, videos, unknown_assets)
+        all_attachments = kids_video.union(notes, images, videos, unknown_assets)
         original_all_attachments = set(all_attachments)
 
         messenger = Mock()
@@ -90,19 +92,4 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
         )
         messenger = Mock()
         k, *_ = _classify_attachments({kids_video}, messenger)
-        self.assertEqual(kids_video, k)
-
-    def test_classify_missing_kids_video(self):
-        attachments = {
-            Attachment(
-                id="162216121",
-                filename="clean_slate_bumper.mov",
-                num_bytes=43767222,
-                pco_filetype="video",
-                mime_type="video/quicktime",
-            )
-        }
-        messenger = Mock()
-        self.assertRaises(
-            ValueError, lambda: _classify_attachments(attachments, messenger)
-        )
+        self.assertEqual({kids_video}, k)
