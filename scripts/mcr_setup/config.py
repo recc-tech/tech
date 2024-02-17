@@ -25,6 +25,7 @@ class McrSetupConfig(ReccConfig):
             auto_tasks=auto_tasks,
         )
         self.show_browser = show_browser
+        self.kids_video_path: Optional[Path] = None
 
     @property
     def assets_by_service_dir(self) -> Path:
@@ -77,6 +78,26 @@ class McrSetupConfig(ReccConfig):
         return self.log_dir.joinpath(
             f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')} mcr_setup_webdriver.log"
         )
+
+    @property
+    def vmix_kids_connection_list_key(self) -> str:
+        return "377a5427-91fa-4cbc-80ee-1bb752a5e364"
+
+    @property
+    def vmix_pre_stream_title_key(self) -> str:
+        return "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
+
+    @property
+    def vmix_speaker_title_key(self) -> str:
+        return "9d2614a9-26ff-42a0-95f2-220d82370606"
+
+    @property
+    def vmix_host_title_key(self) -> str:
+        return "407171aa-af67-4d25-8ab5-1659176fc79d"
+
+    @property
+    def vmix_extra_presenter_title_key(self) -> str:
+        return "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
     def fill_placeholders(self, text: str) -> str:
         text = (

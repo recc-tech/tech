@@ -58,6 +58,12 @@ class Attachment:
             return FileType.OTHER
 
 
+@dataclass(frozen=True)
+class PresenterSet:
+    speaker_names: List[str]
+    mc_host_names: List[str]
+
+
 class PlanningCenterClient:
     _BASE_URL = "https://api.planningcenteronline.com"
     _SERVICES_BASE_URL = f"{_BASE_URL}/services/v2"
@@ -192,6 +198,31 @@ class PlanningCenterClient:
         # https://docs.aiohttp.org/en/stable/client_advanced.html#graceful-shutdown
         await asyncio.sleep(0.25)
         return results
+
+    def find_presenters(
+        self, plan_id: str, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+    ) -> PresenterSet:
+        app_id, secret = self._get_auth()
+        response = requests.get(
+            url=f"{self._SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
+            params={"filter": "confirmed"},
+            auth=HTTPBasicAuth(app_id, secret),
+            timeout=self._TIMEOUT_SECONDS,
+        )
+        if response.status_code // 100 != 2:
+            raise ValueError(f"Request failed with status code {response.status_code}")
+        people = response.json()["data"]
+        speaker_names = [
+            p["attributes"]["name"]
+            for p in people
+            if p["attributes"]["team_position_name"].lower() == "speaker"
+        ]
+        mc_host_names = [
+            p["attributes"]["name"]
+            for p in people
+            if p["attributes"]["team_position_name"].lower() == "mc host"
+        ]
+        return PresenterSet(speaker_names=speaker_names, mc_host_names=mc_host_names)
 
     def _test_credentials(self, max_attempts: int):
         for attempt_num in range(1, max_attempts + 1):

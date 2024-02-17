@@ -81,7 +81,7 @@
 				},
 				{
 					"name": "update_titles",
-					"description": "In vMix, update the pre-stream title loop, the speaker's title, the host's title, and the title for anyone else that will make an announcement. Test all the titles."
+					"description": "In vMix, update the pre-stream title loop, the speaker's title, the host's title, and the title for anyone else that will make an announcement."
 				}
 			]
 		},
