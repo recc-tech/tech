@@ -4,7 +4,7 @@ import shutil
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 
@@ -22,7 +22,7 @@ def download_pco_assets(
     download_kids_video: bool,
     download_notes_docx: bool,
     dry_run: bool,
-):
+) -> Optional[Path]:
     cancellation_token = messenger.allow_cancel()
 
     messenger.log_status(TaskStatus.RUNNING, "Identifying attachments.")
@@ -51,7 +51,7 @@ def download_pco_assets(
 
     if dry_run:
         messenger.log_debug("Skipping downloading assets: dry run.")
-        return
+        return None
 
     # IMPORTANT: the kids video must be the first thing in the downloads list
     messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
@@ -81,7 +81,7 @@ def download_pco_assets(
 
     if len(downloads) == 0:
         messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
-        return
+        return None
 
     messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
     results = asyncio.run(
@@ -126,6 +126,12 @@ def download_pco_assets(
                     ProblemLevel.WARN,
                     f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
                 )
+
+    if download_kids_video:
+        (_, path) = downloads[0]
+        return path
+    else:
+        return None
 
 
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
