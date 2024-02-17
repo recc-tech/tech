@@ -15,6 +15,21 @@ _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
 _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 
 
+def locate_kids_video(dir: Path) -> Optional[Path]:
+    def is_kids_video(p: Path) -> bool:
+        return (
+            p.is_file()
+            and p.suffix.lower() in {".mp4", ".mov"}
+            and bool(_KIDS_VIDEO_FILENAME_REGEX.search(p.stem))
+        )
+
+    candidates = [p for p in dir.glob("*") if is_kids_video(p)]
+    if len(candidates) == 1:
+        return candidates[0]
+    else:
+        return None
+
+
 def download_pco_assets(
     client: PlanningCenterClient,
     messenger: Messenger,
