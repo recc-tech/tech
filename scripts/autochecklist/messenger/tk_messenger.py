@@ -34,8 +34,8 @@ from .input_messenger import (
 
 T = TypeVar("T")
 
-_BACKGROUND_COLOUR = "#EEEEEE"
-_FOREGROUND_COLOUR = "#000000"
+_BACKGROUND_COLOUR = "#444444"
+_FOREGROUND_COLOUR = "#FFFFFF"
 
 _NORMAL_FONT = "Calibri 12"
 _ITALIC_FONT = f"{_NORMAL_FONT} italic"
@@ -402,7 +402,6 @@ class TkMessenger(InputMessenger):
             self._tk,
             padx=10,
             pady=10,
-            background=_BACKGROUND_COLOUR,
             width=int(0.5 * window_width),
         )
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
@@ -556,7 +555,12 @@ class TkMessenger(InputMessenger):
             w.title(title)
             if prompt:
                 prompt_box = Label(
-                    w, text=prompt, font=_ITALIC_FONT, padding=(0, 0, 0, 50)
+                    w,
+                    text=prompt,
+                    font=_ITALIC_FONT,
+                    padding=(0, 0, 0, 50),
+                    background=_BACKGROUND_COLOUR,
+                    foreground=_FOREGROUND_COLOUR,
                 )
                 prompt_box.grid()
             for name, param in params.items():
@@ -564,7 +568,13 @@ class TkMessenger(InputMessenger):
                 param_frame.grid(pady=15)
                 entry_row = Frame(param_frame)
                 entry_row.grid()
-                name_label = Label(entry_row, text=param.display_name, font=_BOLD_FONT)
+                name_label = Label(
+                    entry_row,
+                    text=param.display_name,
+                    font=_BOLD_FONT,
+                    background=_BACKGROUND_COLOUR,
+                    foreground=_FOREGROUND_COLOUR,
+                )
                 name_label.grid(row=0, column=0, padx=5)
                 if param.password:
                     entry = Entry(entry_row, show="*", font=_NORMAL_FONT)
@@ -679,6 +689,7 @@ def _create_scrollable_frame(
         yscrollcommand=scrollbar.set,
         borderwidth=0,
         highlightthickness=0,
+        background=_BACKGROUND_COLOUR,
     )
     canvas.pack(side="left", fill="both", expand=1)
     canvas.bind("<Configure>", lambda e: update_scrollregion())
@@ -1000,9 +1011,9 @@ class _TaskStatusGrid(Frame):
         self._bold_font = bold_font
 
         self._taken_indices: Set[int] = set()
-        self._widgets_by_name: Dict[
-            str, Tuple[Frame, _CopyableText, _CopyableText]
-        ] = {}
+        self._widgets_by_name: Dict[str, Tuple[Frame, _CopyableText, _CopyableText]] = (
+            {}
+        )
         self._command: Dict[Tuple[str, str], Button] = {}
         self._create_header()
 
@@ -1316,19 +1327,17 @@ class _ProgressBarGroup(Toplevel):
         parent: Misc,
         padx: int,
         pady: int,
-        background: str,
         width: int,
     ) -> None:
         self._mutex = Lock()
         self._key_gen = 0
         self._bar_by_key: Dict[int, Tuple[Progressbar, Label, Label, float, str]] = {}
         self._length = int(width - 2 * padx)
-        self._background = background
         super().__init__(
             parent,
             padx=padx,
             pady=pady,
-            background=background,
+            background=_BACKGROUND_COLOUR,
             width=width,
         )
         # Disable closing
@@ -1344,13 +1353,15 @@ class _ProgressBarGroup(Toplevel):
             name_label = Label(
                 self,
                 text=display_name,
-                background=self._background,
+                background=_BACKGROUND_COLOUR,
+                foreground=_FOREGROUND_COLOUR,
                 font=_NORMAL_FONT,
             )
             name_label.grid(row=2 * key, columnspan=2)
             progress_label = Label(
                 self,
-                background=self._background,
+                background=_BACKGROUND_COLOUR,
+                foreground=_FOREGROUND_COLOUR,
                 text=f"[0.00/{max_value:.2f} {units}]",
                 font=_NORMAL_FONT,
             )

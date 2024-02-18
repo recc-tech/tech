@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
 # Go to the scripts directory
-cd $(readlink -f $(dirname $0))
+cd "$(dirname "$0")"
 
 git stash --include-untracked
 git switch main
