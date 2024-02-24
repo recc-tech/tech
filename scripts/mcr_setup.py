@@ -13,7 +13,7 @@ from autochecklist import (
     Script,
     TkMessenger,
 )
-from config import McrSetupConfig
+from config import McrSetupConfig, SlidesConfig
 from external_services import (
     CredentialStore,
     PlanningCenterClient,
@@ -133,7 +133,7 @@ class McrSetupScript(Script[McrSetupConfig]):
             cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger)
+        generator = SlideGenerator(messenger, SlidesConfig())
         function_finder = FunctionFinder(
             mcr_setup,
             [

@@ -8,9 +8,18 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel
+from config import (
+    Bbox,
+    Font,
+    FooterSlideStyle,
+    NoFooterSlideStyle,
+    Rectangle,
+    SlidesConfig,
+    Textbox,
+)
 from external_services import BibleVerse, BibleVerseFinder
 from matplotlib.font_manager import FontManager, FontProperties
 from PIL import Image, ImageDraw, ImageFont
@@ -215,25 +224,6 @@ def _convert_text_to_filename(text: str) -> str:
 FONT_MANAGER = FontManager()
 
 
-@dataclass
-class FontSpec:
-    family: List[str]
-    style: Literal["normal", "italic", "oblique"]
-    max_size: int
-    min_size: int
-
-    def make_font(self, size: int) -> FreeTypeFont:
-        properties = FontProperties(family=self.family, style=self.style)
-        path = FONT_MANAGER.findfont(properties)
-        return ImageFont.truetype(path, size=size)
-
-
-IMG_WIDTH = 1920
-IMG_HEIGHT = 1080
-OUTER_MARGIN = 100
-FONT_FAMILY = ["Helvetica", "Calibri", "sans-serif"]
-
-
 @dataclass(frozen=True)
 class SlideBlueprint:
     body_text: str
@@ -261,241 +251,133 @@ class Slide:
         self.image.save(path, format="PNG")
 
 
-@dataclass
-class _Bbox:
-    left: int
-    top: int
-    right: int
-    bottom: int
-
-    @staticmethod
-    def xywh(x: int, y: int, w: int, h: int) -> _Bbox:
-        return _Bbox(left=x, top=y, right=x + w, bottom=y + h)
-
-    def get_horizontal_centre(self) -> float:
-        return self.left + (self.right - self.left) / 2
-
-    def get_vertical_centre(self) -> float:
-        return self.top + (self.bottom - self.top) / 2
-
-    def get_width(self) -> int:
-        return self.right - self.left
-
-    def get_height(self) -> int:
-        return self.bottom - self.top
-
-
 class SlideGenerator:
-    def __init__(self, messenger: Messenger):
+    def __init__(self, messenger: Messenger, config: SlidesConfig):
         self._messenger = messenger
+        self._config = config
 
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
         return [
             (
-                self._generate_fullscreen_slide_with_footer(b)
+                self._generate_slide_with_footer(
+                    b, self._config.fullscreen_scripture_style
+                )
                 if b.footer_text
-                else self._generate_fullscreen_slide_without_footer(b)
+                else self._generate_slide_without_footer(
+                    b, self._config.fullscreen_message_style
+                )
             )
             for b in blueprints
         ]
 
     def generate_lower_third_slides(
-        self, blueprints: List[SlideBlueprint], show_backdrop: bool
+        self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
         return [
             (
-                self._generate_lower_third_slide_with_footer(b, show_backdrop)
+                self._generate_slide_with_footer(
+                    b, self._config.lowerthird_scripture_style
+                )
                 if b.footer_text
-                else self._generate_lower_third_slide_without_footer(b, show_backdrop)
+                else self._generate_slide_without_footer(
+                    b, self._config.lowerthird_message_style
+                )
             )
             for b in blueprints
         ]
 
-    def _generate_fullscreen_slide_with_footer(self, input: SlideBlueprint) -> Slide:
-        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
-        draw = ImageDraw.Draw(img)
-        self._draw_text(
-            draw=draw,
-            text=input.body_text,
-            bbox=_Bbox(
-                left=OUTER_MARGIN,
-                top=OUTER_MARGIN,
-                right=IMG_WIDTH - OUTER_MARGIN,
-                bottom=IMG_HEIGHT - 3 * OUTER_MARGIN,
-            ),
-            horiz_align="left",
-            vert_align="top",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=36, max_size=72
-            ),
-            foreground="#333333",
-            stroke_width=1,  # bold
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        self._draw_text(
-            draw=draw,
-            text=input.footer_text,
-            bbox=_Bbox(
-                OUTER_MARGIN,
-                IMG_HEIGHT - 2 * OUTER_MARGIN,
-                IMG_WIDTH - OUTER_MARGIN,
-                IMG_HEIGHT - OUTER_MARGIN,
-            ),
-            horiz_align="right",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="oblique", min_size=30, max_size=60
-            ),
-            foreground="dimgrey",
-            stroke_width=0,
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        return Slide(image=img, name=input.name)
-
-    def _generate_fullscreen_slide_without_footer(self, input: SlideBlueprint) -> Slide:
-        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
-        draw = ImageDraw.Draw(img)
-        self._draw_text(
-            draw=draw,
-            text=input.body_text,
-            bbox=_Bbox(
-                OUTER_MARGIN,
-                OUTER_MARGIN,
-                IMG_WIDTH - OUTER_MARGIN,
-                IMG_HEIGHT - OUTER_MARGIN,
-            ),
-            horiz_align="center",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=36, max_size=72
-            ),
-            foreground="#333333",
-            stroke_width=1,  # bold
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        return Slide(image=img, name=input.name)
-
-    def _generate_lower_third_slide_with_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
+    def _generate_slide_without_footer(
+        self, blueprint: SlideBlueprint, style: NoFooterSlideStyle
     ) -> Slide:
-        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
+        img = Image.new(
+            mode=style.mode,
+            size=style.width_height,
+            color=style.background_colour,
+        )
         draw = ImageDraw.Draw(img)
-
-        if show_backdrop:
-            draw.rectangle((0, 825, IMG_WIDTH, 825 + 225), fill="#00000088")
+        for rect in style.shapes:
+            self._draw_rectangle(draw, rect)
         self._draw_text(
             draw=draw,
             text=blueprint.body_text,
-            bbox=_Bbox.xywh(x=25, y=825, w=1870, h=160),
-            horiz_align="left",
-            vert_align="top",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=24, max_size=48
-            ),
-            foreground="white",
-            stroke_width=1,
-            line_spacing=1.5,
             slide_name=blueprint.name,
+            textbox=style.body,
+        )
+        return Slide(image=img, name=blueprint.name)
+
+    def _generate_slide_with_footer(
+        self, blueprint: SlideBlueprint, style: FooterSlideStyle
+    ) -> Slide:
+        img = Image.new(
+            mode=style.mode,
+            size=style.width_height,
+            color=style.background_colour,
+        )
+        draw = ImageDraw.Draw(img)
+        for rect in style.shapes:
+            self._draw_rectangle(draw, rect)
+        self._draw_text(
+            draw=draw,
+            text=blueprint.body_text,
+            slide_name=blueprint.name,
+            textbox=style.body,
         )
         self._draw_text(
             draw=draw,
             text=blueprint.footer_text,
-            bbox=_Bbox.xywh(x=25, y=985, w=1870, h=50),
-            horiz_align="right",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="oblique", min_size=20, max_size=40
-            ),
-            foreground="#DDDDDD",
-            stroke_width=0,
-            line_spacing=1,
             slide_name=blueprint.name,
+            textbox=style.footer,
         )
-
-        return Slide(image=img, name=blueprint.name)
-
-    def _generate_lower_third_slide_without_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
-    ) -> Slide:
-        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
-        draw = ImageDraw.Draw(img)
-
-        if show_backdrop:
-            draw.rectangle((0, 850, IMG_WIDTH, 850 + 200), fill="#00000088")
-
-        self._draw_text(
-            draw=draw,
-            text=blueprint.body_text,
-            bbox=_Bbox.xywh(x=25, y=850, w=1870, h=200),
-            horiz_align="center",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=24, max_size=48
-            ),
-            foreground="white",
-            stroke_width=1,
-            line_spacing=2,
-            slide_name=blueprint.name,
-        )
-
         return Slide(image=img, name=blueprint.name)
 
     def _draw_text(
-        self,
-        draw: ImageDraw.ImageDraw,
-        text: str,
-        bbox: _Bbox,
-        horiz_align: Literal["left", "center", "right"],
-        vert_align: Literal["top", "center", "bottom"],
-        font_spec: FontSpec,
-        foreground: str,
-        stroke_width: int,
-        line_spacing: float,
-        slide_name: str,
+        self, draw: ImageDraw.ImageDraw, text: str, slide_name: str, textbox: Textbox
     ):
-        size = font_spec.max_size
+        size = textbox.font.max_size
+        bbox = textbox.bbox
+        halign = textbox.horiz_align
+        valign = textbox.vert_align
         while True:
-            font = font_spec.make_font(size)
-            wrapped_text = _wrap_text(text, bbox.get_width(), font, stroke_width)
+            font = self.make_font(textbox.font, size)
+            wrapped_text = _wrap_text(
+                text, bbox.get_width(), font, textbox.stroke_width
+            )
 
-            anchor_horiz = {"left": "l", "center": "m", "right": "r"}[horiz_align]
-            anchor_vert = {"top": "a", "center": "m", "bottom": "d"}[vert_align]
+            anchor_horiz = {"left": "l", "center": "m", "right": "r"}[halign]
+            anchor_vert = {"top": "a", "center": "m", "bottom": "d"}[valign]
             anchor = f"{anchor_horiz}{anchor_vert}"
 
             x = {
                 "left": bbox.left,
                 "center": bbox.get_horizontal_centre(),
                 "right": bbox.right,
-            }[horiz_align]
+            }[halign]
             y = {
                 "top": bbox.top,
                 "center": bbox.get_vertical_centre(),
                 "bottom": bbox.bottom,
-            }[vert_align]
+            }[valign]
             xy = (x, y)
 
-            line_height = _get_font_bbox("A", font, stroke_width).get_height()
-            textbbox = _Bbox(
+            line_height = _get_font_bbox("A", font, textbox.stroke_width).get_height()
+            textbbox = Bbox(
                 *draw.textbbox(
                     xy=xy,
                     text=wrapped_text,
                     font=font,
-                    spacing=line_height * (line_spacing - 1),
-                    align=horiz_align,
+                    spacing=line_height * (textbox.line_spacing - 1),
+                    align=textbox.horiz_align,
                     anchor=anchor,
-                    stroke_width=stroke_width,
+                    stroke_width=textbox.stroke_width,
                 )
             )
             text_overflowed = (
                 textbbox.get_height() > bbox.get_height()
                 or textbbox.get_width() > bbox.get_width()
             )
-            if text_overflowed and size <= font_spec.min_size:
+            if text_overflowed and size <= textbox.font.min_size:
                 self._messenger.log_problem(
                     ProblemLevel.WARN,
                     f"The text in slide '{slide_name}' does not fit within the normal text box, even with the smallest font size.",
@@ -510,14 +392,26 @@ class SlideGenerator:
         draw.text(
             xy=xy,
             text=wrapped_text,
-            fill=foreground,
+            fill=textbox.text_colour,
             font=font,
-            spacing=line_height * (line_spacing - 1),
-            align=horiz_align,
+            spacing=line_height * (textbox.line_spacing - 1),
+            align=halign,
             anchor=anchor,
-            stroke_width=stroke_width,
-            stroke_fill=foreground,
+            stroke_width=textbox.stroke_width,
+            stroke_fill=textbox.text_colour,
         )
+
+    def _draw_rectangle(self, draw: ImageDraw.ImageDraw, rect: Rectangle) -> None:
+        b = rect.bbox
+        draw.rectangle(
+            xy=(b.left, b.top, b.right, b.bottom),
+            fill=rect.background_colour,
+        )
+
+    def make_font(self, font: Font, size: int) -> FreeTypeFont:
+        properties = FontProperties(family=font.family, style=font.style)
+        path = FONT_MANAGER.findfont(properties)
+        return ImageFont.truetype(path, size=size)
 
 
 def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
@@ -565,5 +459,5 @@ def _extract_max_prefix(
     return (output, words)
 
 
-def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> _Bbox:
-    return _Bbox(*font.getbbox(text, stroke_width=stroke_width))
+def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> Bbox:
+    return Bbox(*font.getbbox(text, stroke_width=stroke_width))

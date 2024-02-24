@@ -23,12 +23,12 @@ from lib.slides import (
     SlideBlueprint,
     SlideBlueprintReader,
     SlideGenerator,
+    SlidesConfig,
 )
 
 _DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
 
 _FULLSCREEN_STYLE = "fullscreen"
-_LOWER_THIRD_CLEAR_STYLE = "lower-third-clear"
 _LOWER_THIRD_DARK_STYLE = "lower-third-dark"
 
 
@@ -41,6 +41,7 @@ class GenerateSlidesConfig(ReccConfig):
         show_browser: bool,
         ui: Literal["console", "tk"],
         verbose: bool,
+        demo: bool,
     ) -> None:
         super().__init__(
             home_dir=home_dir,
@@ -54,6 +55,7 @@ class GenerateSlidesConfig(ReccConfig):
         self.styles = styles
         self.show_browser = show_browser
         self.blueprints: List[SlideBlueprint] = []
+        self.demo = demo
 
     @property
     def log_file(self) -> Path:
@@ -96,11 +98,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             "-s",
             "--style",
             action="append",
-            choices=[
-                _FULLSCREEN_STYLE,
-                _LOWER_THIRD_CLEAR_STYLE,
-                _LOWER_THIRD_DARK_STYLE,
-            ],
+            choices=[_FULLSCREEN_STYLE, _LOWER_THIRD_DARK_STYLE],
             help="Style of the slides.",
         )
 
@@ -127,15 +125,26 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             action="store_true",
             help="This flag is only applicable when the flag --text-ui is also provided. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
         )
+        advanced_args.add_argument(
+            "--demo",
+            action="store_true",
+            help="Generate a small number slides with pre-determined text for demonstration purposes. This overrides the --style argument.",
+        )
 
         args = parser.parse_args()
+        styles = (
+            {_FULLSCREEN_STYLE, _LOWER_THIRD_DARK_STYLE}
+            if args.demo
+            else set(args.style or {_LOWER_THIRD_DARK_STYLE})
+        )
         return GenerateSlidesConfig(
             home_dir=args.home_dir,
             out_dir=args.out_dir,
-            styles=set(args.style or {_LOWER_THIRD_DARK_STYLE}),
+            styles=styles,
             show_browser=args.show_browser,
             ui=args.ui,
             verbose=args.verbose,
+            demo=args.demo,
         )
 
     def create_messenger(self, config: GenerateSlidesConfig) -> Messenger:
@@ -185,7 +194,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger)
+        generator = SlideGenerator(messenger, SlidesConfig())
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
@@ -207,35 +216,39 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
 def read_input(
     config: GenerateSlidesConfig, reader: SlideBlueprintReader, messenger: Messenger
 ) -> None:
-    blueprints: List[SlideBlueprint] = []
-    while True:
-        if config.json_file.is_file():
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                f"Reading previous data from {config.json_file.as_posix()}...",
-            )
-            blueprints += reader.load_json(config.json_file)
+    if config.demo:
+        blueprints = _get_demo_slides()
+    else:
+        blueprints: List[SlideBlueprint] = []
+        while True:
+            if config.json_file.is_file():
+                messenger.log_status(
+                    TaskStatus.RUNNING,
+                    f"Reading previous data from {config.json_file.as_posix()}...",
+                )
+                blueprints += reader.load_json(config.json_file)
+                if len(blueprints) > 0:
+                    # If JSON input is provided, don't use anything else
+                    break
+            if config.message_notes_file.is_file():
+                messenger.log_status(
+                    TaskStatus.RUNNING,
+                    f"Reading message notes from {config.message_notes_file.as_posix()}...",
+                )
+                blueprints += reader.load_message_notes(config.message_notes_file)
+            if config.lyrics_file.is_file():
+                messenger.log_status(
+                    TaskStatus.RUNNING,
+                    f"Reading lyrics from {config.lyrics_file.as_posix()}...",
+                )
+                blueprints += reader.load_lyrics(config.lyrics_file)
             if len(blueprints) > 0:
-                # If JSON input is provided, don't use anything else
                 break
-        if config.message_notes_file.is_file():
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                f"Reading message notes from {config.message_notes_file.as_posix()}...",
-            )
-            blueprints += reader.load_message_notes(config.message_notes_file)
-        if config.lyrics_file.is_file():
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                f"Reading lyrics from {config.lyrics_file.as_posix()}...",
-            )
-            blueprints += reader.load_lyrics(config.lyrics_file)
-        if len(blueprints) > 0:
-            break
-        else:
-            messenger.wait(
-                f"Get the message slides from Planning Center Online and save them in {config.message_notes_file.as_posix()}. If you'd like to generate slides for the lyrics, save the lyrics for all the songs in {config.lyrics_file.as_posix()}."
-            )
+            else:
+                messenger.wait(
+                    f"Get the message slides from Planning Center Online and save them in {config.message_notes_file.as_posix()}."
+                    f" If you'd like to generate slides for the lyrics, save the lyrics for all the songs in {config.lyrics_file.as_posix()}."
+                )
 
     config.blueprints = blueprints
     messenger.log_status(TaskStatus.DONE, f"{len(blueprints)} slides found.")
@@ -269,18 +282,6 @@ def generate_slides(
             for i, b in enumerate(config.blueprints, start=1)
         ]
         slides += generator.generate_fullscreen_slides(blueprints_with_prefix)
-    if _LOWER_THIRD_CLEAR_STYLE in config.styles:
-        messenger.log_status(
-            TaskStatus.RUNNING,
-            "Generating lower third images without a background...",
-        )
-        blueprints_with_prefix = [
-            b.with_name(f"LTC{i} - {b.name}" if b.name else f"LTC{i}")
-            for i, b in enumerate(config.blueprints, start=1)
-        ]
-        slides += generator.generate_lower_third_slides(
-            blueprints_with_prefix, show_backdrop=False
-        )
     if _LOWER_THIRD_DARK_STYLE in config.styles:
         messenger.log_status(
             TaskStatus.RUNNING, "Generating lower third images with a background..."
@@ -289,9 +290,7 @@ def generate_slides(
             b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
             for i, b in enumerate(config.blueprints, start=1)
         ]
-        slides += generator.generate_lower_third_slides(
-            blueprints_with_prefix, show_backdrop=True
-        )
+        slides += generator.generate_lower_third_slides(blueprints_with_prefix)
 
     messenger.log_status(TaskStatus.RUNNING, "Saving images...")
     for s in slides:
@@ -299,6 +298,43 @@ def generate_slides(
     messenger.log_status(
         TaskStatus.DONE, f"{len(slides)} images saved to {config.out_dir.as_posix()}."
     )
+
+
+def _get_demo_slides() -> List[SlideBlueprint]:
+    return [
+        SlideBlueprint(body_text="Hello", footer_text="", name="short-no-footer"),
+        SlideBlueprint(
+            body_text="Hello there!", footer_text="Footer", name="short-with-footer"
+        ),
+        SlideBlueprint(
+            body_text=(
+                "“Then Fingolfin beheld… the utter ruin of the Noldor, and the defeat beyond redress of all their houses;"
+                + " and filled with wrath and despair he mounted upon Rochallor his great horse and rode forth alone, and none might restrain him."
+                + " He passed over Dor-nu-Fauglith like a wind amid the dust, and all that beheld his onset fled in amaze, thinking that Oromë himself was come:"
+                + " for a great madness of rage was upon him, so that his eyes shone like the eyes of the Valar."
+                + " Thus he came alone to Angband’s gates, and he sounded his horn, and smote once more upon the brazen doors, and challenged Morgoth to come forth to single combat."
+                + " And Morgoth came.” (J.R.R. Tolkien, The Silmarillion)"
+            ),
+            footer_text="",
+            name="long-no-footer",
+        ),
+        SlideBlueprint(
+            body_text=(
+                "Then were the king's scribes called at that time in the third"
+                + " month, that is, the month Sivan, on the three and"
+                + " twentieth day thereof; and it was written according to all"
+                + " that Mordecai commanded unto the Jews, and to the"
+                + " lieutenants, and the deputies and rulers of the provinces"
+                + " which are from India unto Ethiopia, an hundred twenty and"
+                + " seven provinces, unto every province according to the"
+                + " writing thereof, and unto every people after their"
+                + " language, and to the Jews according to their writing, and"
+                + "according to their language."
+            ),
+            footer_text="Esther 8:9 (KJV)",
+            name="long-with-footer",
+        ),
+    ]
 
 
 if __name__ == "__main__":
