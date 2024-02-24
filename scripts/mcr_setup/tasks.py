@@ -3,9 +3,9 @@ import inspect
 import lib
 import lib.download_pco_assets as pco_assets
 from autochecklist import Messenger, ProblemLevel, TaskStatus
+from config import McrSetupConfig
 from external_services import PlanningCenterClient, VmixClient
 from lib import SlideBlueprintReader, SlideGenerator
-from mcr_setup.config import McrSetupConfig
 
 
 def download_assets(

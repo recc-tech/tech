@@ -6,9 +6,9 @@ import external_services.vimeo as vimeo_tasks
 import lib
 import webvtt
 from autochecklist import Messenger
+from config import McrTeardownConfig
 from external_services.boxcast import BoxCastClientFactory
 from external_services.vimeo import ReccVimeoClient
-from mcr_teardown.config import McrTeardownConfig
 
 
 def create_rebroadcast_1pm(

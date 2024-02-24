@@ -2,7 +2,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Literal, Optional, Set
 
-from lib import ReccConfig
+from .recc_config import ReccConfig
 
 
 class McrTeardownConfig(ReccConfig):
@@ -37,6 +37,8 @@ class McrTeardownConfig(ReccConfig):
         self.message_title = message_title.strip()
         self.boxcast_event_id = boxcast_event_id
 
+        # TODO: Passing state between tasks seems like a separate concern that
+        # should be in a separate class.
         self.vimeo_video_uri: Optional[str] = None
         self.vimeo_video_texttracks_uri: Optional[str] = None
 

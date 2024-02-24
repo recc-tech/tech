@@ -20,6 +20,7 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
+from config import McrTeardownConfig
 from external_services import (
     BoxCastClientFactory,
     CredentialStore,
@@ -27,7 +28,6 @@ from external_services import (
     ReccVimeoClient,
 )
 from lib import parse_directory, parse_non_empty_string
-from mcr_teardown import McrTeardownConfig
 
 _DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station after a Sunday gathering."
 
@@ -193,7 +193,7 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             messenger=messenger,
         )
         task_list_file = (
-            Path(__file__).parent.joinpath("mcr_teardown").joinpath("tasks.json")
+            Path(__file__).parent.joinpath("config").joinpath("mcr_teardown_tasks.json")
         )
         return task_list_file, function_finder
 
