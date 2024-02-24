@@ -20,13 +20,14 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from lib import (
+from external_services import (
+    BoxCastClientFactory,
     CredentialStore,
     PlanningCenterClient,
-    parse_directory,
-    parse_non_empty_string,
+    ReccVimeoClient,
 )
-from mcr_teardown import BoxCastClientFactory, McrTeardownConfig, ReccVimeoClient
+from lib import parse_directory, parse_non_empty_string
+from mcr_teardown import McrTeardownConfig
 
 _DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station after a Sunday gathering."
 

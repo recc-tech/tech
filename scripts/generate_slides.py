@@ -15,7 +15,8 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from lib import ReccConfig, ReccWebDriver
+from external_services import ReccWebDriver
+from lib import ReccConfig
 from lib.slides import (
     BibleVerseFinder,
     Slide,

@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import Mock, create_autospec
 
 from autochecklist import Messenger, ProblemLevel
-from lib import ReccWebDriver
+from external_services import ReccWebDriver
 from lib.slides import BibleVerseFinder, SlideBlueprintReader
 
 

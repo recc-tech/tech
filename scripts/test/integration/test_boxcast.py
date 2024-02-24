@@ -5,8 +5,14 @@ from unittest.mock import Mock
 
 import mcr_teardown.tasks as tasks
 from autochecklist import Messenger
-from lib import Credential, CredentialStore, InputPolicy
-from mcr_teardown import BoxCastClient, BoxCastClientFactory, McrTeardownConfig
+from external_services import (
+    BoxCastClient,
+    BoxCastClientFactory,
+    Credential,
+    CredentialStore,
+    InputPolicy,
+)
+from mcr_teardown import McrTeardownConfig
 
 EVENT_ID = "oajqcyzetaazjvduyqz5"
 BOXCAST_TEST_USERNAME = "tech@riversedge.life"

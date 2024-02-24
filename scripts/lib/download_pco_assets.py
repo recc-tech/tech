@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
-
-from .planning_center import Attachment, FileType, PlanningCenterClient
+from external_services import Attachment, FileType, PlanningCenterClient
 
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
 _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)

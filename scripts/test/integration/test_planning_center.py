@@ -8,7 +8,7 @@ from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
-from lib import Attachment, CredentialStore, PlanningCenterClient
+from external_services import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
 TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
@@ -121,7 +121,7 @@ class PlanningCenterTestCase(unittest.TestCase):
             )
         )
 
-        self.assertEqual([None, None], results)
+        self.assertEqual({actual_script_path: None, actual_notes_path: None}, results)
         self.assertTrue(
             filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),
             "Message notes files must match.",

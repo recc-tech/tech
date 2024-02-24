@@ -7,9 +7,10 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import autochecklist
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
-from lib import Credential, CredentialStore, InputPolicy
 from requests import Response
 from vimeo.client import VimeoClient
+
+from .credentials import Credential, CredentialStore, InputPolicy
 
 NEW_VIDEO_TIMEDELTA = timedelta(hours=3)
 """
@@ -123,6 +124,10 @@ class ReccVimeoClient:
         raise RuntimeError(
             f"Failed to connect to the Vimeo API ({max_attempts} attempts)"
         )
+
+
+# TODO: Move the following functions into a class so I can use dependency
+# injection
 
 
 def get_video_data(

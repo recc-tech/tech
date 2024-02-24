@@ -16,12 +16,14 @@ from autochecklist import (
     TaskStatus,
     sleep_attentively,
 )
-from lib import Credential, CredentialStore, InputPolicy, ReccWebDriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.select import Select
+
+from .credentials import Credential, CredentialStore, InputPolicy
+from .web_driver import ReccWebDriver
 
 
 class BoxCastClient(ReccWebDriver):
@@ -222,6 +224,10 @@ class BoxCastClientFactory:
                 "https://dashboard.boxcast.com/schedule",
                 cancellation_token=cancellation_token,
             )
+
+
+# TODO: Move the following functions into a class so I can use dependency
+# injection
 
 
 def export_to_vimeo(

@@ -15,7 +15,8 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from lib import CredentialStore, PlanningCenterClient, ReccConfig
+from external_services import CredentialStore, PlanningCenterClient
+from lib import ReccConfig
 
 _DESCRIPTION = (
     "This script will download the assets from today's plan in Planning Center Online."

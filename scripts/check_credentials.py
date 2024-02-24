@@ -15,14 +15,15 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from lib import (
+from external_services import (
+    BoxCastClientFactory,
     Credential,
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
-    ReccConfig,
+    ReccVimeoClient,
 )
-from mcr_teardown import BoxCastClientFactory, ReccVimeoClient
+from lib import ReccConfig
 
 DESCRIPTION = "This script will test the credentials for various services we connect to and ask you to enter any missing or incorrect ones if necessary."
 

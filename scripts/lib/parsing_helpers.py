@@ -46,9 +46,3 @@ def parse_file(filename: str, extension: str = "") -> Path:
             )
 
     return path.resolve()
-
-
-if __name__ == "__main__":
-    print(
-        "This module is not runnable. It is only meant to provide helper functions for other scripts."
-    )
