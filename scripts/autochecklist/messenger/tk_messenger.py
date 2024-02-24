@@ -34,7 +34,7 @@ from .input_messenger import (
 
 T = TypeVar("T")
 
-_BACKGROUND_COLOUR = "#444444"
+_BACKGROUND_COLOUR = "#323232"
 _FOREGROUND_COLOUR = "#FFFFFF"
 
 _NORMAL_FONT = "Calibri 12"
@@ -831,6 +831,7 @@ class _ActionItemGrid(Frame):
                 column=self._DONE_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
         else:
             done_button = None
@@ -842,6 +843,7 @@ class _ActionItemGrid(Frame):
                 column=self._RETRY_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
         else:
             retry_button = None
@@ -853,6 +855,7 @@ class _ActionItemGrid(Frame):
                 column=self._SKIP_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
         else:
             skip_button = None
@@ -868,6 +871,7 @@ class _ActionItemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
+            sticky="W",
         )
         name_label.set_text(task_name)
         msg_label = _CopyableText(
@@ -882,6 +886,7 @@ class _ActionItemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
+            sticky="W",
         )
         msg_label.set_text(message)
 
@@ -920,7 +925,11 @@ class _ActionItemGrid(Frame):
             foreground=self._foreground,
         )
         done_button_header_label.grid(
-            row=0, column=self._DONE_BTN_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._DONE_BTN_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
 
         retry_button_header_label = _CopyableText(
@@ -931,7 +940,11 @@ class _ActionItemGrid(Frame):
             foreground=self._foreground,
         )
         retry_button_header_label.grid(
-            row=0, column=self._RETRY_BTN_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._RETRY_BTN_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
 
         skip_button_header_label = _CopyableText(
@@ -942,7 +955,11 @@ class _ActionItemGrid(Frame):
             foreground=self._foreground,
         )
         skip_button_header_label.grid(
-            row=0, column=self._SKIP_BTN_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._SKIP_BTN_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
 
         name_header_label = _CopyableText(
@@ -953,7 +970,11 @@ class _ActionItemGrid(Frame):
             foreground=self._foreground,
         )
         name_header_label.grid(
-            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._NAME_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         name_header_label.set_text("Task")
 
@@ -965,12 +986,16 @@ class _ActionItemGrid(Frame):
             foreground=self._foreground,
         )
         msg_header_label.grid(
-            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._MSG_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         msg_header_label.set_text("Instructions")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour="black"
+            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
         )
         separator.grid(row=1, column=0, columnspan=5, sticky="EW")
 
@@ -1039,6 +1064,7 @@ class _TaskStatusGrid(Frame):
                 column=self._COMMANDS_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
             name_label = _CopyableText(
                 self,
@@ -1052,6 +1078,7 @@ class _TaskStatusGrid(Frame):
                 column=self._NAME_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
             name_label.set_text(task_name)
             status_label = _CopyableText(
@@ -1066,6 +1093,7 @@ class _TaskStatusGrid(Frame):
                 column=self._STATUS_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
             msg_label = _CopyableText(
                 self,
@@ -1079,6 +1107,7 @@ class _TaskStatusGrid(Frame):
                 column=self._MSG_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
+                sticky="W",
             )
             self._taken_indices.add(actual_index)
             self._widgets_by_name[task_name] = (commands_frame, status_label, msg_label)
@@ -1121,7 +1150,11 @@ class _TaskStatusGrid(Frame):
             foreground=self._foreground,
         )
         command_header_label.grid(
-            row=0, column=self._COMMANDS_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._COMMANDS_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         command_header_label.set_text("")
 
@@ -1133,7 +1166,11 @@ class _TaskStatusGrid(Frame):
             foreground=self._foreground,
         )
         name_header_label.grid(
-            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._NAME_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         name_header_label.set_text("Task")
 
@@ -1145,7 +1182,11 @@ class _TaskStatusGrid(Frame):
             foreground=self._foreground,
         )
         status_header_label.grid(
-            row=0, column=self._STATUS_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._STATUS_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         status_header_label.set_text("Status")
 
@@ -1157,12 +1198,12 @@ class _TaskStatusGrid(Frame):
             foreground=self._foreground,
         )
         msg_header_label.grid(
-            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady, sticky="W"
         )
         msg_header_label.set_text("Details")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour="black"
+            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
         )
         separator.grid(row=1, column=0, columnspan=4, sticky="EW")
 
@@ -1232,6 +1273,7 @@ class _ProblemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
+            sticky="W",
         )
         name_label.set_text(task_name)
 
@@ -1247,6 +1289,7 @@ class _ProblemGrid(Frame):
             column=self._LEVEL_COLUMN,
             padx=self._padx,
             pady=self._pady,
+            sticky="W",
         )
         level_label.set_text(str(level))
 
@@ -1262,6 +1305,7 @@ class _ProblemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
+            sticky="W",
         )
         self._message_label.set_text(message)
 
@@ -1276,7 +1320,11 @@ class _ProblemGrid(Frame):
             foreground=self._foreground,
         )
         name_header_label.grid(
-            row=0, column=self._NAME_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._NAME_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         name_header_label.set_text("Task")
 
@@ -1288,7 +1336,11 @@ class _ProblemGrid(Frame):
             foreground=self._foreground,
         )
         level_header_label.grid(
-            row=0, column=self._LEVEL_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._LEVEL_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         level_header_label.set_text("Level")
 
@@ -1300,12 +1352,16 @@ class _ProblemGrid(Frame):
             foreground=self._foreground,
         )
         msg_header_label.grid(
-            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady
+            row=0,
+            column=self._MSG_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="W",
         )
         msg_header_label.set_text("Details")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour="black"
+            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
         )
         separator.grid(row=1, column=0, columnspan=3, sticky="EW")
 
