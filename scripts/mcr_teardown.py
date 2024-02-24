@@ -8,7 +8,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import mcr_teardown.tasks
+import lib.mcr_teardown as mcr_teardown
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -188,7 +188,7 @@ class McrTeardownScript(Script[McrTeardownConfig]):
             log_file_name="mcr_teardown_web_driver",
         )
         function_finder = FunctionFinder(
-            module=mcr_teardown.tasks,
+            module=mcr_teardown,
             arguments=[boxcast_client_factory, config, messenger, vimeo_client],
             messenger=messenger,
         )

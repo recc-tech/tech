@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
-import mcr_teardown.tasks as tasks
+import lib.mcr_teardown as tasks
 from autochecklist import Messenger
 from config import McrTeardownConfig
 from external_services import (

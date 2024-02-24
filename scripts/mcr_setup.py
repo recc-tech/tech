@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import mcr_setup.tasks
+import lib.mcr_setup as mcr_setup
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -135,7 +135,7 @@ class McrSetupScript(Script[McrSetupConfig]):
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger)
         function_finder = FunctionFinder(
-            mcr_setup.tasks,
+            mcr_setup,
             [
                 planning_center_client,
                 vmix_client,
