@@ -1,0 +1,126 @@
+[slides]
+image_width = 1920
+image_height = 1080
+font_family = ["Helvetica", "Calibri", "sans-serif"]
+
+	[slides.fullscreen_message]
+	background = "white"
+
+		[slides.fullscreen_message.body]
+		x = 100
+		y = 100
+		width = 1720
+		height = 880
+		horiz_align = "center"
+		vert_align = "center"
+		text_colour = "#333333"
+		line_spacing = 1.75
+
+			[slides.fullscreen_message.body.font]
+			style = "normal"
+			bold = true
+			min_size = 36
+			max_size = 72
+
+	[slides.fullscreen_scripture]
+	background = "white"
+
+		[slides.fullscreen_scripture.body]
+		x = 100
+		y = 100
+		width = 1720
+		height = 680
+		horiz_align = "left"
+		vert_align = "top"
+		text_colour = "#333333"
+		line_spacing = 1.75
+
+			[slides.fullscreen_scripture.body.font]
+			style = "normal"
+			bold = true
+			min_size = 36
+			max_size = 72
+
+		[slides.fullscreen_scripture.footer]
+		x = 100
+		y = 880
+		width = 1720
+		height = 100
+		horiz_align = "right"
+		vert_align = "center"
+		text_colour = "dimgrey"
+		line_spacing = 1.75
+
+			[slides.fullscreen_scripture.footer.font]
+			style = "oblique"
+			bold = false
+			min_size = 30
+			max_size = 60
+
+	[slides.lowerthird_message]
+	background = "#00000000"
+
+		[slides.lowerthird_message.rectangle]
+		x = 0
+		y = 850
+		width = 1920
+		height = 200
+		colour = "#00000088"
+
+		[slides.lowerthird_message.body]
+		x = 25
+		y = 850
+		width = 1870
+		height = 200
+		horiz_align = "center"
+		vert_align = "center"
+		text_colour = "white"
+		line_spacing = 2
+
+			[slides.lowerthird_message.body.font]
+			style = "normal"
+			bold = true
+			min_size = 24
+			max_size = 48
+
+	[slides.lowerthird_scripture]
+	background = "#000000"
+
+		[slides.lowerthird_scripture.rectangle]
+		x = 0
+		y = 825
+		width = 1920
+		height = 225
+		colour = "#00000088"
+
+		[slides.lowerthird_scripture.body]
+		x = 0
+		y = 825
+		width = 1870
+		height = 160
+		horiz_align = "left"
+		vert_align = "top"
+		text_colour = "white"
+		line_spacing = 1.5
+
+			[slides.lowerthird_scripture.body.font]
+			style = "normal"
+			bold = true
+			min_size = 24
+			max_size = 48
+
+		[slides.lowerthird_scripture.footer]
+		x = 25
+		y = 985
+		width = 1870
+		height = 50
+		horiz_align = "right"
+		vert_align = "center"
+		text_colour = "#DDDDDD"
+		line_spacing = 1
+
+			[slides.lowerthird_scripture.footer.font]
+			style = "oblique"
+			bold = false
+			min_size = 20
+			max_size = 40

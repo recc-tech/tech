@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
-from typing import List, Literal, Tuple
+from pathlib import Path
+from typing import Dict, List, Literal, Set, Tuple, TypeVar
+
+import tomli
 
 ImgMode = Literal["1", "L", "RGB", "RGBA"]
 HorizAlign = Literal["left", "center", "right"]
+_HORIZ_ALIGNS: Set[HorizAlign] = {"left", "center", "right"}
 VertAlign = Literal["top", "center", "bottom"]
+_VERT_ALIGNS: Set[VertAlign] = {"top", "center", "bottom"}
+FontStyle = Literal["normal", "italic", "oblique"]
+_STYLES: Set[FontStyle] = {"normal", "italic", "oblique"}
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -37,7 +46,7 @@ class Bbox:
 @dataclass(frozen=True)
 class Font:
     family: List[str]
-    style: Literal["normal", "italic", "oblique"]
+    style: FontStyle
     max_size: int
     min_size: int
 
@@ -101,7 +110,98 @@ class FooterSlideStyle:
         return (self.width, self.height)
 
 
-# TODO: Load from file
+# TODO: Provide warning for unused keys in the file?
+class ConfigFileReader:
+    def __init__(self) -> None:
+        self._data: Dict[str, object] = {}
+        global_file = Path(__file__).parent.joinpath("config.toml")
+        with open(global_file, "rb") as f:
+            self._data |= self._flatten(tomli.load(f))
+        # IMPORTANT: read the local file second so that it overrides values
+        # found in the global file
+        local_file = Path(__file__).parent.joinpath(f"config.local.toml")
+        try:
+            with open(local_file, "rb") as f:
+                self._data |= self._flatten(tomli.load(f))
+        except FileNotFoundError:
+            pass
+
+    def _flatten(self, data: Dict[str, object]) -> Dict[str, object]:
+        out_data: Dict[str, object] = {}
+        for key, value in data.items():
+            if isinstance(value, dict):
+                value = self._flatten(typing.cast(Dict[str, object], value))
+                out_data |= {f"{key}.{k}": v for (k, v) in value.items()}
+            else:
+                out_data[key] = value
+        return out_data
+
+    def get_str(self, key: str) -> str:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Expected configuration value {key} to be a string, but found type {type(value)}."
+            )
+        return value
+
+    def get_enum(self, key: str, options: Set[T]) -> T:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        matches = [x for x in options if x == value]
+        if len(matches) == 0:
+            raise ValueError(
+                f"Expected configuration value {key} to be one of {options}, but found '{value}'."
+            )
+        return matches[0]
+
+    def get_int(self, key: str) -> int:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if not isinstance(value, int):
+            raise ValueError(
+                f"Expected configuration value {key} to be an integer, but found type {type(value)}."
+            )
+        return value
+
+    def get_str_list(self, key: str) -> List[str]:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if not isinstance(value, list):
+            raise ValueError(
+                f"Expected configuration value {key} to be an integer, but found type {type(value)}."
+            )
+        if any(not isinstance(x, str) for x in value):
+            raise ValueError()
+        return typing.cast(List[str], value)
+
+    def get_bool(self, key: str) -> bool:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"Expected configuration value {key} to be true or false, but found type {type(value)}."
+            )
+        return value
+
+    def get_float(self, key: str) -> float:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if isinstance(value, float):
+            return value
+        if isinstance(value, int):
+            return value
+        raise ValueError(
+            f"Expected configuration value {key} to be a number, but found type {type(value)}."
+        )
+
+
 # TODO: Add bidirectional association between this config and any Launch object
 # that needs it
 class SlidesConfig:
@@ -109,129 +209,192 @@ class SlidesConfig:
         self.reload()
 
     def reload(self) -> None:
+        reader = ConfigFileReader()
+
+        self._img_width = reader.get_int("slides.image_width")
+        self._img_height = reader.get_int("slides.image_height")
+        self._font_family = reader.get_str_list("slides.font_family")
+
+        fsm = "slides.fullscreen_message"
         self._fullscreen_message_style = NoFooterSlideStyle(
-            width=self.img_width,
+            width=self._img_width,
             height=self.img_height,
-            background_colour="white",
+            background_colour=reader.get_str(f"{fsm}.background"),
             body=Textbox(
-                bbox=Bbox.xywh(x=100, y=100, w=1720, h=880),
-                font=Font(
-                    family=self.font_family, style="normal", min_size=36, max_size=72
+                bbox=Bbox.xywh(
+                    x=reader.get_int(f"{fsm}.body.x"),
+                    y=reader.get_int(f"{fsm}.body.y"),
+                    w=reader.get_int(f"{fsm}.body.width"),
+                    h=reader.get_int(f"{fsm}.body.height"),
                 ),
-                horiz_align="center",
-                vert_align="center",
-                text_colour="#333333",
-                bold=True,
-                line_spacing=1.75,
+                font=Font(
+                    family=self._font_family,
+                    style=reader.get_enum(f"{fsm}.body.font.style", _STYLES),
+                    min_size=reader.get_int(f"{fsm}.body.font.min_size"),
+                    max_size=reader.get_int(f"{fsm}.body.font.max_size"),
+                ),
+                horiz_align=reader.get_enum(f"{fsm}.body.horiz_align", _HORIZ_ALIGNS),
+                vert_align=reader.get_enum(f"{fsm}.body.vert_align", _VERT_ALIGNS),
+                text_colour=reader.get_str(f"{fsm}.body.text_colour"),
+                bold=reader.get_bool(f"{fsm}.body.font.bold"),
+                line_spacing=reader.get_float(f"{fsm}.body.line_spacing"),
             ),
             shapes=[],
         )
 
+        fss = "slides.fullscreen_scripture"
         self._fullscreen_scripture_style = FooterSlideStyle(
-            width=self.img_width,
-            height=self.img_height,
-            background_colour="white",
+            width=self._img_width,
+            height=self._img_height,
+            background_colour=reader.get_str(f"{fss}.background"),
             body=Textbox(
-                bbox=Bbox.xywh(x=100, y=100, w=1720, h=680),
-                font=Font(
-                    family=self.font_family, style="normal", min_size=36, max_size=72
+                bbox=Bbox.xywh(
+                    x=reader.get_int(f"{fss}.body.x"),
+                    y=reader.get_int(f"{fss}.body.y"),
+                    w=reader.get_int(f"{fss}.body.width"),
+                    h=reader.get_int(f"{fss}.body.height"),
                 ),
-                horiz_align="left",
-                vert_align="top",
-                text_colour="#333333",
-                bold=True,
-                line_spacing=1.75,
+                font=Font(
+                    family=self._font_family,
+                    style=reader.get_enum(f"{fss}.body.font.style", _STYLES),
+                    min_size=reader.get_int(f"{fss}.body.font.min_size"),
+                    max_size=reader.get_int(f"{fss}.body.font.max_size"),
+                ),
+                horiz_align=reader.get_enum(f"{fss}.body.horiz_align", _HORIZ_ALIGNS),
+                vert_align=reader.get_enum(f"{fss}.body.vert_align", _VERT_ALIGNS),
+                text_colour=reader.get_str(f"{fss}.body.text_colour"),
+                bold=reader.get_bool(f"{fss}.body.font.bold"),
+                line_spacing=reader.get_float(f"{fss}.body.line_spacing"),
             ),
             footer=Textbox(
-                bbox=Bbox.xywh(x=100, y=880, w=1720, h=100),
-                font=Font(
-                    family=self.font_family, style="oblique", min_size=30, max_size=60
+                bbox=Bbox.xywh(
+                    x=reader.get_int(f"{fss}.footer.x"),
+                    y=reader.get_int(f"{fss}.footer.y"),
+                    w=reader.get_int(f"{fss}.footer.width"),
+                    h=reader.get_int(f"{fss}.footer.height"),
                 ),
-                horiz_align="right",
-                vert_align="center",
-                text_colour="dimgrey",
-                bold=False,
-                line_spacing=1.75,
+                font=Font(
+                    family=self._font_family,
+                    style=reader.get_enum(f"{fss}.footer.font.style", _STYLES),
+                    min_size=reader.get_int(f"{fss}.footer.font.min_size"),
+                    max_size=reader.get_int(f"{fss}.footer.font.max_size"),
+                ),
+                horiz_align=reader.get_enum(f"{fss}.footer.horiz_align", _HORIZ_ALIGNS),
+                vert_align=reader.get_enum(f"{fss}.footer.vert_align", _VERT_ALIGNS),
+                text_colour=reader.get_str(f"{fss}.footer.text_colour"),
+                bold=reader.get_bool(f"{fss}.footer.font.bold"),
+                line_spacing=reader.get_float(f"{fss}.footer.line_spacing"),
             ),
             shapes=[],
         )
 
-        # Lower-third message style
+        ltm = "slides.lowerthird_message"
         self._lowerthird_message_body = Textbox(
-            bbox=Bbox.xywh(x=25, y=850, w=1870, h=200),
-            font=Font(
-                family=self.font_family,
-                style="normal",
-                min_size=24,
-                max_size=48,
+            bbox=Bbox.xywh(
+                x=reader.get_int(f"{ltm}.body.x"),
+                y=reader.get_int(f"{ltm}.body.y"),
+                w=reader.get_int(f"{ltm}.body.width"),
+                h=reader.get_int(f"{ltm}.body.height"),
             ),
-            horiz_align="center",
-            vert_align="center",
-            text_colour="white",
-            bold=True,
-            line_spacing=2,
+            font=Font(
+                family=self._font_family,
+                style=reader.get_enum(f"{ltm}.body.font.style", _STYLES),
+                min_size=reader.get_int(f"{ltm}.body.font.min_size"),
+                max_size=reader.get_int(f"{ltm}.body.font.max_size"),
+            ),
+            horiz_align=reader.get_enum(f"{ltm}.body.horiz_align", _HORIZ_ALIGNS),
+            vert_align=reader.get_enum(f"{ltm}.body.vert_align", _VERT_ALIGNS),
+            text_colour=reader.get_str(f"{ltm}.body.text_colour"),
+            bold=reader.get_bool(f"{ltm}.body.font.bold"),
+            line_spacing=reader.get_float(f"{ltm}.body.line_spacing"),
         )
         self._lowerthird_message_style = NoFooterSlideStyle(
-            width=self.img_width,
-            height=self.img_height,
-            background_colour="#00000000",
+            width=self._img_width,
+            height=self._img_height,
+            background_colour=reader.get_str(f"{ltm}.background"),
             body=self._lowerthird_message_body,
             shapes=[
                 Rectangle(
-                    bbox=Bbox.xywh(x=0, y=850, w=self.img_width, h=200),
-                    background_colour="#00000088",
+                    bbox=Bbox.xywh(
+                        x=reader.get_int(f"{ltm}.rectangle.x"),
+                        y=reader.get_int(f"{ltm}.rectangle.y"),
+                        w=reader.get_int(f"{ltm}.rectangle.width"),
+                        h=reader.get_int(f"{ltm}.rectangle.height"),
+                    ),
+                    background_colour=reader.get_str(f"{ltm}.rectangle.colour"),
                 )
             ],
         )
 
-        # Lower-third scripture style
+        lts = "slides.lowerthird_scripture"
         self._lowerthird_scripture_body = Textbox(
-            bbox=Bbox.xywh(x=0, y=825, w=1870, h=160),
-            font=Font(
-                family=self.font_family, style="normal", min_size=24, max_size=48
+            bbox=Bbox.xywh(
+                x=reader.get_int(f"{lts}.body.x"),
+                y=reader.get_int(f"{lts}.body.y"),
+                w=reader.get_int(f"{lts}.body.width"),
+                h=reader.get_int(f"{lts}.body.height"),
             ),
-            horiz_align="left",
-            vert_align="top",
-            text_colour="white",
-            bold=True,
-            line_spacing=1.5,
+            font=Font(
+                family=self._font_family,
+                style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
+                min_size=reader.get_int(f"{lts}.body.font.min_size"),
+                max_size=reader.get_int(f"{lts}.body.font.max_size"),
+            ),
+            horiz_align=reader.get_enum(f"{lts}.body.horiz_align", _HORIZ_ALIGNS),
+            vert_align=reader.get_enum(f"{lts}.body.vert_align", _VERT_ALIGNS),
+            text_colour=reader.get_str(f"{lts}.body.text_colour"),
+            bold=reader.get_bool(f"{lts}.body.font.bold"),
+            line_spacing=reader.get_float(f"{lts}.body.line_spacing"),
         )
         self._lowerthird_scripture_footer = Textbox(
-            bbox=Bbox.xywh(x=25, y=985, w=1870, h=50),
-            font=Font(
-                family=self.font_family, style="oblique", min_size=20, max_size=40
+            bbox=Bbox.xywh(
+                x=reader.get_int(f"{lts}.body.x"),
+                y=reader.get_int(f"{lts}.body.y"),
+                w=reader.get_int(f"{lts}.body.width"),
+                h=reader.get_int(f"{lts}.body.height"),
             ),
-            horiz_align="right",
-            vert_align="center",
-            text_colour="#DDDDDD",
-            bold=False,
-            line_spacing=1,
+            font=Font(
+                family=self._font_family,
+                style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
+                min_size=reader.get_int(f"{lts}.body.font.min_size"),
+                max_size=reader.get_int(f"{lts}.body.font.max_size"),
+            ),
+            horiz_align=reader.get_enum(f"{lts}.body.horiz_align", _HORIZ_ALIGNS),
+            vert_align=reader.get_enum(f"{lts}.body.vert_align", _VERT_ALIGNS),
+            text_colour=reader.get_str(f"{lts}.body.text_colour"),
+            bold=reader.get_bool(f"{lts}.body.font.bold"),
+            line_spacing=reader.get_float(f"{lts}.body.line_spacing"),
         )
         self._lowerthird_scripture_style = FooterSlideStyle(
-            width=self.img_width,
-            height=self.img_height,
-            background_colour="#00000000",
+            width=self._img_width,
+            height=self._img_height,
+            background_colour=reader.get_str(f"{lts}.background"),
             body=self._lowerthird_scripture_body,
             footer=self._lowerthird_scripture_footer,
             shapes=[
                 Rectangle(
-                    bbox=Bbox.xywh(x=0, y=825, w=self.img_width, h=225),
-                    background_colour="#00000088",
+                    bbox=Bbox.xywh(
+                        x=reader.get_int(f"{lts}.rectangle.x"),
+                        y=reader.get_int(f"{lts}.rectangle.y"),
+                        w=reader.get_int(f"{lts}.rectangle.width"),
+                        h=reader.get_int(f"{lts}.rectangle.height"),
+                    ),
+                    background_colour=reader.get_str(f"{lts}.rectangle.colour"),
                 )
             ],
         )
 
     @property
     def img_width(self) -> int:
-        return 1920
+        return self._img_width
 
     @property
     def img_height(self) -> int:
-        return 1080
+        return self._img_height
 
     @property
     def font_family(self) -> List[str]:
-        return ["Helvetica", "Calibri", "sans-serif"]
+        return self._font_family
 
     @property
     def fullscreen_message_style(self) -> NoFooterSlideStyle:
