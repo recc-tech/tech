@@ -13,7 +13,7 @@ from autochecklist import (
     Script,
     TkMessenger,
 )
-from config import McrSetupConfig, SlidesConfig
+from config import Config, McrSetupConfig
 from external_services import (
     CredentialStore,
     PlanningCenterClient,
@@ -120,8 +120,10 @@ class McrSetupScript(Script[McrSetupConfig]):
         self, config: McrSetupConfig, messenger: Messenger
     ) -> Tuple[Path, FunctionFinder]:
         credential_store = CredentialStore(messenger)
-        planning_center_client = PlanningCenterClient(messenger, credential_store)
-        vmix_client = VmixClient()
+        planning_center_client = PlanningCenterClient(
+            messenger, credential_store, Config()
+        )
+        vmix_client = VmixClient(config=Config())
         web_driver = ReccWebDriver(
             messenger=messenger,
             headless=not config.show_browser,
@@ -133,7 +135,7 @@ class McrSetupScript(Script[McrSetupConfig]):
             cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger, SlidesConfig())
+        generator = SlideGenerator(messenger, Config())
         function_finder = FunctionFinder(
             mcr_setup,
             [

@@ -14,6 +14,7 @@ import aiohttp
 import requests
 from aiohttp import ClientTimeout
 from autochecklist import CancellationToken, Messenger
+from config import Config
 from requests.auth import HTTPBasicAuth
 
 from .credentials import Credential, CredentialStore, InputPolicy
@@ -65,37 +66,33 @@ class PresenterSet:
 
 
 class PlanningCenterClient:
-    _BASE_URL = "https://api.planningcenteronline.com"
-    _SERVICES_BASE_URL = f"{_BASE_URL}/services/v2"
-    _SUNDAY_GATHERINGS_SERVICE_TYPE_ID = "882857"
-    _TIMEOUT_SECONDS = 60.0
-
     def __init__(
         self,
         messenger: Messenger,
         credential_store: CredentialStore,
+        config: Config,
         lazy_login: bool = False,
     ):
         self._messenger = messenger
         self._credential_store = credential_store
+        self._cfg = config
 
         if not lazy_login:
             self._test_credentials(max_attempts=3)
 
-    def find_plan_by_date(
-        self, dt: date, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
-    ) -> Plan:
+    def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
         today_str = dt.strftime("%Y-%m-%d")
         tomorrow_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
         response = requests.get(
-            url=f"{self._SERVICES_BASE_URL}/service_types/{service_type}/plans",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
             params={
                 "filter": "before,after",
                 "before": tomorrow_str,
                 "after": today_str,
             },
             auth=self._get_auth(),
-            timeout=self._TIMEOUT_SECONDS,
+            timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
             raise ValueError(f"Request failed with status code {response.status_code}")
@@ -110,14 +107,15 @@ class PlanningCenterClient:
         )
 
     def find_message_notes(
-        self, plan_id: str, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+        self, plan_id: str, service_type: Optional[str] = None
     ) -> str:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
         response = requests.get(
-            url=f"{self._SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/items",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
             params={"per_page": 100},
             auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._TIMEOUT_SECONDS,
+            timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
             raise ValueError(f"Request failed with status code {response.status_code}")
@@ -140,14 +138,15 @@ class PlanningCenterClient:
         return message_items[0]["attributes"]["description"]
 
     def find_attachments(
-        self, plan_id: str, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+        self, plan_id: str, service_type: Optional[str] = None
     ) -> Set[Attachment]:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
         response = requests.get(
-            url=f"{self._SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/attachments",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
             params={"per_page": 100},
             auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._TIMEOUT_SECONDS,
+            timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
             raise ValueError(f"Request failed with status code {response.status_code}")
@@ -201,14 +200,15 @@ class PlanningCenterClient:
         return {p: r for (p, r) in zip(paths, results)}
 
     def find_presenters(
-        self, plan_id: str, service_type: str = _SUNDAY_GATHERINGS_SERVICE_TYPE_ID
+        self, plan_id: str, service_type: Optional[str] = None
     ) -> PresenterSet:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
         response = requests.get(
-            url=f"{self._SERVICES_BASE_URL}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
             params={"filter": "confirmed"},
             auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._TIMEOUT_SECONDS,
+            timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
             raise ValueError(f"Request failed with status code {response.status_code}")
@@ -227,9 +227,9 @@ class PlanningCenterClient:
 
     def _test_credentials(self, max_attempts: int):
         for attempt_num in range(1, max_attempts + 1):
-            url = f"{self._BASE_URL}/people/v2/me"
+            url = f"{self._cfg.pco_base_url}/people/v2/me"
             response = requests.get(
-                url, auth=self._get_auth(), timeout=self._TIMEOUT_SECONDS
+                url, auth=self._get_auth(), timeout=self._cfg.timeout_seconds
             )
             if response.status_code // 100 == 2:
                 return
@@ -272,7 +272,9 @@ class PlanningCenterClient:
         downloaded_bytes = 0
         try:
             # Get URL for file contents
-            link_url = f"{self._SERVICES_BASE_URL}/attachments/{attachment.id}/open"
+            link_url = (
+                f"{self._cfg.pco_services_base_url}/attachments/{attachment.id}/open"
+            )
             async with session.post(link_url, auth=auth) as response:
                 if response.status // 100 != 2:
                     raise ValueError(

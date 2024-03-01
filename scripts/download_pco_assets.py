@@ -15,7 +15,7 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from config import ReccConfig
+from config import Config, ReccConfig
 from external_services import CredentialStore, PlanningCenterClient
 
 _DESCRIPTION = (
@@ -167,7 +167,9 @@ class DownloadAssetsScript(Script[DownloadAssetsConfig]):
         self, config: DownloadAssetsConfig, messenger: Messenger
     ) -> Tuple[Union[Path, TaskModel], FunctionFinder]:
         credential_store = CredentialStore(messenger)
-        planning_center_client = PlanningCenterClient(messenger, credential_store)
+        planning_center_client = PlanningCenterClient(
+            messenger, credential_store, Config()
+        )
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],

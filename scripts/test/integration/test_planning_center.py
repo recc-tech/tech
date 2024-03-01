@@ -8,6 +8,7 @@ from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
+from config import Config
 from external_services import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
@@ -149,6 +150,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         client = PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
+            config=Config(),
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )

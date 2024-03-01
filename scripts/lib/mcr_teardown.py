@@ -2,7 +2,6 @@ import shutil
 import stat
 
 import external_services.boxcast as boxcast_tasks
-import external_services.vimeo as vimeo_tasks
 import lib
 import webvtt
 from autochecklist import Messenger
@@ -84,10 +83,8 @@ def get_vimeo_video_data(
     vimeo_client: ReccVimeoClient,
     config: McrTeardownConfig,
 ):
-    (video_uri, texttrack_uri) = vimeo_tasks.get_video_data(
-        messenger=messenger,
-        client=vimeo_client,
-        cancellation_token=messenger.allow_cancel(),
+    (video_uri, texttrack_uri) = vimeo_client.get_video_data(
+        cancellation_token=messenger.allow_cancel()
     )
 
     config.vimeo_video_uri = video_uri
@@ -102,10 +99,8 @@ def disable_automatic_captions(
             "The link to the Vimeo video's captions is unknown (config.vimeo_video_texttracks_uri was not set)."
         )
 
-    vimeo_tasks.disable_automatic_captions(
+    vimeo_client.disable_automatic_captions(
         texttracks_uri=config.vimeo_video_texttracks_uri,
-        client=vimeo_client,
-        messenger=messenger,
         cancellation_token=messenger.allow_cancel(),
     )
 
@@ -117,7 +112,7 @@ def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClie
             "The link to the Vimeo video is unknown (config.vimeo_video_uri was not set)."
         )
 
-    vimeo_tasks.rename_video(video_uri, config.vimeo_video_title, vimeo_client)
+    vimeo_client.rename_video(video_uri, config.vimeo_video_title)
 
 
 def download_captions(
@@ -165,15 +160,11 @@ def upload_captions_to_boxcast(
         )
 
 
-def upload_captions_to_vimeo(
-    config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
-):
+def upload_captions_to_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClient):
     texttrack_uri = config.vimeo_video_texttracks_uri
     if texttrack_uri is None:
         raise ValueError(
             "The link to the Vimeo text track is unknown (config.vimeo_video_texttracks_uri was not set)."
         )
 
-    vimeo_tasks.upload_captions_to_vimeo(
-        config.final_captions_path, texttrack_uri, messenger, vimeo_client
-    )
+    vimeo_client.upload_captions_to_vimeo(config.final_captions_path, texttrack_uri)

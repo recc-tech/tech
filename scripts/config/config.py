@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import typing
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List, Literal, Set, Tuple, TypeVar
+from typing import Dict, List, Literal, Set, Tuple, Type, TypeVar
 
 import tomli
 
@@ -137,14 +138,13 @@ class ConfigFileReader:
         return out_data
 
     def get_str(self, key: str) -> str:
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
-        if not isinstance(value, str):
-            raise ValueError(
-                f"Expected configuration value {key} to be a string, but found type {type(value)}."
-            )
-        return value
+        return self._get(key, str, "a string")
+
+    def get_int(self, key: str) -> int:
+        return self._get(key, int, "a whole number")
+
+    def get_bool(self, key: str) -> bool:
+        return self._get(key, bool, "true or false")
 
     def get_enum(self, key: str, options: Set[T]) -> T:
         value = self._data.get(key, None)
@@ -156,16 +156,6 @@ class ConfigFileReader:
                 f"Expected configuration value {key} to be one of {options}, but found '{value}'."
             )
         return matches[0]
-
-    def get_int(self, key: str) -> int:
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
-        if not isinstance(value, int):
-            raise ValueError(
-                f"Expected configuration value {key} to be an integer, but found type {type(value)}."
-            )
-        return value
 
     def get_str_list(self, key: str) -> List[str]:
         value = self._data.get(key, None)
@@ -179,16 +169,6 @@ class ConfigFileReader:
             raise ValueError()
         return typing.cast(List[str], value)
 
-    def get_bool(self, key: str) -> bool:
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
-        if not isinstance(value, bool):
-            raise ValueError(
-                f"Expected configuration value {key} to be true or false, but found type {type(value)}."
-            )
-        return value
-
     def get_float(self, key: str) -> float:
         value = self._data.get(key, None)
         if value is None:
@@ -201,23 +181,51 @@ class ConfigFileReader:
             f"Expected configuration value {key} to be a number, but found type {type(value)}."
         )
 
+    def _get(self, key: str, cls: Type[T], clsname: str) -> T:
+        value = self._data.get(key, None)
+        if value is None:
+            raise ValueError(f"Missing configuration value {key}.")
+        if not isinstance(value, cls):
+            raise ValueError(
+                f"Expected configuration value {key} to be {clsname}, but found type {type(value)}."
+            )
+        return value
+
 
 # TODO: Add bidirectional association between this config and any Launch object
 # that needs it
-class SlidesConfig:
+# TODO: Move the slide style classes to a different file (where?)
+class Config:
     def __init__(self) -> None:
         self.reload()
 
     def reload(self) -> None:
         reader = ConfigFileReader()
 
-        self._img_width = reader.get_int("slides.image_width")
-        self._img_height = reader.get_int("slides.image_height")
-        self._font_family = reader.get_str_list("slides.font_family")
+        self.pco_base_url = reader.get_str("planning_center.base_url")
+        self.pco_services_base_url = reader.get_str("planning_center.services_base_url")
+        self.pco_sunday_service_type_id = reader.get_str(
+            "planning_center.sunday_service_type_id"
+        )
+
+        self.vimeo_new_video_hours = reader.get_float("vimeo.new_video_hours")
+        self.vimeo_retry_seconds = reader.get_float("vimeo.retry_seconds")
+        self.vimeo_captions_type = reader.get_str("vimeo.captions_type")
+        self.vimeo_captions_language = reader.get_str("vimeo.captions_language")
+        self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
+
+        self.vmix_base_url = reader.get_str("vmix.base_url")
+
+        self.timeout_seconds = reader.get_float("api.timeout_seconds")
+        self.timeout = timedelta(seconds=self.timeout_seconds)
+
+        self.img_width = reader.get_int("slides.image_width")
+        self.img_height = reader.get_int("slides.image_height")
+        self.font_family = reader.get_str_list("slides.font_family")
 
         fsm = "slides.fullscreen_message"
-        self._fullscreen_message_style = NoFooterSlideStyle(
-            width=self._img_width,
+        self.fullscreen_message_style = NoFooterSlideStyle(
+            width=self.img_width,
             height=self.img_height,
             background_colour=reader.get_str(f"{fsm}.background"),
             body=Textbox(
@@ -228,7 +236,7 @@ class SlidesConfig:
                     h=reader.get_int(f"{fsm}.body.height"),
                 ),
                 font=Font(
-                    family=self._font_family,
+                    family=self.font_family,
                     style=reader.get_enum(f"{fsm}.body.font.style", _STYLES),
                     min_size=reader.get_int(f"{fsm}.body.font.min_size"),
                     max_size=reader.get_int(f"{fsm}.body.font.max_size"),
@@ -243,9 +251,9 @@ class SlidesConfig:
         )
 
         fss = "slides.fullscreen_scripture"
-        self._fullscreen_scripture_style = FooterSlideStyle(
-            width=self._img_width,
-            height=self._img_height,
+        self.fullscreen_scripture_style = FooterSlideStyle(
+            width=self.img_width,
+            height=self.img_height,
             background_colour=reader.get_str(f"{fss}.background"),
             body=Textbox(
                 bbox=Bbox.xywh(
@@ -255,7 +263,7 @@ class SlidesConfig:
                     h=reader.get_int(f"{fss}.body.height"),
                 ),
                 font=Font(
-                    family=self._font_family,
+                    family=self.font_family,
                     style=reader.get_enum(f"{fss}.body.font.style", _STYLES),
                     min_size=reader.get_int(f"{fss}.body.font.min_size"),
                     max_size=reader.get_int(f"{fss}.body.font.max_size"),
@@ -274,7 +282,7 @@ class SlidesConfig:
                     h=reader.get_int(f"{fss}.footer.height"),
                 ),
                 font=Font(
-                    family=self._font_family,
+                    family=self.font_family,
                     style=reader.get_enum(f"{fss}.footer.font.style", _STYLES),
                     min_size=reader.get_int(f"{fss}.footer.font.min_size"),
                     max_size=reader.get_int(f"{fss}.footer.font.max_size"),
@@ -297,7 +305,7 @@ class SlidesConfig:
                 h=reader.get_int(f"{ltm}.body.height"),
             ),
             font=Font(
-                family=self._font_family,
+                family=self.font_family,
                 style=reader.get_enum(f"{ltm}.body.font.style", _STYLES),
                 min_size=reader.get_int(f"{ltm}.body.font.min_size"),
                 max_size=reader.get_int(f"{ltm}.body.font.max_size"),
@@ -308,9 +316,9 @@ class SlidesConfig:
             bold=reader.get_bool(f"{ltm}.body.font.bold"),
             line_spacing=reader.get_float(f"{ltm}.body.line_spacing"),
         )
-        self._lowerthird_message_style = NoFooterSlideStyle(
-            width=self._img_width,
-            height=self._img_height,
+        self.lowerthird_message_style = NoFooterSlideStyle(
+            width=self.img_width,
+            height=self.img_height,
             background_colour=reader.get_str(f"{ltm}.background"),
             body=self._lowerthird_message_body,
             shapes=[
@@ -335,7 +343,7 @@ class SlidesConfig:
                 h=reader.get_int(f"{lts}.body.height"),
             ),
             font=Font(
-                family=self._font_family,
+                family=self.font_family,
                 style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
                 min_size=reader.get_int(f"{lts}.body.font.min_size"),
                 max_size=reader.get_int(f"{lts}.body.font.max_size"),
@@ -354,7 +362,7 @@ class SlidesConfig:
                 h=reader.get_int(f"{lts}.body.height"),
             ),
             font=Font(
-                family=self._font_family,
+                family=self.font_family,
                 style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
                 min_size=reader.get_int(f"{lts}.body.font.min_size"),
                 max_size=reader.get_int(f"{lts}.body.font.max_size"),
@@ -365,9 +373,9 @@ class SlidesConfig:
             bold=reader.get_bool(f"{lts}.body.font.bold"),
             line_spacing=reader.get_float(f"{lts}.body.line_spacing"),
         )
-        self._lowerthird_scripture_style = FooterSlideStyle(
-            width=self._img_width,
-            height=self._img_height,
+        self.lowerthird_scripture_style = FooterSlideStyle(
+            width=self.img_width,
+            height=self.img_height,
             background_colour=reader.get_str(f"{lts}.background"),
             body=self._lowerthird_scripture_body,
             footer=self._lowerthird_scripture_footer,
@@ -383,31 +391,3 @@ class SlidesConfig:
                 )
             ],
         )
-
-    @property
-    def img_width(self) -> int:
-        return self._img_width
-
-    @property
-    def img_height(self) -> int:
-        return self._img_height
-
-    @property
-    def font_family(self) -> List[str]:
-        return self._font_family
-
-    @property
-    def fullscreen_message_style(self) -> NoFooterSlideStyle:
-        return self._fullscreen_message_style
-
-    @property
-    def fullscreen_scripture_style(self) -> FooterSlideStyle:
-        return self._fullscreen_scripture_style
-
-    @property
-    def lowerthird_message_style(self) -> NoFooterSlideStyle:
-        return self._lowerthird_message_style
-
-    @property
-    def lowerthird_scripture_style(self) -> FooterSlideStyle:
-        return self._lowerthird_scripture_style

@@ -13,11 +13,11 @@ from typing import Any, Dict, List, Set, Tuple
 from autochecklist import Messenger, ProblemLevel
 from config import (
     Bbox,
+    Config,
     Font,
     FooterSlideStyle,
     NoFooterSlideStyle,
     Rectangle,
-    SlidesConfig,
     Textbox,
 )
 from external_services import BibleVerse, BibleVerseFinder
@@ -252,7 +252,7 @@ class Slide:
 
 
 class SlideGenerator:
-    def __init__(self, messenger: Messenger, config: SlidesConfig):
+    def __init__(self, messenger: Messenger, config: Config):
         self._messenger = messenger
         self._config = config
 

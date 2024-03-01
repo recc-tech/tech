@@ -15,7 +15,7 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from config import ReccConfig
+from config import Config, ReccConfig
 from external_services import (
     BoxCastClientFactory,
     Credential,
@@ -173,6 +173,7 @@ def log_into_vimeo(credential_store: CredentialStore, messenger: Messenger) -> N
     ReccVimeoClient(
         messenger=messenger,
         credential_store=credential_store,
+        config=Config(),
         cancellation_token=None,
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
@@ -208,6 +209,7 @@ def log_into_planning_center(
     PlanningCenterClient(
         messenger=messenger,
         credential_store=credential_store,
+        config=Config(),
         lazy_login=False,
     )
     messenger.log_status(

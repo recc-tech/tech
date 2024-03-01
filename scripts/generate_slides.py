@@ -19,11 +19,11 @@ from config import ReccConfig
 from external_services import ReccWebDriver
 from lib.slides import (
     BibleVerseFinder,
+    Config,
     Slide,
     SlideBlueprint,
     SlideBlueprintReader,
     SlideGenerator,
-    SlidesConfig,
 )
 
 _DESCRIPTION = "This script will generate simple slides to be used in case the usual system is not working properly."
@@ -194,7 +194,7 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
             cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger, SlidesConfig())
+        generator = SlideGenerator(messenger, Config())
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],

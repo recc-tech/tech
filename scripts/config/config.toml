@@ -1,3 +1,26 @@
+[planning_center]
+base_url = "https://api.planningcenteronline.com"
+services_base_url = "https://api.planningcenteronline.com/services/v2%"
+sunday_service_type_id = "882857"
+
+[vimeo]
+# Maximum time since today's video was posted
+new_video_hours = 3.0
+# How many seconds to wait between re-checking that the new video is available
+retry_seconds = 60.0
+captions_type = "subtitles"
+captions_language = "en-CA"
+captions_name = "English (Canada)"
+timeout_seconds = 15.0
+
+[vmix]
+base_url = "http://192.168.0.65:8088/api"
+timeout_seconds = 15.0
+
+[api]
+# After this many seconds, a request is assumed to have failed
+timeout_seconds = 15.0
+
 [slides]
 image_width = 1920
 image_height = 1080

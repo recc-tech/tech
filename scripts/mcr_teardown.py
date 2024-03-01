@@ -20,7 +20,7 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from config import McrTeardownConfig
+from config import Config, McrTeardownConfig
 from external_services import (
     BoxCastClientFactory,
     CredentialStore,
@@ -175,6 +175,7 @@ class McrTeardownScript(Script[McrTeardownConfig]):
         vimeo_client = ReccVimeoClient(
             messenger=messenger,
             credential_store=credential_store,
+            config=Config(),
             cancellation_token=None,
             lazy_login=config.lazy_login,
         )
@@ -210,6 +211,7 @@ class McrTeardownScript(Script[McrTeardownConfig]):
                 planning_center_client = PlanningCenterClient(
                     messenger=messenger,
                     credential_store=credential_store,
+                    config=Config(),
                     lazy_login=config.lazy_login,
                 )
                 today = config.now.date() or date.today()
