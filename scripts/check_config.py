@@ -2,7 +2,7 @@ from config import Config
 
 if __name__ == "__main__":
     try:
-        Config()
+        Config(strict=True)
         print("Everything looks ok!")
     except ValueError as e:
-        print(f"An error occurred: {e}")
+        exit(f"An error occurred: {e}")
