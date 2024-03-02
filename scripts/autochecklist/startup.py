@@ -3,6 +3,7 @@ import traceback
 from pathlib import Path
 from typing import Generic, Tuple, TypeVar, Union
 
+from .base_args import BaseArgs
 from .base_config import BaseConfig
 from .messenger import (
     ConsoleMessenger,
@@ -14,22 +15,26 @@ from .messenger import (
 )
 from .task import FunctionFinder, TaskGraph, TaskModel
 
-TConfig = TypeVar("TConfig", bound=BaseConfig)
+A = TypeVar("A", bound=BaseArgs)
+C = TypeVar("C", bound=BaseConfig)
 
 
-class Script(Generic[TConfig]):
-    def create_config(self) -> TConfig:
+class Script(Generic[A, C]):
+    def parse_args(self) -> A:
         raise NotImplementedError()
 
-    def create_messenger(self, config: TConfig) -> Messenger:
+    def create_config(self, args: A) -> C:
+        raise NotImplementedError()
+
+    def create_messenger(self, args: A, config: C) -> Messenger:
         raise NotImplementedError()
 
     def create_services(
-        self, config: TConfig, messenger: Messenger
+        self, args: A, config: C, messenger: Messenger
     ) -> Tuple[Union[TaskModel, Path], FunctionFinder]:
         raise NotImplementedError()
 
-    def shut_down(self, config: TConfig) -> None:
+    def shut_down(self, args: A, config: C) -> None:
         pass
 
     @property
@@ -73,27 +78,37 @@ class Script(Generic[TConfig]):
 
     def _run_main(self) -> None:
         try:
-            config = self.create_config()
+            args = self.parse_args()
+        except Exception as e:
+            print(f"Failed to parse command-line arguments: {e}", file=sys.stderr)
+            return
+
+        try:
+            config = self.create_config(args)
         except Exception as e:
             print(f"Failed to create config: {e}", file=sys.stderr)
             return
 
         try:
-            messenger = self.create_messenger(config)
+            messenger = self.create_messenger(args, config)
         except Exception as e:
             print(f"Failed to create messenger: {e}", file=sys.stderr)
             return
 
         try:
-            messenger.start(after_start=lambda: self._run_worker(config, messenger))
+            messenger.start(
+                after_start=lambda: self._run_worker(args, config, messenger)
+            )
         except Exception as e:
             print(f"Failed to run messenger: {e}", file=sys.stderr)
 
-    def _run_worker(self, config: TConfig, messenger: Messenger) -> None:
+    def _run_worker(self, args: A, config: C, messenger: Messenger) -> None:
         try:
             try:
                 messenger.log_status(TaskStatus.RUNNING, "Creating services.")
-                task_model, function_finder = self.create_services(config, messenger)
+                task_model, function_finder = self.create_services(
+                    args, config, messenger
+                )
             except Exception as e:
                 messenger.log_problem(
                     ProblemLevel.FATAL,
@@ -111,7 +126,9 @@ class Script(Generic[TConfig]):
                     )
                     task_model = TaskModel.load(task_model)
                 messenger.log_status(TaskStatus.RUNNING, "Loading task graph.")
-                task_graph = TaskGraph(task_model, messenger, function_finder, config)
+                task_graph = TaskGraph(
+                    task_model, messenger, function_finder, args, config
+                )
             except Exception as e:
                 messenger.log_problem(
                     ProblemLevel.FATAL,
@@ -121,7 +138,7 @@ class Script(Generic[TConfig]):
                 messenger.log_status(TaskStatus.DONE, self.fail_message)
                 return
 
-            if config.no_run:
+            if args.no_run:
                 messenger.log_status(
                     TaskStatus.DONE, "No tasks were run because config.no_run = true."
                 )
@@ -142,27 +159,30 @@ class Script(Generic[TConfig]):
             pass
         finally:
             messenger.close()
-            self.shut_down(config)
+            self.shut_down(args, config)
 
 
-class DefaultScript(Script[BaseConfig]):
-    def create_config(self) -> BaseConfig:
-        return BaseConfig(ui="tk", verbose=False, no_run=False, auto_tasks=None)
+class DefaultScript(Script[BaseArgs, BaseConfig]):
+    def parse_args(self) -> BaseArgs:
+        return BaseArgs.parse(sys.argv)
 
-    def create_messenger(self, config: BaseConfig) -> Messenger:
+    def create_config(self, args: BaseArgs) -> BaseConfig:
+        return BaseConfig()
+
+    def create_messenger(self, args: BaseArgs, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(Path("autochecklist.log"))
         input_messenger = (
             TkMessenger("Autochecklist", "")
-            if config.ui == "tk"
-            else ConsoleMessenger("", show_task_status=config.verbose)
+            if args.ui == "tk"
+            else ConsoleMessenger("", show_task_status=args.verbose)
         )
         return Messenger(file_messenger, input_messenger)
 
     def create_services(
-        self, config: BaseConfig, messenger: Messenger
+        self, args: BaseArgs, config: BaseConfig, messenger: Messenger
     ) -> Tuple[Union[Path, TaskModel], FunctionFinder]:
         function_finder = FunctionFinder(module=None, arguments=[], messenger=messenger)
         return Path("tasks.json"), function_finder
 
-    def shut_down(self, config: BaseConfig) -> None:
+    def shut_down(self, args: BaseArgs, config: BaseConfig) -> None:
         pass

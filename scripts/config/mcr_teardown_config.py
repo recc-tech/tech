@@ -1,121 +1,147 @@
-from datetime import date, datetime
+import re
+import typing
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from pathlib import Path
-from typing import Literal, Optional, Set
+from typing import Callable, List
 
-from .recc_config import ReccConfig
+from .config import Config
+from .parsing_helpers import parse_non_empty_string
+from .recc_args import ReccArgs
 
 
-class McrTeardownConfig(ReccConfig):
-    def __init__(
-        self,
-        message_series: str,
-        message_title: str,
-        boxcast_event_id: str,
-        home_dir: Path,
-        downloads_dir: Path,
-        lazy_login: bool,
-        now: datetime,
-        show_browser: bool,
-        ui: Literal["console", "tk"],
-        verbose: bool,
-        no_run: bool,
-        auto_tasks: Optional[Set[str]],
-    ):
-        super().__init__(
-            home_dir=home_dir,
-            now=now,
-            ui=ui,
-            verbose=verbose,
-            no_run=no_run,
-            auto_tasks=auto_tasks,
+# TODO: Move stuff like this to a separate `args` package
+class McrTeardownArgs(ReccArgs):
+    NAME = "mcr_teardown"
+    DESCRIPTION = "This script will guide you through the steps to shutting down the MCR video station after a Sunday gathering."
+
+    def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
+        super().__init__(args, error)
+
+        if args.boxcast_event_url:
+            args.boxcast_event_id = args.boxcast_event_url
+        # For some reason Pylance complains about the del keyword but not delattr
+        delattr(args, "boxcast_event_url")
+        if args.auto is not None:
+            if "none" in args.auto and len(args.auto) > 1:
+                error("If 'none' is included in --auto, it must be the only value.")
+            if args.auto == ["none"]:
+                args.auto = typing.cast(List[str], [])
+
+        self.message_series: str = args.message_series or ""
+        self.message_title: str = args.message_title or ""
+        self.boxcast_event_id: str = args.boxcast_event_id or ""
+        self.lazy_login: bool = args.lazy_login
+        self.show_browser: bool = args.show_browser
+
+    @classmethod
+    def set_up_parser(cls, parser: ArgumentParser) -> None:
+        # TODO: Check that all args (incl. other scripts) have reasonable
+        # (usually no) defaults
+        parser.add_argument(
+            "-s",
+            "--message-series",
+            type=parse_non_empty_string,
+            help="Name of the series to which today's sermon belongs.",
+        )
+        parser.add_argument(
+            "-t",
+            "--message-title",
+            type=parse_non_empty_string,
+            help="Title of today's sermon.",
         )
 
-        self._downloads_dir = downloads_dir.resolve()
-        self.lazy_login = lazy_login
-        self.show_browser = show_browser
-        self.message_series = message_series.strip()
-        self.message_title = message_title.strip()
-        self.boxcast_event_id = boxcast_event_id
+        boxcast_event_id_group = parser.add_mutually_exclusive_group()
+        boxcast_event_id_group.add_argument(
+            "-b",
+            "--boxcast-event-url",
+            type=parse_boxcast_event_url,
+            help="URL of today's live event on BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
+        )
+        boxcast_event_id_group.add_argument(
+            "--boxcast-event-id",
+            type=parse_non_empty_string,
+            help='ID of today\'s live event on BoxCast. For example, in the URL https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456, the event ID is "abcdefghijklm0123456" (without the quotation marks).',
+        )
 
-        # TODO: Passing state between tasks seems like a separate concern that
-        # should be in a separate class.
-        self.vimeo_video_uri: Optional[str] = None
-        self.vimeo_video_texttracks_uri: Optional[str] = None
+        debug_args = parser.add_argument_group("Debug arguments")
+        debug_args.add_argument(
+            "--lazy-login",
+            action="store_true",
+            help="If this flag is provided, then the script will not immediately log in to services like Vimeo and BoxCast. Instead, it will wait until that particular service is specifically requested.",
+        )
+        debug_args.add_argument(
+            "--show-browser",
+            action="store_true",
+            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
+        )
 
-    @property
-    def live_event_title(self) -> str:
-        return f"Sunday Gathering LIVE: {_format_mdy(self.now)}"
+        return super().set_up_parser(parser)
+
+
+class McrTeardownConfig(Config):
+    def __init__(self, args: McrTeardownArgs, strict: bool = False) -> None:
+        self._args = args
+        super().__init__(args, strict)
 
     @property
     def live_event_url(self) -> str:
-        return f"https://dashboard.boxcast.com/broadcasts/{self.boxcast_event_id}"
+        return self.live_event_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+        )
 
     @property
     def live_event_captions_tab_url(self) -> str:
-        return f"{self.live_event_url}?tab=captions"
-
-    @property
-    def captions_download_path(self):
-        return self._downloads_dir.joinpath(f"{self.boxcast_event_id}_captions.vtt")
-
-    @property
-    def rebroadcast_title(self) -> str:
-        return f"Sunday Gathering Rebroadcast: {_format_mdy(self.now)}"
-
-    @property
-    def rebroadcast_setup_url(self) -> str:
-        return f"https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId={self.boxcast_event_id}"
+        return self.live_event_captions_tab_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+        )
 
     @property
     def boxcast_edit_captions_url(self) -> str:
-        return f"https://dashboard.boxcast.com/broadcasts/{self.boxcast_event_id}/edit-captions"
-
-    @property
-    def log_file(self) -> Path:
-        return self.log_dir.joinpath(
-            f"{self.now.strftime('%Y-%m-%d')} {self.now.strftime('%H-%M-%S')} mcr_teardown.log"
-        ).resolve()
-
-    @property
-    def _captions_dir(self) -> Path:
-        return self.home_dir.joinpath("Captions").joinpath(
-            self.now.strftime("%Y-%m-%d")
+        return self.boxcast_edit_captions_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
         )
 
     @property
-    def original_captions_path(self) -> Path:
-        return self._captions_dir.joinpath("original.vtt")
+    def rebroadcast_setup_url(self) -> str:
+        return self.rebroadcast_setup_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+        )
 
     @property
-    def final_captions_path(self) -> Path:
-        return self._captions_dir.joinpath("final.vtt")
+    def captions_download_path(self) -> Path:
+        return Path(
+            self.captions_download_path_template.fill(
+                {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+            )
+        )
 
     @property
     def vimeo_video_title(self) -> str:
-        return f"{self.now.strftime('%Y-%m-%d')} | {self.message_series} | {self.message_title}"
-
-    def fill_placeholders(self, text: str) -> str:
-        text = (
-            text.replace("%{REBROADCAST_TITLE}%", self.rebroadcast_title)
-            .replace(
-                "%{ORIGINAL_CAPTIONS_PATH}%", self.original_captions_path.as_posix()
-            )
-            .replace("%{FINAL_CAPTIONS_PATH}%", self.final_captions_path.as_posix())
-            .replace("%{LOG_FILE}%", self.log_file.as_posix())
-            .replace("%{VIMEO_VIDEO_TITLE}%", self.vimeo_video_title)
+        return self.vimeo_video_title_template.fill(
+            {
+                "SERIES_TITLE": self._args.message_series,
+                "MESSAGE_TITLE": self._args.message_title,
+            }
         )
 
-        # Call the superclass' method *after* the subclass' method so that the check for unknown placeholders happens
-        # at the end
-        return super().fill_placeholders(text)
 
+def parse_boxcast_event_url(event_url: str) -> str:
+    if not event_url:
+        raise ArgumentTypeError("Empty input. The event URL is required.")
+    if all(c == "\x16" for c in event_url):
+        raise ArgumentTypeError(
+            "You entered the value CTRL+V, which is not a valid event URL. Try right-clicking to paste."
+        )
 
-def _format_mdy(dt: date) -> str:
-    """
-    Return the given date as a string in month day year format. The day of the month will not have a leading zero.
-
-    Examples:
-        - `_date_mdy(date(year=2023, month=6, day=4)) == 'June 4, 2023'`
-        - `_date_mdy(date(year=2023, month=6, day=11)) == 'June 11, 2023'`
-    """
-    return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
+    # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
+    # Allow a trailing forward slash just in case
+    event_url = event_url.strip()
+    regex = "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]{20,20})/?(?:\\?.*)?$"
+    pattern = re.compile(regex)
+    regex_match = pattern.search(event_url)
+    if not regex_match:
+        raise ArgumentTypeError(
+            f"Expected the BoxCast event URL to match the regular expression '{regex}', but received '{event_url}'. Are you sure you copied the URL correctly? If you think there is a problem with the script, try entering the BoxCast event ID directly instead."
+        )
+    event_id = regex_match.group(1)
+    return event_id

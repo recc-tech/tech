@@ -5,30 +5,40 @@
 #   arguments that are applicable to all scripts, like the startup time). Use
 #   this form whenever possible.
 # - !{PLACEHOLDER}! may refer to values that are only available for certain
-#   scripts. Use this form as little as possible.
+#   scripts, such as the BoxCast event ID during MCR teardown. Use this form as
+#   little as possible.
+
+[folder]
+logs = "%{folder.home}%/Logs"
+captions = "%{folder.home}%/Captions/%{STARTUP_YMD}%"
+archived_assets = "%{folder.assets_by_type}%/Archive"
+temporary_assets = "%{folder.assets_by_type}%/Temp"
 
 [logging]
-mcr_setup                 = "%{STARTUP_TIMESTAMP}% mcr_setup.log"
-mcr_setup_webdriver       = "%{STARTUP_TIMESTAMP}% mcr_setup_webdriver.log"
-mcr_teardown              = "%{STARTUP_TIMESTAMP}% mcr_teardown.log"
-mcr_teardown_webdriver    = "%{STARTUP_TIMESTAMP}% mcr_teardown_webdriver.log"
-check_credentials         = "%{STARTUP_TIMESTAMP}% check_credentials.log"
-download_pco_assets       = "%{STARTUP_TIMESTAMP}% download_pco_assets.log"
-generate_slides           = "%{STARTUP_TIMESTAMP}% generate_slides.log"
-generate_slides_webdriver = "%{STARTUP_TIMESTAMP}% generate_slides_webdriver.log"
+check_credentials                = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% check_credentials.log"
+check_credentials_webdriver_name = "check_credentials_webdriver"
+generate_slides                  = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% generate_slides.log"
+generate_slides_webdriver        = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% generate_slides_webdriver.log"
+download_pco_assets              = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% download_pco_assets.log"
+mcr_setup                        = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_setup.log"
+mcr_setup_webdriver              = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_setup_webdriver.log"
+mcr_teardown                     = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_teardown.log"
+mcr_teardown_webdriver_name      = "mcr_teardown_webdriver"
+
+[ui]
+# TODO: Add local option for dark vs light mode?
+# TODO: Add success_message, fail_message, etc. from autochecklist/startup.py
 
 [captions]
-# Relative to home
-captions_folder = "Captions/%{STARTUP_YMD}%"
-original_captions_filename = "original.vtt"
-final_captions_filename = "final.vtt"
+original = "%{folder.captions}%/original.vtt"
+final = "%{folder.captions}%/final.vtt"
 
 [boxcast]
 live_event_title = "Sunday Gathering LIVE: %{STARTUP_MDY}%"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{STARTUP_MDY}%"
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
-live_event_captions_tab = "%{boxcast.live_event_url}%?tab=captions"
-captions_download_path = "%{directory_structure.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
+live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
+captions_download_path = "%{folder.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
 rebroadcast_setup_url = "https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId=!{BOXCAST_EVENT_ID}!"
 edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
 
@@ -45,7 +55,7 @@ retry_seconds = 60.0
 captions_type = "subtitles"
 captions_language = "en-CA"
 captions_name = "English (Canada)"
-video_title = "%{STARTUP_YMD}% | !{SERIES_TITLE}! | !{MESSAGE_TITLE}!"
+video_title = "%{STARTUP_YMD}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
 
 [vmix]
 base_url = "http://192.168.0.65:8088/api"

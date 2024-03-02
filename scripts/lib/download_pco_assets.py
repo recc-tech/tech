@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from external_services import Attachment, FileType, PlanningCenterClient
 
+# TODO: Move these to config file
 _KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
 _SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 

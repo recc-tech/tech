@@ -1,8 +1,6 @@
-import typing
-from argparse import ArgumentParser
-from datetime import datetime
+import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 import lib.mcr_setup as mcr_setup
 from autochecklist import (
@@ -13,102 +11,37 @@ from autochecklist import (
     Script,
     TkMessenger,
 )
-from config import Config, McrSetupConfig
+from config import Config, McrSetupArgs, McrSetupConfig
 from external_services import (
     CredentialStore,
     PlanningCenterClient,
     ReccWebDriver,
     VmixClient,
 )
-from lib import parse_directory
 from lib.slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 
-_DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering."
 
-
-class McrSetupScript(Script[McrSetupConfig]):
+class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
     def __init__(self) -> None:
         self._web_driver: Optional[ReccWebDriver] = None
 
-    def create_config(self) -> McrSetupConfig:
-        parser = ArgumentParser(description=_DESCRIPTION)
+    def parse_args(self) -> McrSetupArgs:
+        return McrSetupArgs.parse(sys.argv)
 
-        advanced_args = parser.add_argument_group("Advanced arguments")
-        advanced_args.add_argument(
-            "--home-dir",
-            type=parse_directory,
-            default="D:\\Users\\Tech\\Documents",
-            help="The home directory.",
-        )
-        advanced_args.add_argument(
-            "--ui",
-            choices=["console", "tk"],
-            default="tk",
-            help="User interface to use.",
-        )
+    def create_config(self, args: McrSetupArgs) -> McrSetupConfig:
+        return McrSetupConfig(args)
 
-        debug_args = parser.add_argument_group("Debug arguments")
-        debug_args.add_argument(
-            "--verbose",
-            action="store_true",
-            help="This flag is only applicable when the console UI is used. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
-        )
-        debug_args.add_argument(
-            "--no-run",
-            action="store_true",
-            help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
-        )
-        debug_args.add_argument(
-            "--auto",
-            action="append",
-            default=None,
-            help="Specify which tasks to automate. You can also provide 'none' to automate none of the tasks. By default, all tasks that can be automated are automated.",
-        )
-        debug_args.add_argument(
-            "--show-browser",
-            action="store_true",
-            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
-        )
-        debug_args.add_argument(
-            "--date",
-            type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
-            help="Pretend the script is running on a different date.",
-        )
-
-        args = parser.parse_args()
-        if args.auto is not None:
-            if "none" in args.auto and len(args.auto) > 1:
-                parser.error(
-                    "If 'none' is included in --auto, it must be the only value."
-                )
-            if args.auto == ["none"]:
-                args.auto = typing.cast(List[str], [])
-
-        return McrSetupConfig(
-            home_dir=args.home_dir,
-            ui=args.ui,
-            verbose=args.verbose,
-            no_run=args.no_run,
-            auto_tasks=set(args.auto) if args.auto is not None else None,
-            show_browser=args.show_browser,
-            now=(
-                datetime.combine(args.date, datetime.now().time())
-                if args.date
-                else datetime.now()
-            ),
-        )
-
-    def create_messenger(self, config: McrSetupConfig) -> Messenger:
-        file_messenger = FileMessenger(log_file=config.log_file)
+    def create_messenger(self, args: McrSetupArgs, config: Config) -> Messenger:
+        file_messenger = FileMessenger(log_file=config.mcr_setup_log)
         input_messenger = (
             ConsoleMessenger(
-                description=f"{_DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
-                show_task_status=config.verbose,
+                description=f"{McrSetupArgs.DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+                show_task_status=args.verbose,
             )
-            if config.ui == "console"
+            if args.ui == "console"
             else TkMessenger(
                 title="MCR Setup",
-                description=_DESCRIPTION,
+                description=McrSetupArgs.DESCRIPTION,
             )
         )
         messenger = Messenger(
@@ -117,17 +50,17 @@ class McrSetupScript(Script[McrSetupConfig]):
         return messenger
 
     def create_services(
-        self, config: McrSetupConfig, messenger: Messenger
+        self, args: McrSetupArgs, config: Config, messenger: Messenger
     ) -> Tuple[Path, FunctionFinder]:
         credential_store = CredentialStore(messenger)
         planning_center_client = PlanningCenterClient(
-            messenger, credential_store, Config()
+            messenger, credential_store, config
         )
-        vmix_client = VmixClient(config=Config())
+        vmix_client = VmixClient(config=config)
         web_driver = ReccWebDriver(
             messenger=messenger,
-            headless=not config.show_browser,
-            log_file=config.webdriver_log_file,
+            headless=not args.show_browser,
+            log_file=config.mcr_setup_webdriver_log,
         )
         bible_verse_finder = BibleVerseFinder(
             web_driver,
@@ -135,7 +68,7 @@ class McrSetupScript(Script[McrSetupConfig]):
             cancellation_token=None,
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger, Config())
+        generator = SlideGenerator(messenger, config)
         function_finder = FunctionFinder(
             mcr_setup,
             [
@@ -153,7 +86,7 @@ class McrSetupScript(Script[McrSetupConfig]):
         )
         return task_list_file, function_finder
 
-    def shut_down(self, config: McrSetupConfig) -> None:
+    def shut_down(self, args: McrSetupArgs, config: Config) -> None:
         if self._web_driver is not None:
             self._web_driver.quit()
 

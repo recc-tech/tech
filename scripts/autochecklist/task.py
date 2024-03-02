@@ -11,8 +11,9 @@ from threading import Thread
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Optional, Set
 
-from autochecklist.base_config import BaseConfig
-from autochecklist.messenger import (
+from .base_args import BaseArgs
+from .base_config import BaseConfig
+from .messenger import (
     Messenger,
     ProblemLevel,
     TaskCancelledException,
@@ -33,6 +34,7 @@ class TaskGraph:
         task: TaskModel,
         messenger: Messenger,
         function_finder: FunctionFinder,
+        args: BaseArgs,
         config: BaseConfig,
     ):
         task_with_normalized_prereqs = _normalize_prerequisites(
@@ -42,7 +44,7 @@ class TaskGraph:
         sorted_tasks = _sort_tasks(tasks)
         tasks_with_minimal_prereqs = _remove_redundant_prerequisites(sorted_tasks)
         runnable_tasks = _convert_models_to_tasks(
-            tasks_with_minimal_prereqs, messenger, function_finder, config
+            tasks_with_minimal_prereqs, messenger, function_finder, args, config
         )
 
         messenger.set_task_index_table({t.name: t.index for t in runnable_tasks})
@@ -623,10 +625,11 @@ def _convert_models_to_tasks(
     models: List[TaskModel],
     messenger: Messenger,
     finder: FunctionFinder,
+    args: BaseArgs,
     config: BaseConfig,
 ) -> List[_Task]:
     all_task_names = {m.name for m in models}
-    auto_tasks = all_task_names if config.auto_tasks is None else config.auto_tasks
+    auto_tasks = all_task_names if args.auto_tasks is None else args.auto_tasks
     invalid_auto_tasks = [t for t in auto_tasks if t not in all_task_names]
     if invalid_auto_tasks:
         raise ValueError(
@@ -641,7 +644,7 @@ def _convert_models_to_tasks(
             raise ValueError(
                 f"Task '{m.name}' has only_auto=True, but no automation was found for it."
             )
-        if func is None and m.name in auto_tasks and config.auto_tasks is not None:
+        if func is None and m.name in auto_tasks and args.auto_tasks is not None:
             # If config.auto_tasks is not None it means the user explicitly
             # listed this task, even though it's not automated.
             raise ValueError(

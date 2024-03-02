@@ -1,13 +1,9 @@
 station = "foh"
 
-[directory_structure]
+[folder]
 downloads = "~/Downloads"
 home = "~/Documents"
-# The remaining directories are relative to home
-assets_by_service = "ProPresenter Assets"
-assets_by_type = "ProPresenter Assets"
-images = "ProPresenter Assets"
-videos = "ProPresenter Assets"
-temp_assets = "ProPresenter Assets/Temp"
-archived_assets = "ProPresenter Assets/Archive"
-logs = "Logs"
+assets_by_service = "%{folder.home}%/ProPresenter Assets"
+assets_by_type = "%{folder.home}%/ProPresenter Assets"
+images = "%{folder.home}%/ProPresenter Assets"
+videos = "%{folder.home}%/ProPresenter Assets"

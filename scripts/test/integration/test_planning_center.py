@@ -2,13 +2,14 @@ import asyncio
 import filecmp
 import inspect
 import unittest
+from argparse import Namespace
 from datetime import date
 from pathlib import Path
 from typing import Tuple
 from unittest.mock import Mock
 
 from autochecklist import Messenger
-from config import Config
+from config import Config, ReccArgs
 from external_services import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
@@ -134,6 +135,9 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:
+        args = ReccArgs(
+            Namespace(), lambda msg: self.fail(f"Argument parsing error: {msg}")
+        )
         messenger = Mock(spec=Messenger)
         log_problem_mock = Mock()
         messenger.log_problem = log_problem_mock
@@ -150,7 +154,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         client = PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
-            config=Config(),
+            config=Config(args),
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )

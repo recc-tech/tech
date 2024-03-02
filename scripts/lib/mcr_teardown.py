@@ -21,7 +21,7 @@ def create_rebroadcast_1pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.now.replace(hour=13, minute=0, second=0),
+            start_datetime=config.start_time.replace(hour=13, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
@@ -39,7 +39,7 @@ def create_rebroadcast_5pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.now.replace(hour=17, minute=0, second=0),
+            start_datetime=config.start_time.replace(hour=17, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
@@ -57,7 +57,7 @@ def create_rebroadcast_7pm(
             rebroadcast_setup_url=config.rebroadcast_setup_url,
             source_broadcast_title=config.live_event_title,
             rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.now.replace(hour=19, minute=0, second=0),
+            start_datetime=config.start_time.replace(hour=19, minute=0, second=0),
             client=client,
             messenger=messenger,
             cancellation_token=cancellation_token,
@@ -78,40 +78,18 @@ def export_to_vimeo(
         )
 
 
-def get_vimeo_video_data(
-    messenger: Messenger,
-    vimeo_client: ReccVimeoClient,
-    config: McrTeardownConfig,
-):
-    (video_uri, texttrack_uri) = vimeo_client.get_video_data(
-        cancellation_token=messenger.allow_cancel()
+def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messenger):
+    cancellation_token = messenger.allow_cancel()
+    (_, texttrack_uri) = vimeo_client.get_video_data(cancellation_token)
+    vimeo_client.disable_automatic_captions(
+        texttracks_uri=texttrack_uri, cancellation_token=cancellation_token
     )
 
-    config.vimeo_video_uri = video_uri
-    config.vimeo_video_texttracks_uri = texttrack_uri
 
-
-def disable_automatic_captions(
+def rename_video_on_vimeo(
     config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
 ):
-    if config.vimeo_video_texttracks_uri is None:
-        raise ValueError(
-            "The link to the Vimeo video's captions is unknown (config.vimeo_video_texttracks_uri was not set)."
-        )
-
-    vimeo_client.disable_automatic_captions(
-        texttracks_uri=config.vimeo_video_texttracks_uri,
-        cancellation_token=messenger.allow_cancel(),
-    )
-
-
-def rename_video_on_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClient):
-    video_uri = config.vimeo_video_uri
-    if video_uri is None:
-        raise ValueError(
-            "The link to the Vimeo video is unknown (config.vimeo_video_uri was not set)."
-        )
-
+    (video_uri, _) = vimeo_client.get_video_data(messenger.allow_cancel())
     vimeo_client.rename_video(video_uri, config.vimeo_video_title)
 
 
@@ -126,23 +104,23 @@ def download_captions(
             client=client,
             captions_tab_url=config.live_event_captions_tab_url,
             download_path=config.captions_download_path,
-            destination_path=config.original_captions_path,
+            destination_path=config.original_captions_file,
             cancellation_token=cancellation_token,
         )
 
 
 def copy_captions_to_final(config: McrTeardownConfig):
-    if not config.original_captions_path.exists():
-        raise ValueError(f"File '{config.original_captions_path}' does not exist.")
+    if not config.original_captions_file.exists():
+        raise ValueError(f"File '{config.original_captions_file}' does not exist.")
     # Copy the file first so that the new file isn't read-only
-    shutil.copy(src=config.original_captions_path, dst=config.final_captions_path)
-    config.original_captions_path.chmod(stat.S_IREAD)
+    shutil.copy(src=config.original_captions_file, dst=config.final_captions_file)
+    config.original_captions_file.chmod(stat.S_IREAD)
 
 
 def remove_worship_captions(config: McrTeardownConfig):
-    original_vtt = webvtt.read(config.final_captions_path)
+    original_vtt = webvtt.read(config.final_captions_file)
     final_vtt = lib.remove_worship_captions(original_vtt)
-    final_vtt.save(config.final_captions_path)
+    final_vtt.save(config.final_captions_file)
 
 
 def upload_captions_to_boxcast(
@@ -155,16 +133,13 @@ def upload_captions_to_boxcast(
         boxcast_tasks.upload_captions_to_boxcast(
             client=client,
             url=config.boxcast_edit_captions_url,
-            file_path=config.final_captions_path,
+            file_path=config.final_captions_file,
             cancellation_token=cancellation_token,
         )
 
 
-def upload_captions_to_vimeo(config: McrTeardownConfig, vimeo_client: ReccVimeoClient):
-    texttrack_uri = config.vimeo_video_texttracks_uri
-    if texttrack_uri is None:
-        raise ValueError(
-            "The link to the Vimeo text track is unknown (config.vimeo_video_texttracks_uri was not set)."
-        )
-
-    vimeo_client.upload_captions_to_vimeo(config.final_captions_path, texttrack_uri)
+def upload_captions_to_vimeo(
+    messenger: Messenger, vimeo_client: ReccVimeoClient, config: McrTeardownConfig
+):
+    (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
+    vimeo_client.upload_captions_to_vimeo(config.final_captions_file, texttrack_uri)

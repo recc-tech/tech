@@ -4,12 +4,16 @@ import platform
 import typing
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
 from typing import Dict, List, Literal, Optional, Set, Tuple, Type, TypeVar
 
 import tomli
+from autochecklist import BaseConfig
+
+from .parsing_helpers import parse_directory, parse_file
+from .recc_args import ReccArgs
 
 ImgMode = Literal["1", "L", "RGB", "RGBA"]
 HorizAlign = Literal["left", "center", "right"]
@@ -114,8 +118,23 @@ class FooterSlideStyle:
         return (self.width, self.height)
 
 
+@dataclass
+class StringTemplate:
+    template: str
+
+    def fill(self, values: Dict[str, str]) -> str:
+        t = self.template
+        for k, v in values.items():
+            t = t.replace(f"!{k}!", v)
+        if "!{" in t or "}!" in t:
+            raise ValueError("Unfilled placeholder.")
+        return t
+
+
 # TODO: Add method to get positive number
-# TODO: Add method to get directory without trailing slash
+# TODO: Add method to get Path
+# TODO: Add method to fill placeholders (and check for unfilled placeholders)
+# TODO: Test placeholder filling (valid cases, circular references, etc.)
 class ConfigFileReader(AbstractContextManager[object]):
     def __init__(self, strict: bool) -> None:
         self._strict = strict
@@ -250,6 +269,20 @@ class ConfigFileReader(AbstractContextManager[object]):
             f"Expected configuration value {key} to be a number, but found type {type(value)}."
         )
 
+    def get_directory(self, key: str) -> Path:
+        # TODO: Decide whether to create directory automatically.
+        # Add a fake "placeholder" in the string to indicate it should be created?
+        s = self.get_str(key)
+        return parse_directory(s)
+
+    def get_file(self, key: str) -> Path:
+        s = self.get_str(key)
+        return parse_file(s)
+
+    def get_template(self, key: str) -> StringTemplate:
+        template = self.get_str(key)
+        return StringTemplate(template)
+
     def _get(self, key: str, cls: Type[T], clsname: str) -> T:
         self._is_read_by_key[key] = True
         value = self._data.get(key, None)
@@ -262,16 +295,75 @@ class ConfigFileReader(AbstractContextManager[object]):
         return value
 
 
-# TODO: Add bidirectional association between this config and any Launch object
-# that needs it
 # TODO: Move the slide style classes to a different file (where?)
-class Config:
-    def __init__(self, strict: bool = False) -> None:
+# TODO: Enforce singleton pattern here?
+class Config(BaseConfig):
+    def __init__(self, args: ReccArgs, strict: bool = False) -> None:
+        self._args = args
         self._strict = strict
         self.reload()
 
     def reload(self) -> None:
         with ConfigFileReader(strict=self._strict) as reader:
+            self.station: Literal["mcr", "foh"] = reader.get_enum(
+                "station", {"mcr", "foh"}
+            )
+
+            # Folder structure
+            self.downloads_dir = reader.get_directory("folder.home")
+            self._home_dir = reader.get_directory("folder.home")
+            self.assets_by_service_dir = reader.get_directory(
+                "folder.assets_by_service"
+            )
+            self.assets_by_type_dir = reader.get_directory("folder.assets_by_type_dir")
+            self.images_dir = reader.get_directory("folder.images")
+            self.videos_dir = reader.get_directory("folder.videos")
+            self.log_dir = reader.get_directory("folder.logs")
+            self.captions_dir = reader.get_directory("folder.captions")
+            self.archived_assets_dir = reader.get_directory("folder.archived_assets")
+            self.temp_assets_dir = reader.get_directory("folder.temporary_assets")
+
+            # Logging
+            self.check_credentials_log = reader.get_file("logging.check_credentials")
+            self.check_credentials_webdriver_log_name = reader.get_str(
+                "logging.check_credentials_webdriver_name"
+            )
+            self.download_assets_log = reader.get_file("logging.download_pco_assets")
+            self.generate_slides_log = reader.get_file("logging.generate_slides")
+            self.generate_slides_webdriver_log = reader.get_file(
+                "logging.generate_slides_webdriver"
+            )
+            self.mcr_setup_log = reader.get_file("logging.mcr_setup")
+            self.mcr_setup_webdriver_log = reader.get_file(
+                "logging.mcr_setup_webdriver"
+            )
+            self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
+            self.mcr_teardown_webdriver_log_name = reader.get_str(
+                "logging.mcr_teardown_webdriver_name"
+            )
+
+            # Captions
+            self.original_captions_file = reader.get_file("captions.original")
+            self.final_captions_file = reader.get_file("captions.final")
+
+            # BoxCast
+            self.live_event_title = reader.get_str("boxcast.live_event_title")
+            self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
+            self.live_event_url_template = reader.get_template("boxcast.live_event_url")
+            self.live_event_captions_tab_url_template = reader.get_template(
+                "boxcast.live_event_captions_tab_url"
+            )
+            self.rebroadcast_setup_url_template = reader.get_template(
+                "boxcast.rebroadcast_setup_url"
+            )
+            self.boxcast_edit_captions_url_template = reader.get_template(
+                "boxcast.edit_captions_url"
+            )
+            self.captions_download_path_template = reader.get_template(
+                "boxcast.captions_download_path"
+            )
+
+            # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")
             self.pco_services_base_url = reader.get_str(
                 "planning_center.services_base_url"
@@ -280,12 +372,15 @@ class Config:
                 "planning_center.sunday_service_type_id"
             )
 
+            # Vimeo
             self.vimeo_new_video_hours = reader.get_float("vimeo.new_video_hours")
             self.vimeo_retry_seconds = reader.get_float("vimeo.retry_seconds")
             self.vimeo_captions_type = reader.get_str("vimeo.captions_type")
             self.vimeo_captions_language = reader.get_str("vimeo.captions_language")
             self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
+            self.vimeo_video_title_template = reader.get_template("vimeo.video_title")
 
+            # vMix
             self.vmix_base_url = reader.get_str("vmix.base_url")
             self.vmix_kids_connection_list_key = reader.get_str(
                 "vmix.kids_connection_list_key"
@@ -297,9 +392,16 @@ class Config:
                 "vmix.extra_presenter_title_key"
             )
 
+            # API
             self.timeout_seconds = reader.get_float("api.timeout_seconds")
             self.timeout = timedelta(seconds=self.timeout_seconds)
 
+            # Slides
+            self.message_notes_filename = reader.get_str(
+                "slides.message_notes_filename"
+            )
+            self.lyrics_filename = reader.get_str("slides.lyrics_filename")
+            self.blueprints_filename = reader.get_str("slides.blueprints_filename")
             self.img_width = reader.get_int("slides.image_width")
             self.img_height = reader.get_int("slides.image_height")
             self.font_family = reader.get_str_list("slides.font_family")
@@ -480,3 +582,11 @@ class Config:
                     )
                 ],
             )
+
+    @property
+    def home_dir(self) -> Path:
+        return self._args.home_dir or self._home_dir
+
+    @property
+    def start_time(self) -> datetime:
+        return self._args.start_time

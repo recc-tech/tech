@@ -1,11 +1,12 @@
 import unittest
-from datetime import datetime
+from argparse import Namespace
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
 import lib.mcr_teardown as tasks
 from autochecklist import Messenger
-from config import McrTeardownConfig
+from config import McrTeardownArgs, McrTeardownConfig
 from external_services import (
     BoxCastClient,
     BoxCastClientFactory,
@@ -77,20 +78,25 @@ class BoxCastTestCase(unittest.TestCase):
         )
         boxcast_client_factory = Mock(spec=["get_client"])
         boxcast_client_factory.get_client.return_value = boxcast_client
-        config = McrTeardownConfig(
-            message_series="",
-            message_title="",
-            boxcast_event_id=EVENT_ID,
-            home_dir=self.home_dir,
-            downloads_dir=Path.home().joinpath("Downloads"),
-            lazy_login=True,
-            now=datetime.now(),
-            show_browser=False,
-            ui="console",
-            verbose=False,
-            no_run=False,
-            auto_tasks=None,
+        args = McrTeardownArgs(
+            Namespace(
+                message_series="",
+                message_title="",
+                boxcast_event_id=EVENT_ID,
+                boxcast_event_url=None,
+                home_dir=self.home_dir,
+                downloads_dir=Path.home().joinpath("Downloads"),
+                lazy_login=True,
+                date=date.today(),
+                show_browser=False,
+                ui="console",
+                verbose=False,
+                no_run=False,
+                auto=None,
+            ),
+            lambda msg: self.fail(f"Argument parsing error: {msg}"),
         )
+        config = McrTeardownConfig(args)
 
         tasks.download_captions(
             boxcast_client_factory=boxcast_client_factory,
@@ -100,15 +106,15 @@ class BoxCastTestCase(unittest.TestCase):
         expected_file = Path(__file__).parent.joinpath("boxcast_data", "captions.vtt")
         with open(expected_file, mode="r", encoding="utf-8") as f:
             expected_captions = f.read()
-        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
+        with open(config.original_captions_file, mode="r", encoding="utf-8") as f:
             actual_captions = f.read()
         self.assertEqual(expected_captions, actual_captions)
         log_problem_mock.assert_not_called()
 
         tasks.copy_captions_to_final(config=config)
-        with open(config.original_captions_path, mode="r", encoding="utf-8") as f:
+        with open(config.original_captions_file, mode="r", encoding="utf-8") as f:
             captions_without_worship = f.read()
-        with open(config.final_captions_path, mode="r", encoding="utf-8") as f:
+        with open(config.final_captions_file, mode="r", encoding="utf-8") as f:
             final_captions = f.read()
         self.assertEqual(captions_without_worship, final_captions)
         log_problem_mock.assert_not_called()

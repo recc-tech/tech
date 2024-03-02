@@ -11,14 +11,14 @@ from lib import SlideBlueprintReader, SlideGenerator
 def download_assets(
     client: PlanningCenterClient, config: McrSetupConfig, messenger: Messenger
 ):
-    config.kids_video_path = lib.download_pco_assets(
+    lib.download_pco_assets(
         client=client,
         messenger=messenger,
-        today=config.now.date(),
+        today=config.start_time.date(),
         assets_by_service_dir=config.assets_by_service_dir,
         temp_assets_dir=config.temp_assets_dir,
-        assets_by_type_videos_dir=config.assets_by_type_videos_dir,
-        assets_by_type_images_dir=config.assets_by_type_images_dir,
+        assets_by_type_videos_dir=config.videos_dir,
+        assets_by_type_images_dir=config.images_dir,
         download_kids_video=True,
         download_notes_docx=True,
         dry_run=False,
@@ -26,14 +26,11 @@ def download_assets(
 
 
 def create_kids_connection_playlist(client: VmixClient, config: McrSetupConfig) -> None:
-    if not config.kids_video_path or not config.kids_video_path.is_file():
-        config.kids_video_path = pco_assets.locate_kids_video(
-            config.assets_by_service_dir
-        )
-        if not config.kids_video_path or not config.kids_video_path.is_file():
-            raise ValueError("The path to the Kids Connection video is not known.")
+    kids_video_path = pco_assets.locate_kids_video(config.assets_by_service_dir)
+    if kids_video_path is None:
+        raise ValueError("The path to the Kids Connection video is not known.")
     client.list_remove_all(config.vmix_kids_connection_list_key)
-    client.list_add(config.vmix_kids_connection_list_key, config.kids_video_path)
+    client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
 
 
 def restart_videos(client: VmixClient) -> None:
@@ -46,7 +43,7 @@ def update_titles(
     config: McrSetupConfig,
     messenger: Messenger,
 ) -> None:
-    today = config.now.date()
+    today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
     if len(people.speaker_names) == 0:
@@ -83,7 +80,7 @@ def update_titles(
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):
-    today = config.now.date()
+    today = config.start_time.date()
     plan = client.find_plan_by_date(today)
     message_notes = client.find_message_notes(plan.id)
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
@@ -105,9 +102,9 @@ def generate_backup_slides(
 
     messenger.log_status(
         TaskStatus.RUNNING,
-        f"Saving slide blueprints to {config.backup_slides_json_file}.",
+        f"Saving slide blueprints to {config.slide_blueprints_file}.",
     )
-    reader.save_json(config.backup_slides_json_file, blueprints)
+    reader.save_json(config.slide_blueprints_file, blueprints)
 
     messenger.log_status(TaskStatus.RUNNING, f"Generating images.")
     blueprints_with_prefix = [
