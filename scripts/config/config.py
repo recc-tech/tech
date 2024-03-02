@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 import typing
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -113,21 +114,64 @@ class FooterSlideStyle:
         return (self.width, self.height)
 
 
+# TODO: Add method to get positive number
+# TODO: Add method to get directory without trailing slash
 class ConfigFileReader(AbstractContextManager[object]):
     def __init__(self, strict: bool) -> None:
         self._strict = strict
-        self._data: Dict[str, object] = {}
-        global_file = Path(__file__).parent.joinpath("config.toml")
-        with open(global_file, "rb") as f:
-            self._data |= self._flatten(tomli.load(f))
+        self._data = self._read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
         # found in the global file
-        local_file = Path(__file__).parent.joinpath(f"config.local.toml")
+        self._data |= self._read_local_config()
+
+    def _read_global_config(self) -> Dict[str, object]:
+        global_file = Path(__file__).parent.joinpath("config.toml").resolve()
+        try:
+            with open(global_file, "rb") as f:
+                return self._flatten(tomli.load(f))
+        except FileNotFoundError as e:
+            raise ValueError(
+                f"Failed to read global config because {global_file.as_posix()} is missing."
+            ) from e
+        except Exception as e:
+            raise ValueError(
+                "Failed to read global config due to an unknown error."
+            ) from e
+
+    def _read_local_config(self) -> Dict[str, object]:
+        profile = self._read_profile()
+        local_file = (
+            Path(__file__).parent.joinpath("local", f"{profile}.toml").resolve()
+        )
         try:
             with open(local_file, "rb") as f:
-                self._data |= self._flatten(tomli.load(f))
+                return self._flatten(tomli.load(f))
+        except FileNotFoundError as e:
+            raise ValueError(
+                f"Failed to read local config because {local_file.as_posix()} is missing."
+            ) from e
+        except Exception as e:
+            raise ValueError(
+                "Failed to read local config due to an unknown error."
+            ) from e
+
+    def _read_profile(self) -> str:
+        profile_file = Path(__file__).parent.joinpath("active_profile.txt").resolve()
+        try:
+            profile = profile_file.read_text().strip()
         except FileNotFoundError:
-            pass
+            if self._strict:
+                raise ValueError(
+                    f"Failed to read local config because {profile_file.as_posix()} is missing."
+                )
+            profile = "foh" if platform.system() == "Darwin" else "mcr"
+            try:
+                profile_file.write_text(f"{profile}\n")
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to read local config because {profile_file.as_posix()} is missing and could not be created."
+                ) from e
+        return profile
 
     def _flatten(self, data: Dict[str, object]) -> Dict[str, object]:
         out_data: Dict[str, object] = {}
@@ -243,6 +287,15 @@ class Config:
             self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
 
             self.vmix_base_url = reader.get_str("vmix.base_url")
+            self.vmix_kids_connection_list_key = reader.get_str(
+                "vmix.kids_connection_list_key"
+            )
+            self.vmix_pre_stream_title_key = reader.get_str("vmix.pre_stream_title_key")
+            self.vmix_speaker_title_key = reader.get_str("vmix.speaker_title_key")
+            self.vmix_host_title_key = reader.get_str("vmix.host_title_key")
+            self.vmix_extra_presenter_title_key = reader.get_str(
+                "vmix.extra_presenter_title_key"
+            )
 
             self.timeout_seconds = reader.get_float("api.timeout_seconds")
             self.timeout = timedelta(seconds=self.timeout_seconds)

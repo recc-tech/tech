@@ -1,3 +1,37 @@
+# %{PLACEHOLDER}% and !{PLACEHOLDER}! are placeholders that will be filled in
+# at startup.
+# - %{PLACEHOLDER}% can only refer to data that will be available regardless of
+#   which script is run (i.e., other configuration values and command-line
+#   arguments that are applicable to all scripts, like the startup time). Use
+#   this form whenever possible.
+# - !{PLACEHOLDER}! may refer to values that are only available for certain
+#   scripts. Use this form as little as possible.
+
+[logging]
+mcr_setup                 = "%{STARTUP_TIMESTAMP}% mcr_setup.log"
+mcr_setup_webdriver       = "%{STARTUP_TIMESTAMP}% mcr_setup_webdriver.log"
+mcr_teardown              = "%{STARTUP_TIMESTAMP}% mcr_teardown.log"
+mcr_teardown_webdriver    = "%{STARTUP_TIMESTAMP}% mcr_teardown_webdriver.log"
+check_credentials         = "%{STARTUP_TIMESTAMP}% check_credentials.log"
+download_pco_assets       = "%{STARTUP_TIMESTAMP}% download_pco_assets.log"
+generate_slides           = "%{STARTUP_TIMESTAMP}% generate_slides.log"
+generate_slides_webdriver = "%{STARTUP_TIMESTAMP}% generate_slides_webdriver.log"
+
+[captions]
+# Relative to home
+captions_folder = "Captions/%{STARTUP_YMD}%"
+original_captions_filename = "original.vtt"
+final_captions_filename = "final.vtt"
+
+[boxcast]
+live_event_title = "Sunday Gathering LIVE: %{STARTUP_MDY}%"
+rebroadcast_title = "Sunday Gathering Rebroadcast: %{STARTUP_MDY}%"
+live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
+live_event_captions_tab = "%{boxcast.live_event_url}%?tab=captions"
+captions_download_path = "%{directory_structure.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
+rebroadcast_setup_url = "https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId=!{BOXCAST_EVENT_ID}!"
+edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
+
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2%"
@@ -11,15 +45,27 @@ retry_seconds = 60.0
 captions_type = "subtitles"
 captions_language = "en-CA"
 captions_name = "English (Canada)"
+video_title = "%{STARTUP_YMD}% | !{SERIES_TITLE}! | !{MESSAGE_TITLE}!"
 
 [vmix]
 base_url = "http://192.168.0.65:8088/api"
+# Relative to home directory
+preset_path = "vMix Presets\\%{STARTUP_YMD}% Live.vmix"
+# IDs of important inputs
+kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
+pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
+speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
+host_title_key = "407171aa-af67-4d25-8ab5-1659176fc79d"
+extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
 [api]
 # After this many seconds, a request is assumed to have failed
 timeout_seconds = 15.0
 
 [slides]
+message_notes_filename = "message-notes.txt"
+lyrics_filename = "lyrics.txt"
+blueprints_filename = "blueprints.json"
 image_width = 1920
 image_height = 1080
 font_family = ["Helvetica", "Calibri", "sans-serif"]

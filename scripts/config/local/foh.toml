@@ -1,0 +1,13 @@
+station = "foh"
+
+[directory_structure]
+downloads = "~/Downloads"
+home = "~/Documents"
+# The remaining directories are relative to home
+assets_by_service = "ProPresenter Assets"
+assets_by_type = "ProPresenter Assets"
+images = "ProPresenter Assets"
+videos = "ProPresenter Assets"
+temp_assets = "ProPresenter Assets/Temp"
+archived_assets = "ProPresenter Assets/Archive"
+logs = "Logs"

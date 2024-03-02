@@ -1,0 +1,13 @@
+station = "mcr"
+
+[directory_structure]
+downloads = "~/Downloads%"
+home = "%{REPO_ROOT}%/scripts/tests/manual/home"
+# The remaining directories are relative to home
+assets_by_service = "vMix Assets\\By Service\\%{STARTUP_YMD}%"
+assets_by_type = "vMix Assets\\By Type"
+images = "vMix Assets\\By Type\\Images"
+videos = "vMix Assets\\By Type\\Videos"
+temp_assets = "vMix Assets\\By Type\\Temp"
+archived_assets = "vMix Assets\\By Type\\Archive"
+logs = "Logs"

@@ -29,6 +29,7 @@ def locate_kids_video(dir: Path) -> Optional[Path]:
         return None
 
 
+# TODO: Split this into separate functions for FOH and MCR?
 def download_pco_assets(
     client: PlanningCenterClient,
     messenger: Messenger,
