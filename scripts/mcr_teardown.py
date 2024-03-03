@@ -21,6 +21,7 @@ from autochecklist import (
 from config import (
     Config,
     McrTeardownArgs,
+    McrTeardownConfig,
     parse_boxcast_event_url,
     parse_non_empty_string,
 )
@@ -32,12 +33,12 @@ from external_services import (
 )
 
 
-class McrTeardownScript(Script[McrTeardownArgs, Config]):
+class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
     def parse_args(self) -> McrTeardownArgs:
         return McrTeardownArgs.parse(sys.argv)
 
-    def create_config(self, args: McrTeardownArgs) -> Config:
-        return Config(args)
+    def create_config(self, args: McrTeardownArgs) -> McrTeardownConfig:
+        return McrTeardownConfig(args)
 
     def create_messenger(self, args: McrTeardownArgs, config: Config) -> Messenger:
         file_messenger = FileMessenger(config.mcr_teardown_log)

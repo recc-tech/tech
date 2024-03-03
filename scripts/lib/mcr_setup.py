@@ -1,7 +1,6 @@
 import inspect
 
-import lib
-import lib.download_pco_assets as pco_assets
+import lib.assets as assets
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import McrSetupConfig
 from external_services import PlanningCenterClient, VmixClient
@@ -11,7 +10,7 @@ from lib import SlideBlueprintReader, SlideGenerator
 def download_assets(
     client: PlanningCenterClient, config: McrSetupConfig, messenger: Messenger
 ):
-    lib.download_pco_assets(
+    assets.download_pco_assets(
         client=client,
         messenger=messenger,
         today=config.start_time.date(),
@@ -26,7 +25,7 @@ def download_assets(
 
 
 def create_kids_connection_playlist(client: VmixClient, config: McrSetupConfig) -> None:
-    kids_video_path = pco_assets.locate_kids_video(config.assets_by_service_dir)
+    kids_video_path = assets.locate_kids_video(config.assets_by_service_dir)
     if kids_video_path is None:
         raise ValueError("The path to the Kids Connection video is not known.")
     client.list_remove_all(config.vmix_kids_connection_list_key)

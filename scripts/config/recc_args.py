@@ -13,9 +13,6 @@ class ReccArgs(BaseArgs):
     # TODO: Make the initialization more type-safe for testing purposes?
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         super().__init__(args, error)
-        self.home_dir: Optional[Path] = args.home_dir
-        if self.home_dir is not None:
-            self.home_dir = self.home_dir.resolve()
         self.start_time: datetime = (
             datetime.combine(args.date, datetime.now().time())
             if args.date
@@ -36,3 +33,17 @@ class ReccArgs(BaseArgs):
             help="Pretend the script is running on a different date.",
         )
         super().set_up_parser(parser)
+
+    def get(self, key: str) -> Optional[object]:
+        t = self.start_time
+        d = {
+            "STARTUP_YMD": t.strftime("%Y-%m-%d"),
+            "STARTUP_MDY": f"{t.strftime('%B')} {t.day}, {t.year}",
+            "STARTUP_TIMESTAMP": t.strftime("%Y%m%d-%H%M%S"),
+            # TODO: Add a test for this!
+            "REPO_ROOT": Path(__file__).resolve().parent.parent.parent,
+        }
+        if key in d:
+            return d[key]
+        else:
+            return super().get(key)

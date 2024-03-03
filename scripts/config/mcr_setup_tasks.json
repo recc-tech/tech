@@ -63,7 +63,7 @@
 			"subtasks": [
 				{
 					"name": "download_assets",
-					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{ASSETS_BY_SERVICE_DIR}%. Move the other new assets to %{ASSETS_BY_TYPE_DIR}%."
+					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
 				},
 				{
 					"name": "create_kids_connection_playlist",
@@ -87,7 +87,7 @@
 		},
 		{
 			"name": "save_vmix_preset",
-			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{VMIX_PRESET_FILE}%.",
+			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
 			"prerequisites": [
 				"create_vmix_preset"
 			]
@@ -131,7 +131,7 @@
 			"subtasks": [
 				{
 					"name": "download_message_notes",
-					"description": "Copy the message notes from Planning Center Online (the ones that say which slides to make) and save them in %{MESSAGE_NOTES_FILE}%."
+					"description": "Copy the message notes from Planning Center Online (the ones that say which slides to make) and save them in %{slides.message_notes}%."
 				},
 				{
 					"name": "generate_backup_slides",
@@ -164,7 +164,7 @@
 				},
 				{
 					"name": "archive_old_assets",
-					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{ASSETS_BY_TYPE_ARCHIVE_DIR}%."
+					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{folder.archived_assets}%."
 				}
 			]
 		},

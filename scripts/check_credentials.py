@@ -121,7 +121,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[messenger, credential_store, config],
+            arguments=[messenger, credential_store, args, config],
             messenger=messenger,
         )
         return task_model, function_finder
@@ -145,14 +145,14 @@ def log_into_boxcast(
     config: Config,
     credential_store: CredentialStore,
     messenger: Messenger,
-    show_browser: bool,
+    args: CheckCredentialsArgs,
 ) -> None:
     cancellation_token = messenger.allow_cancel()
     BoxCastClientFactory(
         messenger=messenger,
         credential_store=credential_store,
         cancellation_token=cancellation_token,
-        headless=not show_browser,
+        headless=not args.show_browser,
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
         log_directory=config.log_dir,

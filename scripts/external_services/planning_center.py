@@ -84,8 +84,9 @@ class PlanningCenterClient:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
         today_str = dt.strftime("%Y-%m-%d")
         tomorrow_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
+        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans"
         response = requests.get(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
+            url=url,
             params={
                 "filter": "before,after",
                 "before": tomorrow_str,
@@ -95,7 +96,9 @@ class PlanningCenterClient:
             timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
-            raise ValueError(f"Request failed with status code {response.status_code}")
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}"
+            )
         plans = response.json()["data"]
         if len(plans) != 1:
             raise ValueError(f"Found {len(plans)} plans on {today_str}.")
@@ -111,14 +114,17 @@ class PlanningCenterClient:
     ) -> str:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
+        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items"
         response = requests.get(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
+            url=url,
             params={"per_page": 100},
             auth=HTTPBasicAuth(app_id, secret),
             timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
-            raise ValueError(f"Request failed with status code {response.status_code}")
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}"
+            )
         items = response.json()["data"]
 
         def is_message_notes_item(item: Dict[str, Any]) -> bool:
@@ -142,14 +148,17 @@ class PlanningCenterClient:
     ) -> Set[Attachment]:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
+        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments"
         response = requests.get(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
+            url=url,
             params={"per_page": 100},
             auth=HTTPBasicAuth(app_id, secret),
             timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
-            raise ValueError(f"Request failed with status code {response.status_code}")
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}"
+            )
         attachments_json = response.json()["data"]
         return {
             Attachment(
@@ -204,14 +213,17 @@ class PlanningCenterClient:
     ) -> PresenterSet:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
         app_id, secret = self._get_auth()
+        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed"
         response = requests.get(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
+            url=url,
             params={"filter": "confirmed"},
             auth=HTTPBasicAuth(app_id, secret),
             timeout=self._cfg.timeout_seconds,
         )
         if response.status_code // 100 != 2:
-            raise ValueError(f"Request failed with status code {response.status_code}")
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}"
+            )
         people = response.json()["data"]
         speaker_names = [
             p["attributes"]["name"]

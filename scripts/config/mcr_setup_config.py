@@ -36,3 +36,12 @@ class McrSetupConfig(Config):
     @property
     def slide_blueprints_file(self) -> Path:
         return self.assets_by_service_dir.joinpath(self.blueprints_filename)
+
+    def fill_placeholders(self, text: str) -> str:
+        text = text.replace(
+            "%{slides.message_notes}%", self.message_notes_file.as_posix()
+        )
+        text = text.replace(
+            "%{slides.blueprints}%", self.slide_blueprints_file.as_posix()
+        )
+        return super().fill_placeholders(text)

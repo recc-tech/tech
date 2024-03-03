@@ -1,4 +1,12 @@
-from config import Config, ReccArgs
+from config import (
+    Config,
+    McrSetupArgs,
+    McrSetupConfig,
+    McrTeardownArgs,
+    McrTeardownConfig,
+    ReccArgs,
+)
+from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 
 # TODO: Add command-line flags to manage local profiles (check for differences
 # between profiles, compare profile with currently-active profile, replace
@@ -7,6 +15,18 @@ from config import Config, ReccArgs
 if __name__ == "__main__":
     try:
         Config(ReccArgs.parse([]), strict=True)
-        print("Everything looks ok!")
-    except ValueError as e:
-        exit(f"An error occurred: {e}")
+    except Exception as e:
+        raise RuntimeError("Failed to load general configuration.") from e
+    try:
+        GenerateSlidesConfig(GenerateSlidesArgs.parse([]), strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for generating slides.") from e
+    try:
+        McrSetupConfig(McrSetupArgs.parse([]), strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for MCR setup.") from e
+    try:
+        McrTeardownConfig(McrTeardownArgs.parse([]), strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for MCR teardown.") from e
+    print("Everything looks ok!")

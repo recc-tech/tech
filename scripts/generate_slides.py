@@ -1,7 +1,6 @@
+import dataclasses
 import sys
 from argparse import ArgumentParser, Namespace
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional, Set, Tuple
 
@@ -51,7 +50,6 @@ class GenerateSlidesArgs(ReccArgs):
         parser.add_argument(
             "-o",
             "--out-dir",
-            default=f"D:\\Users\\Tech\\Documents\\vMix Assets\\By Service\\{datetime.now().strftime('%Y-%m-%d')}\\",
             type=lambda x: parse.parse_directory(x, create=True),
             help="Directory in which to place the generated images.",
         )
@@ -97,7 +95,7 @@ class GenerateSlidesConfig(Config):
         return self.out_dir.joinpath(self.blueprints_filename)
 
 
-@dataclass
+@dataclasses.dataclass
 class GenerateSlidesState:
     blueprints: List[SlideBlueprint]
 
@@ -174,7 +172,7 @@ class GenerateSlidesScript(Script[GenerateSlidesArgs, GenerateSlidesConfig]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[messenger, reader, generator, config, state],
+            arguments=[messenger, reader, generator, args, config, state],
             messenger=messenger,
         )
         return task_model, function_finder

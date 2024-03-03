@@ -8,7 +8,9 @@ def parse_non_empty_string(raw_input: str) -> str:
     return raw_input.strip()
 
 
-def parse_directory(path_str: str, create: bool = False) -> Path:
+def parse_directory(
+    path_str: str, missing_ok: bool = False, create: bool = False
+) -> Path:
     path = Path(path_str)
 
     if create:
@@ -19,24 +21,24 @@ def parse_directory(path_str: str, create: bool = False) -> Path:
                 f"Path '{path_str}' does not exist and could not be created."
             ) from FileNotFoundError
 
-    if not path.exists():
+    if not missing_ok and not path.exists():
         message = f"Path '{path_str}' does not exist."
         if path_str.endswith('"') or path_str.endswith("'"):
             message = f"{message} Note that if you provided the path in quotes and with a trailing backslash, you must escape that final backslash."
         raise ArgumentTypeError(message)
-    if not path.is_dir():
+    if not missing_ok and not path.is_dir():
         raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
 
     path = path.resolve()
     return path
 
 
-def parse_file(filename: str, extension: str = "") -> Path:
+def parse_file(filename: str, extension: str = "", missing_ok: bool = False) -> Path:
     path = Path(filename)
 
-    if not path.exists():
+    if not missing_ok and not path.exists():
         raise ArgumentTypeError(f"Path '{filename}' does not exist.")
-    if not path.is_file():
+    if not missing_ok and not path.is_file():
         raise ArgumentTypeError(f"Path '{filename}' is not a file.")
 
     if extension:

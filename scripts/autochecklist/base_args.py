@@ -62,4 +62,14 @@ class BaseArgs:
     def parse(cls: Type[T], args: List[str]) -> T:
         parser = ArgumentParser(prog=cls.NAME, description=cls.DESCRIPTION)
         cls.set_up_parser(parser)
+        if len(args) >= 1:
+            # Skip the program name
+            args = args[1:]
         return cls(parser.parse_args(args), parser.error)
+
+    def get(self, key: str) -> Optional[object]:
+        """Look up the given key and return `None` if not found."""
+        if key == "UI":
+            return self.ui
+        else:
+            return None

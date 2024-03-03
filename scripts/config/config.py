@@ -10,7 +10,7 @@ from types import TracebackType
 from typing import Dict, List, Literal, Optional, Set, Tuple, Type, TypeVar
 
 import tomli
-from autochecklist import BaseConfig
+from autochecklist import BaseArgs, BaseConfig
 
 from .parsing_helpers import parse_directory, parse_file
 from .recc_args import ReccArgs
@@ -132,11 +132,12 @@ class StringTemplate:
 
 
 # TODO: Add method to get positive number
-# TODO: Add method to get Path
 # TODO: Add method to fill placeholders (and check for unfilled placeholders)
 # TODO: Test placeholder filling (valid cases, circular references, etc.)
+# TODO: Load all resolved config values into a dict rather than lazily loading them
 class ConfigFileReader(AbstractContextManager[object]):
-    def __init__(self, strict: bool) -> None:
+    def __init__(self, args: BaseArgs, strict: bool) -> None:
+        self._args = args
         self._strict = strict
         self._data = self._read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
@@ -219,23 +220,57 @@ class ConfigFileReader(AbstractContextManager[object]):
         unused_keys = {k for (k, v) in self._is_read_by_key.items() if not v}
         if len(unused_keys) > 0:
             raise ValueError(
-                f"The following configuration values are unknown: {unused_keys}"
+                f"The following configuration values are unrecognized: {unused_keys}"
             )
 
-    def get_str(self, key: str) -> str:
-        return self._get(key, str, "a string")
-
-    def get_int(self, key: str) -> int:
-        return self._get(key, int, "a whole number")
-
-    def get_bool(self, key: str) -> bool:
-        return self._get(key, bool, "true or false")
-
-    def get_enum(self, key: str, options: Set[T]) -> T:
+    def get(self, key: str) -> Optional[object]:
+        """Look up the given key and raise an exception if not found."""
         self._is_read_by_key[key] = True
         value = self._data.get(key, None)
         if value is None:
             raise ValueError(f"Missing configuration value {key}.")
+        elif isinstance(value, str):
+            return self.fill_placeholders(key, value)
+        else:
+            return value
+
+    def fill_placeholders(self, key: str, value: str) -> str:
+        while True:
+            start = value.find("%{")
+            end = value.find("}%")
+            if start < 0 and end < 0:
+                return value
+            elif start < 0:
+                raise ValueError(f"Mismatched %{{ in configuration value {key}.")
+            elif end < 0 or end < start:
+                raise ValueError(f"Mismatched }}% in configuration value {key}.")
+            else:
+                placeholder_key = value[start + 2 : end]
+                placeholder = "%{" + placeholder_key + "}%"
+                placeholder_value = self._args.get(placeholder_key)
+                if placeholder_value is None:
+                    placeholder_value = self.get(placeholder_key)
+                value = value.replace(placeholder, str(placeholder_value))
+
+    def _get_typed(self, key: str, cls: Type[T], clsname: str) -> T:
+        value = self.get(key)
+        if not isinstance(value, cls):
+            raise ValueError(
+                f"Expected configuration value {key} to be {clsname}, but found type {type(value)}."
+            )
+        return value
+
+    def get_str(self, key: str) -> str:
+        return self._get_typed(key, str, "a string")
+
+    def get_int(self, key: str) -> int:
+        return self._get_typed(key, int, "a whole number")
+
+    def get_bool(self, key: str) -> bool:
+        return self._get_typed(key, bool, "true or false")
+
+    def get_enum(self, key: str, options: Set[T]) -> T:
+        value = self.get(key)
         matches = [x for x in options if x == value]
         if len(matches) == 0:
             raise ValueError(
@@ -244,10 +279,7 @@ class ConfigFileReader(AbstractContextManager[object]):
         return matches[0]
 
     def get_str_list(self, key: str) -> List[str]:
-        self._is_read_by_key[key] = True
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
+        value = self.get(key)
         if not isinstance(value, list):
             raise ValueError(
                 f"Expected configuration value {key} to be an integer, but found type {type(value)}."
@@ -257,10 +289,7 @@ class ConfigFileReader(AbstractContextManager[object]):
         return typing.cast(List[str], value)
 
     def get_float(self, key: str) -> float:
-        self._is_read_by_key[key] = True
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
+        value = self.get(key)
         if isinstance(value, float):
             return value
         if isinstance(value, int):
@@ -270,29 +299,16 @@ class ConfigFileReader(AbstractContextManager[object]):
         )
 
     def get_directory(self, key: str) -> Path:
-        # TODO: Decide whether to create directory automatically.
-        # Add a fake "placeholder" in the string to indicate it should be created?
         s = self.get_str(key)
-        return parse_directory(s)
+        return parse_directory(s, missing_ok=True)
 
     def get_file(self, key: str) -> Path:
         s = self.get_str(key)
-        return parse_file(s)
+        return parse_file(s, missing_ok=True)
 
     def get_template(self, key: str) -> StringTemplate:
         template = self.get_str(key)
         return StringTemplate(template)
-
-    def _get(self, key: str, cls: Type[T], clsname: str) -> T:
-        self._is_read_by_key[key] = True
-        value = self._data.get(key, None)
-        if value is None:
-            raise ValueError(f"Missing configuration value {key}.")
-        if not isinstance(value, cls):
-            raise ValueError(
-                f"Expected configuration value {key} to be {clsname}, but found type {type(value)}."
-            )
-        return value
 
 
 # TODO: Move the slide style classes to a different file (where?)
@@ -300,22 +316,22 @@ class ConfigFileReader(AbstractContextManager[object]):
 class Config(BaseConfig):
     def __init__(self, args: ReccArgs, strict: bool = False) -> None:
         self._args = args
-        self._strict = strict
+        self._reader = ConfigFileReader(args=args, strict=strict)
         self.reload()
 
     def reload(self) -> None:
-        with ConfigFileReader(strict=self._strict) as reader:
+        with self._reader as reader:
             self.station: Literal["mcr", "foh"] = reader.get_enum(
                 "station", {"mcr", "foh"}
             )
 
             # Folder structure
             self.downloads_dir = reader.get_directory("folder.home")
-            self._home_dir = reader.get_directory("folder.home")
+            self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
             )
-            self.assets_by_type_dir = reader.get_directory("folder.assets_by_type_dir")
+            self.assets_by_type_dir = reader.get_directory("folder.assets_by_type")
             self.images_dir = reader.get_directory("folder.images")
             self.videos_dir = reader.get_directory("folder.videos")
             self.log_dir = reader.get_directory("folder.logs")
@@ -391,6 +407,7 @@ class Config(BaseConfig):
             self.vmix_extra_presenter_title_key = reader.get_str(
                 "vmix.extra_presenter_title_key"
             )
+            self.vmix_preset_file = reader.get_file("vmix.preset_path")
 
             # API
             self.timeout_seconds = reader.get_float("api.timeout_seconds")
@@ -584,9 +601,8 @@ class Config(BaseConfig):
             )
 
     @property
-    def home_dir(self) -> Path:
-        return self._args.home_dir or self._home_dir
-
-    @property
     def start_time(self) -> datetime:
         return self._args.start_time
+
+    def fill_placeholders(self, text: str) -> str:
+        return self._reader.fill_placeholders("TASK LIST", text)

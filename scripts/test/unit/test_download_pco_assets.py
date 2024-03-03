@@ -3,7 +3,8 @@
 import unittest
 from unittest.mock import Mock
 
-from lib.download_pco_assets import Attachment, _classify_attachments
+from lib import Attachment
+from lib.assets import Attachment, _classify_attachments
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):

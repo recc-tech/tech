@@ -124,6 +124,23 @@ class McrTeardownConfig(Config):
             }
         )
 
+    def fill_placeholders(self, text: str) -> str:
+        text = text.replace("%{boxcast.live_event_url}%", self.live_event_url)
+        text = text.replace(
+            "%{boxcast.live_event_captions_tab_url}%", self.live_event_captions_tab_url
+        )
+        text = text.replace(
+            "%{boxcast.edit_captions_url}%", self.boxcast_edit_captions_url
+        )
+        text = text.replace(
+            "%{boxcast.rebroadcast_setup_url}%", self.rebroadcast_setup_url
+        )
+        text = text.replace(
+            "%{boxcast.captions_download_path}%", self.captions_download_path.as_posix()
+        )
+        text = text.replace("%{vimeo.video_title}%", self.vimeo_video_title)
+        return super().fill_placeholders(text)
+
 
 def parse_boxcast_event_url(event_url: str) -> str:
     if not event_url:
