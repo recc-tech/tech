@@ -122,6 +122,7 @@ class TkMessenger(InputMessenger):
             raise KeyboardInterrupt()
 
         def do_log_problem() -> None:
+            self._problems_frame.grid()
             self._problems_grid.add_row(task_name, level, message)
 
         self._queue.put(_GuiTask(do_log_problem, update_scrollregion=True))
@@ -441,28 +442,6 @@ class TkMessenger(InputMessenger):
         self._action_items_frame = Frame(self._scroll_frame)
         self._action_items_frame.grid(sticky="NEW")
 
-        action_items_header = _CopyableText(
-            self._action_items_frame,
-            width=WIDTH,
-            font=_H2_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        action_items_header.grid(sticky="NW", pady=(50, 0))
-        action_items_header.set_text("Action Items")
-
-        action_items_description = _CopyableText(
-            self._action_items_frame,
-            width=WIDTH,
-            font=_ITALIC_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        action_items_description.grid(sticky="NW", pady=25)
-        action_items_description.set_text(
-            "Tasks that you must perform manually are listed here."
-        )
-
         self._action_items_grid = _ActionItemGrid(
             self._action_items_frame,
             outer_padding=5,
@@ -475,45 +454,15 @@ class TkMessenger(InputMessenger):
         )
         self._action_items_grid.grid(sticky="NEW")
 
-        # -------------------- Task statuses section --------------------
-
-        task_statuses_header = _CopyableText(
-            self._scroll_frame,
-            width=WIDTH,
-            font=_H2_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        task_statuses_header.grid(sticky="NEW", pady=(50, 0))
-        task_statuses_header.set_text("Task Statuses")
-
-        task_statuses_description = _CopyableText(
-            self._scroll_frame,
-            width=WIDTH,
-            font=_ITALIC_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        task_statuses_description.grid(sticky="NEW", pady=25)
-        task_statuses_description.set_text("The status of each task is listed here.")
-
-        self._task_statuses_grid = _TaskStatusGrid(
-            self._scroll_frame,
-            outer_padding=5,
-            padx=5,
-            pady=5,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-            normal_font=_NORMAL_FONT,
-            header_font=_BOLD_FONT,
-            bold_font=_BOLD_FONT,
-        )
-        self._task_statuses_grid.grid(sticky="NEW")
-
         # -------------------- Problems section --------------------
 
+        self._problems_frame = Frame(self._scroll_frame)
+        self._problems_frame.grid(sticky="NEW")
+        # Leave this frame hidden until necessary
+        self._problems_frame.grid_remove()
+
         problems_header = _CopyableText(
-            self._scroll_frame,
+            self._problems_frame,
             width=WIDTH,
             font=_H2_FONT,
             background=_BACKGROUND_COLOUR,
@@ -523,7 +472,7 @@ class TkMessenger(InputMessenger):
         problems_header.set_text("Problems")
 
         problems_description = _CopyableText(
-            self._scroll_frame,
+            self._problems_frame,
             width=WIDTH,
             font=_ITALIC_FONT,
             background=_BACKGROUND_COLOUR,
@@ -533,7 +482,7 @@ class TkMessenger(InputMessenger):
         problems_description.set_text("Potential problems are listed here.")
 
         self._problems_grid = _ProblemGrid(
-            self._scroll_frame,
+            self._problems_frame,
             outer_padding=5,
             padx=5,
             pady=5,
@@ -544,6 +493,44 @@ class TkMessenger(InputMessenger):
             bold_font=_BOLD_FONT,
         )
         self._problems_grid.grid(sticky="NEW")
+
+        # -------------------- Task statuses section --------------------
+        
+        self._task_statuses_frame = Frame(self._scroll_frame)
+        self._task_statuses_frame.grid(sticky="NEW")
+
+        task_statuses_header = _CopyableText(
+            self._task_statuses_frame,
+            width=WIDTH,
+            font=_H2_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+        )
+        task_statuses_header.grid(sticky="NEW", pady=(50, 0))
+        task_statuses_header.set_text("Task Statuses")
+
+        task_statuses_description = _CopyableText(
+            self._task_statuses_frame,
+            width=WIDTH,
+            font=_ITALIC_FONT,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+        )
+        task_statuses_description.grid(sticky="NEW", pady=25)
+        task_statuses_description.set_text("The status of each task is listed here.")
+
+        self._task_statuses_grid = _TaskStatusGrid(
+            self._task_statuses_frame,
+            outer_padding=5,
+            padx=5,
+            pady=5,
+            background=_BACKGROUND_COLOUR,
+            foreground=_FOREGROUND_COLOUR,
+            normal_font=_NORMAL_FONT,
+            header_font=_BOLD_FONT,
+            bold_font=_BOLD_FONT,
+        )
+        self._task_statuses_grid.grid(sticky="NEW")
 
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
