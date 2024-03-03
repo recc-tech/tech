@@ -873,7 +873,7 @@ class _ActionItemGrid(Frame):
             pady=self._pady,
             sticky="W",
         )
-        name_label.set_text(task_name)
+        name_label.set_text(_friendly_name(task_name))
         msg_label = _CopyableText(
             self,
             width=self._MSG_WIDTH,
@@ -1080,7 +1080,7 @@ class _TaskStatusGrid(Frame):
                 pady=self._pady,
                 sticky="W",
             )
-            name_label.set_text(task_name)
+            name_label.set_text(_friendly_name(task_name))
             status_label = _CopyableText(
                 self,
                 width=self._STATUS_WIDTH,
@@ -1275,7 +1275,7 @@ class _ProblemGrid(Frame):
             pady=self._pady,
             sticky="W",
         )
-        name_label.set_text(task_name)
+        name_label.set_text(_friendly_name(task_name))
 
         level_label = _CopyableText(
             self,
@@ -1468,3 +1468,12 @@ class _ProgressBarGroup(Toplevel):
 
 class InputCancelledException(Exception):
     pass
+
+
+def _friendly_name(name: str) -> str:
+    # Shouldn't normally happen
+    if len(name) == 0:
+        return name
+    s = name.replace("_", " ")
+    capitalized = s[0].upper() + s[1:]
+    return capitalized
