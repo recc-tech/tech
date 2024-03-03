@@ -29,8 +29,7 @@ def parse_directory(
     if not missing_ok and not path.is_dir():
         raise ArgumentTypeError(f"Path '{path_str}' is not a directory.")
 
-    path = path.resolve()
-    return path
+    return path.expanduser().resolve()
 
 
 def parse_file(filename: str, extension: str = "", missing_ok: bool = False) -> Path:
@@ -47,4 +46,4 @@ def parse_file(filename: str, extension: str = "", missing_ok: bool = False) -> 
                 f"Expected a file with a {extension} extension, but received a {path.suffix} file."
             )
 
-    return path.resolve()
+    return path.expanduser().resolve()
