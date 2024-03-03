@@ -13,10 +13,6 @@ class McrTeardownArgs(ReccArgs):
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         super().__init__(args, error)
 
-        if args.boxcast_event_url:
-            args.boxcast_event_id = args.boxcast_event_url
-        # For some reason Pylance complains about the del keyword but not delattr
-        delattr(args, "boxcast_event_url")
         if args.auto is not None:
             if "none" in args.auto and len(args.auto) > 1:
                 error("If 'none' is included in --auto, it must be the only value.")

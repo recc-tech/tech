@@ -80,27 +80,24 @@ class Script(Generic[A, C]):
         try:
             args = self.parse_args()
         except Exception as e:
-            print(f"Failed to parse command-line arguments: {e}", file=sys.stderr)
-            return
+            raise RuntimeError(f"Failed to parse command-line arguments.") from e
 
         try:
             config = self.create_config(args)
         except Exception as e:
-            print(f"Failed to create config: {e}", file=sys.stderr)
-            return
+            raise RuntimeError(f"Failed to load config.") from e
 
         try:
             messenger = self.create_messenger(args, config)
         except Exception as e:
-            print(f"Failed to create messenger: {e}", file=sys.stderr)
-            return
+            raise RuntimeError(f"Failed to create user interface.") from e
 
         try:
             messenger.start(
                 after_start=lambda: self._run_worker(args, config, messenger)
             )
         except Exception as e:
-            print(f"Failed to run messenger: {e}", file=sys.stderr)
+            raise RuntimeError(f"Failed to run messenger: {e}") from e
 
     def _run_worker(self, args: A, config: C, messenger: Messenger) -> None:
         try:

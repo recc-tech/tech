@@ -60,6 +60,9 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
     ) -> Tuple[TaskModel | Path, FunctionFinder]:
         credential_store = CredentialStore(messenger=messenger)
         self._get_todays_service_info(args, config, messenger, credential_store)
+        # Need to reload so that the Vimeo video title, BoxCast URLs, etc. get
+        # updated with today's service info
+        config.reload()
         vimeo_client = ReccVimeoClient(
             messenger=messenger,
             credential_store=credential_store,
@@ -149,7 +152,6 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
             args.boxcast_event_id = str(inputs["boxcast_event_id"])
 
 
-# TODO: Move this to the config file?
 def _parse_boxcast_event_url(event_url: str) -> str:
     if not event_url:
         raise ArgumentTypeError("Empty input. The event URL is required.")
@@ -161,6 +163,7 @@ def _parse_boxcast_event_url(event_url: str) -> str:
     # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
     # Allow a trailing forward slash just in case
     event_url = event_url.strip()
+    # TODO: Move this to the config file?
     regex = "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]{20,20})/?(?:\\?.*)?$"
     pattern = re.compile(regex)
     regex_match = pattern.search(event_url)

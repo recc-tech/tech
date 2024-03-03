@@ -83,7 +83,6 @@ class BoxCastTestCase(unittest.TestCase):
                 message_series="",
                 message_title="",
                 boxcast_event_id=EVENT_ID,
-                boxcast_event_url=None,
                 home_dir=self.home_dir,
                 downloads_dir=Path.home().joinpath("Downloads"),
                 lazy_login=True,

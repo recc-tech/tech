@@ -123,9 +123,10 @@ class StringTemplate:
     def fill(self, values: Dict[str, str]) -> str:
         t = self.template
         for k, v in values.items():
-            t = t.replace(f"!{k}!", v)
+            placeholder = "!{" + k + "}!"
+            t = t.replace(placeholder, v)
         if "!{" in t or "}!" in t:
-            raise ValueError("Unfilled placeholder.")
+            raise ValueError(f"Unfilled placeholder in '{t}'.")
         return t
 
 

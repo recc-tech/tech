@@ -137,7 +137,8 @@ class PlanningCenterTestCase(unittest.TestCase):
 
     def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:
         args = ReccArgs(
-            Namespace(), lambda msg: self.fail(f"Argument parsing error: {msg}")
+            Namespace(ui="tk", verbose=False, no_run=False, auto=None, date=None),
+            lambda msg: self.fail(f"Argument parsing error: {msg}"),
         )
         messenger = Mock(spec=Messenger)
         log_problem_mock = Mock()

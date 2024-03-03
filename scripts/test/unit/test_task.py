@@ -21,7 +21,7 @@ class TaskGraphTestCase(unittest.TestCase):
         def fill_placeholders(text: str) -> str:
             return text + "*"
 
-        config = create_autospec(BaseArgs)
+        config = create_autospec(BaseConfig)
         config.fill_placeholders.side_effect = fill_placeholders
         config.auto_tasks = None
         function_finder = create_autospec(FunctionFinder)
@@ -45,7 +45,7 @@ class TaskGraphTestCase(unittest.TestCase):
             messenger=_get_noop_messenger(),
             function_finder=function_finder,
             config=config,
-            args=_get_default_args()
+            args=_get_default_args(),
         )
         actual = [ThreadData.from_thread(th) for th in graph._threads]
         expected = [
@@ -89,7 +89,7 @@ class TaskGraphTestCase(unittest.TestCase):
             messenger=_get_noop_messenger(),
             function_finder=_get_noop_function_finder(),
             config=_get_noop_config(),
-            args=_get_default_args()
+            args=_get_default_args(),
         )
         actual_threads = [ThreadData.from_thread(th) for th in graph._threads]
 
@@ -137,7 +137,7 @@ class TaskGraphTestCase(unittest.TestCase):
             messenger=_get_noop_messenger(),
             function_finder=_get_noop_function_finder(),
             config=_get_noop_config(),
-            args=_get_default_args()
+            args=_get_default_args(),
         )
         actual_threads = [ThreadData.from_thread(th) for th in graph._threads]
 
@@ -179,7 +179,7 @@ class TaskGraphTestCase(unittest.TestCase):
             messenger=_get_noop_messenger(),
             function_finder=_get_noop_function_finder(),
             config=_get_noop_config(),
-            args=_get_default_args()
+            args=_get_default_args(),
         )
         actual_threads = [ThreadData.from_thread(th) for th in graph._threads]
 
@@ -209,7 +209,7 @@ class TaskGraphTestCase(unittest.TestCase):
                 messenger=_get_noop_messenger(),
                 function_finder=_get_noop_function_finder(),
                 config=_get_noop_config(),
-                args=_get_default_args()
+                args=_get_default_args(),
             )
         self.assertEqual(
             "The task graph contains at least one cycle. For example: root -> root.",
@@ -233,7 +233,7 @@ class TaskGraphTestCase(unittest.TestCase):
                 messenger=_get_noop_messenger(),
                 function_finder=_get_noop_function_finder(),
                 config=_get_noop_config(),
-                args=_get_default_args()
+                args=_get_default_args(),
             )
         self.assertRegex(
             str(cm.exception),
@@ -248,7 +248,7 @@ class TaskGraphTestCase(unittest.TestCase):
                 messenger=_get_noop_messenger(),
                 function_finder=_get_noop_function_finder(),
                 config=_get_noop_config(),
-                args=_get_default_args()
+                args=_get_default_args(),
             )
         self.assertEqual(
             f"The prerequisite 'bar' could not be found.", str(cm.exception)

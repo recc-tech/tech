@@ -10,43 +10,34 @@ class McrTeardownConfig(Config):
         self._args = args
         super().__init__(args, strict)
 
-    @property
-    def live_event_url(self) -> str:
-        return self.live_event_url_template.fill(
+    def reload(self) -> None:
+        super().reload()
+        self.live_event_url = self.live_event_url_template.fill(
             {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
         )
-
-    @property
-    def live_event_captions_tab_url(self) -> str:
-        return self.live_event_captions_tab_url_template.fill(
-            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-        )
-
-    @property
-    def boxcast_edit_captions_url(self) -> str:
-        return self.boxcast_edit_captions_url_template.fill(
-            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-        )
-
-    @property
-    def rebroadcast_setup_url(self) -> str:
-        return self.rebroadcast_setup_url_template.fill(
-            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-        )
-
-    @property
-    def captions_download_path(self) -> Path:
-        return Path(
-            self.captions_download_path_template.fill(
+        self.live_event_captions_tab_url = (
+            self.live_event_captions_tab_url_template.fill(
                 {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
             )
         )
-
-    @property
-    def vimeo_video_title(self) -> str:
-        return self.vimeo_video_title_template.fill(
+        self.boxcast_edit_captions_url = self.boxcast_edit_captions_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+        )
+        self.rebroadcast_setup_url = self.rebroadcast_setup_url_template.fill(
+            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+        )
+        self.captions_download_path = (
+            Path(
+                self.captions_download_path_template.fill(
+                    {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
+                )
+            )
+            .expanduser()
+            .resolve()
+        )
+        self.vimeo_video_title = self.vimeo_video_title_template.fill(
             {
-                "SERIES_TITLE": self._args.message_series,
+                "MESSAGE_SERIES": self._args.message_series,
                 "MESSAGE_TITLE": self._args.message_title,
             }
         )
