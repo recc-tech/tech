@@ -16,4 +16,4 @@ New-Shortcut -LinkPath "$Desktop\Check Credentials.lnk" -TargetPath "$ScriptsDir
 New-Shortcut -LinkPath "$Desktop\Download Assets.lnk"   -TargetPath "$ScriptsDir\download_pco_assets.bat"
 New-Shortcut -LinkPath "$Desktop\Generate Slides.lnk"   -TargetPath "$ScriptsDir\generate_slides.bat"
 New-Shortcut -LinkPath "$Desktop\MCR Setup.lnk"         -TargetPath "$ScriptsDir\mcr_setup.bat"
-New-Shortcut -LinkPath "$Desktop\MCR Teardown.lnk"   -TargetPath "$ScriptsDir\mcr_teardown.bat"
+New-Shortcut -LinkPath "$Desktop\MCR Teardown.lnk"      -TargetPath "$ScriptsDir\mcr_teardown.bat"
