@@ -458,8 +458,8 @@ class TkMessenger(InputMessenger):
 
         self._problems_frame = Frame(self._scroll_frame)
         self._problems_frame.grid(sticky="NEW")
-        # Leave this frame hidden until necessary
-        self._problems_frame.grid_remove()
+        # TODO: Leave this frame hidden until necessary
+        #self._problems_frame.grid_remove()
 
         problems_header = _CopyableText(
             self._problems_frame,
@@ -470,16 +470,6 @@ class TkMessenger(InputMessenger):
         )
         problems_header.grid(sticky="NEW", pady=(50, 0))
         problems_header.set_text("Problems")
-
-        problems_description = _CopyableText(
-            self._problems_frame,
-            width=WIDTH,
-            font=_ITALIC_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        problems_description.grid(sticky="NEW", pady=25)
-        problems_description.set_text("Potential problems are listed here.")
 
         self._problems_grid = _ProblemGrid(
             self._problems_frame,
@@ -508,16 +498,6 @@ class TkMessenger(InputMessenger):
         )
         task_statuses_header.grid(sticky="NEW", pady=(50, 0))
         task_statuses_header.set_text("Task Statuses")
-
-        task_statuses_description = _CopyableText(
-            self._task_statuses_frame,
-            width=WIDTH,
-            font=_ITALIC_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
-        )
-        task_statuses_description.grid(sticky="NEW", pady=25)
-        task_statuses_description.set_text("The status of each task is listed here.")
 
         self._task_statuses_grid = _TaskStatusGrid(
             self._task_statuses_frame,
