@@ -4,7 +4,8 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Callable, List, Optional, Set, Tuple
 
-import config.parsing_helpers as parse
+import args.parsing_helpers as parse
+from args import ReccArgs
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -15,7 +16,6 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from config import ReccArgs
 from external_services import ReccWebDriver
 from lib.slides import (
     BibleVerseFinder,

@@ -3,6 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Callable, List, Literal, Set, Tuple
 
+from args import ReccArgs
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -13,7 +14,7 @@ from autochecklist import (
     TaskStatus,
     TkMessenger,
 )
-from config import Config, ReccArgs
+from config import Config
 from external_services import (
     BoxCastClientFactory,
     Credential,

@@ -8,7 +8,6 @@ from autochecklist import BaseArgs
 from .parsing_helpers import parse_directory
 
 
-# TODO: Move this to a different package?
 class ReccArgs(BaseArgs):
     # TODO: Make the initialization more type-safe for testing purposes?
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:

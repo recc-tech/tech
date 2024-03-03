@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable, Tuple, Union
 
 import lib
+from args import ReccArgs
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -13,7 +14,7 @@ from autochecklist import (
     TaskModel,
     TkMessenger,
 )
-from config import Config, ReccArgs
+from config import Config
 from external_services import CredentialStore, PlanningCenterClient
 
 

@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Tuple
 from unittest.mock import Mock
 
+from args import ReccArgs
 from autochecklist import Messenger
-from config import Config, ReccArgs
+from config import Config
 from external_services import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")

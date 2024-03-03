@@ -1,11 +1,5 @@
-from config import (
-    Config,
-    McrSetupArgs,
-    McrSetupConfig,
-    McrTeardownArgs,
-    McrTeardownConfig,
-    ReccArgs,
-)
+from args import McrSetupArgs, ReccArgs
+from config import Config, McrSetupConfig, McrTeardownArgs, McrTeardownConfig
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 
 

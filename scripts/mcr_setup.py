@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 import lib.mcr_setup as mcr_setup
+from args import McrSetupArgs
 from autochecklist import (
     ConsoleMessenger,
     FileMessenger,
@@ -11,7 +12,7 @@ from autochecklist import (
     Script,
     TkMessenger,
 )
-from config import Config, McrSetupArgs, McrSetupConfig
+from config import Config, McrSetupConfig
 from external_services import (
     CredentialStore,
     PlanningCenterClient,
