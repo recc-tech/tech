@@ -1,7 +1,7 @@
 station = "mcr"
 
 [folder]
-downloads = "~/Downloads%"
+downloads = "~/Downloads"
 home = "%{REPO_ROOT}%/scripts/test/manual/home"
 assets_by_service = "%{folder.home}%/vMix Assets/By Service/%{STARTUP_YMD}%"
 assets_by_type = "%{folder.home}%/vMix Assets/By Type"

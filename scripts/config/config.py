@@ -139,10 +139,12 @@ class ConfigFileReader(AbstractContextManager[object]):
     def __init__(self, args: BaseArgs, strict: bool) -> None:
         self._args = args
         self._strict = strict
+        self._is_read_by_key: Dict[str, bool] = {}
         self._data = self._read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
         # found in the global file
         self._data |= self._read_local_config()
+        self._data = self._resolve(self._data)
 
     def _read_global_config(self) -> Dict[str, object]:
         global_file = Path(__file__).parent.joinpath("config.toml").resolve()
@@ -203,6 +205,20 @@ class ConfigFileReader(AbstractContextManager[object]):
                 out_data[key] = value
         return out_data
 
+    def _resolve(self, raw_data: Dict[str, object]) -> Dict[str, object]:
+        data: Dict[str, object] = {}
+        for k, v in raw_data.items():
+            if isinstance(v, str):
+                try:
+                    data[k] = self.fill_placeholders(v)
+                except Exception as e:
+                    raise ValueError(
+                        f"Failed to fill placeholders in configuration value {k}."
+                    ) from e
+            else:
+                data[k] = v
+        return data
+
     def __enter__(self) -> ConfigFileReader:
         self._is_read_by_key = {key: False for key in self._data.keys()}
         return self
@@ -223,34 +239,43 @@ class ConfigFileReader(AbstractContextManager[object]):
                 f"The following configuration values are unrecognized: {unused_keys}"
             )
 
-    def get(self, key: str) -> Optional[object]:
+    def fill_placeholders(self, value: str) -> str:
+        return self._fill_placeholders(value, [])
+
+    def _fill_placeholders(self, template: str, history: List[str]) -> str:
+        while True:
+            start = template.find("%{")
+            end = template.find("}%")
+            if start < 0 and end < 0:
+                return template
+            elif start < 0:
+                raise ValueError(f"Mismatched %{{ in '{template}'.")
+            elif end < 0 or end < start:
+                raise ValueError(f"Mismatched }}% in '{template}'.")
+            else:
+                placeholder_key = template[start + 2 : end]
+                placeholder = "%{" + placeholder_key + "}%"
+                placeholder_value = self._get_and_fill(placeholder_key, history)
+                template = template.replace(placeholder, str(placeholder_value))
+
+    def _get_and_fill(self, key: str, history: List[str]) -> str:
+        value = self._args.get(key)
+        if value is None:
+            raw_value = self._data.get(key, None)
+            if raw_value is None:
+                raise ValueError(f"Missing configuration value {key}.")
+            if isinstance(raw_value, str):
+                value = self._fill_placeholders(raw_value, history + [key])
+        return str(value)
+
+    def get(self, key: str) -> object:
         """Look up the given key and raise an exception if not found."""
         self._is_read_by_key[key] = True
         value = self._data.get(key, None)
         if value is None:
             raise ValueError(f"Missing configuration value {key}.")
-        elif isinstance(value, str):
-            return self.fill_placeholders(key, value)
         else:
             return value
-
-    def fill_placeholders(self, key: str, value: str) -> str:
-        while True:
-            start = value.find("%{")
-            end = value.find("}%")
-            if start < 0 and end < 0:
-                return value
-            elif start < 0:
-                raise ValueError(f"Mismatched %{{ in configuration value {key}.")
-            elif end < 0 or end < start:
-                raise ValueError(f"Mismatched }}% in configuration value {key}.")
-            else:
-                placeholder_key = value[start + 2 : end]
-                placeholder = "%{" + placeholder_key + "}%"
-                placeholder_value = self._args.get(placeholder_key)
-                if placeholder_value is None:
-                    placeholder_value = self.get(placeholder_key)
-                value = value.replace(placeholder, str(placeholder_value))
 
     def _get_typed(self, key: str, cls: Type[T], clsname: str) -> T:
         value = self.get(key)
@@ -310,6 +335,9 @@ class ConfigFileReader(AbstractContextManager[object]):
         template = self.get_str(key)
         return StringTemplate(template)
 
+    def dump(self) -> Dict[str, object]:
+        return self._data
+
 
 # TODO: Move the slide style classes to a different file (where?)
 # TODO: Enforce singleton pattern here?
@@ -326,7 +354,7 @@ class Config(BaseConfig):
             )
 
             # Folder structure
-            self.downloads_dir = reader.get_directory("folder.home")
+            self.downloads_dir = reader.get_directory("folder.downloads")
             self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
@@ -605,4 +633,7 @@ class Config(BaseConfig):
         return self._args.start_time
 
     def fill_placeholders(self, text: str) -> str:
-        return self._reader.fill_placeholders("TASK LIST", text)
+        return self._reader.fill_placeholders(text)
+
+    def dump(self) -> Dict[str, object]:
+        return self._reader.dump()
