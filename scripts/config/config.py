@@ -131,9 +131,7 @@ class StringTemplate:
 
 
 # TODO: Add method to get positive number
-# TODO: Add method to fill placeholders (and check for unfilled placeholders)
 # TODO: Test placeholder filling (valid cases, circular references, etc.)
-# TODO: Load all resolved config values into a dict rather than lazily loading them
 class ConfigFileReader(AbstractContextManager[object]):
     def __init__(self, args: BaseArgs, strict: bool) -> None:
         self._args = args
