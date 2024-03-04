@@ -95,7 +95,7 @@ class TkMessenger(InputMessenger):
                 foreground=_FOREGROUND_COLOUR,
             )
             goodbye_textbox.grid(sticky="NW", pady=25)
-            goodbye_textbox.set_text("The program is done. Close this window to exit.")
+            goodbye_textbox.set_text("All done :D Close this window to exit.")
 
         if self.is_closed:
             return
@@ -440,7 +440,7 @@ class TkMessenger(InputMessenger):
         # -------------------- Action items section --------------------
 
         self._action_items_frame = Frame(self._scroll_frame)
-        self._action_items_frame.grid(sticky="NEW")
+        self._action_items_frame.grid(sticky="NEW", pady=(75, 0))
 
         self._action_items_grid = _ActionItemGrid(
             self._action_items_frame,
@@ -458,8 +458,6 @@ class TkMessenger(InputMessenger):
 
         self._problems_frame = Frame(self._scroll_frame)
         self._problems_frame.grid(sticky="NEW")
-        # TODO: Leave this frame hidden until necessary
-        #self._problems_frame.grid_remove()
 
         problems_header = _CopyableText(
             self._problems_frame,
@@ -468,7 +466,7 @@ class TkMessenger(InputMessenger):
             background=_BACKGROUND_COLOUR,
             foreground=_FOREGROUND_COLOUR,
         )
-        problems_header.grid(sticky="NEW", pady=(50, 0))
+        problems_header.grid(sticky="NEW", pady=(75, 0))
         problems_header.set_text("Problems")
 
         self._problems_grid = _ProblemGrid(
@@ -485,22 +483,37 @@ class TkMessenger(InputMessenger):
         self._problems_grid.grid(sticky="NEW")
 
         # -------------------- Task statuses section --------------------
-        
-        self._task_statuses_frame = Frame(self._scroll_frame)
-        self._task_statuses_frame.grid(sticky="NEW")
+
+        task_statuses_header_frame = Frame(self._scroll_frame)
+        task_statuses_header_frame.grid(sticky="NEW")
 
         task_statuses_header = _CopyableText(
-            self._task_statuses_frame,
-            width=WIDTH,
+            task_statuses_header_frame,
+            width=13,
             font=_H2_FONT,
             background=_BACKGROUND_COLOUR,
             foreground=_FOREGROUND_COLOUR,
         )
-        task_statuses_header.grid(sticky="NEW", pady=(50, 0))
+        task_statuses_header.grid(sticky="NW", pady=(75, 0), row=0, column=0)
         task_statuses_header.set_text("Task Statuses")
 
+        def _show_task_statuses() -> None:
+            self._task_statuses_grid.grid()
+            task_statuses_showhide_btn.configure(
+                text="Hide", command=_hide_task_statuses
+            )
+
+        def _hide_task_statuses() -> None:
+            self._task_statuses_grid.grid_remove()
+            task_statuses_showhide_btn.configure(
+                text="Show", command=_show_task_statuses
+            )
+
+        task_statuses_showhide_btn = Button(task_statuses_header_frame)
+        task_statuses_showhide_btn.grid(sticky="NW", pady=(75, 0), row=0, column=1)
+
         self._task_statuses_grid = _TaskStatusGrid(
-            self._task_statuses_frame,
+            self._scroll_frame,
             outer_padding=5,
             padx=5,
             pady=5,
@@ -511,6 +524,11 @@ class TkMessenger(InputMessenger):
             bold_font=_BOLD_FONT,
         )
         self._task_statuses_grid.grid(sticky="NEW")
+
+        # Leave this frame hidden until necessary
+        self._problems_frame.grid_remove()
+        # Start with task status section collapsed
+        _hide_task_statuses()
 
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
