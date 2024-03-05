@@ -2,13 +2,7 @@
 
 from __future__ import annotations
 
-try:
-    from ctypes.windll.shcore import (  # pyright: ignore[reportMissingImports]
-        SetProcessDpiAwareness,
-    )
-except ImportError:
-    SetProcessDpiAwareness: Callable[[int], None] = lambda _: None
-
+import ctypes
 import subprocess
 import threading
 import tkinter
@@ -368,7 +362,7 @@ class TkMessenger(InputMessenger):
     def _create_gui(self) -> None:
         # Try to make the GUI less blurry
         try:
-            SetProcessDpiAwareness(1)
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
         except Exception:
             pass
 
@@ -490,16 +484,24 @@ class TkMessenger(InputMessenger):
         task_statuses_header.grid(sticky="NW", pady=(75, 0), row=0, column=0)
         task_statuses_header.set_text("Task Statuses")
 
-        def _show_task_statuses() -> None:
+        def show_task_statuses() -> None:
+            self._queue.put(_GuiTask(do_show_task_statuses, update_scrollregion=True))
+            self._tk.event_generate(self._QUEUE_EVENT)
+
+        def do_show_task_statuses() -> None:
             self._task_statuses_grid.grid()
             task_statuses_showhide_btn.configure(
-                text="Hide", command=_hide_task_statuses
+                text="Hide", command=hide_task_statuses
             )
 
-        def _hide_task_statuses() -> None:
+        def hide_task_statuses() -> None:
+            self._queue.put(_GuiTask(do_hide_task_statuses, update_scrollregion=True))
+            self._tk.event_generate(self._QUEUE_EVENT)
+
+        def do_hide_task_statuses() -> None:
             self._task_statuses_grid.grid_remove()
             task_statuses_showhide_btn.configure(
-                text="Show", command=_show_task_statuses
+                text="Show", command=show_task_statuses
             )
 
         task_statuses_showhide_btn = Button(task_statuses_header_frame)
@@ -522,7 +524,7 @@ class TkMessenger(InputMessenger):
         # Leave this frame hidden until necessary
         self._problems_frame.grid_remove()
         # Start with task status section collapsed
-        _hide_task_statuses()
+        hide_task_statuses()
 
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
@@ -1088,9 +1090,9 @@ class _TaskStatusGrid(Frame):
         self._bold_font = bold_font
 
         self._taken_indices: Set[int] = set()
-        self._widgets_by_name: Dict[str, Tuple[Frame, _CopyableText, _CopyableText]] = (
-            {}
-        )
+        self._widgets_by_name: Dict[
+            str, Tuple[Frame, _CopyableText, _CopyableText]
+        ] = {}
         self._command: Dict[Tuple[str, str], Button] = {}
         self._create_header()
 
