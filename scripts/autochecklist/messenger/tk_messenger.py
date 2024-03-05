@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+import platform
 import subprocess
 import threading
 import tkinter
@@ -362,9 +363,12 @@ class TkMessenger(InputMessenger):
     def _create_gui(self) -> None:
         # Try to make the GUI less blurry
         try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)
-        except Exception:
-            pass
+            windll = ctypes.windll  # pyright: ignore[reportAttributeAccessIssue]
+            windll.shcore.SetProcessDpiAwareness(1)
+        except AttributeError:
+            # windll is only available on Windows
+            if platform.system() == "Windows":
+                raise
 
         self._tk = Tk()
         self._tk.title(self._title)
@@ -1090,9 +1094,9 @@ class _TaskStatusGrid(Frame):
         self._bold_font = bold_font
 
         self._taken_indices: Set[int] = set()
-        self._widgets_by_name: Dict[
-            str, Tuple[Frame, _CopyableText, _CopyableText]
-        ] = {}
+        self._widgets_by_name: Dict[str, Tuple[Frame, _CopyableText, _CopyableText]] = (
+            {}
+        )
         self._command: Dict[Tuple[str, str], Button] = {}
         self._create_header()
 
