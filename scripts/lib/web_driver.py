@@ -1,4 +1,4 @@
-# pyright: reportUnnecessaryTypeIgnoreComment=false
+# pyright: reportUnnecessaryTypeIgnoreComment=information
 # This is needed so platform-specific code (subprocess.CREATE_NO_WINDOW) can type-check
 from __future__ import annotations
 
