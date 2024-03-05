@@ -1170,7 +1170,7 @@ class _TaskStatusGrid(Frame):
             self._taken_indices.add(actual_index)
             self._widgets_by_name[task_name] = (commands_frame, status_label, msg_label)
 
-        status_label.set_text(str(status))
+        status_label.set_text(_friendly_status(status))
         status_label.config(foreground=self._status_colour(status))
         msg_label.set_text(message)
 
@@ -1270,7 +1270,7 @@ class _TaskStatusGrid(Frame):
         if status == TaskStatus.NOT_STARTED:
             return "#888888"
         elif status == TaskStatus.RUNNING:
-            return "#0000FF"
+            return "#ADD8E6"
         elif status == TaskStatus.WAITING_FOR_USER:
             return "#FF7700"
         elif status == TaskStatus.DONE:
@@ -1535,3 +1535,7 @@ def _friendly_name(name: str) -> str:
     s = name.replace("_", " ")
     capitalized = s[0].upper() + s[1:]
     return capitalized
+
+
+def _friendly_status(status: TaskStatus) -> str:
+    return str(status).replace("_", " ")
