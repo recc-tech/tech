@@ -85,17 +85,9 @@ class TkMessenger(InputMessenger):
 
     def close(self) -> None:
         def show_goodbye_message() -> None:
-            self._action_items_grid.destroy()
-            goodbye_textbox = _CopyableText(
-                self._action_items_frame,
-                width=170,
-                height=0,
-                font=_NORMAL_FONT,
-                background=_BACKGROUND_COLOUR,
-                foreground=_FOREGROUND_COLOUR,
+            self._action_items_section.set_message(
+                "All done :D Close this window to exit."
             )
-            goodbye_textbox.grid(sticky="NW", pady=25)
-            goodbye_textbox.set_text("All done :D Close this window to exit.")
 
         if self.is_closed:
             return
@@ -307,7 +299,7 @@ class TkMessenger(InputMessenger):
             on_click_skip = (
                 handle_click_skip if UserResponse.SKIP in allowed_responses else None
             )
-            actual_index = self._action_items_grid.add_row(
+            actual_index = self._action_items_section.add_row(
                 index,
                 task_name,
                 prompt,
@@ -317,7 +309,7 @@ class TkMessenger(InputMessenger):
             )
 
         def do_remove_action_item() -> None:
-            self._action_items_grid.delete_row(actual_index)
+            self._action_items_section.delete_row(actual_index)
 
         self._queue.put(_GuiTask(do_add_action_item, update_scrollregion=True))
         self._tk.event_generate(self._QUEUE_EVENT)
@@ -442,8 +434,9 @@ class TkMessenger(InputMessenger):
         self._action_items_frame = Frame(self._scroll_frame)
         self._action_items_frame.grid(sticky="NEW", pady=(75, 0))
 
-        self._action_items_grid = _ActionItemGrid(
+        self._action_items_section = _ActionItemSection(
             self._action_items_frame,
+            initial_message="Some automatic tasks are running. Please wait.",
             outer_padding=5,
             padx=5,
             pady=5,
@@ -452,7 +445,7 @@ class TkMessenger(InputMessenger):
             normal_font=_NORMAL_FONT,
             header_font=_BOLD_FONT,
         )
-        self._action_items_grid.grid(sticky="NEW")
+        self._action_items_section.grid(sticky="NEW")
 
         # -------------------- Problems section --------------------
 
@@ -525,6 +518,7 @@ class TkMessenger(InputMessenger):
         )
         self._task_statuses_grid.grid(sticky="NEW")
 
+        # TODO: Test that this works on Windows as well
         # Leave this frame hidden until necessary
         self._problems_frame.grid_remove()
         # Start with task status section collapsed
@@ -742,6 +736,76 @@ class _ThickSeparator(Frame):
         Style().configure(STYLE, background=colour)
 
 
+class _ActionItemSection(Frame):
+    def __init__(
+        self,
+        parent: Misc,
+        initial_message: str,
+        outer_padding: int,
+        padx: int,
+        pady: int,
+        background: str,
+        foreground: str,
+        normal_font: str,
+        header_font: str,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        super().__init__(parent, padding=outer_padding, *args, **kwargs)
+        self._message = _CopyableText(
+            self,
+            width=170,
+            height=0,
+            font=normal_font,
+            background=background,
+            foreground=foreground,
+            pady=25,
+        )
+        self._message.grid()
+        self._message.set_text(initial_message)
+        self._grid = _ActionItemGrid(
+            self,
+            padx=padx,
+            pady=pady,
+            background=background,
+            foreground=foreground,
+            normal_font=normal_font,
+            header_font=header_font,
+        )
+
+    def add_row(
+        self,
+        index: Optional[int],
+        task_name: str,
+        message: str,
+        on_click_done: Optional[Callable[[], None]],
+        on_click_retry: Optional[Callable[[], None]],
+        on_click_skip: Optional[Callable[[], None]],
+    ) -> int:
+        num_rows_before = self._grid.num_rows
+        index = self._grid.add_row(
+            index=index,
+            task_name=task_name,
+            message=message,
+            on_click_done=on_click_done,
+            on_click_retry=on_click_retry,
+            on_click_skip=on_click_skip,
+        )
+        if num_rows_before == 0 and self._grid.num_rows > 0:
+            self._message.grid_forget()
+            self._grid.grid()
+        return index
+
+    def delete_row(self, index: int) -> None:
+        self._grid.delete_row(index)
+        if self._grid.num_rows == 0:
+            self._grid.grid_forget()
+            self._message.grid()
+
+    def set_message(self, message: str) -> None:
+        self._message.set_text(message)
+
+
 class _ActionItemGrid(Frame):
     _DONE_BTN_COLUMN = 0
     _DONE_BTN_WIDTH = 7
@@ -757,7 +821,6 @@ class _ActionItemGrid(Frame):
     def __init__(
         self,
         parent: Misc,
-        outer_padding: int,
         padx: int,
         pady: int,
         background: str,
@@ -767,7 +830,7 @@ class _ActionItemGrid(Frame):
         *args: object,
         **kwargs: object,
     ) -> None:
-        super().__init__(parent, padding=outer_padding, *args, **kwargs)
+        super().__init__(parent, *args, **kwargs)
 
         self._padx = padx
         self._pady = pady
@@ -898,6 +961,10 @@ class _ActionItemGrid(Frame):
             skip_btn.destroy()
         name_label.destroy()
         msg_label.destroy()
+
+    @property
+    def num_rows(self) -> int:
+        return len(self._widgets)
 
     def _create_header(self):
         # Include the empty header cells for the buttons just to keep the UI
