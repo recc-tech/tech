@@ -538,7 +538,6 @@ class TkMessenger(InputMessenger):
         )
         self._task_statuses_grid.grid(sticky="NEW")
 
-        # TODO: Test that this works on Windows as well
         # Leave this frame hidden until necessary
         self._problems_frame.grid_remove()
         # Start with task status section collapsed
