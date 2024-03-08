@@ -13,19 +13,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
 from threading import Lock
-from tkinter import Canvas, Menu, Misc, Text, Tk, Toplevel, messagebox
-from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Scrollbar, Style
-from typing import Any, Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
+from tkinter import Canvas, Menu, Misc, Tk, Toplevel, messagebox
+from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Style
+from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
 import pyperclip
 
-from .input_messenger import (
+from ..input_messenger import (
     InputMessenger,
     Parameter,
     ProblemLevel,
     TaskStatus,
     UserResponse,
 )
+from .responsive_textbox import ResponsiveTextbox
+from .scrollable_frame import ScrollableFrame
 
 T = TypeVar("T")
 
@@ -183,7 +185,7 @@ class TkMessenger(InputMessenger):
         was_input_cancelled = False
         input_frame: Toplevel
         entry_by_key: Dict[str, Entry]
-        error_label_by_key: Dict[str, _CopyableText]
+        error_label_by_key: Dict[str, ResponsiveTextbox]
         submit_button: Button
         input_by_key = {key: "" for key in params}
         parser_by_key = {key: p.parser for key, p in params.items()}
@@ -379,11 +381,14 @@ class TkMessenger(InputMessenger):
         window_width = int(approx_screen_width * 0.75)
         window_height = int(screen_height * 0.75)
         self._tk.geometry(f"{window_width}x{window_height}+0+0")
-        self._scroll_frame = _create_scrollable_frame(
-            self._tk, self._handle_update_scrollregion, padding=25
+        self._scroll_frame = ScrollableFrame(
+            self._tk,
+            padding=25,
+            background=_BACKGROUND_COLOUR,
+            scrollbar_width=25,
         )
-        # For some reason, `self._scroll_frame.pack(fill="both", expand=1)`
-        # causes canvas.bbox("all") to always return (0, 0, 1, 1)
+        self._scroll_frame.outer_frame.pack(fill="both", expand=1)
+        self._scroll_frame.columnconfigure(index=0, weight=1)
 
         # -------------------- Behaviour --------------------
 
@@ -417,20 +422,21 @@ class TkMessenger(InputMessenger):
         # -------------------- Description --------------------
 
         if self._description.strip():
-            description_textbox = _CopyableText(
+            description_textbox = ResponsiveTextbox(
                 self._scroll_frame,
                 width=WIDTH,
                 font=_ITALIC_FONT,
                 background=_BACKGROUND_COLOUR,
                 foreground=_FOREGROUND_COLOUR,
             )
-            description_textbox.grid(sticky="NW", pady=25)
+            description_textbox.grid(sticky="NEW", pady=25)
             description_textbox.set_text(self._description)
 
         # -------------------- Action items section --------------------
 
         self._action_items_frame = Frame(self._scroll_frame)
         self._action_items_frame.grid(sticky="NEW", pady=(75, 0))
+        self._action_items_frame.columnconfigure(index=0, weight=1)
 
         self._action_items_section = _ActionItemSection(
             self._action_items_frame,
@@ -449,8 +455,9 @@ class TkMessenger(InputMessenger):
 
         self._problems_frame = Frame(self._scroll_frame)
         self._problems_frame.grid(sticky="NEW")
+        self._problems_frame.columnconfigure(index=0, weight=1)
 
-        problems_header = _CopyableText(
+        problems_header = ResponsiveTextbox(
             self._problems_frame,
             width=WIDTH,
             font=_H2_FONT,
@@ -477,15 +484,16 @@ class TkMessenger(InputMessenger):
 
         task_statuses_header_frame = Frame(self._scroll_frame)
         task_statuses_header_frame.grid(sticky="NEW")
+        task_statuses_header_frame.columnconfigure(index=0, weight=1)
 
-        task_statuses_header = _CopyableText(
+        task_statuses_header = ResponsiveTextbox(
             task_statuses_header_frame,
             width=13,
             font=_H2_FONT,
             background=_BACKGROUND_COLOUR,
             foreground=_FOREGROUND_COLOUR,
         )
-        task_statuses_header.grid(sticky="NW", pady=(75, 0), row=0, column=0)
+        task_statuses_header.grid(sticky="NEW", pady=(75, 0), row=0, column=0)
         task_statuses_header.set_text("Task Statuses")
 
         def show_task_statuses() -> None:
@@ -509,7 +517,7 @@ class TkMessenger(InputMessenger):
             )
 
         task_statuses_showhide_btn = Button(task_statuses_header_frame)
-        task_statuses_showhide_btn.grid(sticky="NW", pady=(75, 0), row=0, column=1)
+        task_statuses_showhide_btn.grid(sticky="NEW", pady=(75, 0), row=0, column=1)
 
         self._task_statuses_grid = _TaskStatusGrid(
             self._scroll_frame,
@@ -530,12 +538,15 @@ class TkMessenger(InputMessenger):
         # Start with task status section collapsed
         hide_task_statuses()
 
+    # TODO: The error message doesn't look great here
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
-    ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, _CopyableText], Button]:
+    ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
         entry_by_name: Dict[str, Entry] = {}
-        error_message_by_name: Dict[str, _CopyableText] = {}
+        error_message_by_name: Dict[str, ResponsiveTextbox] = {}
         w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        w.rowconfigure(index=1, weight=1)
+        w.columnconfigure(index=0, weight=1)
         try:
             w.title(title)
             if prompt:
@@ -549,10 +560,11 @@ class TkMessenger(InputMessenger):
                 )
                 prompt_box.grid()
             for name, param in params.items():
-                param_frame = Frame(w)
-                param_frame.grid(pady=15)
+                param_frame = Frame(w, borderwidth=1)
+                param_frame.grid(pady=15, sticky="NSEW")
+                param_frame.columnconfigure(index=0, weight=1)
                 entry_row = Frame(param_frame)
-                entry_row.grid()
+                entry_row.grid(sticky="NEW")
                 name_label = Label(
                     entry_row,
                     text=param.display_name,
@@ -570,21 +582,23 @@ class TkMessenger(InputMessenger):
                     entry.insert(0, param.default)
                 entry_by_name[name] = entry
                 if param.description:
-                    description_box = _CopyableText(
+                    description_box = ResponsiveTextbox(
                         param_frame,
+                        width=20,
                         font=_ITALIC_FONT,
                         background=_BACKGROUND_COLOUR,
                         foreground=_FOREGROUND_COLOUR,
                     )
-                    description_box.grid()
+                    description_box.grid(sticky="NEW")
                     description_box.set_text(param.description)
-                error_message = _CopyableText(
+                error_message = ResponsiveTextbox(
                     param_frame,
+                    width=20,
                     font=_NORMAL_FONT,
                     background=_BACKGROUND_COLOUR,
                     foreground="red",
                 )
-                error_message.grid()
+                error_message.grid(sticky="NEW")
                 error_message_by_name[name] = error_message
             btn = Button(w, text="Done")
             btn.grid()
@@ -661,71 +675,6 @@ class _GuiTask:
     update_scrollregion: bool
 
 
-def _create_scrollable_frame(
-    tk: Tk, update_scrollregion: Callable[[], None], padding: int
-) -> Frame:
-    outer_frame = Frame(tk)
-    outer_frame.pack(fill="both", expand=1)
-
-    scrollbar = Scrollbar(outer_frame, orient="vertical")
-    scrollbar.pack(side="right", fill="y")
-    canvas = Canvas(
-        outer_frame,
-        yscrollcommand=scrollbar.set,
-        borderwidth=0,
-        highlightthickness=0,
-        background=_BACKGROUND_COLOUR,
-    )
-    canvas.pack(side="left", fill="both", expand=1)
-    canvas.bind("<Configure>", lambda e: update_scrollregion())
-    scrollbar.config(command=canvas.yview)
-
-    # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
-    tk.bind_all(
-        "<MouseWheel>",
-        lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
-    )
-
-    frame = Frame(canvas, padding=padding)
-    canvas.create_window((0, 0), window=frame, anchor="nw")
-    return frame
-
-
-class _CopyableText(Text):
-    """
-    Text widget that supports both text wrapping and copying its contents to the clipboard.
-    """
-
-    def __init__(self, parent: Misc, **kwargs: Any):
-        kwargs["height"] = 1
-        kwargs["wrap"] = "word"
-        kwargs["state"] = "disabled"
-        kwargs["highlightthickness"] = 0
-        kwargs["borderwidth"] = 0
-        super().__init__(parent, **kwargs)
-
-    def set_text(self, text: str):
-        """
-        Updates the text displayed in this widget.
-
-        IMPORTANT: you MUST call a geometry management function for this widget (e.g., pack() or grid()) BEFORE calling this method.
-        """
-        # If you don't call update_idletasks(), the GUI seems to be confused and rows added later will be all over
-        # the place
-        root = self.winfo_toplevel()
-        root.update_idletasks()
-
-        self.config(state="normal")
-        self.delete(1.0, "end")
-        self.insert(1.0, text)
-        self.config(state="disabled")
-
-        # Adjust the text box height
-        # https://stackoverflow.com/a/46100295
-        height = self.tk.call((self, "count", "-update", "-displaylines", "1.0", "end"))
-        self.configure(height=height)
-
-
 class _ThickSeparator(Frame):
     def __init__(
         self,
@@ -758,16 +707,16 @@ class _ActionItemSection(Frame):
         **kwargs: object,
     ) -> None:
         super().__init__(parent, padding=outer_padding, *args, **kwargs)
-        self._message = _CopyableText(
+        self.columnconfigure(index=0, weight=1)
+        self._message = ResponsiveTextbox(
             self,
-            width=170,
-            height=0,
+            width=50,
             font=normal_font,
             background=background,
             foreground=foreground,
             pady=25,
         )
-        self._message.grid()
+        self._message.grid(row=0, column=0, sticky="NEW")
         self._message.set_text(initial_message)
         self._grid = _ActionItemGrid(
             self,
@@ -799,14 +748,14 @@ class _ActionItemSection(Frame):
         )
         if num_rows_before == 0 and self._grid.num_rows > 0:
             self._message.grid_forget()
-            self._grid.grid()
+            self._grid.grid(row=0, column=0, sticky="NEW")
         return index
 
     def delete_row(self, index: int) -> None:
         self._grid.delete_row(index)
         if self._grid.num_rows == 0:
             self._grid.grid_forget()
-            self._message.grid()
+            self._message.grid(row=0, column=0, sticky="NEW")
 
     def set_message(self, message: str) -> None:
         self._message.set_text(message)
@@ -845,14 +794,17 @@ class _ActionItemGrid(Frame):
         self._normal_font = normal_font
         self._header_font = header_font
 
+        self.columnconfigure(index=self._NAME_COLUMN, weight=1)
+        self.columnconfigure(index=self._MSG_COLUMN, weight=4)
+
         self._widgets: Dict[
             int,
             Tuple[
                 Optional[Button],
                 Optional[Button],
                 Optional[Button],
-                _CopyableText,
-                _CopyableText,
+                ResponsiveTextbox,
+                ResponsiveTextbox,
             ],
         ] = {}
         self._create_header()
@@ -885,7 +837,7 @@ class _ActionItemGrid(Frame):
                 column=self._DONE_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
         else:
             done_button = None
@@ -897,7 +849,7 @@ class _ActionItemGrid(Frame):
                 column=self._RETRY_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
         else:
             retry_button = None
@@ -909,11 +861,11 @@ class _ActionItemGrid(Frame):
                 column=self._SKIP_BTN_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
         else:
             skip_button = None
-        name_label = _CopyableText(
+        name_label = ResponsiveTextbox(
             self,
             width=self._NAME_WIDTH,
             font=self._normal_font,
@@ -925,10 +877,10 @@ class _ActionItemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         name_label.set_text(_friendly_name(task_name))
-        msg_label = _CopyableText(
+        msg_label = ResponsiveTextbox(
             self,
             width=self._MSG_WIDTH,
             font=self._normal_font,
@@ -940,7 +892,7 @@ class _ActionItemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         msg_label.set_text(message)
 
@@ -975,7 +927,7 @@ class _ActionItemGrid(Frame):
     def _create_header(self):
         # Include the empty header cells for the buttons just to keep the UI
         # stable whether or not the grid has entries
-        done_button_header_label = _CopyableText(
+        done_button_header_label = ResponsiveTextbox(
             self,
             width=self._DONE_BTN_WIDTH,
             font=self._header_font,
@@ -987,10 +939,10 @@ class _ActionItemGrid(Frame):
             column=self._DONE_BTN_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
 
-        retry_button_header_label = _CopyableText(
+        retry_button_header_label = ResponsiveTextbox(
             self,
             width=self._RETRY_BTN_WIDTH,
             font=self._header_font,
@@ -1002,10 +954,10 @@ class _ActionItemGrid(Frame):
             column=self._RETRY_BTN_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
 
-        skip_button_header_label = _CopyableText(
+        skip_button_header_label = ResponsiveTextbox(
             self,
             width=self._SKIP_BTN_WIDTH,
             font=self._header_font,
@@ -1017,10 +969,10 @@ class _ActionItemGrid(Frame):
             column=self._SKIP_BTN_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
 
-        name_header_label = _CopyableText(
+        name_header_label = ResponsiveTextbox(
             self,
             width=self._NAME_WIDTH,
             font=self._header_font,
@@ -1032,11 +984,11 @@ class _ActionItemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         name_header_label.set_text("Task")
 
-        msg_header_label = _CopyableText(
+        msg_header_label = ResponsiveTextbox(
             self,
             width=self._MSG_WIDTH,
             font=self._header_font,
@@ -1048,7 +1000,7 @@ class _ActionItemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         msg_header_label.set_text("Instructions")
 
@@ -1093,10 +1045,13 @@ class _TaskStatusGrid(Frame):
         self._header_font = header_font
         self._bold_font = bold_font
 
+        self.columnconfigure(index=self._NAME_COLUMN, weight=1)
+        self.columnconfigure(index=self._MSG_COLUMN, weight=4)
+
         self._taken_indices: Set[int] = set()
-        self._widgets_by_name: Dict[str, Tuple[Frame, _CopyableText, _CopyableText]] = (
-            {}
-        )
+        self._widgets_by_name: Dict[
+            str, Tuple[Frame, ResponsiveTextbox, ResponsiveTextbox]
+        ] = {}
         self._command: Dict[Tuple[str, str], Button] = {}
         self._create_header()
 
@@ -1122,9 +1077,9 @@ class _TaskStatusGrid(Frame):
                 column=self._COMMANDS_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
-            name_label = _CopyableText(
+            name_label = ResponsiveTextbox(
                 self,
                 width=self._NAME_WIDTH,
                 font=self._normal_font,
@@ -1136,10 +1091,10 @@ class _TaskStatusGrid(Frame):
                 column=self._NAME_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
             name_label.set_text(_friendly_name(task_name))
-            status_label = _CopyableText(
+            status_label = ResponsiveTextbox(
                 self,
                 width=self._STATUS_WIDTH,
                 font=self._bold_font,
@@ -1151,9 +1106,9 @@ class _TaskStatusGrid(Frame):
                 column=self._STATUS_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
-            msg_label = _CopyableText(
+            msg_label = ResponsiveTextbox(
                 self,
                 width=self._MSG_WIDTH,
                 font=self._normal_font,
@@ -1165,13 +1120,13 @@ class _TaskStatusGrid(Frame):
                 column=self._MSG_COLUMN,
                 padx=self._padx,
                 pady=self._pady,
-                sticky="W",
+                sticky="NEW",
             )
             self._taken_indices.add(actual_index)
             self._widgets_by_name[task_name] = (commands_frame, status_label, msg_label)
 
         status_label.set_text(_friendly_status(status))
-        status_label.config(foreground=self._status_colour(status))
+        status_label.config(foreground=_status_colour(status))
         msg_label.set_text(message)
 
     def upsert_command(
@@ -1200,7 +1155,7 @@ class _TaskStatusGrid(Frame):
             existing_button.destroy()
 
     def _create_header(self):
-        command_header_label = _CopyableText(
+        command_header_label = ResponsiveTextbox(
             self,
             width=self._COMMANDS_WIDTH,
             font=self._header_font,
@@ -1212,11 +1167,11 @@ class _TaskStatusGrid(Frame):
             column=self._COMMANDS_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         command_header_label.set_text("")
 
-        name_header_label = _CopyableText(
+        name_header_label = ResponsiveTextbox(
             self,
             width=self._NAME_WIDTH,
             font=self._header_font,
@@ -1228,11 +1183,11 @@ class _TaskStatusGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         name_header_label.set_text("Task")
 
-        status_header_label = _CopyableText(
+        status_header_label = ResponsiveTextbox(
             self,
             width=self._STATUS_WIDTH,
             font=self._header_font,
@@ -1244,11 +1199,11 @@ class _TaskStatusGrid(Frame):
             column=self._STATUS_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         status_header_label.set_text("Status")
 
-        msg_header_label = _CopyableText(
+        msg_header_label = ResponsiveTextbox(
             self,
             width=self._MSG_WIDTH,
             font=self._header_font,
@@ -1256,7 +1211,11 @@ class _TaskStatusGrid(Frame):
             foreground=self._foreground,
         )
         msg_header_label.grid(
-            row=0, column=self._MSG_COLUMN, padx=self._padx, pady=self._pady, sticky="W"
+            row=0,
+            column=self._MSG_COLUMN,
+            padx=self._padx,
+            pady=self._pady,
+            sticky="NEW",
         )
         msg_header_label.set_text("Details")
 
@@ -1264,21 +1223,6 @@ class _TaskStatusGrid(Frame):
             self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
         )
         separator.grid(row=1, column=0, columnspan=4, sticky="EW")
-
-    @staticmethod
-    def _status_colour(status: TaskStatus) -> str:
-        if status == TaskStatus.NOT_STARTED:
-            return "#888888"
-        elif status == TaskStatus.RUNNING:
-            return "#ADD8E6"
-        elif status == TaskStatus.WAITING_FOR_USER:
-            return "#FF7700"
-        elif status == TaskStatus.DONE:
-            return "#009020"
-        elif status == TaskStatus.SKIPPED:
-            return "#FF0000"
-        else:
-            return "#000000"
 
 
 class _ProblemGrid(Frame):
@@ -1314,11 +1258,13 @@ class _ProblemGrid(Frame):
         self._header_font = header_font
         self._bold_font = bold_font
 
+        self.columnconfigure(index=self._MSG_COLUMN, weight=1)
+
         self._current_row = 0
         self._create_header()
 
     def add_row(self, task_name: str, level: ProblemLevel, message: str):
-        name_label = _CopyableText(
+        name_label = ResponsiveTextbox(
             self,
             width=self._NAME_WIDTH,
             font=self._normal_font,
@@ -1331,14 +1277,14 @@ class _ProblemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         name_label.set_text(_friendly_name(task_name))
 
-        level_label = _CopyableText(
+        level_label = ResponsiveTextbox(
             self,
             width=self._LEVEL_WIDTH,
-            foreground=self._level_colour(level),
+            foreground=_level_colour(level),
             font=self._bold_font,
             background=self._background,
         )
@@ -1347,11 +1293,11 @@ class _ProblemGrid(Frame):
             column=self._LEVEL_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         level_label.set_text(str(level))
 
-        self._message_label = _CopyableText(
+        self._message_label = ResponsiveTextbox(
             self,
             width=self._MSG_WIDTH,
             font=self._normal_font,
@@ -1363,14 +1309,14 @@ class _ProblemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         self._message_label.set_text(message)
 
         self._current_row += 1
 
     def _create_header(self):
-        name_header_label = _CopyableText(
+        name_header_label = ResponsiveTextbox(
             self,
             width=self._NAME_WIDTH,
             font=self._header_font,
@@ -1382,11 +1328,11 @@ class _ProblemGrid(Frame):
             column=self._NAME_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         name_header_label.set_text("Task")
 
-        level_header_label = _CopyableText(
+        level_header_label = ResponsiveTextbox(
             self,
             width=self._LEVEL_WIDTH,
             font=self._header_font,
@@ -1398,11 +1344,11 @@ class _ProblemGrid(Frame):
             column=self._LEVEL_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         level_header_label.set_text("Level")
 
-        msg_header_label = _CopyableText(
+        msg_header_label = ResponsiveTextbox(
             self,
             width=self._MSG_WIDTH,
             font=self._header_font,
@@ -1414,7 +1360,7 @@ class _ProblemGrid(Frame):
             column=self._MSG_COLUMN,
             padx=self._padx,
             pady=self._pady,
-            sticky="W",
+            sticky="NEW",
         )
         msg_header_label.set_text("Details")
 
@@ -1422,17 +1368,6 @@ class _ProblemGrid(Frame):
             self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
         )
         separator.grid(row=1, column=0, columnspan=3, sticky="EW")
-
-    @staticmethod
-    def _level_colour(level: ProblemLevel) -> str:
-        if level == ProblemLevel.WARN:
-            return "#FF7700"
-        elif level == ProblemLevel.ERROR:
-            return "#FF0000"
-        elif level == ProblemLevel.FATAL:
-            return "#990000"
-        else:
-            return "#000000"
 
 
 class _ProgressBarGroup(Toplevel):
@@ -1539,3 +1474,29 @@ def _friendly_name(name: str) -> str:
 
 def _friendly_status(status: TaskStatus) -> str:
     return str(status).replace("_", " ")
+
+
+def _status_colour(status: TaskStatus) -> str:
+    if status == TaskStatus.NOT_STARTED:
+        return "#888888"
+    elif status == TaskStatus.RUNNING:
+        return "#ADD8E6"
+    elif status == TaskStatus.WAITING_FOR_USER:
+        return "#FF7700"
+    elif status == TaskStatus.DONE:
+        return "#009020"
+    elif status == TaskStatus.SKIPPED:
+        return "#FF0000"
+    else:
+        return "#000000"
+
+
+def _level_colour(level: ProblemLevel) -> str:
+    if level == ProblemLevel.WARN:
+        return "#FF7700"
+    elif level == ProblemLevel.ERROR:
+        return "#FF0000"
+    elif level == ProblemLevel.FATAL:
+        return "#990000"
+    else:
+        return "#000000"
