@@ -31,40 +31,41 @@ def show_config(profile: Optional[str]) -> None:
         print(f"{k:<{max_key_width}s} | {v}")
 
 
-# TODO: Add this to the automated test suite
-def test_loading_config() -> None:
-    if config.get_active_profile() is None:
-        script_name = Path(__file__).name
-        raise ValueError(
-            "No profile is currently active. "
-            f"Run 'python {script_name} activate' to choose a profile."
-        )
-    available_profiles = sorted(config.list_profiles())
-    for profile in [None] + available_profiles:
+def test_load_one_config(profile: Optional[str]) -> None:
+    try:
+        Config(ReccArgs.parse([]), profile=profile, strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load general configuration.") from e
+    try:
+        GenerateSlidesConfig(GenerateSlidesArgs.parse([]), profile=profile, strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for generating slides.") from e
+    try:
+        McrSetupConfig(McrSetupArgs.parse([]), profile=profile, strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for MCR setup.") from e
+    try:
+        McrTeardownConfig(McrTeardownArgs.parse([]), profile=profile, strict=True)
+    except Exception as e:
+        raise RuntimeError("Failed to load configuration for MCR teardown.") from e
+
+
+def test_load_all_configs(test_current: bool = True) -> None:
+    profiles = sorted(config.list_profiles())
+    if test_current:
+        if config.get_active_profile() is None:
+            script_name = Path(__file__).name
+            raise ValueError(
+                "No profile is currently active. "
+                f"Run 'python {script_name} activate' to choose a profile."
+            )
+        profiles = [None] + profiles
+    for profile in profiles:
         if profile is None:
             print("Testing loading using current profile: ", end="")
         else:
             print(f"Testing loading using profile '{profile}': ", end="")
-        try:
-            Config(ReccArgs.parse([]), profile=profile, strict=True)
-        except Exception as e:
-            raise RuntimeError("Failed to load general configuration.") from e
-        try:
-            GenerateSlidesConfig(
-                GenerateSlidesArgs.parse([]), profile=profile, strict=True
-            )
-        except Exception as e:
-            raise RuntimeError(
-                "Failed to load configuration for generating slides."
-            ) from e
-        try:
-            McrSetupConfig(McrSetupArgs.parse([]), profile=profile, strict=True)
-        except Exception as e:
-            raise RuntimeError("Failed to load configuration for MCR setup.") from e
-        try:
-            McrTeardownConfig(McrTeardownArgs.parse([]), profile=profile, strict=True)
-        except Exception as e:
-            raise RuntimeError("Failed to load configuration for MCR teardown.") from e
+        test_load_one_config(profile)
         print("OK")
 
 
@@ -104,7 +105,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.subcommand == "test":
-        test_loading_config()
+        test_load_all_configs()
     elif args.subcommand == "activate":
         activate_profile(args.profile)
     elif args.subcommand == "show":
