@@ -166,7 +166,6 @@ class StringTemplate:
         return t
 
 
-# TODO: Add method to get positive number
 # TODO: Test placeholder filling (valid cases, circular references, etc.)
 class ConfigFileReader(AbstractContextManager[object]):
     def __init__(self, args: BaseArgs, profile: str, strict: bool) -> None:
@@ -303,6 +302,22 @@ class ConfigFileReader(AbstractContextManager[object]):
     def get_int(self, key: str) -> int:
         return self._get_typed(key, int, "a whole number")
 
+    def get_positive_int(self, key: str) -> int:
+        x = self.get_int(key)
+        if x <= 0:
+            raise ValueError(
+                f"Expected configuration value {key} to be positive, but found value {x}"
+            )
+        return x
+
+    def get_nonneg_int(self, key: str) -> int:
+        x = self.get_int(key)
+        if x < 0:
+            raise ValueError(
+                f"Expected configuration value {key} to be non-negative, but found value {x}."
+            )
+        return x
+
     def get_bool(self, key: str) -> bool:
         return self._get_typed(key, bool, "true or false")
 
@@ -334,6 +349,14 @@ class ConfigFileReader(AbstractContextManager[object]):
         raise ValueError(
             f"Expected configuration value {key} to be a number, but found type {type(value)}."
         )
+
+    def get_positive_float(self, key: str) -> float:
+        x = self.get_float(key)
+        if x <= 0.0:
+            raise ValueError(
+                f"Expected configuration value {key} to be positive, but found value {x}."
+            )
+        return x
 
     def get_directory(self, key: str) -> Path:
         s = self.get_str(key)
@@ -444,8 +467,10 @@ class Config(BaseConfig):
             )
 
             # Vimeo
-            self.vimeo_new_video_hours = reader.get_float("vimeo.new_video_hours")
-            self.vimeo_retry_seconds = reader.get_float("vimeo.retry_seconds")
+            self.vimeo_new_video_hours = reader.get_positive_float(
+                "vimeo.new_video_hours"
+            )
+            self.vimeo_retry_seconds = reader.get_positive_float("vimeo.retry_seconds")
             self.vimeo_captions_type = reader.get_str("vimeo.captions_type")
             self.vimeo_captions_language = reader.get_str("vimeo.captions_language")
             self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
@@ -465,7 +490,7 @@ class Config(BaseConfig):
             self.vmix_preset_file = reader.get_file("vmix.preset_path")
 
             # API
-            self.timeout_seconds = reader.get_float("api.timeout_seconds")
+            self.timeout_seconds = reader.get_positive_float("api.timeout_seconds")
             self.timeout = timedelta(seconds=self.timeout_seconds)
 
             # Slides
@@ -474,8 +499,8 @@ class Config(BaseConfig):
             )
             self.lyrics_filename = reader.get_str("slides.lyrics_filename")
             self.blueprints_filename = reader.get_str("slides.blueprints_filename")
-            self.img_width = reader.get_int("slides.image_width")
-            self.img_height = reader.get_int("slides.image_height")
+            self.img_width = reader.get_positive_int("slides.image_width")
+            self.img_height = reader.get_positive_int("slides.image_height")
             self.font_family = reader.get_str_list("slides.font_family")
 
             fsm = "slides.fullscreen_message"
@@ -485,16 +510,16 @@ class Config(BaseConfig):
                 background_colour=reader.get_str(f"{fsm}.background"),
                 body=Textbox(
                     bbox=Bbox.xywh(
-                        x=reader.get_int(f"{fsm}.body.x"),
-                        y=reader.get_int(f"{fsm}.body.y"),
-                        w=reader.get_int(f"{fsm}.body.width"),
-                        h=reader.get_int(f"{fsm}.body.height"),
+                        x=reader.get_nonneg_int(f"{fsm}.body.x"),
+                        y=reader.get_nonneg_int(f"{fsm}.body.y"),
+                        w=reader.get_positive_int(f"{fsm}.body.width"),
+                        h=reader.get_positive_int(f"{fsm}.body.height"),
                     ),
                     font=Font(
                         family=self.font_family,
                         style=reader.get_enum(f"{fsm}.body.font.style", _STYLES),
-                        min_size=reader.get_int(f"{fsm}.body.font.min_size"),
-                        max_size=reader.get_int(f"{fsm}.body.font.max_size"),
+                        min_size=reader.get_positive_int(f"{fsm}.body.font.min_size"),
+                        max_size=reader.get_positive_int(f"{fsm}.body.font.max_size"),
                     ),
                     horiz_align=reader.get_enum(
                         f"{fsm}.body.horiz_align", _HORIZ_ALIGNS
@@ -514,16 +539,16 @@ class Config(BaseConfig):
                 background_colour=reader.get_str(f"{fss}.background"),
                 body=Textbox(
                     bbox=Bbox.xywh(
-                        x=reader.get_int(f"{fss}.body.x"),
-                        y=reader.get_int(f"{fss}.body.y"),
-                        w=reader.get_int(f"{fss}.body.width"),
-                        h=reader.get_int(f"{fss}.body.height"),
+                        x=reader.get_nonneg_int(f"{fss}.body.x"),
+                        y=reader.get_nonneg_int(f"{fss}.body.y"),
+                        w=reader.get_positive_int(f"{fss}.body.width"),
+                        h=reader.get_positive_int(f"{fss}.body.height"),
                     ),
                     font=Font(
                         family=self.font_family,
                         style=reader.get_enum(f"{fss}.body.font.style", _STYLES),
-                        min_size=reader.get_int(f"{fss}.body.font.min_size"),
-                        max_size=reader.get_int(f"{fss}.body.font.max_size"),
+                        min_size=reader.get_positive_int(f"{fss}.body.font.min_size"),
+                        max_size=reader.get_positive_int(f"{fss}.body.font.max_size"),
                     ),
                     horiz_align=reader.get_enum(
                         f"{fss}.body.horiz_align", _HORIZ_ALIGNS
@@ -535,16 +560,16 @@ class Config(BaseConfig):
                 ),
                 footer=Textbox(
                     bbox=Bbox.xywh(
-                        x=reader.get_int(f"{fss}.footer.x"),
-                        y=reader.get_int(f"{fss}.footer.y"),
-                        w=reader.get_int(f"{fss}.footer.width"),
-                        h=reader.get_int(f"{fss}.footer.height"),
+                        x=reader.get_nonneg_int(f"{fss}.footer.x"),
+                        y=reader.get_nonneg_int(f"{fss}.footer.y"),
+                        w=reader.get_positive_int(f"{fss}.footer.width"),
+                        h=reader.get_positive_int(f"{fss}.footer.height"),
                     ),
                     font=Font(
                         family=self.font_family,
                         style=reader.get_enum(f"{fss}.footer.font.style", _STYLES),
-                        min_size=reader.get_int(f"{fss}.footer.font.min_size"),
-                        max_size=reader.get_int(f"{fss}.footer.font.max_size"),
+                        min_size=reader.get_positive_int(f"{fss}.footer.font.min_size"),
+                        max_size=reader.get_positive_int(f"{fss}.footer.font.max_size"),
                     ),
                     horiz_align=reader.get_enum(
                         f"{fss}.footer.horiz_align", _HORIZ_ALIGNS
@@ -562,16 +587,16 @@ class Config(BaseConfig):
             ltm = "slides.lowerthird_message"
             self._lowerthird_message_body = Textbox(
                 bbox=Bbox.xywh(
-                    x=reader.get_int(f"{ltm}.body.x"),
-                    y=reader.get_int(f"{ltm}.body.y"),
-                    w=reader.get_int(f"{ltm}.body.width"),
-                    h=reader.get_int(f"{ltm}.body.height"),
+                    x=reader.get_nonneg_int(f"{ltm}.body.x"),
+                    y=reader.get_nonneg_int(f"{ltm}.body.y"),
+                    w=reader.get_positive_int(f"{ltm}.body.width"),
+                    h=reader.get_positive_int(f"{ltm}.body.height"),
                 ),
                 font=Font(
                     family=self.font_family,
                     style=reader.get_enum(f"{ltm}.body.font.style", _STYLES),
-                    min_size=reader.get_int(f"{ltm}.body.font.min_size"),
-                    max_size=reader.get_int(f"{ltm}.body.font.max_size"),
+                    min_size=reader.get_positive_int(f"{ltm}.body.font.min_size"),
+                    max_size=reader.get_positive_int(f"{ltm}.body.font.max_size"),
                 ),
                 horiz_align=reader.get_enum(f"{ltm}.body.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{ltm}.body.vert_align", _VERT_ALIGNS),
@@ -587,10 +612,10 @@ class Config(BaseConfig):
                 shapes=[
                     Rectangle(
                         bbox=Bbox.xywh(
-                            x=reader.get_int(f"{ltm}.rectangle.x"),
-                            y=reader.get_int(f"{ltm}.rectangle.y"),
-                            w=reader.get_int(f"{ltm}.rectangle.width"),
-                            h=reader.get_int(f"{ltm}.rectangle.height"),
+                            x=reader.get_nonneg_int(f"{ltm}.rectangle.x"),
+                            y=reader.get_nonneg_int(f"{ltm}.rectangle.y"),
+                            w=reader.get_positive_int(f"{ltm}.rectangle.width"),
+                            h=reader.get_positive_int(f"{ltm}.rectangle.height"),
                         ),
                         background_colour=reader.get_str(f"{ltm}.rectangle.colour"),
                     )
@@ -600,16 +625,16 @@ class Config(BaseConfig):
             lts = "slides.lowerthird_scripture"
             self._lowerthird_scripture_body = Textbox(
                 bbox=Bbox.xywh(
-                    x=reader.get_int(f"{lts}.body.x"),
-                    y=reader.get_int(f"{lts}.body.y"),
-                    w=reader.get_int(f"{lts}.body.width"),
-                    h=reader.get_int(f"{lts}.body.height"),
+                    x=reader.get_nonneg_int(f"{lts}.body.x"),
+                    y=reader.get_nonneg_int(f"{lts}.body.y"),
+                    w=reader.get_positive_int(f"{lts}.body.width"),
+                    h=reader.get_positive_int(f"{lts}.body.height"),
                 ),
                 font=Font(
                     family=self.font_family,
                     style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
-                    min_size=reader.get_int(f"{lts}.body.font.min_size"),
-                    max_size=reader.get_int(f"{lts}.body.font.max_size"),
+                    min_size=reader.get_positive_int(f"{lts}.body.font.min_size"),
+                    max_size=reader.get_positive_int(f"{lts}.body.font.max_size"),
                 ),
                 horiz_align=reader.get_enum(f"{lts}.body.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{lts}.body.vert_align", _VERT_ALIGNS),
@@ -619,16 +644,16 @@ class Config(BaseConfig):
             )
             self._lowerthird_scripture_footer = Textbox(
                 bbox=Bbox.xywh(
-                    x=reader.get_int(f"{lts}.footer.x"),
-                    y=reader.get_int(f"{lts}.footer.y"),
-                    w=reader.get_int(f"{lts}.footer.width"),
-                    h=reader.get_int(f"{lts}.footer.height"),
+                    x=reader.get_nonneg_int(f"{lts}.footer.x"),
+                    y=reader.get_nonneg_int(f"{lts}.footer.y"),
+                    w=reader.get_positive_int(f"{lts}.footer.width"),
+                    h=reader.get_positive_int(f"{lts}.footer.height"),
                 ),
                 font=Font(
                     family=self.font_family,
                     style=reader.get_enum(f"{lts}.footer.font.style", _STYLES),
-                    min_size=reader.get_int(f"{lts}.footer.font.min_size"),
-                    max_size=reader.get_int(f"{lts}.footer.font.max_size"),
+                    min_size=reader.get_positive_int(f"{lts}.footer.font.min_size"),
+                    max_size=reader.get_positive_int(f"{lts}.footer.font.max_size"),
                 ),
                 horiz_align=reader.get_enum(f"{lts}.footer.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{lts}.footer.vert_align", _VERT_ALIGNS),
@@ -645,10 +670,10 @@ class Config(BaseConfig):
                 shapes=[
                     Rectangle(
                         bbox=Bbox.xywh(
-                            x=reader.get_int(f"{lts}.rectangle.x"),
-                            y=reader.get_int(f"{lts}.rectangle.y"),
-                            w=reader.get_int(f"{lts}.rectangle.width"),
-                            h=reader.get_int(f"{lts}.rectangle.height"),
+                            x=reader.get_nonneg_int(f"{lts}.rectangle.x"),
+                            y=reader.get_nonneg_int(f"{lts}.rectangle.y"),
+                            w=reader.get_positive_int(f"{lts}.rectangle.width"),
+                            h=reader.get_positive_int(f"{lts}.rectangle.height"),
                         ),
                         background_colour=reader.get_str(f"{lts}.rectangle.colour"),
                     )
