@@ -142,7 +142,11 @@ class GenerateSlidesScript(Script[GenerateSlidesConfig]):
         input_messenger = (
             ConsoleMessenger(description=_DESCRIPTION, show_task_status=config.verbose)
             if config.ui == "console"
-            else TkMessenger(title="Generate Slides", description=_DESCRIPTION)
+            else TkMessenger(
+                title="Generate Slides",
+                description=_DESCRIPTION,
+                show_statuses_by_default=True,
+            )
         )
         return Messenger(file_messenger, input_messenger)
 

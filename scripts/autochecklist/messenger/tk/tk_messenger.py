@@ -43,9 +43,12 @@ _H2_FONT = "Calibri 18 bold"
 class TkMessenger(InputMessenger):
     _QUEUE_EVENT = "<<TaskQueued>>"
 
-    def __init__(self, title: str, description: str) -> None:
+    def __init__(
+        self, title: str, description: str, show_statuses_by_default: bool = False
+    ) -> None:
         self._title = title
         self._description = description
+        self._show_statuses_by_default = show_statuses_by_default
         self._start_event = threading.Event()
         self._end_event = threading.Event()
         self._mutex = Lock()
@@ -576,7 +579,10 @@ class TkMessenger(InputMessenger):
         # Leave this frame hidden until necessary
         self._problems_frame.grid_remove()
         # Start with task status section collapsed
-        hide_task_statuses()
+        if self._show_statuses_by_default:
+            show_task_statuses()
+        else:
+            hide_task_statuses()
 
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]

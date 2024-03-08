@@ -118,7 +118,11 @@ class CheckCredentialsScript(Script[CheckCredentialsConfig]):
         input_messenger = (
             ConsoleMessenger(description=DESCRIPTION, show_task_status=config.verbose)
             if config.ui == "console"
-            else TkMessenger(title="Check Credentials", description=DESCRIPTION)
+            else TkMessenger(
+                title="Check Credentials",
+                description=DESCRIPTION,
+                show_statuses_by_default=True,
+            )
         )
         messenger = Messenger(file_messenger, input_messenger)
         return messenger
@@ -195,9 +199,11 @@ def log_into_boxcast(
         log_directory=config.log_dir,
         log_file_name="check_credentials_webdriver",
     )
+    username = credential_store.get(
+        Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER
+    )
     messenger.log_status(
-        TaskStatus.DONE,
-        f"Successfully logged into BoxCast as {credential_store.get(Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER)}",
+        TaskStatus.DONE, f"Successfully logged into BoxCast as {username}"
     )
 
 
@@ -209,9 +215,7 @@ def log_into_planning_center(
         credential_store=credential_store,
         lazy_login=False,
     )
-    messenger.log_status(
-        TaskStatus.DONE, "Successfully connected to the Planning Center API."
-    )
+    messenger.log_status(TaskStatus.DONE, "Successfully connected to Planning Center.")
 
 
 if __name__ == "__main__":
