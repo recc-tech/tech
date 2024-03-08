@@ -160,7 +160,7 @@ font_family = ["Helvetica", "Calibri", "sans-serif"]
 			max_size = 48
 
 	[slides.lowerthird_scripture]
-	background = "#000000"
+	background = "#00000000"
 
 		[slides.lowerthird_scripture.rectangle]
 		x = 0
