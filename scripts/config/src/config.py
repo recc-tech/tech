@@ -117,8 +117,9 @@ class FooterSlideStyle:
         return (self.width, self.height)
 
 
-_PROFILE_SELECT_FILE = Path(__file__).parent.joinpath("active_profile.txt").resolve()
-_PROFILES_DIR = Path(__file__).parent.joinpath("profiles")
+_CONFIG_DIR = Path(__file__).resolve().parent.parent
+_PROFILE_SELECT_FILE = _CONFIG_DIR.joinpath("active_profile.txt").resolve()
+_PROFILES_DIR = _CONFIG_DIR.joinpath("profiles")
 
 
 def locate_profile(profile: str) -> Path:
@@ -179,7 +180,7 @@ class ConfigFileReader(AbstractContextManager[object]):
         self._data = self._resolve(self._data)
 
     def _read_global_config(self) -> Dict[str, object]:
-        global_file = Path(__file__).parent.joinpath("config.toml").resolve()
+        global_file = _CONFIG_DIR.joinpath("config.toml").resolve()
         try:
             with open(global_file, "rb") as f:
                 return self._flatten(tomli.load(f))
