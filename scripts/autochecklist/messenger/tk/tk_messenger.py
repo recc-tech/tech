@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from queue import Queue
 from threading import Lock
-from tkinter import Canvas, Menu, Misc, Tk, Toplevel, messagebox
+from tkinter import Canvas, IntVar, Menu, Misc, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
@@ -137,12 +137,9 @@ class TkMessenger(InputMessenger):
 
         def handle_close() -> None:
             nonlocal was_input_cancelled
-            # IMPORTANT: If this is changed to call another method with a
-            # custom boolean input dialog, it MUST NOT deadlock the main thread
-            # (e.g., by generating an event but then blocking on main).
-            should_exit = messagebox.askyesno(
+            should_exit = self.input_bool(
                 title="Confirm close",
-                message="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
+                prompt="Are you sure you want to close the input dialog? This will interrupt whatever task was expecting input.",
             )
             if not should_exit:
                 return
@@ -156,13 +153,7 @@ class TkMessenger(InputMessenger):
                 entry_by_key,
                 error_label_by_key,
                 submit_button,
-            ) = self._create_input_dialog(
-                title=title,
-                prompt=prompt,
-                params=params,
-                width=self._tk.winfo_width() // 3,
-                height=self._tk.winfo_height() // 3,
-            )
+            ) = self._create_input_dialog(title=title, prompt=prompt, params=params)
             input_frame.protocol("WM_DELETE_WINDOW", handle_close)
             submit_button.bind("<Button-1>", lambda _: handle_submit())
 
@@ -250,7 +241,54 @@ class TkMessenger(InputMessenger):
         return output_by_key, error_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
-        return messagebox.askyesno(title, prompt)
+        # This may be called from the main thread, so use IntVar and
+        # wait_variable() rather than threading.Event() and event.wait().
+        choice = False
+        v = IntVar(value=0)
+
+        def select_yes() -> None:
+            nonlocal choice
+            choice = True
+            v.set(1)
+
+        def select_no() -> None:
+            nonlocal choice
+            choice = False
+            v.set(1)
+
+        w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        try:
+            w.title(title)
+            w.protocol("WM_DELETE_WINDOW", select_no)
+            w.columnconfigure(index=0, weight=1)
+            w.rowconfigure(index=0, weight=1)
+            frame = Frame(w, padding=20)
+            frame.grid(row=0, column=0, sticky="NSEW")
+            frame.columnconfigure(index=0, weight=1)
+            frame.rowconfigure(index=0, weight=1)
+            question_box = ResponsiveTextbox(
+                frame,
+                width=20,
+                font=_NORMAL_FONT,
+                background=_BACKGROUND_COLOUR,
+                foreground=_FOREGROUND_COLOUR,
+                allow_entry=False,
+            )
+            question_box.grid(row=0, column=0, sticky="NEW")
+            question_box.set_text(prompt)
+            button_row = Frame(frame)
+            button_row.grid(row=1, column=0, sticky="SEW")
+            button_row.columnconfigure(index=0, weight=1)
+            button_row.columnconfigure(index=1, weight=1)
+            ok_btn = Button(button_row, text="Yes", command=select_yes)
+            ok_btn.grid(row=0, column=0, sticky="EW", padx=10, pady=10)
+            no_btn = Button(button_row, text="No", command=select_no)
+            no_btn.grid(row=0, column=1, sticky="EW", padx=10, pady=10)
+
+            ok_btn.wait_variable(v)
+            return choice
+        finally:
+            w.destroy()
 
     def wait(
         self,
@@ -279,12 +317,9 @@ class TkMessenger(InputMessenger):
 
         def handle_click_skip() -> None:
             nonlocal response
-            # IMPORTANT: If this is changed to call another method with a
-            # custom boolean input dialog, it MUST NOT deadlock the main thread
-            # (e.g., by generating an event but then blocking on main).
-            should_skip = messagebox.askyesno(
+            should_skip = self.input_bool(
                 title="Confirm skip",
-                message="Are you sure you want to skip this task?",
+                prompt="Are you sure you want to skip this task?",
             )
             if not should_skip:
                 return
@@ -545,17 +580,11 @@ class TkMessenger(InputMessenger):
 
     # TODO: The error message doesn't look great here
     def _create_input_dialog(
-        self,
-        title: str,
-        prompt: str,
-        params: Dict[str, Parameter],
-        width: int,
-        height: int,
+        self, title: str, prompt: str, params: Dict[str, Parameter]
     ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
         entry_by_name: Dict[str, Entry] = {}
         error_message_by_name: Dict[str, ResponsiveTextbox] = {}
         w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
-        w.geometry(f"{width}x{height}")
         w.rowconfigure(index=1, weight=1)
         w.columnconfigure(index=0, weight=1)
         try:
