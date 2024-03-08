@@ -375,6 +375,11 @@ class Config(BaseConfig):
                 "station", {"mcr", "foh"}
             )
 
+            # UI
+            self.ui_theme: Literal["dark", "light"] = reader.get_enum(
+                "ui.theme", {"dark", "light"}
+            )
+
             # Folder structure
             self.downloads_dir = reader.get_directory("folder.downloads")
             self.home_dir = reader.get_directory("folder.home")

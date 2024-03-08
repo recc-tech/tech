@@ -48,6 +48,8 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
             else TkMessenger(
                 title="MCR Teardown",
                 description=McrTeardownArgs.DESCRIPTION,
+                theme=config.ui_theme,
+                show_statuses_by_default=False,
             )
         )
         messenger = Messenger(

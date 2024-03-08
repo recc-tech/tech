@@ -128,6 +128,7 @@ class GenerateSlidesScript(Script[GenerateSlidesArgs, GenerateSlidesConfig]):
             else TkMessenger(
                 title="Generate Slides",
                 description=GenerateSlidesArgs.DESCRIPTION,
+                theme=config.ui_theme,
                 show_statuses_by_default=True,
             )
         )

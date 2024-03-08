@@ -8,6 +8,10 @@
 #   scripts, such as the BoxCast event ID during MCR teardown. Use this form as
 #   little as possible.
 
+[ui]
+theme = "dark"
+# TODO: Add success_message, fail_message, etc. from autochecklist/startup.py
+
 [folder]
 logs = "%{folder.home}%/Logs"
 captions = "%{folder.home}%/Captions/%{STARTUP_YMD}%"
@@ -24,10 +28,6 @@ mcr_setup                        = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_se
 mcr_setup_webdriver              = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_setup_webdriver.log"
 mcr_teardown                     = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_teardown.log"
 mcr_teardown_webdriver_name      = "mcr_teardown_webdriver"
-
-[ui]
-# TODO: Add local option for dark vs light mode?
-# TODO: Add success_message, fail_message, etc. from autochecklist/startup.py
 
 [captions]
 original = "%{folder.captions}%/original.vtt"

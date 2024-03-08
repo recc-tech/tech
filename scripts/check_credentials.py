@@ -79,6 +79,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
             else TkMessenger(
                 title="Check Credentials",
                 description=CheckCredentialsArgs.DESCRIPTION,
+                theme=config.ui_theme,
                 show_statuses_by_default=True,
             )
         )

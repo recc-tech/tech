@@ -3,7 +3,7 @@ import random
 import sys
 from datetime import timedelta
 from pathlib import Path
-from typing import Tuple, TypeVar
+from typing import Callable, Literal, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -11,12 +11,12 @@ from . import (  # TODO; EelMessenger,
     BaseArgs,
     BaseConfig,
     ConsoleMessenger,
-    DefaultScript,
     FileMessenger,
     FunctionFinder,
     Messenger,
     Parameter,
     ProblemLevel,
+    Script,
     TaskModel,
     TaskStatus,
     TkMessenger,
@@ -143,15 +143,42 @@ def demo_cancel2(messenger: Messenger) -> None:
     demo_cancel1(messenger)
 
 
-class DemoScript(DefaultScript):
-    def create_messenger(self, args: BaseArgs, config: BaseConfig) -> Messenger:
+class DemoArgs(BaseArgs):
+    def __init__(self, args: argparse.Namespace, error: Callable[[str], None]) -> None:
+        self.ui_theme: Literal["dark", "light"] = args.theme
+        super().__init__(args, error)
+
+    @classmethod
+    def set_up_parser(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--theme",
+            choices={"dark", "light"},
+            default="dark",
+            help="User interface theme (light or dark).",
+        )
+        return super().set_up_parser(parser)
+
+
+class DemoScript(Script[DemoArgs, BaseConfig]):
+    def parse_args(self) -> DemoArgs:
+        return DemoArgs.parse(sys.argv)
+
+    def create_config(self, args: DemoArgs) -> BaseConfig:
+        return BaseConfig()
+
+    def create_messenger(self, args: DemoArgs, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(
             log_file=Path(__file__).parent.joinpath("demo.log")
         )
         input_messenger = (
             ConsoleMessenger(description=_DESCRIPTION, show_task_status=args.verbose)
             if args.ui == "console"
-            else TkMessenger(title="autochecklist demo", description=_DESCRIPTION)
+            else TkMessenger(
+                title="autochecklist demo",
+                description=_DESCRIPTION,
+                theme=args.ui_theme,
+                show_statuses_by_default=False,
+            )
             # if args.ui == "tk"
             # else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
         )

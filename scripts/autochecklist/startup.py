@@ -169,7 +169,9 @@ class DefaultScript(Script[BaseArgs, BaseConfig]):
     def create_messenger(self, args: BaseArgs, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(Path("autochecklist.log"))
         input_messenger = (
-            TkMessenger("Autochecklist", "")
+            TkMessenger(
+                "Autochecklist", "", theme="dark", show_statuses_by_default=False
+            )
             if args.ui == "tk"
             else ConsoleMessenger("", show_task_status=args.verbose)
         )

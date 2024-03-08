@@ -43,6 +43,8 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
             else TkMessenger(
                 title="MCR Setup",
                 description=McrSetupArgs.DESCRIPTION,
+                theme=config.ui_theme,
+                show_statuses_by_default=False,
             )
         )
         messenger = Messenger(

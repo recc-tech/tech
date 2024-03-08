@@ -49,6 +49,7 @@ class DownloadAssetsScript(Script[DownloadAssetsArgs, Config]):
             TkMessenger(
                 "Autochecklist",
                 DownloadAssetsArgs.DESCRIPTION,
+                theme=config.ui_theme,
                 show_statuses_by_default=True,
             )
             if args.ui == "tk"
