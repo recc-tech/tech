@@ -660,21 +660,23 @@ class TkMessenger(InputMessenger):
         def try_copy(text: str) -> None:
             try:
                 pyperclip.copy(text)
-            except Exception:
+            except Exception as e:
                 messagebox.showwarning(
                     title="Failed to copy",
                     message="An error occurred. Please try again.",
                 )
+                print(e)
 
         def try_open_in_notepadpp(path: Path) -> None:
             try:
                 # Use Popen so this doesn't block
                 subprocess.Popen(["notepad++.exe", path.as_posix()])
-            except Exception:
+            except Exception as e:
                 messagebox.showwarning(
                     title="Failed to open in Notepad++",
                     message="An error occurred. Please try again.",
                 )
+                print(e)
 
         try:
             # If nothing is selected, this should raise a TclError.
@@ -693,7 +695,10 @@ class TkMessenger(InputMessenger):
             command=lambda: try_copy(selected_text),
         )
         path = Path(selected_text)
-        can_be_opened = selected_text and (path.is_file() or path.parent.is_dir())
+        can_be_opened = selected_text and (
+            path.is_file()
+            or (not path.is_dir() and path.is_absolute() and path.parent.is_dir())
+        )
         self._right_click_menu.entryconfig(
             "Open in Notepad++",
             state="normal" if can_be_opened else "disabled",
