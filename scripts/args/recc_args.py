@@ -9,7 +9,6 @@ from .parsing_helpers import parse_directory
 
 
 class ReccArgs(BaseArgs):
-    # TODO: Make the initialization more type-safe for testing purposes?
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         super().__init__(args, error)
         self.start_time: datetime = (

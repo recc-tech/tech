@@ -90,7 +90,6 @@ class ReccVimeoClient:
             f"Failed to connect to the Vimeo API ({max_attempts} attempts)"
         )
 
-    # TODO: Cache the response?
     def get_video_data(self, cancellation_token: CancellationToken) -> Tuple[str, str]:
         # Wait for the video to be posted
         while True:

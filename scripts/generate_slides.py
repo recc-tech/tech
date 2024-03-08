@@ -116,8 +116,6 @@ class GenerateSlidesScript(Script[GenerateSlidesArgs, GenerateSlidesConfig]):
         return GenerateSlidesConfig(args, profile=None, strict=False)
 
     def create_messenger(self, args: GenerateSlidesArgs, config: Config) -> Messenger:
-        # TODO: create_messenger() tends to be very repetitive. Can I reduce
-        # the redundancy?
         file_messenger = FileMessenger(config.generate_slides_log)
         input_messenger = (
             ConsoleMessenger(

@@ -27,8 +27,6 @@ class McrTeardownArgs(ReccArgs):
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
-        # TODO: Check that all args (incl. other scripts) have reasonable
-        # (usually no) defaults
         parser.add_argument(
             "-s",
             "--message-series",

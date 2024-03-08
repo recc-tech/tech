@@ -10,7 +10,6 @@
 
 [ui]
 theme = "dark"
-# TODO: Add success_message, fail_message, etc. from autochecklist/startup.py
 
 [folder]
 logs = "%{folder.home}%/Logs"

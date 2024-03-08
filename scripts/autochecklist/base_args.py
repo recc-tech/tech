@@ -31,9 +31,6 @@ class BaseArgs:
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
-        # TODO: Implement a way to reuse the same argument group between
-        # different classes in this inheritance hierarchy (e.g., common args,
-        # debug args)
         common_args = parser.add_argument_group("Common arguments")
         common_args.add_argument(
             "--ui",
