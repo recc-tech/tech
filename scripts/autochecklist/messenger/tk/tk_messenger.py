@@ -1282,7 +1282,7 @@ class _ProblemGrid(Frame):
     _NAME_COLUMN = 1
     _NAME_WIDTH = 35
     _LEVEL_COLUMN = 0
-    _LEVEL_WIDTH = 20
+    _LEVEL_WIDTH = 10
     _MSG_COLUMN = 2
     _MSG_WIDTH = 110
 
@@ -1311,7 +1311,8 @@ class _ProblemGrid(Frame):
         self._header_font = header_font
         self._bold_font = bold_font
 
-        self.columnconfigure(index=self._MSG_COLUMN, weight=1)
+        self.columnconfigure(index=self._NAME_COLUMN, weight=1)
+        self.columnconfigure(index=self._MSG_COLUMN, weight=4)
 
         self._current_row = 0
         self._create_header()
