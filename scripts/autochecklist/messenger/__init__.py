@@ -1,17 +1,17 @@
 # pyright: reportUnusedImport=false
 
-from autochecklist.messenger.console_messenger import ConsoleMessenger
-from autochecklist.messenger.input_messenger import (
+from .console_messenger import ConsoleMessenger
+from .input_messenger import (
     InputMessenger,
     Parameter,
     ProblemLevel,
     TaskStatus,
     UserResponse,
 )
-from autochecklist.messenger.messenger import (
+from .messenger import (
     CancellationToken,
     FileMessenger,
     Messenger,
     TaskCancelledException,
 )
-from autochecklist.messenger.tk_messenger import TkMessenger
+from .tk.tk_messenger import TkMessenger

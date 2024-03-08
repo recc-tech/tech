@@ -46,7 +46,11 @@ class DownloadAssetsScript(Script[DownloadAssetsArgs, Config]):
     def create_messenger(self, args: DownloadAssetsArgs, config: Config) -> Messenger:
         file_messenger = FileMessenger(config.download_assets_log)
         input_messenger = (
-            TkMessenger("Autochecklist", DownloadAssetsArgs.DESCRIPTION)
+            TkMessenger(
+                "Autochecklist",
+                DownloadAssetsArgs.DESCRIPTION,
+                show_statuses_by_default=True,
+            )
             if args.ui == "tk"
             else ConsoleMessenger(
                 DownloadAssetsArgs.DESCRIPTION, show_task_status=args.verbose
