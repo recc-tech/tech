@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import platform
 from tkinter import Button, Canvas, Event, Frame, Misc, Scrollbar, Text, Tk
 from typing import Any
 
@@ -29,11 +30,25 @@ class ScrollableFrame(Frame):
         self._canvas.bind("<Configure>", self._on_resize_canvas)
 
         # Allow scrolling with the mouse (why does this not work out of the box? D:<<)
-        # TODO: This doesn't seem to work, at least on Linux
-        self._root.bind_all(
-            "<MouseWheel>",
-            lambda e: self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
-        )
+        if platform.system() == "Linux":
+            self._root.bind_all(
+                "<Button-4>",
+                lambda e: self._canvas.yview_scroll(-1, "units"),
+            )
+            self._root.bind_all(
+                "<Button-5>",
+                lambda e: self._canvas.yview_scroll(1, "units"),
+            )
+        elif platform.system() == "Windows":
+            self._root.bind_all(
+                "<MouseWheel>",
+                lambda e: self._canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
+            )
+        else:
+            self._root.bind_all(
+                "<MouseWheel>",
+                lambda e: self._canvas.yview_scroll(-1 * e.delta, "units"),
+            )
 
         super().__init__(
             self._canvas, padx=padding, pady=padding, background=background
