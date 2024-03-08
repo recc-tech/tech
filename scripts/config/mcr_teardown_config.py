@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from args import McrTeardownArgs
 
@@ -6,9 +7,11 @@ from .config import Config
 
 
 class McrTeardownConfig(Config):
-    def __init__(self, args: McrTeardownArgs, strict: bool = False) -> None:
+    def __init__(
+        self, args: McrTeardownArgs, profile: Optional[str] = None, strict: bool = False
+    ) -> None:
         self._args = args
-        super().__init__(args, strict)
+        super().__init__(args, profile=profile, strict=strict)
 
     def reload(self) -> None:
         super().reload()

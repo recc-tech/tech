@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from args import McrSetupArgs
 
@@ -6,9 +7,11 @@ from .config import Config
 
 
 class McrSetupConfig(Config):
-    def __init__(self, args: McrSetupArgs, strict: bool = False) -> None:
+    def __init__(
+        self, args: McrSetupArgs, profile: Optional[str] = None, strict: bool = False
+    ) -> None:
         self._args = args
-        super().__init__(args, strict)
+        super().__init__(args, profile=profile, strict=strict)
 
     @property
     def message_notes_file(self) -> Path:

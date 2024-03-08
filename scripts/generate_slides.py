@@ -74,8 +74,13 @@ class GenerateSlidesArgs(ReccArgs):
 
 
 class GenerateSlidesConfig(Config):
-    def __init__(self, args: GenerateSlidesArgs, strict: bool = False) -> None:
-        super().__init__(args, strict)
+    def __init__(
+        self,
+        args: GenerateSlidesArgs,
+        profile: Optional[str] = None,
+        strict: bool = False,
+    ) -> None:
+        super().__init__(args, profile=profile, strict=strict)
         self._args = args
 
     @property
@@ -108,7 +113,7 @@ class GenerateSlidesScript(Script[GenerateSlidesArgs, GenerateSlidesConfig]):
         return GenerateSlidesArgs.parse(sys.argv)
 
     def create_config(self, args: GenerateSlidesArgs) -> GenerateSlidesConfig:
-        return GenerateSlidesConfig(args)
+        return GenerateSlidesConfig(args, profile=None, strict=False)
 
     def create_messenger(self, args: GenerateSlidesArgs, config: Config) -> Messenger:
         # TODO: create_messenger() tends to be very repetitive. Can I reduce

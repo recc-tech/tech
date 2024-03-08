@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import typing
 from contextlib import AbstractContextManager
@@ -116,6 +117,40 @@ class FooterSlideStyle:
         return (self.width, self.height)
 
 
+_PROFILE_SELECT_FILE = Path(__file__).parent.joinpath("active_profile.txt").resolve()
+_PROFILES_DIR = Path(__file__).parent.joinpath("profiles")
+
+
+def locate_profile(profile: str) -> Path:
+    return _PROFILES_DIR.joinpath(f"{profile}.toml").resolve()
+
+
+def get_active_profile() -> Optional[str]:
+    try:
+        return _PROFILE_SELECT_FILE.read_text().strip()
+    except FileNotFoundError:
+        return None
+
+
+def activate_profile(profile: str) -> None:
+    f = locate_profile(profile)
+    if not f.is_file():
+        raise ValueError(
+            f"There is no profile called '{profile}' (expected to find it at {f.as_posix()})."
+        )
+    try:
+        _PROFILE_SELECT_FILE.write_text(f"{profile}\n")
+    except Exception as e:
+        raise ValueError(
+            f"{_PROFILE_SELECT_FILE.as_posix()} is missing and could not be created."
+        ) from e
+
+
+def list_profiles() -> Set[str]:
+    files = os.listdir(_PROFILES_DIR)
+    return {f[:-5] for f in files if f.endswith(".toml")}
+
+
 @dataclass
 class StringTemplate:
     template: str
@@ -133,14 +168,14 @@ class StringTemplate:
 # TODO: Add method to get positive number
 # TODO: Test placeholder filling (valid cases, circular references, etc.)
 class ConfigFileReader(AbstractContextManager[object]):
-    def __init__(self, args: BaseArgs, strict: bool) -> None:
+    def __init__(self, args: BaseArgs, profile: str, strict: bool) -> None:
         self._args = args
         self._strict = strict
         self._is_read_by_key: Dict[str, bool] = {}
         self._data = self._read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
         # found in the global file
-        self._data |= self._read_local_config()
+        self._data |= self._read_local_config(profile)
         self._data = self._resolve(self._data)
 
     def _read_global_config(self) -> Dict[str, object]:
@@ -157,40 +192,19 @@ class ConfigFileReader(AbstractContextManager[object]):
                 "Failed to read global config due to an unknown error."
             ) from e
 
-    def _read_local_config(self) -> Dict[str, object]:
-        profile = self._read_profile()
-        local_file = (
-            Path(__file__).parent.joinpath("local", f"{profile}.toml").resolve()
-        )
+    def _read_local_config(self, profile: str) -> Dict[str, object]:
+        local_file = locate_profile(profile)
         try:
             with open(local_file, "rb") as f:
                 return self._flatten(tomli.load(f))
         except FileNotFoundError as e:
             raise ValueError(
-                f"Failed to read local config because {local_file.as_posix()} is missing."
+                f"There is no profile called '{profile}' (expected to find it at {local_file.as_posix()})."
             ) from e
         except Exception as e:
             raise ValueError(
                 "Failed to read local config due to an unknown error."
             ) from e
-
-    def _read_profile(self) -> str:
-        profile_file = Path(__file__).parent.joinpath("active_profile.txt").resolve()
-        try:
-            profile = profile_file.read_text().strip()
-        except FileNotFoundError:
-            if self._strict:
-                raise ValueError(
-                    f"Failed to read local config because {profile_file.as_posix()} is missing."
-                )
-            profile = "foh" if platform.system() == "Darwin" else "mcr"
-            try:
-                profile_file.write_text(f"{profile}\n")
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to read local config because {profile_file.as_posix()} is missing and could not be created."
-                ) from e
-        return profile
 
     def _flatten(self, data: Dict[str, object]) -> Dict[str, object]:
         out_data: Dict[str, object] = {}
@@ -339,9 +353,19 @@ class ConfigFileReader(AbstractContextManager[object]):
 # TODO: Move the slide style classes to a different file (where?)
 # TODO: Enforce singleton pattern here?
 class Config(BaseConfig):
-    def __init__(self, args: ReccArgs, strict: bool = False) -> None:
+    def __init__(
+        self, args: ReccArgs, profile: Optional[str] = None, strict: bool = False
+    ) -> None:
         self._args = args
-        self._reader = ConfigFileReader(args=args, strict=strict)
+        if profile is None:
+            profile = get_active_profile()
+        if profile is None:
+            if strict:
+                raise ValueError(f"{_PROFILE_SELECT_FILE.as_posix()} is missing.")
+            else:
+                profile = "foh" if platform.system() == "Darwin" else "mcr"
+                activate_profile(profile)
+        self._reader = ConfigFileReader(args=args, profile=profile, strict=strict)
         self.reload()
 
     def reload(self) -> None:

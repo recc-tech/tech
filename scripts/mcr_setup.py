@@ -30,7 +30,7 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
         return McrSetupArgs.parse(sys.argv)
 
     def create_config(self, args: McrSetupArgs) -> McrSetupConfig:
-        return McrSetupConfig(args)
+        return McrSetupConfig(args, profile=None, strict=False)
 
     def create_messenger(self, args: McrSetupArgs, config: Config) -> Messenger:
         file_messenger = FileMessenger(log_file=config.mcr_setup_log)
