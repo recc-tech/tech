@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tkinter import Event, Misc, Text, Tk
+from tkinter import Misc, Text, Tk
 from tkinter.ttk import Frame, Label
 from typing import Any
 
@@ -19,9 +19,10 @@ class ResponsiveTextbox(Text):
         font: str,
         background: str,
         foreground: str,
-        *args: Any,
+        allow_entry: bool = False,
         **kwargs: Any,
     ) -> None:
+        self._allow_entry = allow_entry
         if "highlightthickness" not in kwargs:
             kwargs["highlightthickness"] = 0
         if "borderwidth" not in kwargs:
@@ -31,9 +32,9 @@ class ResponsiveTextbox(Text):
         else:
             kwargs["height"] = 1
         if "state" in kwargs:
-            raise ValueError(f"Cannot set state of {type(self).__name__}.")
+            raise ValueError(f"Cannot directly set state of {type(self).__name__}.")
         else:
-            kwargs["state"] = "disabled"
+            kwargs["state"] = "normal" if allow_entry else "disabled"
         if "wrap" in kwargs:
             raise ValueError(f"Cannot set wrap of {type(self).__name__}.")
         else:
@@ -44,22 +45,23 @@ class ResponsiveTextbox(Text):
             font=font,
             background=background,
             foreground=foreground,
-            *args,
             **kwargs,
         )
-        self.bind("<Configure>", self._handle_resize)
+        self.bind("<Configure>", lambda _: self.resize())
 
     def set_text(self, text: str) -> None:
         self.config(state="normal")
         self.delete(1.0, "end")
         self.insert(1.0, text)
-        self.config(state="disabled")
+        if not self._allow_entry:
+            self.config(state="disabled")
+        self.resize()
 
     @property
     def height(self) -> int:
         return self.tk.call((self, "count", "-update", "-displaylines", "1.0", "end"))
 
-    def _handle_resize(self, _: Event[ResponsiveTextbox]) -> None:
+    def resize(self) -> None:
         self.configure(height=self.height)
 
 

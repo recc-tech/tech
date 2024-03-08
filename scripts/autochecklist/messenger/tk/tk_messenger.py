@@ -156,7 +156,13 @@ class TkMessenger(InputMessenger):
                 entry_by_key,
                 error_label_by_key,
                 submit_button,
-            ) = self._create_input_dialog(title=title, prompt=prompt, params=params)
+            ) = self._create_input_dialog(
+                title=title,
+                prompt=prompt,
+                params=params,
+                width=self._tk.winfo_width() // 3,
+                height=self._tk.winfo_height() // 3,
+            )
             input_frame.protocol("WM_DELETE_WINDOW", handle_close)
             submit_button.bind("<Button-1>", lambda _: handle_submit())
 
@@ -540,11 +546,17 @@ class TkMessenger(InputMessenger):
 
     # TODO: The error message doesn't look great here
     def _create_input_dialog(
-        self, title: str, prompt: str, params: Dict[str, Parameter]
+        self,
+        title: str,
+        prompt: str,
+        params: Dict[str, Parameter],
+        width: int,
+        height: int,
     ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
         entry_by_name: Dict[str, Entry] = {}
         error_message_by_name: Dict[str, ResponsiveTextbox] = {}
         w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        w.geometry(f"{width}x{height}")
         w.rowconfigure(index=1, weight=1)
         w.columnconfigure(index=0, weight=1)
         try:
@@ -565,6 +577,8 @@ class TkMessenger(InputMessenger):
                 param_frame.columnconfigure(index=0, weight=1)
                 entry_row = Frame(param_frame)
                 entry_row.grid(sticky="NEW")
+                entry_row.columnconfigure(index=0, weight=1)
+                entry_row.columnconfigure(index=1, weight=2)
                 name_label = Label(
                     entry_row,
                     text=param.display_name,
@@ -572,12 +586,13 @@ class TkMessenger(InputMessenger):
                     background=_BACKGROUND_COLOUR,
                     foreground=_FOREGROUND_COLOUR,
                 )
-                name_label.grid(row=0, column=0, padx=5)
-                if param.password:
-                    entry = Entry(entry_row, show="*", font=_NORMAL_FONT)
-                else:
-                    entry = Entry(entry_row, font=_NORMAL_FONT)
-                entry.grid(row=0, column=1, padx=5)
+                name_label.grid(row=0, column=0, padx=5, sticky="NEW")
+                entry = Entry(
+                    entry_row,
+                    show="*" if param.password else "",
+                    font=_NORMAL_FONT,
+                )
+                entry.grid(row=0, column=1, padx=5, sticky="NEW")
                 if param.default:
                     entry.insert(0, param.default)
                 entry_by_name[name] = entry
