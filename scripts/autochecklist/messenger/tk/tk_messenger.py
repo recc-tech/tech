@@ -578,7 +578,6 @@ class TkMessenger(InputMessenger):
         # Start with task status section collapsed
         hide_task_statuses()
 
-    # TODO: The error message doesn't look great here
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
     ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
