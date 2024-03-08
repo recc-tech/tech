@@ -1,4 +1,4 @@
-# pyright: reportUnnecessaryTypeIgnoreComment=false
+# pyright: reportUnnecessaryTypeIgnoreComment=information
 # This is needed so platform-specific code (subprocess.CREATE_NO_WINDOW) can type-check
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ class ReccWebDriver(WebDriver):
         if platform.system() == "Windows":
             # Hide the geckodriver terminal
             creation_flags = (
-                subprocess.CREATE_NO_WINDOW  # pyright: ignore [reportGeneralTypeIssues]
+                subprocess.CREATE_NO_WINDOW  # pyright: ignore [reportAttributeAccessIssue]
             )
         else:
             # subprocess.CREATE_NO_WINDOW is only available on Windows
