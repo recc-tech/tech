@@ -10,11 +10,16 @@ from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 
 def list_profiles() -> None:
     active_profile = config.get_active_profile()
-    for p in sorted(config.list_profiles()):
+    all_profiles = config.list_profiles()
+    n = max(len(p) for p in all_profiles)
+    for p in sorted(all_profiles):
+        path = config.locate_profile(p).relative_to(Path(".").resolve())
+        s = f"{p:<{n}s} ({path.as_posix()})"
         if active_profile == p:
-            print(f"* {p} <-- active")
+            s = f"active > {s}"
         else:
-            print(f"* {p}")
+            s = f"         {s}"
+        print(s)
 
 
 def activate_profile(profile: str) -> None:

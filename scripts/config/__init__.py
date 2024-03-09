@@ -4,7 +4,13 @@ Code for handling configuration.
 
 # pyright: reportUnusedImport=false
 
-from .src.config import Config, activate_profile, get_active_profile, list_profiles
+from .src.config import (
+    Config,
+    activate_profile,
+    get_active_profile,
+    list_profiles,
+    locate_profile,
+)
 from .src.image_style import (
     Bbox,
     Colour,
