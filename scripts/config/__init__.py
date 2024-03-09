@@ -6,6 +6,7 @@ Code for handling configuration.
 
 from .src.config import (
     Bbox,
+    Colour,
     Config,
     Font,
     FooterSlideStyle,

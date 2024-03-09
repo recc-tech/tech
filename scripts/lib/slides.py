@@ -294,7 +294,7 @@ class SlideGenerator:
         img = Image.new(
             mode=style.mode,
             size=style.width_height,
-            color=style.background_colour,
+            color=str(style.background_colour),
         )
         draw = ImageDraw.Draw(img)
         for rect in style.shapes:
@@ -313,7 +313,7 @@ class SlideGenerator:
         img = Image.new(
             mode=style.mode,
             size=style.width_height,
-            color=style.background_colour,
+            color=str(style.background_colour),
         )
         draw = ImageDraw.Draw(img)
         for rect in style.shapes:
@@ -392,20 +392,20 @@ class SlideGenerator:
         draw.text(
             xy=xy,
             text=wrapped_text,
-            fill=textbox.text_colour,
+            fill=str(textbox.text_colour),
             font=font,
             spacing=line_height * (textbox.line_spacing - 1),
             align=halign,
             anchor=anchor,
             stroke_width=textbox.stroke_width,
-            stroke_fill=textbox.text_colour,
+            stroke_fill=str(textbox.text_colour),
         )
 
     def _draw_rectangle(self, draw: ImageDraw.ImageDraw, rect: Rectangle) -> None:
         b = rect.bbox
         draw.rectangle(
             xy=(b.left, b.top, b.right, b.bottom),
-            fill=rect.background_colour,
+            fill=str(rect.background_colour),
         )
 
     def make_font(self, font: Font, size: int) -> FreeTypeFont:

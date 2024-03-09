@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import platform
+import re
 import typing
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from typing import Dict, List, Literal, Optional, Set, Tuple, Type, TypeVar
 import tomli
 from args import ReccArgs, parse_directory, parse_file
 from autochecklist import BaseArgs, BaseConfig
+from PIL import ImageColor
 
 ImgMode = Literal["1", "L", "RGB", "RGBA"]
 HorizAlign = Literal["left", "center", "right"]
@@ -59,12 +61,64 @@ class Font:
 
 
 @dataclass(frozen=True)
+class Colour:
+    r: int
+    g: int
+    b: int
+    a: int
+
+    @staticmethod
+    def parse(colour: str) -> Colour:
+        colour = colour.lower()
+        colour = ImageColor.colormap.get(colour, colour)
+        if re.fullmatch(r"#[0-9a-f]{6}", colour):
+            return Colour(
+                r=int(colour[1:3], 16),
+                g=int(colour[3:5], 16),
+                b=int(colour[5:7], 16),
+                a=255,
+            )
+        if re.fullmatch(r"#([0-9a-f]{8})", colour):
+            return Colour(
+                r=int(colour[1:3], 16),
+                g=int(colour[3:5], 16),
+                b=int(colour[5:7], 16),
+                a=int(colour[7:9], 16),
+            )
+        raise ValueError(f"Unrecognized colour '{colour}'.")
+
+    @property
+    def is_greyscale(self) -> bool:
+        return self.r == self.g == self.b
+
+    @property
+    def is_black_and_white(self) -> bool:
+        return self.is_greyscale and (
+            self.r in {0, 255} and self.g in {0, 255} and self.b in {0, 255}
+        )
+
+    @property
+    def mode(self) -> ImgMode:
+        if self.a != 255:
+            return "RGBA"
+        if self.is_black_and_white:
+            return "1"
+        if self.is_greyscale:
+            return "L"
+        return "RGBA"
+
+    def __str__(self) -> str:
+        s = f"#{self.r:02x}{self.g:02x}{self.b:02x}"
+        return s if self.a == 255 else f"{s}{self.a:02x}"
+
+
+@dataclass(frozen=True)
 class Textbox:
     bbox: Bbox
     font: Font
     horiz_align: HorizAlign
     vert_align: VertAlign
-    text_colour: str
+    text_colour: Colour
     bold: bool
     line_spacing: float
 
@@ -76,23 +130,36 @@ class Textbox:
 @dataclass(frozen=True)
 class Rectangle:
     bbox: Bbox
-    background_colour: str
+    background_colour: Colour
+
+
+def max_mode(modes: Set[ImgMode]) -> ImgMode:
+    """
+    Choose the largest mode out of the given set, where RGBA > RGB > L > 1.
+    In other words, if any of the given modes are RGBA, return RGBA.
+    Otherwise, if any of them are RGB, return RGB.
+    And so on.
+    """
+    if len(modes) == 0:
+        raise ValueError("Empty set.")
+    priority_by_mode: Dict[ImgMode, int] = {"RGBA": 1, "RGB": 2, "L": 3, "1": 4}
+    sorted_modes = sorted(modes, key=lambda m: priority_by_mode[m])
+    return sorted_modes[0]
 
 
 @dataclass(frozen=True)
 class NoFooterSlideStyle:
     width: int
     height: int
-    background_colour: str
+    background_colour: Colour
     body: Textbox
     shapes: List[Rectangle]
 
     @property
     def mode(self) -> ImgMode:
-        # TODO: Determine this automatically in each case based on background
-        # and font colours.
-        # Go with minimum value: e.g., 1 for only b/w, L for greyscale, etc.
-        return "RGBA"
+        m1: Set[ImgMode] = {self.background_colour.mode, self.body.text_colour.mode}
+        m2: Set[ImgMode] = {r.background_colour.mode for r in self.shapes}
+        return max_mode(m1.union(m2))
 
     @property
     def width_height(self) -> Tuple[int, int]:
@@ -103,14 +170,20 @@ class NoFooterSlideStyle:
 class FooterSlideStyle:
     width: int
     height: int
-    background_colour: str
+    background_colour: Colour
     body: Textbox
     footer: Textbox
     shapes: List[Rectangle]
 
     @property
     def mode(self) -> ImgMode:
-        return "RGBA"
+        m1: Set[ImgMode] = {
+            self.background_colour.mode,
+            self.body.text_colour.mode,
+            self.footer.text_colour.mode,
+        }
+        m2: Set[ImgMode] = {r.background_colour.mode for r in self.shapes}
+        return max_mode(m1.union(m2))
 
     @property
     def width_height(self) -> Tuple[int, int]:
@@ -370,6 +443,10 @@ class ConfigFileReader(AbstractContextManager[object]):
         template = self.get_str(key)
         return StringTemplate(template)
 
+    def get_colour(self, key: str) -> Colour:
+        c = self.get_str(key)
+        return Colour.parse(c)
+
     def dump(self) -> Dict[str, object]:
         return self._data
 
@@ -507,7 +584,7 @@ class Config(BaseConfig):
             self.fullscreen_message_style = NoFooterSlideStyle(
                 width=self.img_width,
                 height=self.img_height,
-                background_colour=reader.get_str(f"{fsm}.background"),
+                background_colour=reader.get_colour(f"{fsm}.background"),
                 body=Textbox(
                     bbox=Bbox.xywh(
                         x=reader.get_nonneg_int(f"{fsm}.body.x"),
@@ -525,7 +602,7 @@ class Config(BaseConfig):
                         f"{fsm}.body.horiz_align", _HORIZ_ALIGNS
                     ),
                     vert_align=reader.get_enum(f"{fsm}.body.vert_align", _VERT_ALIGNS),
-                    text_colour=reader.get_str(f"{fsm}.body.text_colour"),
+                    text_colour=reader.get_colour(f"{fsm}.body.text_colour"),
                     bold=reader.get_bool(f"{fsm}.body.font.bold"),
                     line_spacing=reader.get_float(f"{fsm}.body.line_spacing"),
                 ),
@@ -536,7 +613,7 @@ class Config(BaseConfig):
             self.fullscreen_scripture_style = FooterSlideStyle(
                 width=self.img_width,
                 height=self.img_height,
-                background_colour=reader.get_str(f"{fss}.background"),
+                background_colour=reader.get_colour(f"{fss}.background"),
                 body=Textbox(
                     bbox=Bbox.xywh(
                         x=reader.get_nonneg_int(f"{fss}.body.x"),
@@ -554,7 +631,7 @@ class Config(BaseConfig):
                         f"{fss}.body.horiz_align", _HORIZ_ALIGNS
                     ),
                     vert_align=reader.get_enum(f"{fss}.body.vert_align", _VERT_ALIGNS),
-                    text_colour=reader.get_str(f"{fss}.body.text_colour"),
+                    text_colour=reader.get_colour(f"{fss}.body.text_colour"),
                     bold=reader.get_bool(f"{fss}.body.font.bold"),
                     line_spacing=reader.get_float(f"{fss}.body.line_spacing"),
                 ),
@@ -577,7 +654,7 @@ class Config(BaseConfig):
                     vert_align=reader.get_enum(
                         f"{fss}.footer.vert_align", _VERT_ALIGNS
                     ),
-                    text_colour=reader.get_str(f"{fss}.footer.text_colour"),
+                    text_colour=reader.get_colour(f"{fss}.footer.text_colour"),
                     bold=reader.get_bool(f"{fss}.footer.font.bold"),
                     line_spacing=reader.get_float(f"{fss}.footer.line_spacing"),
                 ),
@@ -600,14 +677,14 @@ class Config(BaseConfig):
                 ),
                 horiz_align=reader.get_enum(f"{ltm}.body.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{ltm}.body.vert_align", _VERT_ALIGNS),
-                text_colour=reader.get_str(f"{ltm}.body.text_colour"),
+                text_colour=reader.get_colour(f"{ltm}.body.text_colour"),
                 bold=reader.get_bool(f"{ltm}.body.font.bold"),
                 line_spacing=reader.get_float(f"{ltm}.body.line_spacing"),
             )
             self.lowerthird_message_style = NoFooterSlideStyle(
                 width=self.img_width,
                 height=self.img_height,
-                background_colour=reader.get_str(f"{ltm}.background"),
+                background_colour=reader.get_colour(f"{ltm}.background"),
                 body=self._lowerthird_message_body,
                 shapes=[
                     Rectangle(
@@ -617,7 +694,7 @@ class Config(BaseConfig):
                             w=reader.get_positive_int(f"{ltm}.rectangle.width"),
                             h=reader.get_positive_int(f"{ltm}.rectangle.height"),
                         ),
-                        background_colour=reader.get_str(f"{ltm}.rectangle.colour"),
+                        background_colour=reader.get_colour(f"{ltm}.rectangle.colour"),
                     )
                 ],
             )
@@ -638,7 +715,7 @@ class Config(BaseConfig):
                 ),
                 horiz_align=reader.get_enum(f"{lts}.body.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{lts}.body.vert_align", _VERT_ALIGNS),
-                text_colour=reader.get_str(f"{lts}.body.text_colour"),
+                text_colour=reader.get_colour(f"{lts}.body.text_colour"),
                 bold=reader.get_bool(f"{lts}.body.font.bold"),
                 line_spacing=reader.get_float(f"{lts}.body.line_spacing"),
             )
@@ -657,14 +734,14 @@ class Config(BaseConfig):
                 ),
                 horiz_align=reader.get_enum(f"{lts}.footer.horiz_align", _HORIZ_ALIGNS),
                 vert_align=reader.get_enum(f"{lts}.footer.vert_align", _VERT_ALIGNS),
-                text_colour=reader.get_str(f"{lts}.footer.text_colour"),
+                text_colour=reader.get_colour(f"{lts}.footer.text_colour"),
                 bold=reader.get_bool(f"{lts}.footer.font.bold"),
                 line_spacing=reader.get_float(f"{lts}.footer.line_spacing"),
             )
             self.lowerthird_scripture_style = FooterSlideStyle(
                 width=self.img_width,
                 height=self.img_height,
-                background_colour=reader.get_str(f"{lts}.background"),
+                background_colour=reader.get_colour(f"{lts}.background"),
                 body=self._lowerthird_scripture_body,
                 footer=self._lowerthird_scripture_footer,
                 shapes=[
@@ -675,7 +752,7 @@ class Config(BaseConfig):
                             w=reader.get_positive_int(f"{lts}.rectangle.width"),
                             h=reader.get_positive_int(f"{lts}.rectangle.height"),
                         ),
-                        background_colour=reader.get_str(f"{lts}.rectangle.colour"),
+                        background_colour=reader.get_colour(f"{lts}.rectangle.colour"),
                     )
                 ],
             )
