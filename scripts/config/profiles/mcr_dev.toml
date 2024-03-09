@@ -7,6 +7,3 @@ assets_by_service = "%{folder.home}%/vMix Assets/By Service/%{STARTUP_YMD}%"
 assets_by_type = "%{folder.home}%/vMix Assets/By Type"
 images = "%{folder.home}%/vMix Assets/By Type/Images"
 videos = "%{folder.home}%/vMix Assets/By Type/Videos"
-
-[ui]
-theme = "light"
