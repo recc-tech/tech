@@ -122,6 +122,7 @@ class ConfigFileReader(AbstractContextManager[object]):
                 "Failed to read local config due to an unknown error."
             ) from e
 
+    # TODO: Extract as much as possible into pure functions
     def _flatten(self, data: Dict[str, object]) -> Dict[str, object]:
         out_data: Dict[str, object] = {}
         for key, value in data.items():
@@ -384,6 +385,8 @@ class Config(BaseConfig):
             self.pco_sunday_service_type_id = reader.get_str(
                 "planning_center.sunday_service_type_id"
             )
+            self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
+            self.sermon_notes_regex = reader.get_str("planning_center.sermon_notes_regex")
 
             # Vimeo
             self.vimeo_new_video_hours = reader.get_positive_float(

@@ -3,7 +3,6 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Callable, Tuple, Union
 
-import lib
 from args import ReccArgs
 from autochecklist import (
     ConsoleMessenger,
@@ -16,6 +15,7 @@ from autochecklist import (
 )
 from config import Config
 from external_services import CredentialStore, PlanningCenterClient
+from lib import AssetManager
 
 
 class DownloadAssetsArgs(ReccArgs):
@@ -66,10 +66,11 @@ class DownloadAssetsScript(Script[DownloadAssetsArgs, Config]):
         planning_center_client = PlanningCenterClient(
             messenger, credential_store, config
         )
+        manager = AssetManager(config)
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[args, config, planning_center_client, messenger],
+            arguments=[args, config, planning_center_client, messenger, manager],
             messenger=messenger,
         )
         task_model = TaskModel(
@@ -85,15 +86,11 @@ def download_pco_assets(
     config: Config,
     client: PlanningCenterClient,
     messenger: Messenger,
+    manager: AssetManager,
 ):
-    lib.download_pco_assets(
+    manager.download_pco_assets(
         client=client,
         messenger=messenger,
-        today=args.start_time.date(),
-        assets_by_service_dir=config.assets_by_service_dir,
-        temp_assets_dir=config.temp_assets_dir,
-        assets_by_type_videos_dir=config.videos_dir,
-        assets_by_type_images_dir=config.images_dir,
         download_kids_video=config.station == "mcr",
         download_notes_docx=config.station == "foh",
         dry_run=args.dry_run,

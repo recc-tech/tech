@@ -19,7 +19,7 @@ from external_services import (
     ReccWebDriver,
     VmixClient,
 )
-from lib.slides import BibleVerseFinder, SlideBlueprintReader, SlideGenerator
+from lib import AssetManager, BibleVerseFinder, SlideBlueprintReader, SlideGenerator
 
 
 class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
@@ -72,6 +72,7 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
         )
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger, config)
+        manager = AssetManager(config)
         function_finder = FunctionFinder(
             mcr_setup,
             [
@@ -81,6 +82,7 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
                 messenger,
                 reader,
                 generator,
+                manager,
             ],
             messenger,
         )

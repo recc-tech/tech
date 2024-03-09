@@ -8,126 +8,127 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
+from config import Config
 from external_services import Attachment, FileType, PlanningCenterClient
 
-# TODO: Move these to config file
-_KIDS_VIDEO_FILENAME_REGEX = re.compile(r"kids", flags=re.IGNORECASE)
-_SERMON_NOTES_REGEX = re.compile(r"^notes.*", flags=re.IGNORECASE)
 
+class AssetManager:
+    def __init__(self, config: Config) -> None:
+        self._config = config
 
-def locate_kids_video(dir: Path) -> Optional[Path]:
-    def is_kids_video(p: Path) -> bool:
-        return (
-            p.is_file()
-            and p.suffix.lower() in {".mp4", ".mov"}
-            and bool(_KIDS_VIDEO_FILENAME_REGEX.search(p.stem))
+    def locate_kids_video(self) -> Optional[Path]:
+        def is_kids_video(p: Path) -> bool:
+            pattern = self._config.kids_video_regex
+            return (
+                p.is_file()
+                and p.suffix.lower() in {".mp4", ".mov"}
+                and bool(re.search(pattern, p.stem, flags=re.IGNORECASE))
+            )
+
+        folder = self._config.assets_by_service_dir
+        candidates = [p for p in folder.glob("*") if is_kids_video(p)]
+        if len(candidates) == 1:
+            return candidates[0]
+        else:
+            return None
+
+    # TODO: Split this into separate functions for FOH and MCR?
+    def download_pco_assets(
+        self,
+        client: PlanningCenterClient,
+        messenger: Messenger,
+        download_kids_video: bool,
+        download_notes_docx: bool,
+        dry_run: bool,
+    ) -> Optional[Path]:
+        cancellation_token = messenger.allow_cancel()
+
+        (downloads, kids_video_path) = _plan_downloads(
+            client=client,
+            messenger=messenger,
+            today=self._config.start_time.date(),
+            assets_by_service_dir=self._config.assets_by_service_dir,
+            temp_assets_dir=self._config.temp_assets_dir,
+            assets_by_type_videos_dir=self._config.videos_dir,
+            download_kids_video=download_kids_video,
+            download_notes_docx=download_notes_docx,
+            kids_video_regex=self._config.kids_video_regex,
+            sermon_notes_regex=self._config.sermon_notes_regex,
         )
 
-    candidates = [p for p in dir.glob("*") if is_kids_video(p)]
-    if len(candidates) == 1:
-        return candidates[0]
-    else:
-        return None
+        if len(downloads) == 0:
+            messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
+            return
+        if dry_run:
+            messenger.log_debug("Skipping downloading assets: dry run.")
+            return None
 
+        self._config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+        # Just in case
+        self._config.videos_dir.mkdir(exist_ok=True, parents=True)
+        self._config.images_dir.mkdir(exist_ok=True, parents=True)
+        self._config.temp_assets_dir.mkdir(exist_ok=True, parents=True)
 
-# TODO: Split this into separate functions for FOH and MCR?
-def download_pco_assets(
-    client: PlanningCenterClient,
-    messenger: Messenger,
-    today: date,
-    assets_by_service_dir: Path,
-    temp_assets_dir: Path,
-    assets_by_type_videos_dir: Path,
-    assets_by_type_images_dir: Path,
-    download_kids_video: bool,
-    download_notes_docx: bool,
-    dry_run: bool,
-) -> Optional[Path]:
-    cancellation_token = messenger.allow_cancel()
-
-    (downloads, kids_video_path) = _plan_downloads(
-        client=client,
-        messenger=messenger,
-        today=today,
-        assets_by_service_dir=assets_by_service_dir,
-        temp_assets_dir=temp_assets_dir,
-        assets_by_type_videos_dir=assets_by_type_videos_dir,
-        download_kids_video=download_kids_video,
-        download_notes_docx=download_notes_docx,
-    )
-
-    if len(downloads) == 0:
-        messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
-        return
-    if dry_run:
-        messenger.log_debug("Skipping downloading assets: dry run.")
-        return None
-
-    assets_by_service_dir.mkdir(exist_ok=True, parents=True)
-    # Just in case
-    assets_by_type_videos_dir.mkdir(exist_ok=True, parents=True)
-    assets_by_type_images_dir.mkdir(exist_ok=True, parents=True)
-    temp_assets_dir.mkdir(exist_ok=True, parents=True)
-
-    messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
-    results = asyncio.run(
-        client.download_attachments(downloads, messenger, cancellation_token)
-    )
-    if download_kids_video:
-        if kids_video_path is None:
-            raise ValueError("Internal error: the kids video path is not known.")
-        kids_video_result = results[kids_video_path]
-        if kids_video_result is not None:
-            raise Exception(
-                f"Failed to download the Kids Connection video: {kids_video_result} ({type(kids_video_result).__name__})."
-            ) from kids_video_result
-    for path in downloads.keys():
-        if path not in results:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"The result of the download to '{path.as_posix()}' is unknown.",
-            )
-        elif results[path] is not None:
-            # TODO: Refactor log_problem to take exception object as input
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Download to '{path.as_posix()}' failed: {results[path]} ({type(results[path]).__name__}).",
-            )
-    successful_image_downloads = [
-        p
-        for p in downloads.keys()
-        if results.get(p, None) is None and p.is_relative_to(temp_assets_dir)
-    ]
-
-    messenger.log_status(
-        TaskStatus.RUNNING, "Moving new images into the assets folder."
-    )
-    results = _merge_files(successful_image_downloads, assets_by_type_images_dir)
-    for p, r in zip(successful_image_downloads, results):
-        match r:
-            case MergeFileResult.SUCCESS:
-                messenger.log_debug(
-                    f"{p.name} was successfully moved to the assets folder."
-                )
-            case MergeFileResult.ALREADY_EXISTS:
-                messenger.log_debug(
-                    f"{p.name} has the same contents as an existing file, so it was not moved to the assets folder."
-                )
-            case MergeFileResult.RENAME_FAILED:
+        messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
+        results = asyncio.run(
+            client.download_attachments(downloads, messenger, cancellation_token)
+        )
+        if download_kids_video:
+            if kids_video_path is None:
+                raise ValueError("Internal error: the kids video path is not known.")
+            kids_video_result = results[kids_video_path]
+            if kids_video_result is not None:
+                raise Exception(
+                    f"Failed to download the Kids Connection video: {kids_video_result} ({type(kids_video_result).__name__})."
+                ) from kids_video_result
+        for path in downloads.keys():
+            if path not in results:
                 messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"Failed to move {p.name} to the assets folder because no suitable name could be found (all attempted ones were already taken).",
+                    f"The result of the download to '{path.as_posix()}' is unknown.",
                 )
-            case MergeFileResult.RENAMED:
+            elif results[path] is not None:
+                # TODO: Refactor log_problem to take exception object as input
                 messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
+                    f"Download to '{path.as_posix()}' failed: {results[path]} ({type(results[path]).__name__}).",
                 )
+        successful_image_downloads = [
+            p
+            for p in downloads.keys()
+            if results.get(p, None) is None
+            and p.is_relative_to(self._config.temp_assets_dir)
+        ]
 
-    if download_kids_video:
-        return typing.cast(Path, kids_video_path)
-    else:
-        return None
+        messenger.log_status(
+            TaskStatus.RUNNING, "Moving new images into the assets folder."
+        )
+        results = _merge_files(successful_image_downloads, self._config.images_dir)
+        for p, r in zip(successful_image_downloads, results):
+            match r:
+                case MergeFileResult.SUCCESS:
+                    messenger.log_debug(
+                        f"{p.name} was successfully moved to the assets folder."
+                    )
+                case MergeFileResult.ALREADY_EXISTS:
+                    messenger.log_debug(
+                        f"{p.name} has the same contents as an existing file, so it was not moved to the assets folder."
+                    )
+                case MergeFileResult.RENAME_FAILED:
+                    messenger.log_problem(
+                        ProblemLevel.WARN,
+                        f"Failed to move {p.name} to the assets folder because no suitable name could be found (all attempted ones were already taken).",
+                    )
+                case MergeFileResult.RENAMED:
+                    messenger.log_problem(
+                        ProblemLevel.WARN,
+                        f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
+                    )
+
+        if download_kids_video:
+            return typing.cast(Path, kids_video_path)
+        else:
+            return None
 
 
 def _plan_downloads(
@@ -139,6 +140,8 @@ def _plan_downloads(
     assets_by_type_videos_dir: Path,
     download_kids_video: bool,
     download_notes_docx: bool,
+    kids_video_regex: str,
+    sermon_notes_regex: str,
 ) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
     messenger.log_status(
         TaskStatus.RUNNING, "Looking for attachments in Planning Center."
@@ -151,7 +154,11 @@ def _plan_downloads(
         other_images,
         other_videos,
         unknown_attachments,
-    ) = _classify_attachments(attachments, messenger)
+    ) = _classify_attachments(
+        attachments,
+        kids_video_regex=kids_video_regex,
+        sermon_notes_regex=sermon_notes_regex,
+    )
     if len(sermon_notes) != 1 and download_notes_docx:
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -191,18 +198,18 @@ def _plan_downloads(
 
 
 def _classify_attachments(
-    attachments: Set[Attachment], messenger: Messenger
+    attachments: Set[Attachment], kids_video_regex: str, sermon_notes_regex: str
 ) -> Tuple[
     Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
 ]:
     def is_kids_video(a: Attachment) -> bool:
         return a.file_type == FileType.VIDEO and bool(
-            _KIDS_VIDEO_FILENAME_REGEX.search(a.filename)
+            re.search(kids_video_regex, a.filename, re.IGNORECASE)
         )
 
     def is_sermon_notes(a: Attachment) -> bool:
         return a.file_type == FileType.DOCX and bool(
-            _SERMON_NOTES_REGEX.fullmatch(a.filename)
+            re.search(sermon_notes_regex, a.filename, re.IGNORECASE)
         )
 
     # Don't mutate the input

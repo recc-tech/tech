@@ -165,7 +165,6 @@ def _parse_boxcast_event_url(event_url: str) -> str:
     # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
     # Allow a trailing forward slash just in case
     event_url = event_url.strip()
-    # TODO: Move this to the config file?
     regex = "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]{20,20})/?(?:\\?.*)?$"
     pattern = re.compile(regex)
     regex_match = pattern.search(event_url)

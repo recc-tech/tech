@@ -45,6 +45,9 @@ edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2"
 sunday_service_type_id = "882857"
+# https://regex101.com/
+kids_video_regex = "kids"
+sermon_notes_regex = "^notes"
 
 [vimeo]
 # Maximum time since today's video was posted
