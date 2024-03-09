@@ -34,12 +34,14 @@ class ReccArgs(BaseArgs):
 
     def get(self, key: str) -> Optional[object]:
         t = self.start_time
+        root = Path(__file__).resolve().parent.parent.parent
         d = {
             "STARTUP_YMD": t.strftime("%Y-%m-%d"),
             "STARTUP_MDY": f"{t.strftime('%B')} {t.day}, {t.year}",
             "STARTUP_TIMESTAMP": t.strftime("%Y%m%d-%H%M%S"),
-            # TODO: Add a test for this!
-            "REPO_ROOT": Path(__file__).resolve().parent.parent.parent,
+            # TODO: Move this to the Config class because it's not really
+            # command-line argument-related
+            "REPO_ROOT": str(root),
         }
         if key in d:
             return d[key]
