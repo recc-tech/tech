@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
-from typing import Dict, List, Literal, Optional, Set, Type, TypeVar
+from typing import Dict, List, Literal, Optional, Set, Tuple, Type, TypeVar
 
 import tomli
 from args import ReccArgs, parse_directory, parse_file
-from autochecklist import BaseArgs, BaseConfig
+from autochecklist import BaseConfig
 
 from .image_style import (
     Bbox,
@@ -82,73 +82,107 @@ class StringTemplate:
         return t
 
 
-# TODO: Test placeholder filling (valid cases, circular references, etc.)
-class ConfigFileReader(AbstractContextManager[object]):
-    def __init__(self, args: BaseArgs, profile: str, strict: bool) -> None:
-        self._args = args
+def _flatten(data: Dict[str, object]) -> Dict[str, object]:
+    out_data: Dict[str, object] = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            value = _flatten(typing.cast(Dict[str, object], value))
+            out_data |= {f"{key}.{k}": v for (k, v) in value.items()}
+        else:
+            out_data[key] = value
+    return out_data
+
+
+def _resolve(raw_data: Dict[str, object]) -> Tuple[Dict[str, object], Set[str]]:
+    resolved_data: Dict[str, object] = {}
+    toplevel_keys: Set[str] = set(raw_data.keys())
+    for k, v in raw_data.items():
+        if isinstance(v, str):
+            try:
+                (v, deps) = _fill_placeholders(raw_data, v, [k])
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to fill placeholders in configuration value {k}."
+                ) from e
+            resolved_data[k] = v
+            toplevel_keys -= deps
+        else:
+            resolved_data[k] = v
+    return (resolved_data, toplevel_keys)
+
+
+def _fill_placeholders(
+    data: Dict[str, object], template: str, history: List[str]
+) -> Tuple[str, Set[str]]:
+    deps: Set[str] = set()
+    while True:
+        start = template.find("%{")
+        end = template.find("}%")
+        if start < 0 and end < 0:
+            return (template, deps)
+        elif start < 0:
+            raise ValueError(f"Mismatched %{{ in '{template}'.")
+        elif end < 0 or end < start:
+            raise ValueError(f"Mismatched }}% in '{template}'.")
+        else:
+            placeholder_key = template[start + 2 : end]
+            v, d = _get_and_fill(data, placeholder_key, history)
+            placeholder = "%{" + placeholder_key + "}%"
+            template = template.replace(placeholder, v)
+            deps |= d
+            deps.add(placeholder_key)
+
+
+def _get_and_fill(
+    data: Dict[str, object], key: str, history: List[str]
+) -> Tuple[str, Set[str]]:
+    if key in history:
+        i = history.index(key)
+        circ = history[i:] + [key]
+        raise ValueError(f"Circular reference in configuration: {' --> '.join(circ)}.")
+    v = data.get(key)
+    if v is None:
+        raise ValueError(f"Missing configuration value {key}.")
+    if isinstance(v, str):
+        return _fill_placeholders(data, v, history + [key])
+    else:
+        return (str(v), set())
+
+
+def _read_global_config() -> Dict[str, object]:
+    global_file = _CONFIG_DIR.joinpath("config.toml").resolve()
+    try:
+        with open(global_file, "rb") as f:
+            return _flatten(tomli.load(f))
+    except FileNotFoundError as e:
+        raise ValueError(
+            f"Failed to read global config because {global_file.as_posix()} is missing."
+        ) from e
+    except Exception as e:
+        raise ValueError("Failed to read global config due to an unknown error.") from e
+
+
+def _read_local_config(profile: str) -> Dict[str, object]:
+    local_file = locate_profile(profile)
+    try:
+        with open(local_file, "rb") as f:
+            return _flatten(tomli.load(f))
+    except FileNotFoundError as e:
+        raise ValueError(
+            f"There is no profile called '{profile}' (expected to find it at {local_file.as_posix()})."
+        ) from e
+    except Exception as e:
+        raise ValueError("Failed to read local config due to an unknown error.") from e
+
+
+class ConfigReader(AbstractContextManager[object]):
+    def __init__(self, raw_data: Dict[str, object], strict: bool) -> None:
         self._strict = strict
         self._is_read_by_key: Dict[str, bool] = {}
-        self._data = self._read_global_config()
-        # IMPORTANT: read the local file second so that it overrides values
-        # found in the global file
-        self._data |= self._read_local_config(profile)
-        self._data = self._resolve(self._data)
+        (self._data, self._toplevel_keys) = _resolve(raw_data)
 
-    def _read_global_config(self) -> Dict[str, object]:
-        global_file = _CONFIG_DIR.joinpath("config.toml").resolve()
-        try:
-            with open(global_file, "rb") as f:
-                return self._flatten(tomli.load(f))
-        except FileNotFoundError as e:
-            raise ValueError(
-                f"Failed to read global config because {global_file.as_posix()} is missing."
-            ) from e
-        except Exception as e:
-            raise ValueError(
-                "Failed to read global config due to an unknown error."
-            ) from e
-
-    def _read_local_config(self, profile: str) -> Dict[str, object]:
-        local_file = locate_profile(profile)
-        try:
-            with open(local_file, "rb") as f:
-                return self._flatten(tomli.load(f))
-        except FileNotFoundError as e:
-            raise ValueError(
-                f"There is no profile called '{profile}' (expected to find it at {local_file.as_posix()})."
-            ) from e
-        except Exception as e:
-            raise ValueError(
-                "Failed to read local config due to an unknown error."
-            ) from e
-
-    # TODO: Extract as much as possible into pure functions
-    def _flatten(self, data: Dict[str, object]) -> Dict[str, object]:
-        out_data: Dict[str, object] = {}
-        for key, value in data.items():
-            if isinstance(value, dict):
-                value = self._flatten(typing.cast(Dict[str, object], value))
-                out_data |= {f"{key}.{k}": v for (k, v) in value.items()}
-            else:
-                out_data[key] = value
-        return out_data
-
-    def _resolve(self, raw_data: Dict[str, object]) -> Dict[str, object]:
-        data: Dict[str, object] = {}
-        for k, v in raw_data.items():
-            if isinstance(v, str):
-                try:
-                    data[k] = self.fill_placeholders(v)
-                except Exception as e:
-                    raise ValueError(
-                        f"Failed to fill placeholders in configuration value {k}."
-                    ) from e
-            else:
-                data[k] = v
-        return data
-
-    def __enter__(self) -> ConfigFileReader:
-        self._is_read_by_key = {key: False for key in self._data.keys()}
+    def __enter__(self) -> ConfigReader:
+        self._is_read_by_key = {key: False for key in self._toplevel_keys}
         return self
 
     def __exit__(
@@ -162,39 +196,16 @@ class ConfigFileReader(AbstractContextManager[object]):
         if not self._strict:
             return
         unused_keys = {k for (k, v) in self._is_read_by_key.items() if not v}
+        # Don't worry if some of the args aren't used
+        unused_keys -= {k for k in unused_keys if k.startswith("args.")}
         if len(unused_keys) > 0:
             raise ValueError(
-                f"The following configuration values are unrecognized: {unused_keys}"
+                f"The following configuration values are unrecognized: {unused_keys}."
             )
 
-    def fill_placeholders(self, value: str) -> str:
-        return self._fill_placeholders(value, [])
-
-    def _fill_placeholders(self, template: str, history: List[str]) -> str:
-        while True:
-            start = template.find("%{")
-            end = template.find("}%")
-            if start < 0 and end < 0:
-                return template
-            elif start < 0:
-                raise ValueError(f"Mismatched %{{ in '{template}'.")
-            elif end < 0 or end < start:
-                raise ValueError(f"Mismatched }}% in '{template}'.")
-            else:
-                placeholder_key = template[start + 2 : end]
-                placeholder = "%{" + placeholder_key + "}%"
-                placeholder_value = self._get_and_fill(placeholder_key, history)
-                template = template.replace(placeholder, str(placeholder_value))
-
-    def _get_and_fill(self, key: str, history: List[str]) -> str:
-        value = self._args.get(key)
-        if value is None:
-            raw_value = self._data.get(key, None)
-            if raw_value is None:
-                raise ValueError(f"Missing configuration value {key}.")
-            if isinstance(raw_value, str):
-                value = self._fill_placeholders(raw_value, history + [key])
-        return str(value)
+    def fill_placeholders(self, template: str) -> str:
+        v, _ = _fill_placeholders(self._data, template, [])
+        return v
 
     def get(self, key: str) -> object:
         """Look up the given key and raise an exception if not found."""
@@ -309,7 +320,12 @@ class Config(BaseConfig):
             else:
                 profile = "foh" if platform.system() == "Darwin" else "mcr"
                 activate_profile(profile)
-        self._reader = ConfigFileReader(args=args, profile=profile, strict=strict)
+        data = _read_global_config()
+        # IMPORTANT: read the local file second so that it overrides values
+        # found in the global file
+        data |= _read_local_config(profile)
+        data |= _flatten({"args": args.dump()})
+        self._reader = ConfigReader(raw_data=data, strict=strict)
         self.reload()
 
     def reload(self) -> None:
@@ -386,7 +402,9 @@ class Config(BaseConfig):
                 "planning_center.sunday_service_type_id"
             )
             self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
-            self.sermon_notes_regex = reader.get_str("planning_center.sermon_notes_regex")
+            self.sermon_notes_regex = reader.get_str(
+                "planning_center.sermon_notes_regex"
+            )
 
             # Vimeo
             self.vimeo_new_video_hours = reader.get_positive_float(

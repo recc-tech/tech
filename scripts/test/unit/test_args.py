@@ -8,7 +8,7 @@ from args import ReccArgs
 class ReccArgsTestCase(unittest.TestCase):
     def test_repo_root(self) -> None:
         args = ReccArgs.parse([])
-        root = args.get("REPO_ROOT")
+        root = args.dump().get("repo_root")
         self.assertIsInstance(root, str)
         root = Path(typing.cast(str, root))
         self.assertTrue(root.is_dir(), "Repository root should exist.")
@@ -19,13 +19,9 @@ class ReccArgsTestCase(unittest.TestCase):
         )
 
     def test_startup_ymd(self) -> None:
-        self.assertEqual(
-            "2024-03-08",
-            ReccArgs.parse(["", "--date", "2024-03-08"]).get("STARTUP_YMD"),
-        )
+        x = ReccArgs.parse(["", "--date", "2024-03-08"]).dump().get("startup_ymd")
+        self.assertEqual("2024-03-08", x)
 
     def test_startup_mdy(self) -> None:
-        self.assertEqual(
-            "March 8, 2024",
-            ReccArgs.parse(["", "--date", "2024-03-08"]).get("STARTUP_MDY"),
-        )
+        x = ReccArgs.parse(["", "--date", "2024-03-08"]).dump().get("startup_mdy")
+        self.assertEqual("March 8, 2024", x)

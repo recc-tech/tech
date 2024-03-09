@@ -13,19 +13,19 @@ theme = "dark"
 
 [folder]
 logs = "%{folder.home}%/Logs"
-captions = "%{folder.home}%/Captions/%{STARTUP_YMD}%"
+captions = "%{folder.home}%/Captions/%{args.startup_ymd}%"
 archived_assets = "%{folder.assets_by_type}%/Archive"
 temporary_assets = "%{folder.assets_by_type}%/Temp"
 
 [logging]
-check_credentials                = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% check_credentials.log"
+check_credentials                = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
 check_credentials_webdriver_name = "check_credentials_webdriver"
-generate_slides                  = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% generate_slides.log"
-generate_slides_webdriver        = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% generate_slides_webdriver.log"
-download_pco_assets              = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% download_pco_assets.log"
-mcr_setup                        = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_setup.log"
-mcr_setup_webdriver              = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_setup_webdriver.log"
-mcr_teardown                     = "%{folder.logs}%/%{STARTUP_TIMESTAMP}% mcr_teardown.log"
+generate_slides                  = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
+generate_slides_webdriver        = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides_webdriver.log"
+download_pco_assets              = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
+mcr_setup                        = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup.log"
+mcr_setup_webdriver              = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup_webdriver.log"
+mcr_teardown                     = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
 mcr_teardown_webdriver_name      = "mcr_teardown_webdriver"
 
 [captions]
@@ -33,8 +33,8 @@ original = "%{folder.captions}%/original.vtt"
 final = "%{folder.captions}%/final.vtt"
 
 [boxcast]
-live_event_title = "Sunday Gathering LIVE: %{STARTUP_MDY}%"
-rebroadcast_title = "Sunday Gathering Rebroadcast: %{STARTUP_MDY}%"
+live_event_title = "Sunday Gathering LIVE: %{args.startup_mdy}%"
+rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
 live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
 captions_download_path = "%{folder.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
@@ -57,11 +57,11 @@ retry_seconds = 60.0
 captions_type = "subtitles"
 captions_language = "en-CA"
 captions_name = "English (Canada)"
-video_title = "%{STARTUP_YMD}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
+video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
 
 [vmix]
 base_url = "http://192.168.0.65:8088/api"
-preset_path = "%{folder.home}%/vMix Presets/%{STARTUP_YMD}% Live.vmix"
+preset_path = "%{folder.home}%/vMix Presets/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
 kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
 pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"

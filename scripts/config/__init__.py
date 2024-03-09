@@ -6,6 +6,8 @@ Code for handling configuration.
 
 from .src.config import (
     Config,
+    ConfigReader,
+    StringTemplate,
     activate_profile,
     get_active_profile,
     list_profiles,

@@ -1,9 +1,8 @@
 station = "foh"
 
 [folder]
-# TODO: Make sure the ~ gets expanded
 downloads = "~/Downloads"
-home = "~/Documents"
+home = "%{args.repo_root}%/scripts/test/manual/home"
 assets_by_service = "%{folder.home}%/ProPresenter Assets"
 assets_by_type = "%{folder.home}%/ProPresenter Assets"
 images = "%{folder.home}%/ProPresenter Assets"

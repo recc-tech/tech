@@ -1,7 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict
 
 from autochecklist import BaseArgs
 
@@ -16,6 +16,16 @@ class ReccArgs(BaseArgs):
             if args.date
             else datetime.now()
         )
+        t = self.start_time
+        root = Path(__file__).resolve().parent.parent.parent
+        self._data = {
+            "startup_ymd": t.strftime("%Y-%m-%d"),
+            "startup_mdy": f"{t.strftime('%B')} {t.day}, {t.year}",
+            "startup_timestamp": t.strftime("%Y%m%d-%H%M%S"),
+            # TODO: Move this to the Config class because it's not really
+            # command-line argument-related
+            "repo_root": str(root),
+        }
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -32,18 +42,5 @@ class ReccArgs(BaseArgs):
         )
         super().set_up_parser(parser)
 
-    def get(self, key: str) -> Optional[object]:
-        t = self.start_time
-        root = Path(__file__).resolve().parent.parent.parent
-        d = {
-            "STARTUP_YMD": t.strftime("%Y-%m-%d"),
-            "STARTUP_MDY": f"{t.strftime('%B')} {t.day}, {t.year}",
-            "STARTUP_TIMESTAMP": t.strftime("%Y%m%d-%H%M%S"),
-            # TODO: Move this to the Config class because it's not really
-            # command-line argument-related
-            "REPO_ROOT": str(root),
-        }
-        if key in d:
-            return d[key]
-        else:
-            return super().get(key)
+    def dump(self) -> Dict[str, str]:
+        return self._data

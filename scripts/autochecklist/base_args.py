@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 from argparse import ArgumentParser, Namespace
-from typing import Callable, List, Literal, Optional, Set, Type, TypeVar
+from typing import Callable, Dict, List, Literal, Optional, Set, Type, TypeVar
 
 T = TypeVar("T", bound="BaseArgs")
 
@@ -64,9 +64,5 @@ class BaseArgs:
             args = args[1:]
         return cls(parser.parse_args(args), parser.error)
 
-    def get(self, key: str) -> Optional[object]:
-        """Look up the given key and return `None` if not found."""
-        if key == "UI":
-            return self.ui
-        else:
-            return None
+    def dump(self) -> Dict[str, str]:
+        return {"UI": self.ui}
