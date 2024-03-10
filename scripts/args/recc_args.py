@@ -22,8 +22,6 @@ class ReccArgs(BaseArgs):
             "startup_ymd": t.strftime("%Y-%m-%d"),
             "startup_mdy": f"{t.strftime('%B')} {t.day}, {t.year}",
             "startup_timestamp": t.strftime("%Y%m%d-%H%M%S"),
-            # TODO: Move this to the Config class because it's not really
-            # command-line argument-related
             "repo_root": str(root),
         }
 

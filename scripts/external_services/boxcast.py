@@ -226,10 +226,6 @@ class BoxCastClientFactory:
             )
 
 
-# TODO: Move the following functions into a class so I can use dependency
-# injection
-
-
 def export_to_vimeo(
     client: BoxCastClient,
     event_url: str,
