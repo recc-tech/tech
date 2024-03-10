@@ -92,7 +92,7 @@ def download_pco_assets(
         client=client,
         messenger=messenger,
         download_kids_video=config.station == "mcr",
-        download_notes_docx=config.station == "foh",
+        download_notes_docx=config.station == "mcr",
         dry_run=args.dry_run,
     )
 
