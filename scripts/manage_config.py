@@ -38,19 +38,39 @@ def show_config(profile: Optional[str]) -> None:
 
 def test_load_one_config(profile: Optional[str]) -> None:
     try:
-        Config(ReccArgs.parse([]), profile=profile, strict=True)
+        Config(
+            ReccArgs.parse([]),
+            profile=profile,
+            strict=True,
+            allow_multiple_only_for_testing=True,
+        )
     except Exception as e:
         raise RuntimeError("Failed to load general configuration.") from e
     try:
-        GenerateSlidesConfig(GenerateSlidesArgs.parse([]), profile=profile, strict=True)
+        GenerateSlidesConfig(
+            GenerateSlidesArgs.parse([]),
+            profile=profile,
+            strict=True,
+            allow_multiple_only_for_testing=True,
+        )
     except Exception as e:
         raise RuntimeError("Failed to load configuration for generating slides.") from e
     try:
-        McrSetupConfig(McrSetupArgs.parse([]), profile=profile, strict=True)
+        McrSetupConfig(
+            McrSetupArgs.parse([]),
+            profile=profile,
+            strict=True,
+            allow_multiple_only_for_testing=True,
+        )
     except Exception as e:
         raise RuntimeError("Failed to load configuration for MCR setup.") from e
     try:
-        McrTeardownConfig(McrTeardownArgs.parse([]), profile=profile, strict=True)
+        McrTeardownConfig(
+            McrTeardownArgs.parse([]),
+            profile=profile,
+            strict=True,
+            allow_multiple_only_for_testing=True,
+        )
     except Exception as e:
         raise RuntimeError("Failed to load configuration for MCR teardown.") from e
 

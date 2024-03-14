@@ -72,7 +72,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
         all_attachments = kids_video.union(notes, images, videos, unknown_assets)
         original_all_attachments = set(all_attachments)
 
-        config = Config(ReccArgs.parse([]))
+        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
 
         k, n, i, v, u = _classify_attachments(
             all_attachments,
@@ -96,7 +96,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="application/mp4",
         )
-        config = Config(ReccArgs.parse([]))
+        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
         k, *_ = _classify_attachments(
             {kids_video},
             kids_video_regex=config.kids_video_regex,

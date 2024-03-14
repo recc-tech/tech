@@ -156,7 +156,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         client = PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
-            config=Config(args),
+            config=Config(args, allow_multiple_only_for_testing=True),
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )

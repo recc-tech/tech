@@ -306,12 +306,21 @@ class ConfigReader(AbstractContextManager[object]):
         return self._data
 
 
-# TODO: Enforce singleton pattern here?
 class Config(BaseConfig):
+    __instantiated = False
+
     def __init__(
-        self, args: ReccArgs, profile: Optional[str] = None, strict: bool = False
+        self,
+        args: ReccArgs,
+        profile: Optional[str] = None,
+        strict: bool = False,
+        allow_multiple_only_for_testing: bool = False,
     ) -> None:
+        if Config.__instantiated and not allow_multiple_only_for_testing:
+            raise ValueError("Attempt to instantiate multiple Config objects.")
+        Config.__instantiated = True
         self._args = args
+        self._strict = strict
         if profile is None:
             profile = get_active_profile()
         if profile is None:
@@ -320,15 +329,17 @@ class Config(BaseConfig):
             else:
                 profile = "foh" if platform.system() == "Darwin" else "mcr"
                 activate_profile(profile)
+        self._profile = profile
+        self.reload()
+
+    def reload(self) -> None:
+        profile = get_active_profile() or self._profile
         data = _read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
         # found in the global file
         data |= _read_local_config(profile)
-        data |= _flatten({"args": args.dump()})
-        self._reader = ConfigReader(raw_data=data, strict=strict)
-        self.reload()
-
-    def reload(self) -> None:
+        data |= _flatten({"args": self._args.dump()})
+        self._reader = ConfigReader(raw_data=data, strict=self._strict)
         with self._reader as reader:
             self.station: Literal["mcr", "foh"] = reader.get_enum(
                 "station", {"mcr", "foh"}

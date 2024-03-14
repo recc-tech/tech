@@ -8,10 +8,19 @@ from .config import Config
 
 class McrTeardownConfig(Config):
     def __init__(
-        self, args: McrTeardownArgs, profile: Optional[str] = None, strict: bool = False
+        self,
+        args: McrTeardownArgs,
+        profile: Optional[str] = None,
+        strict: bool = False,
+        allow_multiple_only_for_testing: bool = False,
     ) -> None:
         self._args = args
-        super().__init__(args, profile=profile, strict=strict)
+        super().__init__(
+            args,
+            profile=profile,
+            strict=strict,
+            allow_multiple_only_for_testing=allow_multiple_only_for_testing,
+        )
 
     def reload(self) -> None:
         super().reload()

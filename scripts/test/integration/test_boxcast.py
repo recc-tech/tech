@@ -95,7 +95,7 @@ class BoxCastTestCase(unittest.TestCase):
             ),
             lambda msg: self.fail(f"Argument parsing error: {msg}"),
         )
-        config = McrTeardownConfig(args)
+        config = McrTeardownConfig(args, allow_multiple_only_for_testing=True)
 
         tasks.download_captions(
             boxcast_client_factory=boxcast_client_factory,
