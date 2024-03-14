@@ -1,8 +1,10 @@
 import unittest
+from argparse import Namespace
 from pathlib import Path
 from unittest.mock import ANY, call, create_autospec
 
 from autochecklist import (
+    BaseArgs,
     FunctionFinder,
     Messenger,
     ProblemLevel,
@@ -28,7 +30,11 @@ class TaskGraphTestCase(unittest.TestCase):
         # called
         messenger.wait.side_effect = append_wait
         messenger.is_closed = False
-        config = TestConfig(ui="tk", verbose=False, no_run=False, auto_tasks=None)
+        args = BaseArgs(
+            Namespace(ui="tk", verbose=False, no_run=False, auto=None),
+            lambda msg: self.fail(f"Argument parsing error: {msg}"),
+        )
+        config = TestConfig()
         function_finder = FunctionFinder(
             module=example_tasks, arguments=[my_list, config], messenger=messenger
         )
@@ -38,7 +44,11 @@ class TaskGraphTestCase(unittest.TestCase):
         )
         model = TaskModel.load(json_file)
         graph = TaskGraph(
-            model, messenger=messenger, function_finder=function_finder, config=config
+            model,
+            messenger=messenger,
+            function_finder=function_finder,
+            args=args,
+            config=config,
         )
         graph.run()
 

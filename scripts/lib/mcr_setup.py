@@ -1,40 +1,31 @@
 import inspect
 
-import lib
-import lib.download_pco_assets as pco_assets
 from autochecklist import Messenger, ProblemLevel, TaskStatus
-from lib import PlanningCenterClient, SlideBlueprintReader, SlideGenerator
-from mcr_setup.config import McrSetupConfig
-
-from .vmix import VmixClient
+from config import McrSetupConfig
+from external_services import PlanningCenterClient, VmixClient
+from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 
 
 def download_assets(
-    client: PlanningCenterClient, config: McrSetupConfig, messenger: Messenger
+    client: PlanningCenterClient, messenger: Messenger, manager: AssetManager
 ):
-    config.kids_video_path = lib.download_pco_assets(
+    manager.download_pco_assets(
         client=client,
         messenger=messenger,
-        today=config.now.date(),
-        assets_by_service_dir=config.assets_by_service_dir,
-        temp_assets_dir=config.temp_assets_dir,
-        assets_by_type_videos_dir=config.assets_by_type_videos_dir,
-        assets_by_type_images_dir=config.assets_by_type_images_dir,
         download_kids_video=True,
         download_notes_docx=True,
         dry_run=False,
     )
 
 
-def create_kids_connection_playlist(client: VmixClient, config: McrSetupConfig) -> None:
-    if not config.kids_video_path or not config.kids_video_path.is_file():
-        config.kids_video_path = pco_assets.locate_kids_video(
-            config.assets_by_service_dir
-        )
-        if not config.kids_video_path or not config.kids_video_path.is_file():
-            raise ValueError("The path to the Kids Connection video is not known.")
+def create_kids_connection_playlist(
+    client: VmixClient, config: McrSetupConfig, manager: AssetManager
+) -> None:
+    kids_video_path = manager.locate_kids_video()
+    if kids_video_path is None:
+        raise ValueError("The path to the Kids Connection video is not known.")
     client.list_remove_all(config.vmix_kids_connection_list_key)
-    client.list_add(config.vmix_kids_connection_list_key, config.kids_video_path)
+    client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
 
 
 def restart_videos(client: VmixClient) -> None:
@@ -47,7 +38,7 @@ def update_titles(
     config: McrSetupConfig,
     messenger: Messenger,
 ) -> None:
-    today = config.now.date()
+    today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
     if len(people.speaker_names) == 0:
@@ -84,7 +75,7 @@ def update_titles(
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):
-    today = config.now.date()
+    today = config.start_time.date()
     plan = client.find_plan_by_date(today)
     message_notes = client.find_message_notes(plan.id)
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
@@ -106,18 +97,16 @@ def generate_backup_slides(
 
     messenger.log_status(
         TaskStatus.RUNNING,
-        f"Saving slide blueprints to {config.backup_slides_json_file}.",
+        f"Saving slide blueprints to {config.slide_blueprints_file}.",
     )
-    reader.save_json(config.backup_slides_json_file, blueprints)
+    reader.save_json(config.slide_blueprints_file, blueprints)
 
     messenger.log_status(TaskStatus.RUNNING, f"Generating images.")
     blueprints_with_prefix = [
         b.with_name(f"LTD{i} - {b.name}" if b.name else f"LTD{i}")
         for i, b in enumerate(blueprints, start=1)
     ]
-    slides = generator.generate_lower_third_slides(
-        blueprints_with_prefix, show_backdrop=True
-    )
+    slides = generator.generate_lower_third_slides(blueprints_with_prefix)
 
     messenger.log_status(TaskStatus.RUNNING, f"Saving images.")
     for s in slides:

@@ -1,22 +1,22 @@
 import argparse
 import random
 import sys
-import typing
 from datetime import timedelta
 from pathlib import Path
-from typing import List, Tuple, TypeVar
+from typing import Callable, Literal, Tuple, TypeVar
 
 T = TypeVar("T")
 
 from . import (  # TODO; EelMessenger,
+    BaseArgs,
     BaseConfig,
     ConsoleMessenger,
-    DefaultScript,
     FileMessenger,
     FunctionFinder,
     Messenger,
     Parameter,
     ProblemLevel,
+    Script,
     TaskModel,
     TaskStatus,
     TkMessenger,
@@ -143,55 +143,42 @@ def demo_cancel2(messenger: Messenger) -> None:
     demo_cancel1(messenger)
 
 
-class DemoScript(DefaultScript):
-    def create_config(self) -> BaseConfig:
-        parser = argparse.ArgumentParser(description=_DESCRIPTION)
-        parser.add_argument(
-            "--ui",
-            choices=["console", "tk", "eel"],
-            default="tk",
-            help="User interface to use.",
-        )
-        debug_args = parser.add_argument_group("Debug arguments")
-        debug_args.add_argument(
-            "--verbose",
-            action="store_true",
-            help="This flag is only applicable when the console UI is used. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
-        )
-        debug_args.add_argument(
-            "--no-run",
-            action="store_true",
-            help="If this flag is provided, the task graph will be loaded but the tasks will not be run. This may be useful for checking that the JSON task file and command-line arguments are valid.",
-        )
-        debug_args.add_argument(
-            "--auto",
-            action="append",
-            default=None,
-            help="Specify which tasks to automate. You can also provide 'none' to automate none of the tasks. By default, all tasks that can be automated are automated.",
-        )
-        args = parser.parse_args()
-        if args.auto is not None:
-            if "none" in args.auto and len(args.auto) > 1:
-                parser.error(
-                    "If 'none' is included in --auto, it must be the only value."
-                )
-            if args.auto == ["none"]:
-                args.auto = typing.cast(List[str], [])
-        return BaseConfig(
-            ui=args.ui,
-            verbose=args.verbose,
-            no_run=args.no_run,
-            auto_tasks=set(args.auto) if args.auto is not None else None,
-        )
+class DemoArgs(BaseArgs):
+    def __init__(self, args: argparse.Namespace, error: Callable[[str], None]) -> None:
+        self.ui_theme: Literal["dark", "light"] = args.theme
+        super().__init__(args, error)
 
-    def create_messenger(self, config: BaseConfig) -> Messenger:
+    @classmethod
+    def set_up_parser(cls, parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--theme",
+            choices={"dark", "light"},
+            default="dark",
+            help="User interface theme (light or dark).",
+        )
+        return super().set_up_parser(parser)
+
+
+class DemoScript(Script[DemoArgs, BaseConfig]):
+    def parse_args(self) -> DemoArgs:
+        return DemoArgs.parse(sys.argv)
+
+    def create_config(self, args: DemoArgs) -> BaseConfig:
+        return BaseConfig()
+
+    def create_messenger(self, args: DemoArgs, config: BaseConfig) -> Messenger:
         file_messenger = FileMessenger(
             log_file=Path(__file__).parent.joinpath("demo.log")
         )
         input_messenger = (
-            ConsoleMessenger(description=_DESCRIPTION, show_task_status=config.verbose)
-            if config.ui == "console"
-            else TkMessenger(title="autochecklist demo", description=_DESCRIPTION)
+            ConsoleMessenger(description=_DESCRIPTION, show_task_status=args.verbose)
+            if args.ui == "console"
+            else TkMessenger(
+                title="autochecklist demo",
+                description=_DESCRIPTION,
+                theme=args.ui_theme,
+                show_statuses_by_default=False,
+            )
             # if args.ui == "tk"
             # else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
         )
@@ -201,7 +188,7 @@ class DemoScript(DefaultScript):
         return messenger
 
     def create_services(
-        self, config: BaseConfig, messenger: Messenger
+        self, args: BaseArgs, config: BaseConfig, messenger: Messenger
     ) -> Tuple[TaskModel, FunctionFinder]:
         function_finder = FunctionFinder(
             # Use the current module

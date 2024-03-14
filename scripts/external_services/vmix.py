@@ -7,6 +7,7 @@ from typing import List
 from xml.etree import ElementTree
 
 import requests
+from config import Config
 
 
 class VmixInputType(Enum):
@@ -46,30 +47,34 @@ class VmixState:
 
 
 class VmixClient:
-    BASE_URL = "http://192.168.0.65:8088/api"
+    def __init__(self, config: Config) -> None:
+        self._cfg = config
 
     def set_text(self, input: str, value: str) -> None:
         response = requests.get(
-            url=self.BASE_URL,
+            url=self._cfg.vmix_base_url,
             params={"Function": "SetText", "Input": input, "Value": value},
+            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def list_remove_all(self, input: str) -> None:
         response = requests.get(
-            url=self.BASE_URL,
+            url=self._cfg.vmix_base_url,
             params={"Function": "ListRemoveAll", "Input": input},
+            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def list_add(self, input: str, file: Path) -> None:
         response = requests.get(
-            url=self.BASE_URL,
+            url=self._cfg.vmix_base_url,
             params={
                 "Function": "ListAdd",
                 "Input": input,
                 "Value": str(file.resolve()),
             },
+            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
@@ -81,12 +86,16 @@ class VmixClient:
 
     def restart(self, input: str) -> None:
         response = requests.get(
-            url=self.BASE_URL, params={"Function": "Restart", "Input": input}
+            url=self._cfg.vmix_base_url,
+            params={"Function": "Restart", "Input": input},
+            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def get_current_state(self) -> VmixState:
-        response = requests.get(url=self.BASE_URL)
+        response = requests.get(
+            url=self._cfg.vmix_base_url, timeout=self._cfg.timeout_seconds
+        )
         response.raise_for_status()
         root = ElementTree.fromstring(response.text)
         inputs = root.find("./inputs")

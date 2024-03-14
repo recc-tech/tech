@@ -1,6 +1,6 @@
 import unittest
 
-from lib.slides import BibleVerse
+from external_services import BibleVerse
 
 
 class BibleVerseParsingTest(unittest.TestCase):

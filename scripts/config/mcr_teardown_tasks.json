@@ -38,18 +38,18 @@
 					"subtasks": [
 						{
 							"name": "create_rebroadcast_1pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 1:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details."
+							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 1:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details."
 						},
 						{
 							"name": "create_rebroadcast_5pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 5:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details.",
+							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 5:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details.",
 							"prerequisites": [
 								"create_rebroadcast_1pm"
 							]
 						},
 						{
 							"name": "create_rebroadcast_7pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{REBROADCAST_TITLE}%' at 7:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details.",
+							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 7:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details.",
 							"prerequisites": [
 								"create_rebroadcast_5pm"
 							]
@@ -64,18 +64,10 @@
 							"description": "On BoxCast, export the recording to Vimeo. On the live event page, go to Download or Export Recording > Vimeo."
 						},
 						{
-							"name": "get_vimeo_video_data",
-							"description": "The Vimeo video data could not be retrieved automatically. The following Vimeo-related tasks will need to be completed manually.",
+							"name": "rename_video_on_vimeo",
+							"description": "On Vimeo, rename the video to '%{vimeo.video_title}%'.",
 							"prerequisites": [
 								"export_to_vimeo"
-							],
-							"only_auto": true
-						},
-						{
-							"name": "rename_video_on_vimeo",
-							"description": "On Vimeo, rename the video to '%{VIMEO_VIDEO_TITLE}%'.",
-							"prerequisites": [
-								"get_vimeo_video_data"
 							]
 						}
 					]
@@ -93,21 +85,21 @@
 						},
 						{
 							"name": "download_captions",
-							"description": "On BoxCast, download the captions and save them in %{ORIGINAL_CAPTIONS_PATH}%.",
+							"description": "On BoxCast, download the captions and save them in %{captions.original}%.",
 							"prerequisites": [
 								"review_and_publish_captions"
 							]
 						},
 						{
 							"name": "copy_captions_to_final",
-							"description": "Copy %{ORIGINAL_CAPTIONS_PATH}% to %{FINAL_CAPTIONS_PATH}%.",
+							"description": "Copy %{captions.original}% to %{captions.final}%.",
 							"prerequisites": [
 								"download_captions"
 							]
 						},
 						{
 							"name": "remove_worship_captions",
-							"description": "In %{FINAL_CAPTIONS_PATH}%, remove the worship captions.",
+							"description": "In %{captions.final}%, remove the worship captions.",
 							"prerequisites": [
 								"copy_captions_to_final"
 							]

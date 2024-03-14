@@ -31,9 +31,6 @@ from .scrollable_frame import ScrollableFrame
 
 T = TypeVar("T")
 
-_BACKGROUND_COLOUR = "#323232"
-_FOREGROUND_COLOUR = "#FFFFFF"
-
 _NORMAL_FONT = "Calibri 12"
 _ITALIC_FONT = f"{_NORMAL_FONT} italic"
 _BOLD_FONT = f"{_NORMAL_FONT} bold"
@@ -44,11 +41,19 @@ class TkMessenger(InputMessenger):
     _QUEUE_EVENT = "<<TaskQueued>>"
 
     def __init__(
-        self, title: str, description: str, show_statuses_by_default: bool = False
+        self,
+        title: str,
+        description: str,
+        *,
+        theme: Literal["dark", "light"],
+        show_statuses_by_default: bool,
     ) -> None:
         self._title = title
         self._description = description
         self._show_statuses_by_default = show_statuses_by_default
+        self._background = "#323232" if theme == "dark" else "#EEEEEE"
+        self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
+
         self._start_event = threading.Event()
         self._end_event = threading.Event()
         self._mutex = Lock()
@@ -259,7 +264,7 @@ class TkMessenger(InputMessenger):
             choice = False
             v.set(1)
 
-        w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        w = Toplevel(self._tk, padx=10, pady=10, background=self._background)
         try:
             w.title(title)
             w.protocol("WM_DELETE_WINDOW", select_no)
@@ -273,8 +278,8 @@ class TkMessenger(InputMessenger):
                 frame,
                 width=20,
                 font=_NORMAL_FONT,
-                background=_BACKGROUND_COLOUR,
-                foreground=_FOREGROUND_COLOUR,
+                background=self._background,
+                foreground=self._foreground,
                 allow_entry=False,
             )
             question_box.grid(row=0, column=0, sticky="NEW")
@@ -428,7 +433,7 @@ class TkMessenger(InputMessenger):
         self._scroll_frame = ScrollableFrame(
             self._tk,
             padding=25,
-            background=_BACKGROUND_COLOUR,
+            background=self._background,
             scrollbar_width=25,
         )
         self._scroll_frame.outer_frame.pack(fill="both", expand=1)
@@ -443,13 +448,15 @@ class TkMessenger(InputMessenger):
             padx=10,
             pady=10,
             width=int(0.5 * window_width),
+            background=self._background,
+            foreground=self._foreground,
         )
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
         self._tk.bind_all(self._QUEUE_EVENT, func=lambda _: self._handle_queued_task())
 
         # -------------------- Style --------------------
 
-        self._tk.config(background=_BACKGROUND_COLOUR)
+        self._tk.config(background=self._background)
         style = Style()
         style.configure(
             "TButton",
@@ -457,8 +464,8 @@ class TkMessenger(InputMessenger):
         )
         style.configure(
             "TFrame",
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
         )
 
         WIDTH = 170
@@ -470,8 +477,8 @@ class TkMessenger(InputMessenger):
                 self._scroll_frame,
                 width=WIDTH,
                 font=_ITALIC_FONT,
-                background=_BACKGROUND_COLOUR,
-                foreground=_FOREGROUND_COLOUR,
+                background=self._background,
+                foreground=self._foreground,
             )
             description_textbox.grid(sticky="NEW", pady=25)
             description_textbox.set_text(self._description)
@@ -488,8 +495,8 @@ class TkMessenger(InputMessenger):
             outer_padding=5,
             padx=5,
             pady=5,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
             normal_font=_NORMAL_FONT,
             header_font=_BOLD_FONT,
         )
@@ -505,8 +512,8 @@ class TkMessenger(InputMessenger):
             self._problems_frame,
             width=WIDTH,
             font=_H2_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
         )
         problems_header.grid(sticky="NEW", pady=(75, 0))
         problems_header.set_text("Problems")
@@ -516,8 +523,8 @@ class TkMessenger(InputMessenger):
             outer_padding=5,
             padx=5,
             pady=5,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
             normal_font=_NORMAL_FONT,
             header_font=_BOLD_FONT,
             bold_font=_BOLD_FONT,
@@ -534,8 +541,8 @@ class TkMessenger(InputMessenger):
             task_statuses_header_frame,
             width=13,
             font=_H2_FONT,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
         )
         task_statuses_header.grid(sticky="NEW", pady=(75, 0), row=0, column=0)
         task_statuses_header.set_text("Task Statuses")
@@ -568,8 +575,8 @@ class TkMessenger(InputMessenger):
             outer_padding=5,
             padx=5,
             pady=5,
-            background=_BACKGROUND_COLOUR,
-            foreground=_FOREGROUND_COLOUR,
+            background=self._background,
+            foreground=self._foreground,
             normal_font=_NORMAL_FONT,
             header_font=_BOLD_FONT,
             bold_font=_BOLD_FONT,
@@ -589,7 +596,7 @@ class TkMessenger(InputMessenger):
     ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
         entry_by_name: Dict[str, Entry] = {}
         error_message_by_name: Dict[str, ResponsiveTextbox] = {}
-        w = Toplevel(self._tk, padx=10, pady=10, background=_BACKGROUND_COLOUR)
+        w = Toplevel(self._tk, padx=10, pady=10, background=self._background)
         w.rowconfigure(index=1, weight=1)
         w.columnconfigure(index=0, weight=1)
         try:
@@ -600,8 +607,8 @@ class TkMessenger(InputMessenger):
                     text=prompt,
                     font=_ITALIC_FONT,
                     padding=(0, 0, 0, 50),
-                    background=_BACKGROUND_COLOUR,
-                    foreground=_FOREGROUND_COLOUR,
+                    background=self._background,
+                    foreground=self._foreground,
                 )
                 prompt_box.grid()
             for name, param in params.items():
@@ -616,8 +623,8 @@ class TkMessenger(InputMessenger):
                     entry_row,
                     text=param.display_name,
                     font=_BOLD_FONT,
-                    background=_BACKGROUND_COLOUR,
-                    foreground=_FOREGROUND_COLOUR,
+                    background=self._background,
+                    foreground=self._foreground,
                 )
                 name_label.grid(row=0, column=0, padx=5, sticky="NEW")
                 entry = Entry(
@@ -634,8 +641,8 @@ class TkMessenger(InputMessenger):
                         param_frame,
                         width=20,
                         font=_ITALIC_FONT,
-                        background=_BACKGROUND_COLOUR,
-                        foreground=_FOREGROUND_COLOUR,
+                        background=self._background,
+                        foreground=self._foreground,
                     )
                     description_box.grid(sticky="NEW")
                     description_box.set_text(param.description)
@@ -643,7 +650,7 @@ class TkMessenger(InputMessenger):
                     param_frame,
                     width=20,
                     font=_NORMAL_FONT,
-                    background=_BACKGROUND_COLOUR,
+                    background=self._background,
                     foreground="red",
                 )
                 error_message.grid(sticky="NEW")
@@ -1058,7 +1065,7 @@ class _ActionItemGrid(Frame):
         msg_header_label.set_text("Instructions")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
+            self, thickness=3, orient="horizontal", colour=self._foreground
         )
         separator.grid(row=1, column=0, columnspan=5, sticky="EW")
 
@@ -1273,7 +1280,7 @@ class _TaskStatusGrid(Frame):
         msg_header_label.set_text("Details")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
+            self, thickness=3, orient="horizontal", colour=self._foreground
         )
         separator.grid(row=1, column=0, columnspan=4, sticky="EW")
 
@@ -1419,7 +1426,7 @@ class _ProblemGrid(Frame):
         msg_header_label.set_text("Details")
 
         separator = _ThickSeparator(
-            self, thickness=3, orient="horizontal", colour=_FOREGROUND_COLOUR
+            self, thickness=3, orient="horizontal", colour=self._foreground
         )
         separator.grid(row=1, column=0, columnspan=3, sticky="EW")
 
@@ -1431,7 +1438,11 @@ class _ProgressBarGroup(Toplevel):
         padx: int,
         pady: int,
         width: int,
+        background: str,
+        foreground: str,
     ) -> None:
+        self._background = background
+        self._foreground = foreground
         self._mutex = Lock()
         self._key_gen = 0
         self._bar_by_key: Dict[int, Tuple[Progressbar, Label, Label, float, str]] = {}
@@ -1440,7 +1451,7 @@ class _ProgressBarGroup(Toplevel):
             parent,
             padx=padx,
             pady=pady,
-            background=_BACKGROUND_COLOUR,
+            background=self._background,
             width=width,
         )
         # Disable closing
@@ -1456,15 +1467,15 @@ class _ProgressBarGroup(Toplevel):
             name_label = Label(
                 self,
                 text=display_name,
-                background=_BACKGROUND_COLOUR,
-                foreground=_FOREGROUND_COLOUR,
+                background=self._background,
+                foreground=self._foreground,
                 font=_NORMAL_FONT,
             )
             name_label.grid(row=2 * key, columnspan=2)
             progress_label = Label(
                 self,
-                background=_BACKGROUND_COLOUR,
-                foreground=_FOREGROUND_COLOUR,
+                background=self._background,
+                foreground=self._foreground,
                 text=f"[0.00/{max_value:.2f} {units}]",
                 font=_NORMAL_FONT,
             )

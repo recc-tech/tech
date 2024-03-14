@@ -2,13 +2,16 @@ import asyncio
 import filecmp
 import inspect
 import unittest
+from argparse import Namespace
 from datetime import date
 from pathlib import Path
 from typing import Tuple
 from unittest.mock import Mock
 
+from args import ReccArgs
 from autochecklist import Messenger
-from lib import Attachment, CredentialStore, PlanningCenterClient
+from config import Config
+from external_services import Attachment, CredentialStore, PlanningCenterClient
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
 TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
@@ -121,7 +124,7 @@ class PlanningCenterTestCase(unittest.TestCase):
             )
         )
 
-        self.assertEqual([None, None], results)
+        self.assertEqual({actual_script_path: None, actual_notes_path: None}, results)
         self.assertTrue(
             filecmp.cmp(expected_notes_path, actual_notes_path, shallow=False),
             "Message notes files must match.",
@@ -133,6 +136,10 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:
+        args = ReccArgs(
+            Namespace(ui="tk", verbose=False, no_run=False, auto=None, date=None),
+            lambda msg: self.fail(f"Argument parsing error: {msg}"),
+        )
         messenger = Mock(spec=Messenger)
         log_problem_mock = Mock()
         messenger.log_problem = log_problem_mock
@@ -149,6 +156,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         client = PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
+            config=Config(args, allow_multiple_only_for_testing=True),
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )

@@ -1,0 +1,9 @@
+station = "foh"
+
+[folder]
+downloads = "~/Downloads"
+home = "~/Documents"
+assets_by_service = "%{folder.home}%/ProPresenter Assets"
+assets_by_type = "%{folder.home}%/ProPresenter Assets"
+images = "%{folder.home}%/ProPresenter Assets"
+videos = "%{folder.home}%/ProPresenter Assets"

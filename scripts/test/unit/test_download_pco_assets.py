@@ -1,9 +1,11 @@
 # pyright: reportPrivateUsage=false
 
 import unittest
-from unittest.mock import Mock
 
-from lib.download_pco_assets import Attachment, _classify_attachments
+from args import ReccArgs
+from config import Config
+from lib import Attachment
+from lib.assets import Attachment, _classify_attachments
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
@@ -70,9 +72,13 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
         all_attachments = kids_video.union(notes, images, videos, unknown_assets)
         original_all_attachments = set(all_attachments)
 
-        messenger = Mock()
+        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
 
-        k, n, i, v, u = _classify_attachments(all_attachments, messenger)
+        k, n, i, v, u = _classify_attachments(
+            all_attachments,
+            kids_video_regex=config.kids_video_regex,
+            sermon_notes_regex=config.sermon_notes_regex,
+        )
 
         # Classifier should not mutate input
         self.assertEqual(original_all_attachments, all_attachments)
@@ -90,6 +96,10 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="application/mp4",
         )
-        messenger = Mock()
-        k, *_ = _classify_attachments({kids_video}, messenger)
+        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
+        k, *_ = _classify_attachments(
+            {kids_video},
+            kids_video_regex=config.kids_video_regex,
+            sermon_notes_regex=config.sermon_notes_regex,
+        )
         self.assertEqual({kids_video}, k)

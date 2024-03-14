@@ -6,20 +6,24 @@ from __future__ import annotations
 
 import json
 import re
-import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple
-from urllib.parse import quote_plus
+from typing import Any, Dict, List, Set, Tuple
 
-from autochecklist import CancellationToken, Messenger, ProblemLevel
+from autochecklist import Messenger, ProblemLevel
+from config import (
+    Bbox,
+    Config,
+    Font,
+    FooterSlideStyle,
+    NoFooterSlideStyle,
+    Rectangle,
+    Textbox,
+)
+from external_services import BibleVerse, BibleVerseFinder
 from matplotlib.font_manager import FontManager, FontProperties
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-
-from .web_driver import ReccWebDriver
 
 SAFE_FILENAME_CHARACTERS = re.compile("^[a-z0-9-_ &,]$", re.IGNORECASE)
 # The maximum length of the full path to a file on Windows is 260 (see
@@ -27,405 +31,6 @@ SAFE_FILENAME_CHARACTERS = re.compile("^[a-z0-9-_ &,]$", re.IGNORECASE)
 # In practice, it should be safe to save files with a length of 50; we won't
 # put the slides in directories whose length exceeds 200 characters.
 MAX_FILENAME_LEN = 50
-
-
-# region Create list of Bible book names and aliases
-
-_canonical_book_name_dict = {
-    "genesis": "Genesis",
-    "gen": "Genesis",
-    "ge": "Genesis",
-    "gn": "Genesis",
-    "exodus": "Exodus",
-    "ex": "Exodus",
-    "exod": "Exodus",
-    "exo": "Exodus",
-    "leviticus": "Leviticus",
-    "lev": "Leviticus",
-    "le": "Leviticus",
-    "lv": "Leviticus",
-    "numbers": "Numbers",
-    "num": "Numbers",
-    "nu": "Numbers",
-    "nm": "Numbers",
-    "nb": "Numbers",
-    "deuteronomy": "Deuteronomy",
-    "deut": "Deuteronomy",
-    "de": "Deuteronomy",
-    "dt": "Deuteronomy",
-    "joshua": "Joshua",
-    "josh": "Joshua",
-    "jos": "Joshua",
-    "jsh": "Joshua",
-    "judges": "Judges",
-    "judg": "Judges",
-    "jdg": "Judges",
-    "jg": "Judges",
-    "jdgs": "Judges",
-    "ruth": "Ruth",
-    "rth": "Ruth",
-    "ru": "Ruth",
-    # --- Add programmatically ---
-    "ezra": "Ezra",
-    "ezr": "Ezra",
-    "ez": "Ezra",
-    "nehemiah": "Nehemiah",
-    "neh": "Nehemiah",
-    "ne": "Nehemiah",
-    "esther": "Esther",
-    "est": "Esther",
-    "esth": "Esther",
-    "es": "Esther",
-    "job": "Job",
-    "jb": "Job",
-    "psalm": "Psalm",
-    "psalms": "Psalm",
-    "ps": "Psalm",
-    "pslm": "Psalm",
-    "psa": "Psalm",
-    "psm": "Psalm",
-    "pss": "Psalm",
-    "proverbs": "Proverbs",
-    "prov": "Proverbs",
-    "pro": "Proverbs",
-    "prv": "Proverbs",
-    "pr": "Proverbs",
-    "ecclesiastes": "Ecclesiastes",
-    "eccles": "Ecclesiastes",
-    "eccle": "Ecclesiastes",
-    "ecc": "Ecclesiastes",
-    "ec": "Ecclesiastes",
-    "song of solomon": "Song of Solomon",
-    "song": "Song of Solomon",
-    "song of songs": "Song of Solomon",
-    "sos": "Song of Solomon",
-    "so": "Song of Solomon",
-    "canticle of canticles": "Song of Solomon",
-    "canticles": "Song of Solomon",
-    "cant": "Song of Solomon",
-    "isaiah": "Isaiah",
-    "isa": "Isaiah",
-    "is": "Isaiah",
-    "jeremiah": "Jeremiah",
-    "jer": "Jeremiah",
-    "je": "Jeremiah",
-    "jr": "Jeremiah",
-    "lamentations": "Lamentations",
-    "lam": "Lamentations",
-    "la": "Lamentations",
-    "ezekiel": "Ezekiel",
-    "ezek": "Ezekiel",
-    "eze": "Ezekiel",
-    "ezk": "Ezekiel",
-    "daniel": "Daniel",
-    "dan": "Daniel",
-    "da": "Daniel",
-    "dn": "Daniel",
-    "hosea": "Hosea",
-    "hos": "Hosea",
-    "ho": "Hosea",
-    "joel": "Joel",
-    "jl": "Joel",
-    "amos": "Amos",
-    "am": "Amos",
-    "obadiah": "Obadiah",
-    "obad": "Obadiah",
-    "ob": "Obadiah",
-    "jonah": "Jonah",
-    "jnh": "Jonah",
-    "jon": "Jonah",
-    "micah": "Micah",
-    "mic": "Micah",
-    "mc": "Micah",
-    "nahum": "Nahum",
-    "nah": "Nahum",
-    "na": "Nahum",
-    "habakkuk": "Habakkuk",
-    "hab": "Habakkuk",
-    "hb": "Habakkuk",
-    "zephaniah": "Zephaniah",
-    "zeph": "Zephaniah",
-    "zep": "Zephaniah",
-    "zp": "Zephaniah",
-    "haggai": "Haggai",
-    "hag": "Haggai",
-    "hg": "Haggai",
-    "zechariah": "Zechariah",
-    "zech": "Zechariah",
-    "zec": "Zechariah",
-    "zc": "Zechariah",
-    "malachi": "Malachi",
-    "mal": "Malachi",
-    "ml": "Malachi",
-    "matthew": "Matthew",
-    "matt": "Matthew",
-    "mt": "Matthew",
-    "mark": "Mark",
-    "mrk": "Mark",
-    "mar": "Mark",
-    "mk": "Mark",
-    "mr": "Mark",
-    "marc": "Mark",
-    "luke": "Luke",
-    "luk": "Luke",
-    "lk": "Luke",
-    "john": "John",
-    "joh": "John",
-    "jhn": "John",
-    "jn": "John",
-    "acts": "Acts",
-    "act": "Acts",
-    "ac": "Acts",
-    "romans": "Romans",
-    "rom": "Romans",
-    "ro": "Romans",
-    "rm": "Romans",
-    # --- Add programmatically ---
-    "galatians": "Galatians",
-    "gal": "Galatians",
-    "ga": "Galatians",
-    "ephesians": "Ephesians",
-    "eph": "Ephesians",
-    "ephes": "Ephesians",
-    "philippians": "Philippians",
-    "phillipians": "Philippians",
-    "philipians": "Philippians",
-    "phillippians": "Philippians",
-    "phil": "Philippians",
-    "php": "Philippians",
-    "pp": "Philippians",
-    "colossians": "Colossians",
-    "col": "Colossians",
-    "co": "Colossians",
-    # --- Add programmatically ---
-    "titus": "Titus",
-    "tit": "Titus",
-    "ti": "Titus",
-    "philemon": "Philemon",
-    "philem": "Philemon",
-    "phm": "Philemon",
-    "pm": "Philemon",
-    "hebrews": "Hebrews",
-    "heb": "Hebrews",
-    "james": "James",
-    "jas": "James",
-    "jm": "James",
-    # --- Add programmatically ---
-    "jude": "Jude",
-    "jud": "Jude",
-    "Jd": "Jude",
-    "revelation": "Revelation",
-    "revelations": "Revelation",
-    "rev": "Revelation",
-    "re": "Revelation",
-    "the revelation": "Revelation",
-}
-for _first in ["1", "i", "1st", "first"]:
-    for _book in ["samuel", "sam", "sa", "sm", "s"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Samuel"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Samuel"
-    for _book in ["kings", "king", "kgs", "ki", "kin"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Kings"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Kings"
-    for _book in ["chronicles", "chron", "chr", "ch"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Chronicles"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Chronicles"
-    for _book in ["corinthians", "cor", "co"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Corinthians"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Corinthians"
-    for _book in ["thessalonians", "thess", "thes", "th"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Thessalonians"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Thessalonians"
-    for _book in ["timothy", "tim", "ti"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Timothy"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Timothy"
-    for _book in ["peter", "pet", "pe", "pt", "p"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 Peter"
-        _canonical_book_name_dict[f"1{_book}"] = "1 Peter"
-    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
-        _canonical_book_name_dict[f"{_first} {_book}"] = "1 John"
-        _canonical_book_name_dict[f"1{_book}"] = "1 John"
-for _second in ["2", "ii", "2nd", "second"]:
-    for _book in ["samuel", "sam", "sa", "sm", "s"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Samuel"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Samuel"
-    for _book in ["kings", "king", "kgs", "ki", "kin"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Kings"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Kings"
-    for _book in ["chronicles", "chron", "chr", "ch"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Chronicles"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Chronicles"
-    for _book in ["corinthians", "cor", "co"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Corinthians"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Corinthians"
-    for _book in ["thessalonians", "thess", "thes", "th"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Thessalonians"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Thessalonians"
-    for _book in ["timothy", "tim", "ti"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Timothy"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Timothy"
-    for _book in ["peter", "pet", "pe", "pt", "p"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 Peter"
-        _canonical_book_name_dict[f"2{_book}"] = "2 Peter"
-    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
-        _canonical_book_name_dict[f"{_second} {_book}"] = "2 John"
-        _canonical_book_name_dict[f"2{_book}"] = "2 John"
-for _third in ["3", "iii", "3rd", "third"]:
-    for _book in ["john", "jhn", "joh", "jn", "jo", "j"]:
-        _canonical_book_name_dict[f"{_third} {_book}"] = "3 John"
-        _canonical_book_name_dict[f"3{_book}"] = "3 John"
-
-# endregion
-
-
-@dataclass(frozen=True)
-class BibleVerse:
-    book: str
-    chapter: int
-    verse: int
-    translation: str
-
-    _CANONICAL_BOOK_NAME = _canonical_book_name_dict
-
-    def __str__(self) -> str:
-        return f"{self.book} {self.chapter}:{self.verse} ({self.translation})"
-
-    @staticmethod
-    def parse(text: str) -> Optional[Tuple[List[BibleVerse], str]]:
-        try:
-            books_regex = (
-                "(" + "|".join(BibleVerse._CANONICAL_BOOK_NAME.keys()) + ")\\.?"
-            )
-            chapter_regex = r"(\d\d?\d?)"
-            verse_range_regex = r"(?:\d{1,3}(?:-\d{1,3})?)"
-            verses_regex = f"({verse_range_regex}(?:,{verse_range_regex})*)"
-            # All the translations available on BibleGateway as of 2023-09-17
-            translations = "KJ21|ASV|AMP|AMPC|BRG|CSB|CEB|CJB|CEV|DARBY|DLNT|DRA|ERV|EHV|ESV|ESVUK|EXB|GNV|GW|GNT|HCSB|ICB|ISV|PHILLIPS|JUB|KJV|AKJV|LSB|LEB|TLB|MSG|MEV|MOUNCE|NOG|NABRE|NASB|NASB1995|NCB|NCV|NET|NIRV|NIV|NIVUK|NKJV|NLV|NLT|NMB|NRSVA|NRSVACE|NRSVCE|NRSVUE|NTE|OJB|RGT|RSV|RSVCE|TLV|VOICE|WEB|WE|WYC|YLT"
-            translation_regex = r"(?:\s+\(?(" + translations + r")\)?)?"
-            verse_regex = re.compile(
-                f"{books_regex} {chapter_regex}\\s*:\\s*{verses_regex}{translation_regex}(.*)".replace(
-                    " ", r"\s+"
-                ),
-                re.IGNORECASE,
-            )
-
-            m = verse_regex.fullmatch(text.strip())
-            if m is None:
-                return None
-
-            book = BibleVerse._parse_book(m.group(1))
-            chapter = int(m.group(2))
-            verses = BibleVerse._parse_verses(m.group(3))
-            translation = "NLT" if m.group(4) is None else m.group(4).upper()
-            remaining_text = m.group(5)
-            return (
-                [BibleVerse(book, chapter, v, translation) for v in verses],
-                remaining_text,
-            )
-        except Exception:
-            return None
-
-    @staticmethod
-    def _parse_book(book: str) -> str:
-        book = book.strip()
-        if book.endswith("."):
-            book = book[:-1]
-        book = re.sub(r"\s+", " ", book)
-        book = book.lower()
-        return BibleVerse._CANONICAL_BOOK_NAME[book]
-
-    @staticmethod
-    def _parse_verses(raw_verses: str) -> List[int]:
-        verse_ranges = raw_verses.split(",")
-        split_verse_ranges = [
-            tuple(map(int, v.split("-"))) if "-" in v else (int(v), int(v))
-            for v in verse_ranges
-        ]
-        verse_sets = [list(range(x[0], x[1] + 1)) for x in split_verse_ranges]
-        flattened_verse_set = [v for vs in verse_sets for v in vs]
-        return flattened_verse_set
-
-
-class BibleVerseFinder:
-    def __init__(
-        self,
-        driver: ReccWebDriver,
-        messenger: Messenger,
-        cancellation_token: Optional[CancellationToken],
-    ):
-        self._driver = driver
-        self._messenger = messenger
-
-        try:
-            self._set_page_options(cancellation_token)
-        except Exception:
-            self._messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to set page options on BibleGateway. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
-                stacktrace=traceback.format_exc(),
-            )
-
-    def find(self, verse: BibleVerse) -> Optional[str]:
-        try:
-            self._get_page(verse)
-            by = By.XPATH
-            xpath = "//div[@class='passage-text']//p"
-            paragraphs = self._driver.find_elements(by, xpath)
-            if not paragraphs:
-                raise NoSuchElementException(
-                    f"No elements found for the given criteria (by = {by}, value = '{xpath}')."
-                )
-            text = "\n".join([p.get_attribute("innerText") for p in paragraphs])
-            return self._normalize(text)
-        except Exception:
-            self._messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to fetch text for Bible verse {verse}.",
-                stacktrace=traceback.format_exc(),
-            )
-            return None
-
-    def _get_page(self, verse: BibleVerse, use_print_interface: bool = True):
-        search = quote_plus(f"{verse.book} {verse.chapter}:{verse.verse}")
-        url = f"https://www.biblegateway.com/passage/?search={search}&version={verse.translation}"
-        if use_print_interface:
-            url += "&interface=print"
-        self._driver.get(url)
-
-    def _set_page_options(self, cancellation_token: Optional[CancellationToken]):
-        self._get_page(BibleVerse("Genesis", 1, 1, "NLT"), use_print_interface=False)
-
-        page_options_btn = self._driver.wait_for_single_element(
-            By.XPATH,
-            "//*[name()='svg']/*[name()='title'][contains(., 'Page Options')]/..",
-            cancellation_token=cancellation_token,
-        )
-        page_options_btn.click()
-
-        for title in ["Cross-references", "Footnotes", "Verse Numbers", "Headings"]:
-            checkbox = self._driver.wait_for_single_element(
-                By.XPATH,
-                f"//*[name()='svg']/*[name()='title'][contains(., '{title}')]/..",
-                cancellation_token=cancellation_token,
-            )
-            checkbox_name = checkbox.get_attribute("name")
-            if checkbox_name == "checked":
-                self._messenger.log_debug(
-                    f"Checkbox for option '{title}' was checked. Disabling it now."
-                )
-                checkbox.click()
-            elif checkbox_name == "square":
-                self._messenger.log_debug(
-                    f"Checkbox for option '{title}' was already unchecked."
-                )
-            else:
-                self._messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"While setting page options on BibleGateway, could not determine whether option '{title}' is enabled or disabled. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
-                )
-
-    def _normalize(self, text: str) -> str:
-        return re.sub(r"\s+", " ", text)
 
 
 class SlideBlueprintReader:
@@ -619,25 +224,6 @@ def _convert_text_to_filename(text: str) -> str:
 FONT_MANAGER = FontManager()
 
 
-@dataclass
-class FontSpec:
-    family: List[str]
-    style: Literal["normal", "italic", "oblique"]
-    max_size: int
-    min_size: int
-
-    def make_font(self, size: int) -> FreeTypeFont:
-        properties = FontProperties(family=self.family, style=self.style)
-        path = FONT_MANAGER.findfont(properties)
-        return ImageFont.truetype(path, size=size)
-
-
-IMG_WIDTH = 1920
-IMG_HEIGHT = 1080
-OUTER_MARGIN = 100
-FONT_FAMILY = ["Helvetica", "Calibri", "sans-serif"]
-
-
 @dataclass(frozen=True)
 class SlideBlueprint:
     body_text: str
@@ -665,241 +251,133 @@ class Slide:
         self.image.save(path, format="PNG")
 
 
-@dataclass
-class _Bbox:
-    left: int
-    top: int
-    right: int
-    bottom: int
-
-    @staticmethod
-    def xywh(x: int, y: int, w: int, h: int) -> _Bbox:
-        return _Bbox(left=x, top=y, right=x + w, bottom=y + h)
-
-    def get_horizontal_centre(self) -> float:
-        return self.left + (self.right - self.left) / 2
-
-    def get_vertical_centre(self) -> float:
-        return self.top + (self.bottom - self.top) / 2
-
-    def get_width(self) -> int:
-        return self.right - self.left
-
-    def get_height(self) -> int:
-        return self.bottom - self.top
-
-
 class SlideGenerator:
-    def __init__(self, messenger: Messenger):
+    def __init__(self, messenger: Messenger, config: Config):
         self._messenger = messenger
+        self._config = config
 
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
         return [
             (
-                self._generate_fullscreen_slide_with_footer(b)
+                self._generate_slide_with_footer(
+                    b, self._config.fullscreen_scripture_style
+                )
                 if b.footer_text
-                else self._generate_fullscreen_slide_without_footer(b)
+                else self._generate_slide_without_footer(
+                    b, self._config.fullscreen_message_style
+                )
             )
             for b in blueprints
         ]
 
     def generate_lower_third_slides(
-        self, blueprints: List[SlideBlueprint], show_backdrop: bool
+        self, blueprints: List[SlideBlueprint]
     ) -> List[Slide]:
         return [
             (
-                self._generate_lower_third_slide_with_footer(b, show_backdrop)
+                self._generate_slide_with_footer(
+                    b, self._config.lowerthird_scripture_style
+                )
                 if b.footer_text
-                else self._generate_lower_third_slide_without_footer(b, show_backdrop)
+                else self._generate_slide_without_footer(
+                    b, self._config.lowerthird_message_style
+                )
             )
             for b in blueprints
         ]
 
-    def _generate_fullscreen_slide_with_footer(self, input: SlideBlueprint) -> Slide:
-        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
-        draw = ImageDraw.Draw(img)
-        self._draw_text(
-            draw=draw,
-            text=input.body_text,
-            bbox=_Bbox(
-                left=OUTER_MARGIN,
-                top=OUTER_MARGIN,
-                right=IMG_WIDTH - OUTER_MARGIN,
-                bottom=IMG_HEIGHT - 3 * OUTER_MARGIN,
-            ),
-            horiz_align="left",
-            vert_align="top",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=36, max_size=72
-            ),
-            foreground="#333333",
-            stroke_width=1,  # bold
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        self._draw_text(
-            draw=draw,
-            text=input.footer_text,
-            bbox=_Bbox(
-                OUTER_MARGIN,
-                IMG_HEIGHT - 2 * OUTER_MARGIN,
-                IMG_WIDTH - OUTER_MARGIN,
-                IMG_HEIGHT - OUTER_MARGIN,
-            ),
-            horiz_align="right",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="oblique", min_size=30, max_size=60
-            ),
-            foreground="dimgrey",
-            stroke_width=0,
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        return Slide(image=img, name=input.name)
-
-    def _generate_fullscreen_slide_without_footer(self, input: SlideBlueprint) -> Slide:
-        img = Image.new(mode="L", size=(IMG_WIDTH, IMG_HEIGHT), color="white")
-        draw = ImageDraw.Draw(img)
-        self._draw_text(
-            draw=draw,
-            text=input.body_text,
-            bbox=_Bbox(
-                OUTER_MARGIN,
-                OUTER_MARGIN,
-                IMG_WIDTH - OUTER_MARGIN,
-                IMG_HEIGHT - OUTER_MARGIN,
-            ),
-            horiz_align="center",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=36, max_size=72
-            ),
-            foreground="#333333",
-            stroke_width=1,  # bold
-            line_spacing=1.75,
-            slide_name=input.name,
-        )
-        return Slide(image=img, name=input.name)
-
-    def _generate_lower_third_slide_with_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
+    def _generate_slide_without_footer(
+        self, blueprint: SlideBlueprint, style: NoFooterSlideStyle
     ) -> Slide:
-        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
+        img = Image.new(
+            mode=style.mode,
+            size=style.width_height,
+            color=str(style.background_colour),
+        )
         draw = ImageDraw.Draw(img)
-
-        if show_backdrop:
-            draw.rectangle((0, 825, IMG_WIDTH, 825 + 225), fill="#00000088")
+        for rect in style.shapes:
+            self._draw_rectangle(draw, rect)
         self._draw_text(
             draw=draw,
             text=blueprint.body_text,
-            bbox=_Bbox.xywh(x=25, y=825, w=1870, h=160),
-            horiz_align="left",
-            vert_align="top",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=24, max_size=48
-            ),
-            foreground="white",
-            stroke_width=1,
-            line_spacing=1.5,
             slide_name=blueprint.name,
+            textbox=style.body,
+        )
+        return Slide(image=img, name=blueprint.name)
+
+    def _generate_slide_with_footer(
+        self, blueprint: SlideBlueprint, style: FooterSlideStyle
+    ) -> Slide:
+        img = Image.new(
+            mode=style.mode,
+            size=style.width_height,
+            color=str(style.background_colour),
+        )
+        draw = ImageDraw.Draw(img)
+        for rect in style.shapes:
+            self._draw_rectangle(draw, rect)
+        self._draw_text(
+            draw=draw,
+            text=blueprint.body_text,
+            slide_name=blueprint.name,
+            textbox=style.body,
         )
         self._draw_text(
             draw=draw,
             text=blueprint.footer_text,
-            bbox=_Bbox.xywh(x=25, y=985, w=1870, h=50),
-            horiz_align="right",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="oblique", min_size=20, max_size=40
-            ),
-            foreground="#DDDDDD",
-            stroke_width=0,
-            line_spacing=1,
             slide_name=blueprint.name,
+            textbox=style.footer,
         )
-
-        return Slide(image=img, name=blueprint.name)
-
-    def _generate_lower_third_slide_without_footer(
-        self, blueprint: SlideBlueprint, show_backdrop: bool
-    ) -> Slide:
-        img = Image.new(mode="RGBA", size=(IMG_WIDTH, IMG_HEIGHT), color="#00000000")
-        draw = ImageDraw.Draw(img)
-
-        if show_backdrop:
-            draw.rectangle((0, 850, IMG_WIDTH, 850 + 200), fill="#00000088")
-
-        self._draw_text(
-            draw=draw,
-            text=blueprint.body_text,
-            bbox=_Bbox.xywh(x=25, y=850, w=1870, h=200),
-            horiz_align="center",
-            vert_align="center",
-            font_spec=FontSpec(
-                family=FONT_FAMILY, style="normal", min_size=24, max_size=48
-            ),
-            foreground="white",
-            stroke_width=1,
-            line_spacing=2,
-            slide_name=blueprint.name,
-        )
-
         return Slide(image=img, name=blueprint.name)
 
     def _draw_text(
-        self,
-        draw: ImageDraw.ImageDraw,
-        text: str,
-        bbox: _Bbox,
-        horiz_align: Literal["left", "center", "right"],
-        vert_align: Literal["top", "center", "bottom"],
-        font_spec: FontSpec,
-        foreground: str,
-        stroke_width: int,
-        line_spacing: float,
-        slide_name: str,
+        self, draw: ImageDraw.ImageDraw, text: str, slide_name: str, textbox: Textbox
     ):
-        size = font_spec.max_size
+        size = textbox.font.max_size
+        bbox = textbox.bbox
+        halign = textbox.horiz_align
+        valign = textbox.vert_align
         while True:
-            font = font_spec.make_font(size)
-            wrapped_text = _wrap_text(text, bbox.get_width(), font, stroke_width)
+            font = self.make_font(textbox.font, size)
+            wrapped_text = _wrap_text(
+                text, bbox.get_width(), font, textbox.stroke_width
+            )
 
-            anchor_horiz = {"left": "l", "center": "m", "right": "r"}[horiz_align]
-            anchor_vert = {"top": "a", "center": "m", "bottom": "d"}[vert_align]
+            anchor_horiz = {"left": "l", "center": "m", "right": "r"}[halign]
+            anchor_vert = {"top": "a", "center": "m", "bottom": "d"}[valign]
             anchor = f"{anchor_horiz}{anchor_vert}"
 
             x = {
                 "left": bbox.left,
                 "center": bbox.get_horizontal_centre(),
                 "right": bbox.right,
-            }[horiz_align]
+            }[halign]
             y = {
                 "top": bbox.top,
                 "center": bbox.get_vertical_centre(),
                 "bottom": bbox.bottom,
-            }[vert_align]
+            }[valign]
             xy = (x, y)
 
-            line_height = _get_font_bbox("A", font, stroke_width).get_height()
-            textbbox = _Bbox(
+            line_height = _get_font_bbox("A", font, textbox.stroke_width).get_height()
+            textbbox = Bbox(
                 *draw.textbbox(
                     xy=xy,
                     text=wrapped_text,
                     font=font,
-                    spacing=line_height * (line_spacing - 1),
-                    align=horiz_align,
+                    spacing=line_height * (textbox.line_spacing - 1),
+                    align=textbox.horiz_align,
                     anchor=anchor,
-                    stroke_width=stroke_width,
+                    stroke_width=textbox.stroke_width,
                 )
             )
             text_overflowed = (
                 textbbox.get_height() > bbox.get_height()
                 or textbbox.get_width() > bbox.get_width()
             )
-            if text_overflowed and size <= font_spec.min_size:
+            if text_overflowed and size <= textbox.font.min_size:
                 self._messenger.log_problem(
                     ProblemLevel.WARN,
                     f"The text in slide '{slide_name}' does not fit within the normal text box, even with the smallest font size.",
@@ -914,14 +392,26 @@ class SlideGenerator:
         draw.text(
             xy=xy,
             text=wrapped_text,
-            fill=foreground,
+            fill=str(textbox.text_colour),
             font=font,
-            spacing=line_height * (line_spacing - 1),
-            align=horiz_align,
+            spacing=line_height * (textbox.line_spacing - 1),
+            align=halign,
             anchor=anchor,
-            stroke_width=stroke_width,
-            stroke_fill=foreground,
+            stroke_width=textbox.stroke_width,
+            stroke_fill=str(textbox.text_colour),
         )
+
+    def _draw_rectangle(self, draw: ImageDraw.ImageDraw, rect: Rectangle) -> None:
+        b = rect.bbox
+        draw.rectangle(
+            xy=(b.left, b.top, b.right, b.bottom),
+            fill=str(rect.background_colour),
+        )
+
+    def make_font(self, font: Font, size: int) -> FreeTypeFont:
+        properties = FontProperties(family=font.family, style=font.style)
+        path = FONT_MANAGER.findfont(properties)
+        return ImageFont.truetype(path, size=size)
 
 
 def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
@@ -969,5 +459,5 @@ def _extract_max_prefix(
     return (output, words)
 
 
-def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> _Bbox:
-    return _Bbox(*font.getbbox(text, stroke_width=stroke_width))
+def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> Bbox:
+    return Bbox(*font.getbbox(text, stroke_width=stroke_width))
