@@ -10,6 +10,7 @@ from .src.config import (
     StringTemplate,
     activate_profile,
     get_active_profile,
+    get_default_profile,
     list_profiles,
     locate_profile,
 )

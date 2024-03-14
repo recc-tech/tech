@@ -63,6 +63,10 @@ def activate_profile(profile: str) -> None:
         ) from e
 
 
+def get_default_profile() -> str:
+    return "foh" if platform.system() == "Darwin" else "mcr"
+
+
 def list_profiles() -> Set[str]:
     files = os.listdir(_PROFILES_DIR)
     return {f[:-5] for f in files if f.endswith(".toml")}
@@ -327,7 +331,7 @@ class Config(BaseConfig):
             if strict:
                 raise ValueError(f"{_PROFILE_SELECT_FILE.as_posix()} is missing.")
             else:
-                profile = "foh" if platform.system() == "Darwin" else "mcr"
+                profile = get_default_profile()
                 activate_profile(profile)
         self._profile = profile
         self.reload()

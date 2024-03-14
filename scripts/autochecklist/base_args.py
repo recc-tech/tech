@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
 from typing import Callable, Dict, List, Literal, Optional, Set, Type, TypeVar
 
 T = TypeVar("T", bound="BaseArgs")
@@ -57,7 +57,11 @@ class BaseArgs:
 
     @classmethod
     def parse(cls: Type[T], args: List[str]) -> T:
-        parser = ArgumentParser(prog=cls.NAME, description=cls.DESCRIPTION)
+        parser = ArgumentParser(
+            prog=cls.NAME,
+            description=cls.DESCRIPTION,
+            formatter_class=ArgumentDefaultsHelpFormatter,
+        )
         cls.set_up_parser(parser)
         if len(args) >= 1:
             # Skip the program name

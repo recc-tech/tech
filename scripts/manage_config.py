@@ -1,4 +1,4 @@
-from argparse import ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from pathlib import Path
 from typing import Optional
 
@@ -95,37 +95,47 @@ def test_load_all_configs(test_current: bool = True) -> None:
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Manage script configuration.")
+    parser = ArgumentParser(
+        description="manage script configuration",
+        formatter_class=ArgumentDefaultsHelpFormatter,
+    )
     subparsers = parser.add_subparsers(dest="subcommand")
 
     list_parser = subparsers.add_parser(
         "list",
-        help="Show the list of all available profiles.",
+        help="show the list of all available profiles",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
 
     show_parser = subparsers.add_parser(
         "show",
-        help="Show all configuration values for a profile.",
+        help="show all configuration values for a profile",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
     show_parser.add_argument(
         "--profile",
         "-p",
         required=False,
-        help="The name of the profile to show.",
+        help="name of the profile to show",
     )
 
     activate_parser = subparsers.add_parser(
         "activate",
-        help="Activate a configuration profile.",
+        help="activate a configuration profile",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
     activate_parser.add_argument(
-        "profile",
-        help="The name of the profile to activate.",
+        "--profile",
+        "-p",
+        required=False,
+        default=config.get_default_profile(),
+        help="name of the profile to activate",
     )
 
     test_parser = subparsers.add_parser(
         "test",
-        help="Test that the configuration can be loaded.",
+        help="test that the configuration can be loaded",
+        formatter_class=ArgumentDefaultsHelpFormatter,
     )
 
     args = parser.parse_args()
