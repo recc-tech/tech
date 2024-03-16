@@ -18,7 +18,7 @@ def download_assets(
     )
 
 
-def create_kids_connection_playlist(
+def create_Kids_Connection_playlist(
     client: VmixClient, config: McrSetupConfig, manager: AssetManager
 ) -> None:
     kids_video_path = manager.locate_kids_video()
