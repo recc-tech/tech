@@ -14,7 +14,7 @@ from pathlib import Path
 from queue import Queue
 from threading import Lock
 from tkinter import Canvas, IntVar, Menu, Misc, Tk, Toplevel, messagebox
-from tkinter.ttk import Button, Entry, Frame, Label, Progressbar, Style
+from tkinter.ttk import Button, Entry, Frame, Label, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
 import pyperclip
@@ -26,6 +26,7 @@ from ..input_messenger import (
     TaskStatus,
     UserResponse,
 )
+from .progress_bar_group import ProgressBarGroup
 from .responsive_textbox import ResponsiveTextbox
 from .scrollable_frame import ScrollableFrame
 
@@ -444,13 +445,14 @@ class TkMessenger(InputMessenger):
 
         self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
         self._right_click_menu = self._create_right_click_menu()
-        self._progress_bar_group = _ProgressBarGroup(
+        self._progress_bar_group = ProgressBarGroup(
             self._tk,
             padx=10,
             pady=10,
             width=int(0.5 * window_width),
             background=self._background,
             foreground=self._foreground,
+            font=_NORMAL_FONT
         )
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
         self._tk.bind_all(self._QUEUE_EVENT, func=lambda _: self._handle_queued_task())
@@ -1431,100 +1433,6 @@ class _ProblemGrid(Frame):
             self, thickness=3, orient="horizontal", colour=self._foreground
         )
         separator.grid(row=1, column=0, columnspan=3, sticky="EW")
-
-
-class _ProgressBarGroup(Toplevel):
-    def __init__(
-        self,
-        parent: Tk,
-        padx: int,
-        pady: int,
-        width: int,
-        background: str,
-        foreground: str,
-    ) -> None:
-        self._background = background
-        self._foreground = foreground
-        self._mutex = Lock()
-        self._key_gen = 0
-        self._bar_by_key: Dict[int, Tuple[Progressbar, Label, Label, float, str]] = {}
-        self._length = int(width - 2 * padx)
-        super().__init__(
-            parent,
-            padx=padx,
-            pady=pady,
-            background=self._background,
-            width=width,
-        )
-        _position_toplevel(parent, self)
-        # Disable closing
-        self.protocol("WM_DELETE_WINDOW", lambda: None)
-        self._hide()
-        self.title("Progress")
-
-    def create_progress_bar(
-        self, display_name: str, max_value: float, units: str
-    ) -> int:
-        with self._mutex:
-            key = self._get_unique_key()
-            name_label = Label(
-                self,
-                text=display_name,
-                background=self._background,
-                foreground=self._foreground,
-                font=_NORMAL_FONT,
-            )
-            name_label.grid(row=2 * key, columnspan=2)
-            progress_label = Label(
-                self,
-                background=self._background,
-                foreground=self._foreground,
-                text=f"[0.00/{max_value:.2f} {units}]",
-                font=_NORMAL_FONT,
-            )
-            progress_label.grid(row=2 * key + 1, column=0)
-            bar = Progressbar(
-                self,
-                length=self._length,
-                orient="horizontal",
-                mode="determinate",
-            )
-            bar.grid(row=2 * key + 1, column=1, ipady=20)
-            self._bar_by_key[key] = (bar, name_label, progress_label, max_value, units)
-            if len(self._bar_by_key.values()) == 1:
-                self._show()
-            return key
-
-    def update_progress_bar(self, key: int, progress: float) -> None:
-        with self._mutex:
-            try:
-                bar, _, label, max_value, units = self._bar_by_key[key]
-            except KeyError:
-                return
-            bar["value"] = min(100, 100 * progress / max_value)
-            label.config(text=f"[{progress:.2f}/{max_value:.2f} {units}]")
-
-    def delete_progress_bar(self, key: int) -> None:
-        with self._mutex:
-            bar = self._bar_by_key.pop(key, None)
-            if not bar:
-                return
-            if len(self._bar_by_key.values()) == 0:
-                self._hide()
-            (bar, name_label, progress_label, _, _) = bar
-            bar.destroy()
-            name_label.destroy()
-            progress_label.destroy()
-
-    def _show(self) -> None:
-        self.deiconify()
-
-    def _hide(self) -> None:
-        self.withdraw()
-
-    def _get_unique_key(self) -> int:
-        self._key_gen += 1
-        return self._key_gen
 
 
 class InputCancelledException(Exception):
