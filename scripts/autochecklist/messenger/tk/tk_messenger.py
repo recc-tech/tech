@@ -292,6 +292,7 @@ class TkMessenger(InputMessenger):
             ok_btn.grid(row=0, column=0, sticky="EW", padx=10, pady=10)
             no_btn = Button(button_row, text="No", command=select_no)
             no_btn.grid(row=0, column=1, sticky="EW", padx=10, pady=10)
+            _position_toplevel(self._tk, w)
 
             ok_btn.wait_variable(v)
             return choice
@@ -597,9 +598,9 @@ class TkMessenger(InputMessenger):
         entry_by_name: Dict[str, Entry] = {}
         error_message_by_name: Dict[str, ResponsiveTextbox] = {}
         w = Toplevel(self._tk, padx=10, pady=10, background=self._background)
-        w.rowconfigure(index=1, weight=1)
-        w.columnconfigure(index=0, weight=1)
         try:
+            w.rowconfigure(index=1, weight=1)
+            w.columnconfigure(index=0, weight=1)
             w.title(title)
             if prompt:
                 prompt_box = Label(
@@ -657,6 +658,7 @@ class TkMessenger(InputMessenger):
                 error_message_by_name[name] = error_message
             btn = Button(w, text="Done")
             btn.grid()
+            _position_toplevel(self._tk, w)
             return (w, entry_by_name, error_message_by_name, btn)
         except:
             w.destroy()
@@ -1434,7 +1436,7 @@ class _ProblemGrid(Frame):
 class _ProgressBarGroup(Toplevel):
     def __init__(
         self,
-        parent: Misc,
+        parent: Tk,
         padx: int,
         pady: int,
         width: int,
@@ -1454,6 +1456,7 @@ class _ProgressBarGroup(Toplevel):
             background=self._background,
             width=width,
         )
+        _position_toplevel(parent, self)
         # Disable closing
         self.protocol("WM_DELETE_WINDOW", lambda: None)
         self._hide()
@@ -1526,6 +1529,13 @@ class _ProgressBarGroup(Toplevel):
 
 class InputCancelledException(Exception):
     pass
+
+
+def _position_toplevel(tk: Tk, w: Toplevel) -> None:
+    tk.update_idletasks()
+    x = tk.winfo_x()
+    y = tk.winfo_y()
+    w.geometry(f"+{x}+{y}")
 
 
 def _friendly_name(name: str) -> str:
