@@ -93,7 +93,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         if "boxcast" in args.credentials:
             subtasks.append(
                 TaskModel(
-                    name="log_into_boxcast",
+                    name="log_into_BoxCast",
                     description="Failed to log into BoxCast.",
                     only_auto=True,
                 )
@@ -101,7 +101,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         if "planning_center" in args.credentials:
             subtasks.append(
                 TaskModel(
-                    name="log_into_planning_center",
+                    name="log_into_Planning_Center",
                     description="Failed to connect to the Planning Center API.",
                     only_auto=True,
                 )
@@ -109,7 +109,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         if "vimeo" in args.credentials:
             subtasks.append(
                 TaskModel(
-                    name="log_into_vimeo",
+                    name="log_into_Vimeo",
                     description="Failed to connect to the Vimeo API.",
                     only_auto=True,
                 )
@@ -131,7 +131,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         return task_model, function_finder
 
 
-def log_into_vimeo(
+def log_into_Vimeo(
     config: Config, credential_store: CredentialStore, messenger: Messenger
 ) -> None:
     ReccVimeoClient(
@@ -145,7 +145,7 @@ def log_into_vimeo(
     messenger.log_status(TaskStatus.DONE, "Successfully connected to Vimeo.")
 
 
-def log_into_boxcast(
+def log_into_BoxCast(
     config: Config,
     credential_store: CredentialStore,
     messenger: Messenger,
@@ -170,7 +170,7 @@ def log_into_boxcast(
     )
 
 
-def log_into_planning_center(
+def log_into_Planning_Center(
     config: Config, credential_store: CredentialStore, messenger: Messenger
 ) -> None:
     PlanningCenterClient(
