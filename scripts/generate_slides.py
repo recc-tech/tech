@@ -318,7 +318,7 @@ def _get_demo_slides() -> List[SlideBlueprint]:
                 + " seven provinces, unto every province according to the"
                 + " writing thereof, and unto every people after their"
                 + " language, and to the Jews according to their writing, and"
-                + "according to their language."
+                + " according to their language."
             ),
             footer_text="Esther 8:9 (KJV)",
             name="long-with-footer",
