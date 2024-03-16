@@ -74,14 +74,14 @@ class DownloadAssetsScript(Script[DownloadAssetsArgs, Config]):
             messenger=messenger,
         )
         task_model = TaskModel(
-            name="download_pco_assets",
+            name="download_PCO_assets",
             description="Failed to download assets.",
             only_auto=True,
         )
         return task_model, function_finder
 
 
-def download_pco_assets(
+def download_PCO_assets(
     args: DownloadAssetsArgs,
     config: Config,
     client: PlanningCenterClient,
