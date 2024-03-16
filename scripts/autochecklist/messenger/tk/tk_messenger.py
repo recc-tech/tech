@@ -431,7 +431,9 @@ class TkMessenger(InputMessenger):
         approx_screen_width = 16 * screen_height / 9
         window_width = int(approx_screen_width * 0.75)
         window_height = int(screen_height * 0.75)
-        self._tk.geometry(f"{window_width}x{window_height}+0+0")
+        x = int((approx_screen_width - window_width) / 2)
+        y = (screen_height - window_height) // 2
+        self._tk.geometry(f"{window_width}x{window_height}+{x}+{y}")
         self._scroll_frame = ScrollableFrame(
             self._tk,
             padding=25,
@@ -452,7 +454,7 @@ class TkMessenger(InputMessenger):
             width=int(0.5 * window_width),
             background=self._background,
             foreground=self._foreground,
-            font=_NORMAL_FONT
+            font=_NORMAL_FONT,
         )
         self._tk.bind_all(sequence="<Button-3>", func=self._show_right_click_menu)
         self._tk.bind_all(self._QUEUE_EVENT, func=lambda _: self._handle_queued_task())
