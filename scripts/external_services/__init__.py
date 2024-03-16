@@ -7,7 +7,13 @@ Code for connecting to external services (BoxCast, Vimeo, etc.)
 from .bible import BibleVerse, BibleVerseFinder
 from .boxcast import BoxCastClient, BoxCastClientFactory
 from .credentials import Credential, CredentialStore, InputPolicy
-from .planning_center import Attachment, FileType, Plan, PlanningCenterClient
+from .planning_center import (
+    Attachment,
+    FileType,
+    Plan,
+    PlanningCenterClient,
+    PresenterSet,
+)
 from .vimeo import ReccVimeoClient
 from .vmix import VmixClient, VmixInput, VmixInputType, VmixState
 from .web_driver import ReccWebDriver

@@ -420,6 +420,9 @@ class Config(BaseConfig):
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"
             )
+            self.default_speaker_name = reader.get_str(
+                "planning_center.default_speaker_name"
+            )
 
             # Vimeo
             self.vimeo_new_video_hours = reader.get_positive_float(
