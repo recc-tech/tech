@@ -64,7 +64,7 @@ def create_rebroadcast_7pm(
         )
 
 
-def export_to_vimeo(
+def export_to_Vimeo(
     boxcast_client_factory: BoxCastClientFactory,
     config: McrTeardownConfig,
     messenger: Messenger,
@@ -86,7 +86,7 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
-def rename_video_on_vimeo(
+def rename_video_on_Vimeo(
     config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
 ):
     (video_uri, _) = vimeo_client.get_video_data(messenger.allow_cancel())
@@ -123,7 +123,7 @@ def remove_worship_captions(config: McrTeardownConfig):
     final_vtt.save(config.final_captions_file)
 
 
-def upload_captions_to_boxcast(
+def upload_captions_to_BoxCast(
     boxcast_client_factory: BoxCastClientFactory,
     config: McrTeardownConfig,
     messenger: Messenger,
@@ -138,7 +138,7 @@ def upload_captions_to_boxcast(
         )
 
 
-def upload_captions_to_vimeo(
+def upload_captions_to_Vimeo(
     messenger: Messenger, vimeo_client: ReccVimeoClient, config: McrTeardownConfig
 ):
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
