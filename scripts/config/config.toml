@@ -48,6 +48,7 @@ sunday_service_type_id = "882857"
 # https://regex101.com/
 kids_video_regex = "kids"
 sermon_notes_regex = "^notes"
+default_speaker_name = "Lorenzo DellaForesta"
 
 [vimeo]
 # Maximum time since today's video was posted

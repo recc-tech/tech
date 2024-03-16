@@ -41,11 +41,18 @@ def update_titles(
     today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
+
     if len(people.speaker_names) == 0:
-        raise ValueError("No speaker is confirmed for today.")
-    if len(people.speaker_names) > 1:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"No speaker is confirmed for today. Defaulting to {config.default_speaker_name}.",
+        )
+        speaker_name = config.default_speaker_name
+    elif len(people.speaker_names) == 1:
+        speaker_name = people.speaker_names[0]
+    else:
         raise ValueError("More than one speaker is confirmed for today.")
-    speaker_name = people.speaker_names[0]
+
     if len(people.mc_host_names) == 0:
         raise ValueError("No MC host is scheduled for today.")
     if len(people.mc_host_names) > 2:
@@ -63,13 +70,14 @@ def update_titles(
 
             {today.strftime('%B')} {today.day}, {today.year}"""
     )
+
     vmix_client.set_text(config.vmix_pre_stream_title_key, pre_stream_title)
     vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
     vmix_client.set_text(config.vmix_host_title_key, mc_host1_name)
     if mc_host2_name:
         messenger.log_problem(
             ProblemLevel.WARN,
-            "More than one MC host is scheduled for today. The second one's title has been written to the special announcer title.",
+            "More than one MC host is scheduled for today. The second one's name has been written to the special announcer title.",
         )
         vmix_client.set_text(config.vmix_extra_presenter_title_key, mc_host2_name)
 
