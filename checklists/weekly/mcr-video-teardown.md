@@ -1,6 +1,7 @@
 ---
 title: MCR Video Teardown ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
+labels: checklist
 ---
 
 All these conditions must be satisfied for the MCR teardown process to be fully completed. Pay special attention to tasks that have been completed automatically by the teardown script.

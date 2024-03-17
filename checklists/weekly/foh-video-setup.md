@@ -1,6 +1,7 @@
 ---
 title: FOH Video Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
+labels: checklist
 ---
 
 # FOH Setup Checklist

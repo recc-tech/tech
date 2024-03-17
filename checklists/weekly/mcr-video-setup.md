@@ -1,6 +1,7 @@
 ---
 title: MCR Video Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
+labels: checklist
 ---
 
 # MCR Setup Checklist
