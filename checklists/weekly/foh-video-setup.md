@@ -10,7 +10,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 ## Setup
 
-- [ ] The projectors are on and lined up properly.
+- [ ] Turn on the projectors and make sure they're lined up properly.
 - [ ] Download any new media from Planning Center Online to `/Users/visuals/Documents/ProPresenter Assets`.
 - Set up the playlist according to the plan on Planning Center Online.
     - [ ] Worship and reprise
