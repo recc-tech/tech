@@ -1,5 +1,5 @@
 ---
-title: Documentation Review
+title: Review documentation
 assignees: recc-tech
 ---
 

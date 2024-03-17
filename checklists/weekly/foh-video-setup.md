@@ -1,6 +1,7 @@
 ---
 title: FOH Video Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
+labels: checklist
 ---
 
 # FOH Setup Checklist
@@ -9,10 +10,8 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 ## Setup
 
-- Turn things on:
-    - [ ] Turn on both projectors and make sure they're lined up properly.
-    - [ ] Make sure ProPresenter has the audience screen activated.
-- [ ] Download any new media from Planning Center Online. Move the files to `/Users/visuals/Documents/ProPresenter Assets`.
+- [ ] The projectors are on and lined up properly.
+- [ ] Download any new media from Planning Center Online to `/Users/visuals/Documents/ProPresenter Assets`.
 - Set up the playlist according to the plan on Planning Center Online.
     - [ ] Worship and reprise
         - Make sure you have the "No NDI" look on the background loops.
@@ -28,7 +27,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
         - "Scripture" for Bible verses
         - "Message" for the sermon notes
         - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
-- [ ] Look for special events in the plan on Planning Center Online (e.g., special presentations or videos).
+- [ ] Look for special events in the plan on Planning Center Online (e.g., baptism, child dedication).
 - [ ] Look for special requests (e.g., custom lyrics, scripture before worship) at tech@riversedge.life.
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
 - [ ] Turn off the red light and the stage lights.
