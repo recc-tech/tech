@@ -14,4 +14,4 @@ from .slides import (
     SlideBlueprintReader,
     SlideGenerator,
 )
-from .summarize_plan import get_plan_summary, plan_summary_to_html
+from .summarize_plan import PlanItemsSummary, get_plan_summary, plan_summary_to_html
