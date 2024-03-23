@@ -27,6 +27,7 @@ mcr_setup                        = "%{folder.logs}%/%{args.startup_timestamp}% m
 mcr_setup_webdriver              = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup_webdriver.log"
 mcr_teardown                     = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
 mcr_teardown_webdriver_name      = "mcr_teardown_webdriver"
+summarize_plan                   = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"
 
 [captions]
 original = "%{folder.captions}%/original.vtt"

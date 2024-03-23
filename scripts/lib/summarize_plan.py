@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import html
-import inspect
+import re
 from dataclasses import dataclass
 from datetime import date
-from typing import List
+from typing import List, TypeVar
 
-from external_services import Plan, PlanningCenterClient, Song
+from autochecklist import Messenger, ProblemLevel
+from external_services import Plan, PlanItem, PlanningCenterClient, PlanSection, Song
 
 
 @dataclass
@@ -20,76 +21,145 @@ class PlanItemsSummary:
     message_notes: str
 
 
-def get_plan_summary(client: PlanningCenterClient, dt: date) -> PlanItemsSummary:
-    # Songs: https://api.planningcenteronline.com/services/v2/service_types/882857/plans/70722878/items?per_page=200&include=song
+T = TypeVar("T")
+
+
+def _get_announcement_slide_names(item: PlanItem) -> List[str]:
+    lines = item.description.splitlines()
+    # If any lines are numbered, only keep the numbered ones
+    numbered_line_matches = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
+    if any(numbered_line_matches):
+        lines = [m[1] for m in numbered_line_matches if m is not None]
+    # If any lines end with " - Slide", only keep those
+    suffix_regex = r"(.*)\s+-\s+slide|(.*\s+-\s+title slide)"
+    suffix_matches = [re.fullmatch(suffix_regex, l, re.IGNORECASE) for l in lines]
+    if any(suffix_matches):
+        lines = [m[1] or m[2] for m in suffix_matches if m is not None]
+    return lines
+
+
+def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
+    """
+    Add all elements of `lst2` to `lst1` while preserving the order and avoiding
+    duplicates.
+    """
+    new_list = list(lst1)
+    for n in lst2:
+        if n not in new_list:
+            new_list.append(n)
+    return new_list
+
+
+def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str]:
+    matches = [
+        i for i in items if re.search("rotating announcements", i.title, re.IGNORECASE)
+    ]
+    if len(matches) != 2:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(matches)} items that look like lists of rotating announcements.",
+        )
+    slide_names: List[str] = []
+    for itm in matches:
+        lines = itm.description.splitlines()
+        ms = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
+        names = [m[1] for m in ms if m is not None]
+        slide_names = _merge(slide_names, names)
+    return slide_names
+
+
+def _get_opener_video(sections: List[PlanSection]) -> str:
+    matching_sections = [
+        s for s in sections if re.search("opener video", s.title, re.IGNORECASE)
+    ]
+    if len(matching_sections) != 1:
+        raise ValueError(
+            f"Found {len(matching_sections)} sections that look like the opener video."
+        )
+    sec = matching_sections[0]
+    if len(sec.items) != 1:
+        raise ValueError(f"The opener video section has {len(sec.items)} items.")
+    return sec.items[0].title
+
+
+def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]:
+    pattern = "(mc host intro|announcements|mc host outro)"
+    matches = [
+        i
+        for i in items
+        if re.search(pattern, i.title, re.IGNORECASE)
+        and not re.search("rotating announcements", i.title, re.IGNORECASE)
+    ]
+    if len(matches) != 3:
+        titles = [i.title for i in matches]
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(matches)} items that look like lists of announcements: {', '.join(titles)}.",
+        )
+    slide_names: List[str] = []
+    for itm in matches:
+        names = _get_announcement_slide_names(itm)
+        slide_names = _merge(slide_names, names)
+    return slide_names
+
+
+def _get_message_section(sections: List[PlanSection]) -> PlanSection:
+    matching_sections = [s for s in sections if s.title.lower() == "message"]
+    if len(matching_sections) != 1:
+        raise ValueError(
+            f"Found {len(matching_sections)} sections that look like the message."
+        )
+    return matching_sections[0]
+
+
+def _get_bumper_video(sec: PlanSection) -> str:
+    matches = [i for i in sec.items if re.search("bumper", i.title, re.IGNORECASE)]
+    if len(matches) != 1:
+        raise ValueError(f"Found {len(matches)} items that look like the bumper video.")
+    name = matches[0].title
+    prefix = "bumper video: "
+    if name.lower().startswith(prefix):
+        name = name[len(prefix):]
+    return name
+
+
+def _get_message_notes(sec: PlanSection) -> str:
+    matches = [
+        i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"Found {len(matches)} items that look like the message matches."
+        )
+    return matches[0].description.strip()
+
+
+def get_plan_summary(
+    client: PlanningCenterClient, messenger: Messenger, dt: date
+) -> PlanItemsSummary:
     plan = client.find_plan_by_date(dt)
-    # TODO: Use this as a test
+    sections = client.find_plan_items(plan.id, include_songs=True)
+    items = [i for s in sections for i in s.items]
+    walk_in_slides = _get_walk_in_slides(items, messenger)
+    opener_video = _get_opener_video(sections)
+    announcements = _get_announcements(items, messenger)
+    msg_sec = _get_message_section(sections)
+    bumper_video = _get_bumper_video(msg_sec)
+    message_notes = _get_message_notes(msg_sec)
+    songs = [i.song for i in items if i.song is not None]
     return PlanItemsSummary(
         plan=plan,
-        walk_in_slides=[
-            "River’s Edge Community Church",
-            "Belong Before You Believe",
-            "The Way Of The Cross Series Title Slide",
-            "Ways To Give",
-            "The After party",
-            "RE Website",
-            "Follow Us Instagram",
-        ],
-        opener_video="Worship Intro Video",
-        announcements=[
-            "Thanks For Joining Us",
-            "Belong Before You Believe",
-            "Message Series - Title Slide",
-            "AGM",
-            "Cafe Volunteers",
-            "Community Kitchen Brunch",
-            "Pulse Retreat",
-            "Community Hall Fundraiser",
-            "4 Ways To Give",
-            "Prayer Ministry",
-            "Website",
-            "After Party",
-            "See You Next Sunday",
-        ],
-        songs=[
-            Song(
-                ccli="7138371",
-                title="Everlasting Light",
-                author="Bede Benjamin-Korporaal, Jessie Early, and Mariah Gross",
-            ),
-            Song(
-                ccli="2456623",
-                title="You Are My King (Amazing Love)",
-                author="Billy Foote",
-            ),
-            Song(
-                ccli="6454621",
-                title="Victor's Crown",
-                author="Israel Houghton, Kari Jobe, and Darlene Zschech",
-            ),
-            Song(ccli="6219086", title="Redeemed", author="Big Daddy Weave"),
-        ],
-        bumper_video="24 Hours That Changed Everything",
-        message_notes=inspect.cleandoc(
-            """
-            Crowned
-            Mark 14:61-65 NLT
-            John 18:35-37 NLT
-            A Twisted Truth
-            John 19:2 NLT
-            A Twisted Pain
-            Proverbs 22:5 NLT
-            A Twisted Crown
-            Genesis 3:17-18 NLT
-            A Twisted Curse
-            Hebrews 12:2-3 NLT
-            A Crowned King
-            """
-        ),
+        walk_in_slides=walk_in_slides,
+        opener_video=opener_video,
+        announcements=announcements,
+        songs=songs,
+        bumper_video=bumper_video,
+        message_notes=message_notes,
     )
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
+    # TODO: Use bulleted lists instead of comma-separated lists?
     title = html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
     subtitle = html.escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slides = html.escape(", ".join(summary.walk_in_slides))
@@ -128,7 +198,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-notes").innerText;
+                const messageNotes = document.getElementById("message-matches").innerText;
                 navigator.clipboard.writeText(messageNotes);
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
@@ -147,12 +217,12 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <li><b>Songs:</b> {songs}</li>
             <li><b>Bumper video:</b> {bumper_video}</li>
             <li>
-                <b>Message notes:</b>
+                <b>Message matches:</b>
                 <button onclick="copyMessageNotes()">Copy</button>
                 <span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>
                 <details>
-                    <summary>Show notes</summary>
-                    <pre id="message-notes">{message_notes}</pre>
+                    <summary>Show matches</summary>
+                    <pre id="message-matches">{message_notes}</pre>
                 </details>
             </li>
         </ul>

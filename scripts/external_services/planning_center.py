@@ -21,18 +21,31 @@ from .credentials import Credential, CredentialStore, InputPolicy
 
 
 @dataclass(frozen=True)
+class Song:
+    ccli: str
+    title: str
+    author: str
+
+
+@dataclass(frozen=True)
+class PlanItem:
+    title: str
+    description: str
+    song: Optional[Song]
+
+
+@dataclass(frozen=True)
+class PlanSection:
+    title: str
+    items: List[PlanItem]
+
+
+@dataclass(frozen=True)
 class Plan:
     id: str
     title: str
     series_title: str
     date: date
-
-
-@dataclass(frozen=True)
-class Song:
-    ccli: str
-    title: str
-    author: str
 
 
 class FileType(Enum):
@@ -109,6 +122,68 @@ class PlanningCenterClient:
             date=dt,
         )
 
+    def find_plan_items(
+        self,
+        plan_id: str,
+        include_songs: bool,
+        service_type: Optional[str] = None,
+    ) -> List[PlanSection]:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        params: Dict[str, object] = {"per_page": 200}
+        if include_songs:
+            params["include"] = "song"
+        items_json = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
+            params=params,
+        )
+        songs_json = [i for i in items_json["included"] if i["type"] == "Song"]
+        sections: List[PlanSection] = []
+        current_section_title: str = "[[FAKE SECTION]]"
+        current_section_items: List[PlanItem] = []
+        for itm in items_json["data"]:
+            if itm["attributes"]["item_type"] == "header":
+                if current_section_title != "[[FAKE SECTION]]" or current_section_items:
+                    sections.append(
+                        PlanSection(
+                            title=current_section_title,
+                            items=current_section_items,
+                        )
+                    )
+                current_section_title = itm["attributes"]["title"] or ""
+                current_section_items = []
+            else:
+                song_rel_json = itm["relationships"]["song"]["data"]
+                song_id: Optional[str] = (
+                    None if song_rel_json is None else song_rel_json["id"] or ""
+                )
+                song_json = (
+                    None
+                    if not song_id
+                    else [s for s in songs_json if s["id"] == song_id][0]
+                )
+                song = (
+                    None
+                    if not song_json
+                    else Song(
+                        ccli=str(song_json["attributes"]["ccli_number"]),
+                        title=song_json["attributes"]["title"] or "[Unknown Title]",
+                        author=song_json["attributes"]["author"] or "[Unknown Author]",
+                    )
+                )
+                item = PlanItem(
+                    title=itm["attributes"]["title"] or "",
+                    description=itm["attributes"]["description"] or "",
+                    song=song,
+                )
+                current_section_items.append(item)
+        if current_section_title != "[[FAKE SECTION]]" or current_section_items:
+            sections.append(
+                PlanSection(title=current_section_title, items=current_section_items)
+            )
+        return sections
+
+    # TODO: Get rid of this
+    # TODO: Move regex to config?
     def find_message_notes(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> str:

@@ -47,7 +47,7 @@ class SummarizePlanScript(Script[SummarizePlanArgs, Config]):
         return Config(args)
 
     def create_messenger(self, args: ReccArgs, config: Config) -> Messenger:
-        file_messenger = FileMessenger(config.mcr_teardown_log)
+        file_messenger = FileMessenger(config.summarize_plan_log)
         input_messenger = (
             ConsoleMessenger(
                 f"{args.DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
@@ -95,7 +95,9 @@ def summarize_plan(
     config: Config,
     messenger: Messenger,
 ) -> None:
-    summary = lib.get_plan_summary(client=pco_client, dt=config.start_time.date())
+    summary = lib.get_plan_summary(
+        client=pco_client, messenger=messenger, dt=config.start_time.date()
+    )
     html = lib.plan_summary_to_html(summary)
     config.plan_summary_file.parent.mkdir(parents=True, exist_ok=True)
     config.plan_summary_file.write_text(str(html))

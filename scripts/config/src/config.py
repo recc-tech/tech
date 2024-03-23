@@ -386,6 +386,7 @@ class Config(BaseConfig):
             self.mcr_teardown_webdriver_log_name = reader.get_str(
                 "logging.mcr_teardown_webdriver_name"
             )
+            self.summarize_plan_log = reader.get_file("logging.summarize_plan")
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")
