@@ -451,6 +451,9 @@ class Config(BaseConfig):
             self.timeout_seconds = reader.get_positive_float("api.timeout_seconds")
             self.timeout = timedelta(seconds=self.timeout_seconds)
 
+            # Plan Summaries
+            self.plan_summary_file = reader.get_file("plan_summary.file")
+
             # Slides
             self.message_notes_filename = reader.get_str(
                 "slides.message_notes_filename"

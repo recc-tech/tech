@@ -13,6 +13,7 @@ from .planning_center import (
     Plan,
     PlanningCenterClient,
     PresenterSet,
+    Song,
 )
 from .vimeo import ReccVimeoClient
 from .vmix import VmixClient, VmixInput, VmixInputType, VmixState

@@ -25,6 +25,14 @@ class Plan:
     id: str
     title: str
     series_title: str
+    date: date
+
+
+@dataclass(frozen=True)
+class Song:
+    ccli: str
+    title: str
+    author: str
 
 
 class FileType(Enum):
@@ -107,6 +115,7 @@ class PlanningCenterClient:
             id=plan["id"],
             title=plan["attributes"]["title"],
             series_title=plan["attributes"]["series_title"],
+            date=dt
         )
 
     def find_message_notes(

@@ -74,6 +74,9 @@ extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 # After this many seconds, a request is assumed to have failed
 timeout_seconds = 15.0
 
+[plan_summary]
+file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.html"
+
 [slides]
 message_notes_filename = "message-notes.txt"
 lyrics_filename = "lyrics.txt"

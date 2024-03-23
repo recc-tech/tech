@@ -7,3 +7,4 @@ assets_by_service = "%{folder.home}%/vMix Assets/By Service/%{args.startup_ymd}%
 assets_by_type = "%{folder.home}%/vMix Assets/By Type"
 images = "%{folder.home}%/vMix Assets/By Type/Images"
 videos = "%{folder.home}%/vMix Assets/By Type/Videos"
+plan_summaries = "%{folder.assets_by_service}%"
