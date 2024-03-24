@@ -54,7 +54,7 @@ class McrSetupTestCase(unittest.TestCase):
             hosts=["Lightning McQueen"],
             series="Radiator Springs",
             title="How to Tip Tractors",
-            date=dt
+            date=dt,
         )
         vmix_client = create_autospec(VmixClient)
         cfg = self._create_config(date=dt)
@@ -99,7 +99,7 @@ class McrSetupTestCase(unittest.TestCase):
             hosts=["Lightning McQueen"],
             series="Radiator Springs",
             title="How to Tip Tractors",
-            date=dt
+            date=dt,
         )
         vmix_client = create_autospec(VmixClient)
         cfg = self._create_config(date=dt)
