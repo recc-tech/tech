@@ -182,30 +182,18 @@ class PlanningCenterClient:
             )
         return sections
 
-    # TODO: Get rid of this
-    # TODO: Move regex to config?
     def find_message_notes(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> str:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
-        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items"
-        items = self._send_and_check_status(url=url, params={"per_page": 100})["data"]
-
-        def is_message_notes_item(item: Dict[str, Any]) -> bool:
-            if "attributes" not in item:
-                return False
-            if "title" not in item["attributes"] or not re.fullmatch(
-                "^message title:.*", item["attributes"]["title"], re.IGNORECASE
-            ):
-                return False
-            return True
-
-        message_items = [itm for itm in items if is_message_notes_item(itm)]
+        sections = self.find_plan_items(
+            plan_id=plan_id, service_type=service_type, include_songs=False
+        )
+        message_items = [i for s in sections for i in s.items if re.match("message title:", i.title, re.IGNORECASE)]
         if len(message_items) != 1:
             raise ValueError(
                 f"Found {len(message_items)} plan items which look like message notes."
             )
-        return message_items[0]["attributes"]["description"]
+        return message_items[0].description
 
     def find_attachments(
         self, plan_id: str, service_type: Optional[str] = None
