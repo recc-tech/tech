@@ -134,6 +134,26 @@ def _get_message_notes(sec: PlanSection) -> str:
     return matches[0].description.strip()
 
 
+def _get_songs(sections: List[PlanSection], messenger: Messenger) -> List[Song]:
+    matching_items = [
+        i
+        for s in sections
+        for i in s.items
+        if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
+    ]
+    if len(matching_items) != 4:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Found {len(matching_items)} items that look like songs.",
+        )
+    songs = [
+        i.song
+        or Song(ccli="[[Unknown CCLI]]", title=i.title, author="[[Unknown Author]]")
+        for i in matching_items
+    ]
+    return songs
+
+
 def get_plan_summary(
     client: PlanningCenterClient, messenger: Messenger, dt: date
 ) -> PlanItemsSummary:
@@ -146,7 +166,7 @@ def get_plan_summary(
     msg_sec = _get_message_section(sections)
     bumper_video = _get_bumper_video(msg_sec)
     message_notes = _get_message_notes(msg_sec)
-    songs = [i.song for i in items if i.song is not None]
+    songs = _get_songs(sections, messenger)
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
