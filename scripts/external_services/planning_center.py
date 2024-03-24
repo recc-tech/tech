@@ -156,10 +156,11 @@ class PlanningCenterClient:
                 song_id: Optional[str] = (
                     None if song_rel_json is None else song_rel_json["id"] or ""
                 )
+                matching_songs = [s for s in songs_json if s["id"] == song_id]
                 song_json = (
                     None
-                    if not song_id
-                    else [s for s in songs_json if s["id"] == song_id][0]
+                    if not song_id or len(matching_songs) == 0
+                    else matching_songs[0]
                 )
                 song = (
                     None
@@ -188,7 +189,12 @@ class PlanningCenterClient:
         sections = self.find_plan_items(
             plan_id=plan_id, service_type=service_type, include_songs=False
         )
-        message_items = [i for s in sections for i in s.items if re.match("message title:", i.title, re.IGNORECASE)]
+        message_items = [
+            i
+            for s in sections
+            for i in s.items
+            if re.match("message title:", i.title, re.IGNORECASE)
+        ]
         if len(message_items) != 1:
             raise ValueError(
                 f"Found {len(message_items)} plan items which look like message notes."
