@@ -119,7 +119,7 @@ def _get_bumper_video(sec: PlanSection) -> str:
     name = matches[0].title
     prefix = "bumper video: "
     if name.lower().startswith(prefix):
-        name = name[len(prefix):]
+        name = name[len(prefix) :]
     return name
 
 
@@ -159,17 +159,21 @@ def get_plan_summary(
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
-    # TODO: Use bulleted lists instead of comma-separated lists?
     title = html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
     subtitle = html.escape(summary.plan.date.strftime("%B %d, %Y"))
-    walk_in_slides = html.escape(", ".join(summary.walk_in_slides))
+    walk_in_slide_bullets = [
+        f"<li>{html.escape(s)}</li>" for s in summary.walk_in_slides
+    ]
+    walk_in_slides = f"<ul>{''.join(walk_in_slide_bullets)}</ul>"
     opener_video = html.escape(summary.opener_video)
-    announcements = html.escape(", ".join(summary.announcements))
-    song_elems = [
-        f"<span title='\"{html.escape(s.title)}\"&#010;by {html.escape(s.author)}' class='song'>{html.escape(s.ccli)}</span>"
+    announcement_bullets = [f"<li>{html.escape(a)}</li>" for a in summary.announcements]
+    announcements = f"<ul>{''.join(announcement_bullets)}</ul>"
+    song_descriptions = [
+        f"{html.escape(s.ccli)} <span class='extra-info'>(<i>{html.escape(s.title)}</i> by {html.escape(s.author)})</span>"
         for s in summary.songs
     ]
-    songs = ", ".join(song_elems)
+    song_elems = [f"<li>{d}</li>" for d in song_descriptions]
+    songs = f"<ul>{''.join(song_elems)}</ul>"
     bumper_video = html.escape(summary.bumper_video)
     message_notes = html.escape(summary.message_notes)
     return f"""
@@ -192,13 +196,13 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 color: white;
                 padding: 0.5em;
             }}
-            .song {{
-                text-decoration: underline dotted 2px;
+            .extra-info {{
+                color: grey;
             }}
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-matches").innerText;
+                const messageNotes = document.getElementById("message-notes").innerText;
                 navigator.clipboard.writeText(messageNotes);
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
@@ -217,12 +221,12 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <li><b>Songs:</b> {songs}</li>
             <li><b>Bumper video:</b> {bumper_video}</li>
             <li>
-                <b>Message matches:</b>
+                <b>Message notes:</b>
                 <button onclick="copyMessageNotes()">Copy</button>
                 <span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>
                 <details>
-                    <summary>Show matches</summary>
-                    <pre id="message-matches">{message_notes}</pre>
+                    <summary>Show notes</summary>
+                    <pre id="message-notes">{message_notes}</pre>
                 </details>
             </li>
         </ul>
