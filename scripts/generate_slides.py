@@ -79,7 +79,7 @@ class GenerateSlidesConfig(Config):
         args: GenerateSlidesArgs,
         profile: Optional[str] = None,
         strict: bool = False,
-        allow_multiple_only_for_testing: bool = False
+        allow_multiple_only_for_testing: bool = False,
     ) -> None:
         super().__init__(
             args,
