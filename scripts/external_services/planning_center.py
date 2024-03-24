@@ -21,10 +21,31 @@ from .credentials import Credential, CredentialStore, InputPolicy
 
 
 @dataclass(frozen=True)
+class Song:
+    ccli: str
+    title: str
+    author: str
+
+
+@dataclass(frozen=True)
+class PlanItem:
+    title: str
+    description: str
+    song: Optional[Song]
+
+
+@dataclass(frozen=True)
+class PlanSection:
+    title: str
+    items: List[PlanItem]
+
+
+@dataclass(frozen=True)
 class Plan:
     id: str
     title: str
     series_title: str
+    date: date
 
 
 class FileType(Enum):
@@ -83,23 +104,14 @@ class PlanningCenterClient:
     def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
         today_str = dt.strftime("%Y-%m-%d")
-        tomorrow_str = (dt + timedelta(days=1)).strftime("%Y-%m-%d")
-        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans"
-        response = requests.get(
-            url=url,
+        plans = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
             params={
                 "filter": "before,after",
-                "before": tomorrow_str,
+                "before": (dt + timedelta(days=1)).strftime("%Y-%m-%d"),
                 "after": today_str,
             },
-            auth=self._get_auth(),
-            timeout=self._cfg.timeout_seconds,
-        )
-        if response.status_code // 100 != 2:
-            raise ValueError(
-                f"Request to {url} failed with status code {response.status_code}"
-            )
-        plans = response.json()["data"]
+        )["data"]
         if len(plans) != 1:
             raise ValueError(f"Found {len(plans)} plans on {today_str}.")
         plan = plans[0]
@@ -107,59 +119,96 @@ class PlanningCenterClient:
             id=plan["id"],
             title=plan["attributes"]["title"],
             series_title=plan["attributes"]["series_title"],
+            date=dt,
         )
+
+    def find_plan_items(
+        self,
+        plan_id: str,
+        include_songs: bool,
+        service_type: Optional[str] = None,
+    ) -> List[PlanSection]:
+        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        params: Dict[str, object] = {"per_page": 200}
+        if include_songs:
+            params["include"] = "song"
+        items_json = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
+            params=params,
+        )
+        songs_json = [i for i in items_json["included"] if i["type"] == "Song"]
+        sections: List[PlanSection] = []
+        current_section_title: str = "[[FAKE SECTION]]"
+        current_section_items: List[PlanItem] = []
+        for itm in items_json["data"]:
+            if itm["attributes"]["item_type"] == "header":
+                if current_section_title != "[[FAKE SECTION]]" or current_section_items:
+                    sections.append(
+                        PlanSection(
+                            title=current_section_title,
+                            items=current_section_items,
+                        )
+                    )
+                current_section_title = itm["attributes"]["title"] or ""
+                current_section_items = []
+            else:
+                song_rel_json = itm["relationships"]["song"]["data"]
+                song_id: Optional[str] = (
+                    None if song_rel_json is None else song_rel_json["id"] or ""
+                )
+                matching_songs = [s for s in songs_json if s["id"] == song_id]
+                song_json = (
+                    None
+                    if not song_id or len(matching_songs) == 0
+                    else matching_songs[0]
+                )
+                song = (
+                    None
+                    if not song_json
+                    else Song(
+                        ccli=str(song_json["attributes"]["ccli_number"]),
+                        title=song_json["attributes"]["title"] or "[Unknown Title]",
+                        author=song_json["attributes"]["author"] or "[Unknown Author]",
+                    )
+                )
+                item = PlanItem(
+                    title=itm["attributes"]["title"] or "",
+                    description=itm["attributes"]["description"] or "",
+                    song=song,
+                )
+                current_section_items.append(item)
+        if current_section_title != "[[FAKE SECTION]]" or current_section_items:
+            sections.append(
+                PlanSection(title=current_section_title, items=current_section_items)
+            )
+        return sections
 
     def find_message_notes(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> str:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
-        app_id, secret = self._get_auth()
-        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items"
-        response = requests.get(
-            url=url,
-            params={"per_page": 100},
-            auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._cfg.timeout_seconds,
+        sections = self.find_plan_items(
+            plan_id=plan_id, service_type=service_type, include_songs=False
         )
-        if response.status_code // 100 != 2:
-            raise ValueError(
-                f"Request to {url} failed with status code {response.status_code}"
-            )
-        items = response.json()["data"]
-
-        def is_message_notes_item(item: Dict[str, Any]) -> bool:
-            if "attributes" not in item:
-                return False
-            if "title" not in item["attributes"] or not re.fullmatch(
-                "^message title:.*", item["attributes"]["title"], re.IGNORECASE
-            ):
-                return False
-            return True
-
-        message_items = [itm for itm in items if is_message_notes_item(itm)]
+        message_items = [
+            i
+            for s in sections
+            for i in s.items
+            if re.match("message title:", i.title, re.IGNORECASE)
+        ]
         if len(message_items) != 1:
             raise ValueError(
                 f"Found {len(message_items)} plan items which look like message notes."
             )
-        return message_items[0]["attributes"]["description"]
+        return message_items[0].description
 
     def find_attachments(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> Set[Attachment]:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
-        app_id, secret = self._get_auth()
-        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments"
-        response = requests.get(
-            url=url,
+        attachments_json = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
             params={"per_page": 100},
-            auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._cfg.timeout_seconds,
-        )
-        if response.status_code // 100 != 2:
-            raise ValueError(
-                f"Request to {url} failed with status code {response.status_code}"
-            )
-        attachments_json = response.json()["data"]
+        )["data"]
         return {
             Attachment(
                 id=a["id"],
@@ -212,19 +261,10 @@ class PlanningCenterClient:
         self, plan_id: str, service_type: Optional[str] = None
     ) -> PresenterSet:
         service_type = service_type or self._cfg.pco_sunday_service_type_id
-        app_id, secret = self._get_auth()
-        url = f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed"
-        response = requests.get(
-            url=url,
+        people = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
             params={"filter": "confirmed"},
-            auth=HTTPBasicAuth(app_id, secret),
-            timeout=self._cfg.timeout_seconds,
-        )
-        if response.status_code // 100 != 2:
-            raise ValueError(
-                f"Request to {url} failed with status code {response.status_code}"
-            )
-        people = response.json()["data"]
+        )["data"]
         speaker_names = [
             p["attributes"]["name"]
             for p in people
@@ -238,11 +278,9 @@ class PlanningCenterClient:
         return PresenterSet(speaker_names=speaker_names, mc_host_names=mc_host_names)
 
     def _test_credentials(self, max_attempts: int):
+        url = f"{self._cfg.pco_base_url}/people/v2/me"
         for attempt_num in range(1, max_attempts + 1):
-            url = f"{self._cfg.pco_base_url}/people/v2/me"
-            response = requests.get(
-                url, auth=self._get_auth(), timeout=self._cfg.timeout_seconds
-            )
+            response = self._send(url=url, params={})
             if response.status_code // 100 == 2:
                 return
             elif response.status_code == 401:
@@ -253,6 +291,23 @@ class PlanningCenterClient:
                 raise ValueError(
                     f"Test request to GET {url} failed with status code {response.status_code}."
                 )
+
+    def _send(self, url: str, params: Dict[str, object]) -> requests.Response:
+        app_id, secret = self._get_auth()
+        return requests.get(
+            url=url,
+            params=params,  # pyright: ignore[reportArgumentType]
+            auth=HTTPBasicAuth(app_id, secret),
+            timeout=self._cfg.timeout_seconds,
+        )
+
+    def _send_and_check_status(self, url: str, params: Dict[str, object]) -> Any:
+        response = self._send(url=url, params=params)
+        if response.status_code // 100 != 2:
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}"
+            )
+        return response.json()
 
     def _get_auth(self) -> Tuple[str, str]:
         credentials = self._credential_store.get_multiple(

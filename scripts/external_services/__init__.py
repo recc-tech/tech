@@ -11,8 +11,11 @@ from .planning_center import (
     Attachment,
     FileType,
     Plan,
+    PlanItem,
     PlanningCenterClient,
+    PlanSection,
     PresenterSet,
+    Song,
 )
 from .vimeo import ReccVimeoClient
 from .vmix import VmixClient, VmixInput, VmixInputType, VmixState
