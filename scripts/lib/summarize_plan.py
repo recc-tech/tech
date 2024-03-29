@@ -192,7 +192,11 @@ def _song_to_html(s: Song) -> str:
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
-    title = html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
+    title = (
+        html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
+        if summary.plan.series_title
+        else html.escape(summary.plan.title)
+    )
     subtitle = html.escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slide_bullets = [
         f"<li>{html.escape(s)}</li>" for s in summary.walk_in_slides
