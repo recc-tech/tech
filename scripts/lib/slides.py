@@ -8,9 +8,9 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import CancellationToken, Messenger, ProblemLevel
 from config import (
     Bbox,
     Config,
@@ -38,7 +38,9 @@ class SlideBlueprintReader:
         self._messenger = messenger
         self._bible_verse_finder = bible_verse_finder
 
-    def load_message_notes(self, file: Path) -> List[SlideBlueprint]:
+    def load_message_notes(
+        self, file: Path, cancellation_token: Optional[CancellationToken] = None
+    ) -> List[SlideBlueprint]:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
@@ -70,7 +72,10 @@ class SlideBlueprintReader:
                 if remaining_line:
                     text = f"{remaining_line}\n{text}"
                 blueprint_by_verse = {
-                    v: self._convert_bible_verse_to_blueprint(v) for v in verses
+                    v: self._convert_bible_verse_to_blueprint(
+                        v, cancellation_token=cancellation_token
+                    )
+                    for v in verses
                 }
                 blueprints += blueprint_by_verse.values()
                 # Remove redundant text (e.g., verse text following verse
@@ -150,8 +155,12 @@ class SlideBlueprintReader:
         verses = [v for v in text.split("\n\n") if v]
         return verses
 
-    def _convert_bible_verse_to_blueprint(self, verse: BibleVerse) -> SlideBlueprint:
-        verse_text = self._bible_verse_finder.find(verse)
+    def _convert_bible_verse_to_blueprint(
+        self, verse: BibleVerse, cancellation_token: Optional[CancellationToken] = None
+    ) -> SlideBlueprint:
+        verse_text = self._bible_verse_finder.find(
+            verse, cancellation_token=cancellation_token
+        )
         if verse_text is None:
             self._messenger.log_problem(
                 ProblemLevel.WARN,

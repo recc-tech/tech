@@ -65,11 +65,7 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
             headless=not args.show_browser,
             log_file=config.mcr_setup_webdriver_log,
         )
-        bible_verse_finder = BibleVerseFinder(
-            self._web_driver,
-            messenger,
-            cancellation_token=None,
-        )
+        bible_verse_finder = BibleVerseFinder(self._web_driver, messenger)
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger, config)
         manager = AssetManager(config)

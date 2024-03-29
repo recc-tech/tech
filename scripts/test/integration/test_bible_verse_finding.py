@@ -19,9 +19,7 @@ class BibleVerseFindingTest(unittest.TestCase):
             messenger=cls._messenger, headless=True, log_file=None
         )
         # Likewise, creating a finder is slow so create one once and for all
-        cls.finder = BibleVerseFinder(
-            driver=cls._driver, messenger=cls._messenger, cancellation_token=None
-        )
+        cls.finder = BibleVerseFinder(driver=cls._driver, messenger=cls._messenger)
 
     @classmethod
     def tearDownClass(cls) -> None:

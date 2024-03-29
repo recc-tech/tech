@@ -30,9 +30,7 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
             messenger=cls.messenger, headless=True, log_file=None
         )
         # Likewise, creating a finder is slow so create one once and for all
-        cls.finder = BibleVerseFinder(
-            driver=cls._driver, messenger=cls.messenger, cancellation_token=None
-        )
+        cls.finder = BibleVerseFinder(driver=cls._driver, messenger=cls.messenger)
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -330,25 +330,16 @@ class BibleVerse:
 
 
 class BibleVerseFinder:
-    def __init__(
-        self,
-        driver: ReccWebDriver,
-        messenger: Messenger,
-        cancellation_token: Optional[CancellationToken],
-    ):
+    def __init__(self, driver: ReccWebDriver, messenger: Messenger):
         self._driver = driver
         self._messenger = messenger
+        self._are_page_options_set = False
 
-        try:
-            self._set_page_options(cancellation_token)
-        except Exception:
-            self._messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to set page options on BibleGateway. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
-                stacktrace=traceback.format_exc(),
-            )
-
-    def find(self, verse: BibleVerse) -> Optional[str]:
+    def find(
+        self, verse: BibleVerse, cancellation_token: Optional[CancellationToken] = None
+    ) -> Optional[str]:
+        if not self._are_page_options_set:
+            self._try_set_page_options(cancellation_token)
         try:
             self._get_page(verse)
             by = By.XPATH
@@ -374,6 +365,19 @@ class BibleVerseFinder:
         if use_print_interface:
             url += "&interface=print"
         self._driver.get(url)
+
+    def _try_set_page_options(
+        self, cancellation_token: Optional[CancellationToken]
+    ) -> None:
+        try:
+            self._set_page_options(cancellation_token)
+            self._are_page_options_set = True
+        except Exception:
+            self._messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Failed to set page options on BibleGateway. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
+                stacktrace=traceback.format_exc(),
+            )
 
     def _set_page_options(self, cancellation_token: Optional[CancellationToken]):
         self._get_page(BibleVerse("Genesis", 1, 1, "NLT"), use_print_interface=False)
