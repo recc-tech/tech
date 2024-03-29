@@ -25,7 +25,7 @@ class BibleVerseFindingTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls._driver.close()
+        cls._driver.quit()
 
     def tearDown(self) -> None:
         # Prevent errors logged by one test from carrying over to other tests

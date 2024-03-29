@@ -60,13 +60,13 @@ class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
             messenger, credential_store, config
         )
         vmix_client = VmixClient(config=config)
-        web_driver = ReccWebDriver(
+        self._web_driver = ReccWebDriver(
             messenger=messenger,
             headless=not args.show_browser,
             log_file=config.mcr_setup_webdriver_log,
         )
         bible_verse_finder = BibleVerseFinder(
-            web_driver,
+            self._web_driver,
             messenger,
             cancellation_token=None,
         )
