@@ -171,13 +171,7 @@ class GenerateSlidesScript(Script[GenerateSlidesArgs, GenerateSlidesConfig]):
             headless=not args.show_browser,
             log_file=config.generate_slides_webdriver_log,
         )
-        bible_verse_finder = BibleVerseFinder(
-            # No need for a cancellation token since this script is linear and
-            # the user can just cancel the whole thing
-            self._web_driver,
-            messenger,
-            cancellation_token=None,
-        )
+        bible_verse_finder = BibleVerseFinder(self._web_driver, messenger)
         reader = SlideBlueprintReader(messenger, bible_verse_finder)
         generator = SlideGenerator(messenger, config)
         state = GenerateSlidesState([])

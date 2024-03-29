@@ -101,7 +101,10 @@ def generate_backup_slides(
         TaskStatus.RUNNING,
         f"Reading input from {config.message_notes_file.as_posix()}.",
     )
-    blueprints = reader.load_message_notes(config.message_notes_file)
+    token = messenger.allow_cancel()
+    blueprints = reader.load_message_notes(
+        config.message_notes_file, cancellation_token=token
+    )
 
     messenger.log_status(
         TaskStatus.RUNNING,
