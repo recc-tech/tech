@@ -38,6 +38,10 @@ _PROFILE_SELECT_FILE = _CONFIG_DIR.joinpath("active_profile.txt").resolve()
 _PROFILES_DIR = _CONFIG_DIR.joinpath("profiles")
 
 
+def locate_global_config() -> Path:
+    return _CONFIG_DIR.joinpath("config.toml").resolve()
+
+
 def locate_profile(profile: str) -> Path:
     return _PROFILES_DIR.joinpath(f"{profile}.toml").resolve()
 
@@ -154,7 +158,7 @@ def _get_and_fill(
 
 
 def _read_global_config() -> Dict[str, object]:
-    global_file = _CONFIG_DIR.joinpath("config.toml").resolve()
+    global_file = locate_global_config()
     try:
         with open(global_file, "rb") as f:
             return _flatten(tomli.load(f))
@@ -414,9 +418,7 @@ class Config(BaseConfig):
             self.pco_services_base_url = reader.get_str(
                 "planning_center.services_base_url"
             )
-            self.pco_sunday_service_type_id = reader.get_str(
-                "planning_center.sunday_service_type_id"
-            )
+            self.pco_service_type_id = reader.get_str("planning_center.service_type_id")
             self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"

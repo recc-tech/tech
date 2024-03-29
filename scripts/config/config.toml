@@ -45,7 +45,10 @@ edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2"
-sunday_service_type_id = "882857"
+# For help finding the service type for today's plan, see
+# https://github.com/recc-tech/tech/wiki/Finding-the-Service-Type-for-a-Plan.
+# Don't forget to enclose the service type ID in double quotes!
+service_type_id = "882857"
 # https://regex101.com/
 kids_video_regex = "kids"
 sermon_notes_regex = "^notes"

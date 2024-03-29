@@ -18,15 +18,14 @@ class BibleVerseFindingTest(unittest.TestCase):
         cls._driver = ReccWebDriver(
             messenger=cls._messenger, headless=True, log_file=None
         )
+        # Likewise, creating a finder is slow so create one once and for all
+        cls.finder = BibleVerseFinder(
+            driver=cls._driver, messenger=cls._messenger, cancellation_token=None
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls._driver.close()
-
-    def setUp(self):
-        self.finder = BibleVerseFinder(
-            driver=self._driver, messenger=self._messenger, cancellation_token=None
-        )
 
     def tearDown(self) -> None:
         # Prevent errors logged by one test from carrying over to other tests

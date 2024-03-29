@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
+import config
 import requests
 from aiohttp import ClientTimeout
 from autochecklist import CancellationToken, Messenger
@@ -22,9 +23,9 @@ from .credentials import Credential, CredentialStore, InputPolicy
 
 @dataclass(frozen=True)
 class Song:
-    ccli: str
+    ccli: Optional[str]
     title: str
-    author: str
+    author: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -102,7 +103,7 @@ class PlanningCenterClient:
             self._test_credentials(max_attempts=3)
 
     def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        service_type = service_type or self._cfg.pco_service_type_id
         today_str = dt.strftime("%Y-%m-%d")
         plans = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
@@ -113,7 +114,11 @@ class PlanningCenterClient:
             },
         )["data"]
         if len(plans) != 1:
-            raise ValueError(f"Found {len(plans)} plans on {today_str}.")
+            config_file = config.locate_global_config().as_posix()
+            raise ValueError(
+                f"Found {len(plans)} plans on {today_str}."
+                f" If this is not a weekly 10:30 gathering, you may need to change the service type ID in {config_file}."
+            )
         plan = plans[0]
         return Plan(
             id=plan["id"],
@@ -128,7 +133,7 @@ class PlanningCenterClient:
         include_songs: bool,
         service_type: Optional[str] = None,
     ) -> List[PlanSection]:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        service_type = service_type or self._cfg.pco_service_type_id
         params: Dict[str, object] = {"per_page": 200}
         if include_songs:
             params["include"] = "song"
@@ -162,17 +167,30 @@ class PlanningCenterClient:
                     if not song_id or len(matching_songs) == 0
                     else matching_songs[0]
                 )
+                item_title = str(itm["attributes"]["title"])
                 song = (
                     None
                     if not song_json
                     else Song(
-                        ccli=str(song_json["attributes"]["ccli_number"]),
-                        title=song_json["attributes"]["title"] or "[Unknown Title]",
-                        author=song_json["attributes"]["author"] or "[Unknown Author]",
+                        ccli=(
+                            str(ccli_num)
+                            if (ccli_num := song_json["attributes"]["ccli_number"])
+                            else None
+                        ),
+                        title=(
+                            str(t)
+                            if (t := song_json["attributes"]["title"])
+                            else item_title
+                        ),
+                        author=(
+                            str(aut)
+                            if (aut := song_json["attributes"]["author"])
+                            else None
+                        ),
                     )
                 )
                 item = PlanItem(
-                    title=itm["attributes"]["title"] or "",
+                    title=item_title,
                     description=itm["attributes"]["description"] or "",
                     song=song,
                 )
@@ -204,7 +222,7 @@ class PlanningCenterClient:
     def find_attachments(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> Set[Attachment]:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        service_type = service_type or self._cfg.pco_service_type_id
         attachments_json = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
             params={"per_page": 100},
@@ -260,7 +278,7 @@ class PlanningCenterClient:
     def find_presenters(
         self, plan_id: str, service_type: Optional[str] = None
     ) -> PresenterSet:
-        service_type = service_type or self._cfg.pco_sunday_service_type_id
+        service_type = service_type or self._cfg.pco_service_type_id
         people = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
             params={"filter": "confirmed"},

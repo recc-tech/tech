@@ -29,6 +29,10 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         cls._driver = ReccWebDriver(
             messenger=cls.messenger, headless=True, log_file=None
         )
+        # Likewise, creating a finder is slow so create one once and for all
+        cls.finder = BibleVerseFinder(
+            driver=cls._driver, messenger=cls.messenger, cancellation_token=None
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -51,11 +55,8 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         #    include the text for Genesis 24:7-8 the second time.
         #  - 2023-10-22: The slide "If you want someone [...]" uses "than"
         #    instead of "then" and is split across two lines for some reason.
-        finder = BibleVerseFinder(
-            driver=self._driver, messenger=self.messenger, cancellation_token=None
-        )
         reader = SlideBlueprintReader(
-            messenger=self.messenger, bible_verse_finder=finder
+            messenger=self.messenger, bible_verse_finder=self.finder
         )
         raw_notes_paths = [
             x
@@ -88,11 +89,8 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
             "2023-09-03": 'The message notes ask for multiple slides with body "“Be still, and know that I am God! I will be honored by every nation. I will be honored throughout the world.”", name "Psalm 46 10 NLT", and footer "Psalm 46:10 (NLT)". Is there a typo?',
             "2023-09-10": 'The message notes ask for multiple slides with body "Go instead to my homeland, to my relatives, and find a wife there for my son Isaac.”", name "Genesis 24 4 NLT", and footer "Genesis 24:4 (NLT)". Is there a typo?',
         }
-        finder = BibleVerseFinder(
-            driver=self._driver, messenger=self.messenger, cancellation_token=None
-        )
         reader = SlideBlueprintReader(
-            messenger=self.messenger, bible_verse_finder=finder
+            messenger=self.messenger, bible_verse_finder=self.finder
         )
         raw_notes_paths = [
             x

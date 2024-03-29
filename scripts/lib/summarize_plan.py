@@ -147,9 +147,7 @@ def _get_songs(sections: List[PlanSection], messenger: Messenger) -> List[Song]:
             f"Found {len(matching_items)} items that look like songs.",
         )
     songs = [
-        i.song
-        or Song(ccli="[[Unknown CCLI]]", title=i.title, author="[[Unknown Author]]")
-        for i in matching_items
+        i.song or Song(ccli=None, title=i.title, author=None) for i in matching_items
     ]
     return songs
 
@@ -178,8 +176,27 @@ def get_plan_summary(
     )
 
 
+def _song_to_html(s: Song) -> str:
+    ccli = (
+        f"<span>{html.escape(s.ccli)}</span>"
+        if s.ccli
+        else '<span class="missing">[[Unknown CCLI]]</span>'
+    )
+    title = f"<i>{html.escape(s.title)}</i>"
+    author = (
+        f"<span>{html.escape(s.author)}</span>"
+        if s.author
+        else '<span class="missing">[[Unknown Author]]</span>'
+    )
+    return f"{ccli} <span class='extra-info'>({title} by {author})</span>"
+
+
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
-    title = html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
+    title = (
+        html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
+        if summary.plan.series_title
+        else html.escape(summary.plan.title)
+    )
     subtitle = html.escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slide_bullets = [
         f"<li>{html.escape(s)}</li>" for s in summary.walk_in_slides
@@ -188,14 +205,16 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     opener_video = html.escape(summary.opener_video)
     announcement_bullets = [f"<li>{html.escape(a)}</li>" for a in summary.announcements]
     announcements = f"<ul>{''.join(announcement_bullets)}</ul>"
-    song_descriptions = [
-        f"{html.escape(s.ccli)} <span class='extra-info'>(<i>{html.escape(s.title)}</i> by {html.escape(s.author)})</span>"
-        for s in summary.songs
-    ]
+    song_descriptions = [_song_to_html(s) for s in summary.songs]
     song_elems = [f"<li>{d}</li>" for d in song_descriptions]
     songs = f"<ul>{''.join(song_elems)}</ul>"
     bumper_video = html.escape(summary.bumper_video)
     message_notes = html.escape(summary.message_notes)
+    message_notes_btn = (
+        '<button onclick="copyMessageNotes()">Copy</button>'
+        if message_notes
+        else '<span class="missing">[[None]]</span>'
+    )
     return f"""
 <!DOCTYPE html>
 <html>
@@ -206,6 +225,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             html {{
                 /* Same as Planning Center */
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: #fafafa;
             }}
             body {{
                 margin: 0;
@@ -218,6 +238,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             }}
             .extra-info {{
                 color: grey;
+            }}
+            .missing {{
+                color: red;
             }}
         </style>
         <script>
@@ -242,9 +265,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <li><b>Bumper video:</b> {bumper_video}</li>
             <li>
                 <b>Message notes:</b>
-                <button onclick="copyMessageNotes()">Copy</button>
+                {message_notes_btn}
                 <span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>
-                <details>
+                <details class="extra-info">
                     <summary>Show notes</summary>
                     <pre id="message-notes">{message_notes}</pre>
                 </details>

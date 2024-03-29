@@ -8,7 +8,6 @@ import lib.mcr_teardown as tasks
 from autochecklist import Messenger
 from config import McrTeardownArgs, McrTeardownConfig
 from external_services import (
-    BoxCastClient,
     BoxCastClientFactory,
     Credential,
     CredentialStore,
@@ -28,11 +27,13 @@ class BoxCastTestCase(unittest.TestCase):
             )
 
         cls.error_message = ""
-        messenger = Mock(spec=Messenger)
-        messenger.input_multiple = input_mock
-        messenger.input = input_mock
-        messenger.wait = input_mock
-        credential_store = CredentialStore(messenger)
+        cls.messenger = Mock(spec=Messenger)
+        cls.log_problem_mock = Mock()
+        cls.messenger.log_problem = cls.log_problem_mock
+        cls.messenger.input_multiple = input_mock
+        cls.messenger.input = input_mock
+        cls.messenger.wait = input_mock
+        credential_store = CredentialStore(cls.messenger)
         boxcast_username = credential_store.get(
             Credential.BOXCAST_USERNAME, request_input=InputPolicy.AS_REQUIRED
         )
@@ -40,7 +41,7 @@ class BoxCastTestCase(unittest.TestCase):
             cls.error_message = f"Expected the BoxCast username to be '{BOXCAST_TEST_USERNAME}' but found username '{boxcast_username}'. Run python check_credentials.py --force-input to set the correct credentials."
             return
         try:
-            BoxCastClientFactory(
+            cls.boxcast_client_factory = BoxCastClientFactory(
                 messenger=Mock(),
                 credential_store=credential_store,
                 cancellation_token=None,
@@ -67,17 +68,6 @@ class BoxCastTestCase(unittest.TestCase):
             self.fail(self.error_message)
 
     def test_captions(self):
-        messenger = Mock(spec=Messenger)
-        log_problem_mock = Mock()
-        messenger.log_problem = log_problem_mock
-        credential_store = CredentialStore(messenger)
-        boxcast_client = BoxCastClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            cancellation_token=None,
-        )
-        boxcast_client_factory = Mock(spec=["get_client"])
-        boxcast_client_factory.get_client.return_value = boxcast_client
         args = McrTeardownArgs(
             Namespace(
                 message_series="",
@@ -98,9 +88,9 @@ class BoxCastTestCase(unittest.TestCase):
         config = McrTeardownConfig(args, allow_multiple_only_for_testing=True)
 
         tasks.download_captions(
-            boxcast_client_factory=boxcast_client_factory,
+            boxcast_client_factory=self.boxcast_client_factory,
             config=config,
-            messenger=messenger,
+            messenger=self.messenger,
         )
         expected_file = Path(__file__).parent.joinpath("boxcast_data", "captions.vtt")
         with open(expected_file, mode="r", encoding="utf-8") as f:
@@ -108,7 +98,7 @@ class BoxCastTestCase(unittest.TestCase):
         with open(config.original_captions_file, mode="r", encoding="utf-8") as f:
             actual_captions = f.read()
         self.assertEqual(expected_captions, actual_captions)
-        log_problem_mock.assert_not_called()
+        self.log_problem_mock.assert_not_called()
 
         tasks.copy_captions_to_final(config=config)
         with open(config.original_captions_file, mode="r", encoding="utf-8") as f:
@@ -116,4 +106,4 @@ class BoxCastTestCase(unittest.TestCase):
         with open(config.final_captions_file, mode="r", encoding="utf-8") as f:
             final_captions = f.read()
         self.assertEqual(captions_without_worship, final_captions)
-        log_problem_mock.assert_not_called()
+        self.log_problem_mock.assert_not_called()

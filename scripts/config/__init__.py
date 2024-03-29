@@ -12,6 +12,7 @@ from .src.config import (
     get_active_profile,
     get_default_profile,
     list_profiles,
+    locate_global_config,
     locate_profile,
 )
 from .src.image_style import (
