@@ -147,9 +147,7 @@ def _get_songs(sections: List[PlanSection], messenger: Messenger) -> List[Song]:
             f"Found {len(matching_items)} items that look like songs.",
         )
     songs = [
-        i.song
-        or Song(ccli="[[Unknown CCLI]]", title=i.title, author="[[Unknown Author]]")
-        for i in matching_items
+        i.song or Song(ccli=None, title=i.title, author=None) for i in matching_items
     ]
     return songs
 
@@ -189,7 +187,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     announcement_bullets = [f"<li>{html.escape(a)}</li>" for a in summary.announcements]
     announcements = f"<ul>{''.join(announcement_bullets)}</ul>"
     song_descriptions = [
-        f"{html.escape(s.ccli)} <span class='extra-info'>(<i>{html.escape(s.title)}</i> by {html.escape(s.author)})</span>"
+        f"{html.escape(s.ccli or '[[Unknown CCLI]]')} <span class='extra-info'>(<i>{html.escape(s.title)}</i> by {html.escape(s.author or '[[Unknown Author]]')})</span>"
         for s in summary.songs
     ]
     song_elems = [f"<li>{d}</li>" for d in song_descriptions]

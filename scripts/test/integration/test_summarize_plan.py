@@ -50,6 +50,9 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
 
 
 class SummarizePlanTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.maxDiff = None
+
     def test_summarize_20240225(self) -> None:
         config = Config(
             args=ReccArgs.parse([]),
@@ -102,24 +105,24 @@ class SummarizePlanTestCase(unittest.TestCase):
             # TODO
             songs=[
                 Song(
-                    ccli="[[Unknown CCLI]]",
+                    ccli=None,
                     title="You Are Mine (E)",
-                    author="[[Unknown Author]]",
+                    author=None,
                 ),
                 Song(
-                    ccli="[[Unknown CCLI]]",
+                    ccli=None,
                     title="Worthy of it All / I Exalt Thee (B)",
-                    author="[[Unknown Author]]",
+                    author=None,
                 ),
                 Song(
-                    ccli="[[Unknown CCLI]]",
+                    ccli=None,
                     title="Better is One Day (C)",
-                    author="[[Unknown Author]]",
+                    author=None,
                 ),
                 Song(
-                    ccli="[[Unknown CCLI]]",
+                    ccli=None,
                     title="Same God (D)",
-                    author="[[Unknown Author]]",
+                    author=None,
                 ),
             ],
             bumper_video="Save The Date Bumper Video",

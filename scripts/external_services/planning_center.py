@@ -23,9 +23,9 @@ from .credentials import Credential, CredentialStore, InputPolicy
 
 @dataclass(frozen=True)
 class Song:
-    ccli: str
+    ccli: Optional[str]
     title: str
-    author: str
+    author: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -167,17 +167,30 @@ class PlanningCenterClient:
                     if not song_id or len(matching_songs) == 0
                     else matching_songs[0]
                 )
+                item_title = str(itm["attributes"]["title"])
                 song = (
                     None
                     if not song_json
                     else Song(
-                        ccli=str(song_json["attributes"]["ccli_number"]),
-                        title=song_json["attributes"]["title"] or "[Unknown Title]",
-                        author=song_json["attributes"]["author"] or "[Unknown Author]",
+                        ccli=(
+                            str(ccli_num)
+                            if (ccli_num := song_json["attributes"]["ccli_number"])
+                            else None
+                        ),
+                        title=(
+                            str(t)
+                            if (t := song_json["attributes"]["title"])
+                            else item_title
+                        ),
+                        author=(
+                            str(aut)
+                            if (aut := song_json["attributes"]["author"])
+                            else None
+                        ),
                     )
                 )
                 item = PlanItem(
-                    title=itm["attributes"]["title"] or "",
+                    title=item_title,
                     description=itm["attributes"]["description"] or "",
                     song=song,
                 )
