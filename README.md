@@ -27,19 +27,20 @@ Welcome to the River's Edge Production Team repository!
 5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements-dev.txt`.
 6. Activate the configuration profile by running `python manage_config.py activate --profile PROFILE`. To see the full list of available profiles, run `python manage_config.py list`.
 
-## Organization of the Scripts
+## Repository Structure
 
-Note the following important files:
+- `.git-hooks/`: [Git hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), such as for running tests before committing code.
+- `.github/workflows/`: GitHub Actions workflows, such as for opening issues for checklists on Sundays or continuous integration.
+- `checklists/`: Templates for checklists.
+- `scripts/`:
+	- `scripts/___.py`: These are command-line programs that can be run to perform common tasks, such as generating backup slides or downloading files from Planning Center.
+		- Run `foo.py` using `python foo.py` or `pythonw foo.py`.
+		- See the description and extra options for `foo.py` by running `python foo.py --help`.
+	- `scripts/___.{bat,command,sh}`: For each top-level Python file (e.g., `foo.py`) there should be a corresponding batch file (e.g., `foo.bat` on Windows, `foo.command` on macOS) that launches the corresponding Python script. These can be used to create desktop shortcuts.
+	- Folders inside `scripts/`: Code required by the top-level Python scripts is organized into packages (i.e., subdirectories). Each one should have a file `__init__.py` that summarizes the purpose of that package. The following figure shows the dependencies between packages.
 
-- _Top-level .py files._ These are command-line programs that can be run to perform common tasks, such as generating backup slides.
-	- Run `foo.py` using `python foo.py` or `pythonw foo.py`.
-	- See the description and extra options for `foo.py` by running `python foo.py --help`.
-- _Top-level batch files and shell scripts._ For each top-level Python file (e.g., `foo.py`) there should be a corresponding batch file (e.g., `foo.bat` on Windows, `foo.command` on macOS) that launches the corresponding Python script. These are useful for creating desktop shortcuts.
-- _Subdirectories._ Code required by the top-level Python scripts is organized into packages (i.e., subdirectories). Each one should have a file `__init__.py` that summarizes the purpose of that package.
-- `/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
-	- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
-	- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+		![Dependencies Between Packages](./scripts/dependoc/dependencies.svg)
 
-The following figure shows the dependencies between packages:
-
-![Dependencies Between Packages](./scripts/dependoc/dependencies.svg)
+	- `scripts/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
+		- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
+		- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
