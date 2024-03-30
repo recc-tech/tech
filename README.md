@@ -39,3 +39,7 @@ Note the following important files:
 - `/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
 	- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
 	- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+
+The following figure shows the dependencies between packages:
+
+![Dependencies Between Packages](./scripts/dependencies.svg)
