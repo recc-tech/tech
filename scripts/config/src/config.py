@@ -48,7 +48,7 @@ def locate_profile(profile: str) -> Path:
 
 def get_active_profile() -> Optional[str]:
     try:
-        return _PROFILE_SELECT_FILE.read_text().strip()
+        return _PROFILE_SELECT_FILE.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         return None
 
@@ -60,7 +60,7 @@ def activate_profile(profile: str) -> None:
             f"There is no profile called '{profile}' (expected to find it at {f.as_posix()})."
         )
     try:
-        _PROFILE_SELECT_FILE.write_text(f"{profile}\n")
+        _PROFILE_SELECT_FILE.write_text(f"{profile}\n", encoding="utf-8")
     except Exception as e:
         raise ValueError(
             f"{_PROFILE_SELECT_FILE.as_posix()} is missing and could not be created."
