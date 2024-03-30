@@ -53,6 +53,7 @@ cd "$(git rev-parse --show-toplevel)/scripts"
 pyright . --warnings --level warning
 black . --check
 isort . --check
+python -m dependoc check
 # Run the unit tests first for fast feedback
 python -m unittest discover -t . -s test.unit --failfast
 python -m unittest --failfast

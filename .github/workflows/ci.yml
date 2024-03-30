@@ -32,6 +32,8 @@ jobs:
       run: |
         black ./scripts --check --verbose
         isort ./scripts --check --verbose
+    - name: Check that dependency graph is up to date
+      run: python -m dependoc check
     - name: Run tests
       shell: bash
       run: |
