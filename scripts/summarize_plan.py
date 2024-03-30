@@ -100,7 +100,7 @@ def summarize_plan(
     )
     html = lib.plan_summary_to_html(summary)
     config.plan_summary_file.parent.mkdir(parents=True, exist_ok=True)
-    config.plan_summary_file.write_text(str(html))
+    config.plan_summary_file.write_text(str(html), encoding="utf-8")
     messenger.log_status(
         TaskStatus.DONE, f"Saved summary at {config.plan_summary_file.as_posix()}."
     )

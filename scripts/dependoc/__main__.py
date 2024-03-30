@@ -12,7 +12,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 def _generate(start: Path, exclude: Iterable[Path], out_dir: Path, name: str) -> None:
     dot = _generate_dot(start=start, exclude=exclude, name=name)
     dot_file = out_dir.joinpath(f"{name}.dot")
-    dot_file.write_text(dot)
+    dot_file.write_text(dot, encoding="utf-8")
     svg = out_dir.joinpath(f"{name}.svg")
     subprocess.run(["dot", dot_file.as_posix(), "-T", "svg", "-o", svg.as_posix()])
 
@@ -23,7 +23,7 @@ def _check(start: Path, exclude: Iterable[Path], out_dir: Path, name: str) -> No
     if not dot_file.is_file():
         print("There is no existing dependency graph.")
         sys.exit(1)
-    if dot_file.read_text() != dot:
+    if dot_file.read_text(encoding="utf-8") != dot:
         print("There are changes to the dependency graph!")
         sys.exit(1)
     print("The dependency graph is up to date.")
@@ -53,7 +53,7 @@ def _find_files(start: Path, exclude: Iterable[Path]) -> Iterable[Path]:
 
 
 def _find_imports(f: Path, start: Path) -> Set[Path]:
-    a = ast.parse(source=f.read_text(), filename=f)
+    a = ast.parse(source=f.read_text(encoding="utf-8"), filename=f)
     targets: Set[Path] = set()
     for s in a.body:
         if isinstance(s, Import):
