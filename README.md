@@ -5,17 +5,17 @@ Welcome to the River's Edge Production Team repository!
 - For documentation, see the [wiki](https://github.com/recc-tech/tech/wiki).
 - For the issue tracker, see the [GitHub project](https://github.com/users/recc-tech/projects/1).
 
-## Setting Up a New Production Environment
+## Setting Up on a New Computer
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
 3. Install the required external libraries by running `pip install -r requirements.txt`
-4. Set up the computer to pull the latest code on startup.
-	- On Windows, run `update_scripts.bat` on startup.
-	- On macOS, run `update_scripts.command` on startup.
-5. Create a desktop shortcut for each top-level script (batch files on Windows, shell scripts on macOS).
+4. Create a desktop shortcut for each top-level script (batch files on Windows, shell scripts on macOS).
 	- On Windows, run `New-Shortcuts.ps1` in PowerShell.
 	- On macOS, run `make_shortcuts.sh` in bash.
+5. Set up scripts to run on startup.
+	- At the MCR station, run `update_scripts.bat` on startup. You can do this by copying a shortcut to the script into the startup folder (https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd).
+	- At the FOH station, run `update_scripts.command`, `download_pco_assets.command`, and `summarize_plan.command` on startup. You can do this by adding a new "login item" in the System Preferences (https://stackoverflow.com/a/6445525).
 6. Activate the configuration profile by running `python manage_config.py activate`.
 
 ## Setting Up a New Development Environment
