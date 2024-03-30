@@ -42,4 +42,4 @@ Note the following important files:
 
 The following figure shows the dependencies between packages:
 
-![Dependencies Between Packages](./scripts/dependencies.svg)
+![Dependencies Between Packages](./scripts/dependoc/dependencies.svg)

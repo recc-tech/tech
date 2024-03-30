@@ -9,16 +9,17 @@ from typing import Dict, Iterable, List, Optional, Set
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent
 
 
-def _generate(start: Path, exclude: Iterable[Path], name: str) -> None:
+def _generate(start: Path, exclude: Iterable[Path], out_dir: Path, name: str) -> None:
     dot = _generate_dot(start=start, exclude=exclude, name=name)
-    dot_file = start.joinpath(f"{name}.dot")
+    dot_file = out_dir.joinpath(f"{name}.dot")
     dot_file.write_text(dot)
-    subprocess.run(["dot", f"{name}.dot", "-T", "svg", "-o", f"{name}.svg"])
+    svg = out_dir.joinpath(f"{name}.svg")
+    subprocess.run(["dot", dot_file.as_posix(), "-T", "svg", "-o", svg.as_posix()])
 
 
-def _check(start: Path, exclude: Iterable[Path], name: str) -> None:
+def _check(start: Path, exclude: Iterable[Path], out_dir: Path, name: str) -> None:
     dot = _generate_dot(start=start, exclude=exclude, name=name)
-    dot_file = start.joinpath(f"{name}.dot")
+    dot_file = out_dir.joinpath(f"{name}.dot")
     if not dot_file.is_file():
         print("There is no existing dependency graph.")
         sys.exit(1)
@@ -142,11 +143,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     start_dir = SCRIPTS_DIR
     exclude = [SCRIPTS_DIR.joinpath(".venv"), SCRIPTS_DIR.joinpath("test")]
+    out_dir = Path(__file__).parent
     name = "dependencies"
     if args.subcommand == "generate":
-        _generate(start=start_dir, exclude=exclude, name=name)
+        _generate(start=start_dir, exclude=exclude, out_dir=out_dir, name=name)
     elif args.subcommand == "check":
-        _check(start=start_dir, exclude=exclude, name=name)
+        _check(start=start_dir, exclude=exclude, out_dir=out_dir, name=name)
     elif args.subcommand is None:
         parser.print_usage()
     else:
