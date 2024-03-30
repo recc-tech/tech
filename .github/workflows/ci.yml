@@ -41,8 +41,8 @@ jobs:
       shell: bash
       run: |
         # Use grep to check that at least one test was run
-        python -m unittest discover -t ./scripts -s ./scripts/test/unit --failfast 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
+        python -m unittest discover -t . -s ./test/unit --failfast 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
         # Skip the tests that require credentials
-        rm scripts/test/integration/test_boxcast.py
-        rm scripts/test/integration/test_planning_center.py
-        python -m unittest discover -t ./scripts -s ./scripts/test/integration --failfast 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
+        rm ./test/integration/test_boxcast.py
+        rm ./test/integration/test_planning_center.py
+        python -m unittest discover -t . -s ./test/integration --failfast 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
