@@ -4,10 +4,10 @@ import unittest
 from datetime import date
 from pathlib import Path
 from typing import Dict
-from unittest.mock import create_autospec
+from unittest.mock import call, create_autospec
 
 from args import ReccArgs
-from autochecklist import Messenger
+from autochecklist import Messenger, ProblemLevel
 from config import Config
 from external_services import CredentialStore, Plan, PlanningCenterClient, Song
 from lib import PlanItemsSummary, get_plan_summary
@@ -30,6 +30,13 @@ _PARAMS_20240317_PLANS = {
     "after": "2024-03-17",
 }
 _PARAMS_20240317_PLAN_ITEMS = {"per_page": 200, "include": "song"}
+_PLAN_ITEMS_20240407_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/71699742/items"
+_PARAMS_20240407_PLANS = {
+    "filter": "before,after",
+    "before": "2024-04-08",
+    "after": "2024-04-07",
+}
+_PARAMS_20240407_PLAN_ITEMS = {"per_page": 200, "include": "song"}
 
 
 def _get_canned_response(fname: str) -> Dict[str, object]:
@@ -46,6 +53,10 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
         return _get_canned_response("20240317_plan.json")
     if url == _PLAN_ITEMS_20240317_URL and params == _PARAMS_20240317_PLAN_ITEMS:
         return _get_canned_response("20240317_plan_items.json")
+    if url == _PLANS_URL and params == _PARAMS_20240407_PLANS:
+        return _get_canned_response("20240407_plan.json")
+    if url == _PLAN_ITEMS_20240407_URL and params == _PARAMS_20240407_PLAN_ITEMS:
+        return _get_canned_response("20240407_plan_items.json")
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
@@ -102,7 +113,6 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "After Party",
                 "See You Next Sunday",
             ],
-            # TODO
             songs=[
                 Song(
                     ccli=None,
@@ -171,7 +181,19 @@ class SummarizePlanTestCase(unittest.TestCase):
         self.assertEqual(expected_summary.message_notes, actual_summary.message_notes)
         # Just in case
         self.assertEqual(expected_summary, actual_summary)
-        messenger.log_problem.assert_not_called()
+        messenger.log_problem.assert_has_calls(
+            [
+                call(
+                    level=ProblemLevel.WARN,
+                    message="Found 3 items that look like lists of announcements: MC Host Intro, Announcements, MC Host Outro.",
+                ),
+                call(
+                    level=ProblemLevel.WARN,
+                    message="Found 4 items that look like songs.",
+                ),
+            ]
+        )
+        self.assertEqual(2, messenger.log_problem.call_count)
 
     def test_summarize_20240317(self) -> None:
         config = Config(
@@ -261,6 +283,116 @@ class SummarizePlanTestCase(unittest.TestCase):
                 Hebrews 12:2-3 NLT
                 A Crowned King"""
             ),
+        )
+        actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
+
+        # Compare field-by-field for better error message
+        self.assertEqual(expected_summary.plan, actual_summary.plan)
+        self.assertEqual(expected_summary.walk_in_slides, actual_summary.walk_in_slides)
+        self.assertEqual(expected_summary.opener_video, actual_summary.opener_video)
+        self.assertEqual(expected_summary.announcements, actual_summary.announcements)
+        self.assertEqual(expected_summary.songs, actual_summary.songs)
+        self.assertEqual(expected_summary.bumper_video, actual_summary.bumper_video)
+        self.assertEqual(expected_summary.message_notes, actual_summary.message_notes)
+        # Just in case
+        self.assertEqual(expected_summary, actual_summary)
+        messenger.log_problem.assert_has_calls(
+            [
+                call(
+                    level=ProblemLevel.WARN,
+                    message="Found 3 items that look like lists of announcements: MC Host Intro, Announcements, MC Host Outro.",
+                ),
+                call(
+                    level=ProblemLevel.WARN,
+                    message="Found 4 items that look like songs.",
+                ),
+            ]
+        )
+        self.assertEqual(2, messenger.log_problem.call_count)
+
+    # TODO: Need to update this test as the plan gets updated
+    def test_summarize_20240407(self) -> None:
+        config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        messenger = create_autospec(Messenger)
+        pco_client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=True,
+        )
+        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+        dt = date(year=2024, month=4, day=7)
+
+        expected_summary = PlanItemsSummary(
+            plan=Plan(
+                id="71699742",
+                series_title="WORTHY",
+                title=None,  # pyright: ignore[reportArgumentType]
+                date=dt,
+            ),
+            walk_in_slides=[
+                "River’s Edge",
+                "Faith - Love - Hope",
+                "Worthy Series Title Slide",
+                "Give Generously",
+                "The After Party",
+                "Website",
+                "Follow Us Instagram",
+            ],
+            opener_video="Welcome Opener Video",
+            announcements=[
+                "PIANO playing In the Background",
+                "WELCOME to MOSAIC",
+                "PRAY For People",
+                "CONTINUE To Worship",
+                "GIVING TALK",
+                "Video Announcements",
+                "Prayer Ministry",
+                "Website",
+                "After Party",
+                "See You Next Sunday",
+            ],
+            songs=[
+                Song(
+                    ccli="7067558",
+                    title="Grateful",
+                    author="Chris Brown, Matthew Ntlele, Stefan Green, and Steven Furtick",
+                ),
+                Song(
+                    ccli=None,
+                    title="Remembrance (Live/Acoustic)",
+                    author=None,
+                ),
+                Song(
+                    ccli="7065046",
+                    title="Now And Forever",
+                    author="Andres Figueroa and Mariah McManus",
+                ),
+                Song(
+                    ccli="7136201",
+                    title="I Speak Jesus",
+                    author="Abby Benton, Carlene Prince, Dustin Smith, Jesse Reeves, Kristen Dutton, and Raina Pratt",
+                ),
+                Song(
+                    ccli="7136201",
+                    title="I Speak Jesus",
+                    author="Abby Benton, Carlene Prince, Dustin Smith, Jesse Reeves, Kristen Dutton, and Raina Pratt",
+                ),
+                Song(
+                    ccli="7065046",
+                    title="Now And Forever",
+                    author="Andres Figueroa and Mariah McManus",
+                ),
+            ],
+            bumper_video="Worthy Sermon Bumper Video",
+            message_notes=inspect.cleandoc(""""""),
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
 

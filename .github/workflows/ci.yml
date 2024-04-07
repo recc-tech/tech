@@ -30,7 +30,7 @@ jobs:
         pip install -r ./requirements.txt
         pip install -r ./requirements-dev.txt
     - name: Type check
-      run: pyright . --warnings
+      run: pyright . --warnings --level warning
     - name: Check code style
       run: |
         black . --check --verbose

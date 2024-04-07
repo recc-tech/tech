@@ -83,14 +83,14 @@ def _get_opener_video(sections: List[PlanSection]) -> str:
 
 
 def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]:
-    pattern = "(mc host intro|announcements|mc host outro)"
+    pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
         i
         for i in items
         if re.search(pattern, i.title, re.IGNORECASE)
         and not re.search("rotating announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 3:
+    if len(matches) != 4:
         titles = [i.title for i in matches]
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -98,8 +98,11 @@ def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]
         )
     slide_names: List[str] = []
     for itm in matches:
-        names = _get_announcement_slide_names(itm)
-        slide_names = _merge(slide_names, names)
+        if re.search("video announcements", itm.title, re.IGNORECASE):
+            slide_names = _merge(slide_names, [itm.title])
+        else:
+            names = _get_announcement_slide_names(itm)
+            slide_names = _merge(slide_names, names)
     return slide_names
 
 
@@ -141,7 +144,7 @@ def _get_songs(sections: List[PlanSection], messenger: Messenger) -> List[Song]:
         for i in s.items
         if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
     ]
-    if len(matching_items) != 4:
+    if len(matching_items) != 6:
         messenger.log_problem(
             ProblemLevel.WARN,
             f"Found {len(matching_items)} items that look like songs.",
