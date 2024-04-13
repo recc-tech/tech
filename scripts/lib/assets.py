@@ -12,6 +12,15 @@ from config import Config
 from external_services import Attachment, FileType, PlanningCenterClient
 
 
+class AssetCategory(Enum):
+    ANNOUNCEMENTS = auto()
+    KIDS_VIDEO = auto()
+    SERMON_NOTES = auto()
+    IMAGE = auto()
+    VIDEO = auto()
+    UNKNOWN = auto()
+
+
 class AssetManager:
     def __init__(self, config: Config) -> None:
         self._config = config
@@ -43,7 +52,7 @@ class AssetManager:
     ) -> Optional[Path]:
         cancellation_token = messenger.allow_cancel()
 
-        (downloads, kids_video_path) = _plan_downloads(
+        (downloads, kids_video_path) = self._plan_downloads(
             client=client,
             messenger=messenger,
             today=self._config.start_time.date(),
@@ -52,8 +61,6 @@ class AssetManager:
             assets_by_type_videos_dir=self._config.videos_dir,
             download_kids_video=download_kids_video,
             download_notes_docx=download_notes_docx,
-            kids_video_regex=self._config.kids_video_regex,
-            sermon_notes_regex=self._config.sermon_notes_regex,
         )
 
         if len(downloads) == 0:
@@ -130,100 +137,88 @@ class AssetManager:
         else:
             return None
 
-
-def _plan_downloads(
-    client: PlanningCenterClient,
-    messenger: Messenger,
-    today: date,
-    assets_by_service_dir: Path,
-    temp_assets_dir: Path,
-    assets_by_type_videos_dir: Path,
-    download_kids_video: bool,
-    download_notes_docx: bool,
-    kids_video_regex: str,
-    sermon_notes_regex: str,
-) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
-    messenger.log_status(
-        TaskStatus.RUNNING, "Looking for attachments in Planning Center."
-    )
-    plan = client.find_plan_by_date(today)
-    attachments = client.find_attachments(plan.id)
-    (
-        kids_videos,
-        sermon_notes,
-        other_images,
-        other_videos,
-        unknown_attachments,
-    ) = _classify_attachments(
-        attachments,
-        kids_video_regex=kids_video_regex,
-        sermon_notes_regex=sermon_notes_regex,
-    )
-    if len(sermon_notes) != 1 and download_notes_docx:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+    def _classify(self, attachment: Attachment) -> AssetCategory:
+        # TODO: Also recognize announcements video
+        is_kids_video = attachment.file_type == FileType.VIDEO and bool(
+            re.search(self._config.kids_video_regex, attachment.filename, re.IGNORECASE)
         )
-    if len(kids_videos) != 1 and download_kids_video:
-        raise ValueError(
-            f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
+        if is_kids_video:
+            return AssetCategory.KIDS_VIDEO
+        is_sermon_notes = attachment.file_type == FileType.DOCX and bool(
+            re.search(
+                self._config.sermon_notes_regex, attachment.filename, re.IGNORECASE
+            )
         )
-    kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
-    messenger.log_debug(
-        f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
-    )
+        if is_sermon_notes:
+            return AssetCategory.SERMON_NOTES
+        if attachment.file_type == FileType.IMAGE:
+            return AssetCategory.IMAGE
+        if attachment.file_type == FileType.VIDEO:
+            return AssetCategory.VIDEO
+        return AssetCategory.UNKNOWN
 
-    messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
-    downloads: Dict[Path, Attachment] = {}
-    kids_video_path = None
-    if download_kids_video:
-        # Should never happen, but check to make Pyright happy
-        if kids_video is None:
-            raise ValueError("Missing kids video.")
-        _check_kids_video_week_num(kids_video, today, messenger)
-        kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-        downloads[kids_video_path] = kids_video
-    if download_notes_docx:
-        for sn in sermon_notes:
-            downloads[assets_by_service_dir.joinpath(sn.filename)] = sn
-    for img in other_images:
-        downloads[temp_assets_dir.joinpath(img.filename)] = img
-    for vid in other_videos:
-        vid_path = assets_by_type_videos_dir.joinpath(vid.filename)
-        # Assume the existing video is already correct
-        if not vid_path.exists():
-            downloads[vid_path] = vid
-
-    return (downloads, kids_video_path)
-
-
-def _classify_attachments(
-    attachments: Set[Attachment], kids_video_regex: str, sermon_notes_regex: str
-) -> Tuple[
-    Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment], Set[Attachment]
-]:
-    def is_kids_video(a: Attachment) -> bool:
-        return a.file_type == FileType.VIDEO and bool(
-            re.search(kids_video_regex, a.filename, re.IGNORECASE)
+    def _plan_downloads(
+        self,
+        client: PlanningCenterClient,
+        messenger: Messenger,
+        today: date,
+        assets_by_service_dir: Path,
+        temp_assets_dir: Path,
+        assets_by_type_videos_dir: Path,
+        download_kids_video: bool,
+        download_notes_docx: bool,
+    ) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
+        messenger.log_status(
+            TaskStatus.RUNNING, "Looking for attachments in Planning Center."
+        )
+        plan = client.find_plan_by_date(today)
+        attachments = client.find_attachments(plan.id)
+        category_by_attachment = {a: self._classify(a) for a in attachments}
+        attachments_by_category = {
+            cat: {a for (a, c) in category_by_attachment.items() if c == cat}
+            for cat in AssetCategory
+        }
+        sermon_notes = attachments_by_category[AssetCategory.SERMON_NOTES]
+        if len(sermon_notes) != 1 and download_notes_docx:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+            )
+        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
+        if len(kids_videos) != 1 and download_kids_video:
+            raise ValueError(
+                f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
+            )
+        kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
+        other_images = attachments_by_category[AssetCategory.IMAGE]
+        other_videos = attachments_by_category[AssetCategory.VIDEO]
+        unknown_attachments = attachments_by_category[AssetCategory.UNKNOWN]
+        messenger.log_debug(
+            f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
         )
 
-    def is_sermon_notes(a: Attachment) -> bool:
-        return a.file_type == FileType.DOCX and bool(
-            re.search(sermon_notes_regex, a.filename, re.IGNORECASE)
-        )
+        messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
+        downloads: Dict[Path, Attachment] = {}
+        kids_video_path = None
+        if download_kids_video:
+            # Should never happen, but check to make Pyright happy
+            if kids_video is None:
+                raise ValueError("Missing kids video.")
+            _check_kids_video_week_num(kids_video, today, messenger)
+            kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
+            downloads[kids_video_path] = kids_video
+        if download_notes_docx:
+            for sn in sermon_notes:
+                downloads[assets_by_service_dir.joinpath(sn.filename)] = sn
+        for img in other_images:
+            downloads[temp_assets_dir.joinpath(img.filename)] = img
+        for vid in other_videos:
+            vid_path = assets_by_type_videos_dir.joinpath(vid.filename)
+            # Assume the existing video is already correct
+            if not vid_path.exists():
+                downloads[vid_path] = vid
 
-    # Don't mutate the input
-    attachments = set(attachments)
-    kids_videos = {a for a in attachments if is_kids_video(a)}
-    attachments -= kids_videos
-    notes = {a for a in attachments if is_sermon_notes(a)}
-    attachments -= notes
-    other_images = {a for a in attachments if a.file_type == FileType.IMAGE}
-    attachments -= other_images
-    other_videos = {a for a in attachments if a.file_type == FileType.VIDEO}
-    attachments -= other_videos
-
-    return kids_videos, notes, other_images, other_videos, attachments
+        return (downloads, kids_video_path)
 
 
 def _any(s: Set[Attachment]) -> Attachment:
