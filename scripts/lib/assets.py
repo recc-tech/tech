@@ -22,6 +22,8 @@ class AssetCategory(Enum):
 
 
 class AssetManager:
+    _VIDEO_EXTENSIONS = {".mp4", ".mov"}
+
     def __init__(self, config: Config) -> None:
         self._config = config
 
@@ -30,12 +32,28 @@ class AssetManager:
             pattern = self._config.kids_video_regex
             return (
                 p.is_file()
-                and p.suffix.lower() in {".mp4", ".mov"}
+                and p.suffix.lower() in self._VIDEO_EXTENSIONS
                 and bool(re.search(pattern, p.stem, flags=re.IGNORECASE))
             )
 
         folder = self._config.assets_by_service_dir
         candidates = [p for p in folder.glob("*") if is_kids_video(p)]
+        if len(candidates) == 1:
+            return candidates[0]
+        else:
+            return None
+
+    def locate_announcements_video(self) -> Optional[Path]:
+        def is_announcements_video(p: Path) -> bool:
+            pattern = self._config.announcements_video_regex
+            return (
+                p.is_file()
+                and p.suffix.lower() in self._VIDEO_EXTENSIONS
+                and bool(re.search(pattern, p.stem, flags=re.IGNORECASE))
+            )
+
+        folder = self._config.assets_by_service_dir
+        candidates = [p for p in folder.glob("*") if is_announcements_video(p)]
         if len(candidates) == 1:
             return candidates[0]
         else:

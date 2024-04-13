@@ -59,11 +59,18 @@
 			"subtasks": [
 				{
 					"name": "download_assets",
-					"description": "Download the Kids Connection Video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
+					"description": "Download the Kids Connection Video, announcements video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
 				},
 				{
-					"name": "create_Kids_Connection_playlist",
+					"name": "import_Kids_Connection_video",
 					"description": "In vMix, replace last week's kids video with this week's video in the Kids Connection list input.",
+					"prerequisites": [
+						"download_assets"
+					]
+				},
+				{
+					"name": "import_announcements_video",
+					"description": "In vMix, replace last week's announcements video with this week's video in the Announcements list input.",
 					"prerequisites": [
 						"download_assets"
 					]
@@ -72,7 +79,8 @@
 					"name": "restart_videos",
 					"description": "Restart all the videos and loops.",
 					"prerequisites": [
-						"create_Kids_Connection_playlist"
+						"import_Kids_Connection_video",
+						"import_announcements_video"
 					]
 				},
 				{

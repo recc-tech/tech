@@ -445,6 +445,9 @@ class Config(BaseConfig):
             self.vmix_kids_connection_list_key = reader.get_str(
                 "vmix.kids_connection_list_key"
             )
+            self.vmix_announcements_list_key = reader.get_str(
+                "vmix.announcements_list_key"
+            )
             self.vmix_pre_stream_title_key = reader.get_str("vmix.pre_stream_title_key")
             self.vmix_speaker_title_key = reader.get_str("vmix.speaker_title_key")
             self.vmix_host_title_key = reader.get_str("vmix.host_title_key")

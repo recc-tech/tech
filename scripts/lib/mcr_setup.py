@@ -18,7 +18,7 @@ def download_assets(
     )
 
 
-def create_Kids_Connection_playlist(
+def import_Kids_Connection_video(
     client: VmixClient, config: McrSetupConfig, manager: AssetManager
 ) -> None:
     kids_video_path = manager.locate_kids_video()
@@ -26,6 +26,16 @@ def create_Kids_Connection_playlist(
         raise ValueError("The path to the Kids Connection video is not known.")
     client.list_remove_all(config.vmix_kids_connection_list_key)
     client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
+
+
+def import_announcements_video(
+    client: VmixClient, config: McrSetupConfig, manager: AssetManager
+) -> None:
+    announcements_video_path = manager.locate_announcements_video()
+    if announcements_video_path is None:
+        raise ValueError("The path to the announcements video is not known.")
+    client.list_remove_all(config.vmix_announcements_list_key)
+    client.list_add(config.vmix_announcements_list_key, announcements_video_path)
 
 
 def restart_videos(client: VmixClient) -> None:
