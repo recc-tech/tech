@@ -55,10 +55,6 @@ class AssetManager:
         (downloads, kids_video_path) = self._plan_downloads(
             client=client,
             messenger=messenger,
-            today=self._config.start_time.date(),
-            assets_by_service_dir=self._config.assets_by_service_dir,
-            temp_assets_dir=self._config.temp_assets_dir,
-            assets_by_type_videos_dir=self._config.videos_dir,
             download_kids_video=download_kids_video,
             download_notes_docx=download_notes_docx,
         )
@@ -138,7 +134,15 @@ class AssetManager:
             return None
 
     def _classify(self, attachment: Attachment) -> AssetCategory:
-        # TODO: Also recognize announcements video
+        is_announcement = attachment.file_type == FileType.VIDEO and bool(
+            re.search(
+                self._config.announcements_video_regex,
+                attachment.filename,
+                re.IGNORECASE,
+            )
+        )
+        if is_announcement:
+            return AssetCategory.ANNOUNCEMENTS
         is_kids_video = attachment.file_type == FileType.VIDEO and bool(
             re.search(self._config.kids_video_regex, attachment.filename, re.IGNORECASE)
         )
@@ -161,16 +165,13 @@ class AssetManager:
         self,
         client: PlanningCenterClient,
         messenger: Messenger,
-        today: date,
-        assets_by_service_dir: Path,
-        temp_assets_dir: Path,
-        assets_by_type_videos_dir: Path,
         download_kids_video: bool,
         download_notes_docx: bool,
     ) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
         )
+        today = self._config.start_time.date()
         plan = client.find_plan_by_date(today)
         attachments = client.find_attachments(plan.id)
         category_by_attachment = {a: self._classify(a) for a in attachments}
@@ -190,15 +191,30 @@ class AssetManager:
                 f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
             )
         kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
+        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
+        if len(announcements) != 1:
+            raise ValueError(
+                f"Found {len(announcements)} attachments that look like the announcements video."
+            )
+        announcements = _any(announcements)
         other_images = attachments_by_category[AssetCategory.IMAGE]
         other_videos = attachments_by_category[AssetCategory.VIDEO]
         unknown_attachments = attachments_by_category[AssetCategory.UNKNOWN]
         messenger.log_debug(
-            f"{len(attachments)} attachments found on PCO.\n- Kids video: {kids_video}\n- Sermon notes: {sermon_notes}\n- Other images: {other_images}\n- Other videos: {other_videos}\n- Unknown: {unknown_attachments}"
+            f"{len(attachments)} attachments found on PCO.\n"
+            f" * Announcements video: {announcements}\n"
+            f" * Kids video: {kids_video}\n"
+            f" * Sermon notes: {sermon_notes}\n"
+            f" * Other images: {other_images}\n"
+            f" * Other videos: {other_videos}\n"
+            f" * Unknown: {unknown_attachments}"
         )
 
         messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
+        assets_by_service_dir = self._config.assets_by_service_dir
         downloads: Dict[Path, Attachment] = {}
+        announcements_path = assets_by_service_dir.joinpath(announcements.filename)
+        downloads[announcements_path] = announcements
         kids_video_path = None
         if download_kids_video:
             # Should never happen, but check to make Pyright happy
@@ -211,9 +227,9 @@ class AssetManager:
             for sn in sermon_notes:
                 downloads[assets_by_service_dir.joinpath(sn.filename)] = sn
         for img in other_images:
-            downloads[temp_assets_dir.joinpath(img.filename)] = img
+            downloads[self._config.temp_assets_dir.joinpath(img.filename)] = img
         for vid in other_videos:
-            vid_path = assets_by_type_videos_dir.joinpath(vid.filename)
+            vid_path = self._config.videos_dir.joinpath(vid.filename)
             # Assume the existing video is already correct
             if not vid_path.exists():
                 downloads[vid_path] = vid

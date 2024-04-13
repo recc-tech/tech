@@ -52,6 +52,7 @@ service_type_id = "882857"
 # https://regex101.com/
 kids_video_regex = "kids"
 sermon_notes_regex = "^notes"
+announcements_video_regex = "announcement"
 default_speaker_name = "Lorenzo DellaForesta"
 
 [vimeo]

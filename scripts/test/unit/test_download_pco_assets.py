@@ -9,6 +9,26 @@ from lib.assets import AssetCategory, AssetManager, Attachment
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
+    def test_classify_announcements_0(self) -> None:
+        attachment = Attachment(
+            id="168445080",
+            filename="Announcement Video.mov",
+            num_bytes=65454784,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.ANNOUNCEMENTS, self._classify(attachment))
+
+    def test_classify_announcements_1(self) -> None:
+        attachment = Attachment(
+            id="168975407",
+            filename="Announcements.mov",
+            num_bytes=9087846,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.ANNOUNCEMENTS, self._classify(attachment))
+
     def test_classify_kids_video_0(self) -> None:
         kids_video = Attachment(
             id="163865496",
@@ -76,6 +96,16 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             num_bytes=73018536,
             pco_filetype="video",
             mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.VIDEO, self._classify(video))
+
+    def test_classify_mp4(self) -> None:
+        video = Attachment(
+            id="168543182",
+            filename="Worthy Sermon Bumper.mp4",
+            num_bytes=66443050,
+            pco_filetype="video",
+            mime_type="application/mp4",
         )
         self.assertEqual(AssetCategory.VIDEO, self._classify(video))
 

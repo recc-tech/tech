@@ -423,6 +423,9 @@ class Config(BaseConfig):
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"
             )
+            self.announcements_video_regex = reader.get_str(
+                "planning_center.announcements_video_regex"
+            )
             self.default_speaker_name = reader.get_str(
                 "planning_center.default_speaker_name"
             )
