@@ -15,7 +15,6 @@ theme = "dark"
 logs = "%{folder.home}%/Logs"
 captions = "%{folder.home}%/Captions/%{args.startup_ymd}%"
 archived_assets = "%{folder.assets_by_type}%/Archive"
-temporary_assets = "%{folder.assets_by_type}%/Temp"
 
 [logging]
 check_credentials                = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"

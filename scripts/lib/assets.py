@@ -1,11 +1,11 @@
 import asyncio
+import filecmp
 import re
-import shutil
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, Optional, Set
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -94,7 +94,6 @@ class AssetManager:
         # Just in case
         self._config.videos_dir.mkdir(exist_ok=True, parents=True)
         self._config.images_dir.mkdir(exist_ok=True, parents=True)
-        self._config.temp_assets_dir.mkdir(exist_ok=True, parents=True)
 
         messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
         results = asyncio.run(
@@ -105,7 +104,16 @@ class AssetManager:
             )
         )
 
-        # TODO: Move this to the end so it doesn't prevent deduplication?
+        messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
+        for p, d in downloads.items():
+            should_dedup = results.get(p, None) is None and (
+                p.is_relative_to(self._config.images_dir)
+                or p.is_relative_to(self._config.videos_dir)
+            )
+            if should_dedup and _is_duplicate(p):
+                p.unlink()
+
+        messenger.log_status(TaskStatus.RUNNING, "Checking download results.")
         for p, d in downloads.items():
             if p not in results:
                 messenger.log_problem(
@@ -120,38 +128,6 @@ class AssetManager:
                     raise Exception(msg)
                 else:
                     messenger.log_problem(ProblemLevel.WARN, msg)
-
-        successful_image_downloads = [
-            p
-            for p in downloads.keys()
-            if results.get(p, None) is None
-            and p.is_relative_to(self._config.temp_assets_dir)
-        ]
-
-        messenger.log_status(
-            TaskStatus.RUNNING, "Moving new images into the assets folder."
-        )
-        results = _merge_files(successful_image_downloads, self._config.images_dir)
-        for p, r in zip(successful_image_downloads, results):
-            match r:
-                case MergeFileResult.SUCCESS:
-                    messenger.log_debug(
-                        f"{p.name} was successfully moved to the assets folder."
-                    )
-                case MergeFileResult.ALREADY_EXISTS:
-                    messenger.log_debug(
-                        f"{p.name} has the same contents as an existing file, so it was not moved to the assets folder."
-                    )
-                case MergeFileResult.RENAME_FAILED:
-                    messenger.log_problem(
-                        ProblemLevel.WARN,
-                        f"Failed to move {p.name} to the assets folder because no suitable name could be found (all attempted ones were already taken).",
-                    )
-                case MergeFileResult.RENAMED:
-                    messenger.log_problem(
-                        ProblemLevel.WARN,
-                        f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
-                    )
 
     def _classify(self, attachment: Attachment) -> AssetCategory:
         is_announcement = attachment.file_type == FileType.VIDEO and bool(
@@ -250,7 +226,9 @@ class AssetManager:
                 p = assets_by_service_dir.joinpath(sn.filename)
                 downloads[p] = Download(sn, is_required=False)
         for img in other_images:
-            p = self._config.temp_assets_dir.joinpath(img.filename)
+            p = _find_available_path(
+                dest_dir=self._config.images_dir, name=img.filename
+            )
             downloads[p] = Download(img, is_required=False)
         for vid in other_videos:
             vid_path = self._config.videos_dir.joinpath(vid.filename)
@@ -265,6 +243,34 @@ def _any(s: Set[Attachment]) -> Attachment:
     for x in s:
         return x
     raise ValueError("Empty sequence.")
+
+
+def _find_available_path(dest_dir: Path, name: str) -> Path:
+    MAX_ATTEMPTS = 1000
+    file = Path(name)
+    suffix = file.suffix
+    stem = file.stem
+    for i in range(MAX_ATTEMPTS + 1):
+        new_filepath = (
+            dest_dir.joinpath(f"{stem}{suffix}")
+            if i == 0
+            else dest_dir.joinpath(f"{stem}-{i}{suffix}")
+        )
+        if not new_filepath.exists():
+            return new_filepath
+    raise ValueError(
+        f"Failed to move {name} into {dest_dir.as_posix()} because no suitable name could be found (all attempted ones were already taken)."
+    )
+
+
+def _is_duplicate(p: Path) -> bool:
+    directory = p.parent
+    for other in directory.iterdir():
+        if not other.is_file():
+            continue
+        if filecmp.cmp(p, other):
+            return True
+    return False
 
 
 def _check_kids_video_week_num(
@@ -296,62 +302,3 @@ def _get_week_num(day: date) -> int:
         if d.month != day.month:
             return i
     return 5
-
-
-class MergeFileResult(Enum):
-    SUCCESS = auto()
-    """The file was moved to the target directory."""
-    ALREADY_EXISTS = auto()
-    """The file matches an existing one."""
-    RENAMED = auto()
-    """
-    The file was moved to the target directory, but its original name was
-    already taken.
-    """
-    RENAME_FAILED = auto()
-    """
-    The file could not be moved to the target directory because no suitable
-    name could be found that did not overwrite an existing file.
-    """
-
-
-def _merge_files(files: List[Path], dir: Path) -> List[MergeFileResult]:
-    """
-    Merge the given set of files into the given directory.
-    If a file has the same contents as any of the files already in `dir`,
-    delete it.
-    Otherwise, move it into `dir`.
-    If an existing file already has the same name, rename the new file.
-    """
-    existing_image_contents = {p.read_bytes() for p in dir.iterdir() if p.is_file()}
-    results: List[MergeFileResult] = []
-    for p in files:
-        if p.read_bytes() in existing_image_contents:
-            p.unlink()
-            results.append(MergeFileResult.ALREADY_EXISTS)
-        else:
-            required_attempts = _move_without_overwriting(p, dir, max_attempts=100)
-            if required_attempts < 0:
-                results.append(MergeFileResult.RENAME_FAILED)
-            elif required_attempts == 0:
-                results.append(MergeFileResult.SUCCESS)
-            else:
-                results.append(MergeFileResult.RENAMED)
-    return results
-
-
-def _move_without_overwriting(file: Path, dest_dir: Path, max_attempts: int) -> int:
-    suffix = file.suffix
-    stem = file.stem
-    required_attempts = -1
-    for i in range(max_attempts + 1):
-        new_filepath = (
-            dest_dir.joinpath(f"{stem}{suffix}")
-            if i == 0
-            else dest_dir.joinpath(f"{stem}-{i}{suffix}")
-        )
-        if not new_filepath.exists():
-            shutil.move(file, new_filepath)
-            required_attempts = i
-            break
-    return required_attempts

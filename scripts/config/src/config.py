@@ -370,7 +370,6 @@ class Config(BaseConfig):
             self.log_dir = reader.get_directory("folder.logs")
             self.captions_dir = reader.get_directory("folder.captions")
             self.archived_assets_dir = reader.get_directory("folder.archived_assets")
-            self.temp_assets_dir = reader.get_directory("folder.temporary_assets")
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")
