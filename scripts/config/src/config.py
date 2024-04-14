@@ -370,7 +370,6 @@ class Config(BaseConfig):
             self.log_dir = reader.get_directory("folder.logs")
             self.captions_dir = reader.get_directory("folder.captions")
             self.archived_assets_dir = reader.get_directory("folder.archived_assets")
-            self.temp_assets_dir = reader.get_directory("folder.temporary_assets")
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")
@@ -423,6 +422,9 @@ class Config(BaseConfig):
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"
             )
+            self.announcements_video_regex = reader.get_str(
+                "planning_center.announcements_video_regex"
+            )
             self.default_speaker_name = reader.get_str(
                 "planning_center.default_speaker_name"
             )
@@ -441,6 +443,9 @@ class Config(BaseConfig):
             self.vmix_base_url = reader.get_str("vmix.base_url")
             self.vmix_kids_connection_list_key = reader.get_str(
                 "vmix.kids_connection_list_key"
+            )
+            self.vmix_announcements_list_key = reader.get_str(
+                "vmix.announcements_list_key"
             )
             self.vmix_pre_stream_title_key = reader.get_str("vmix.pre_stream_title_key")
             self.vmix_speaker_title_key = reader.get_str("vmix.speaker_title_key")

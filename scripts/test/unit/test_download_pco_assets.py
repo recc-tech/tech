@@ -5,90 +5,41 @@ import unittest
 from args import ReccArgs
 from config import Config
 from lib import Attachment
-from lib.assets import Attachment, _classify_attachments
+from lib.assets import AssetCategory, AssetManager, Attachment
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
-    def test_classify_attachments(self):
-        kids_video = {
-            Attachment(
-                id="163865496",
-                filename="Kids_OnlineExperience_W1.mp4",
-                num_bytes=547786017,
-                pco_filetype="video",
-                mime_type="application/mp4",
-            )
-        }
-        notes = {
-            Attachment(
-                id="163869600",
-                filename="Notes – Clean Slate – Victory Through Dreams.docx",
-                num_bytes=16251,
-                pco_filetype="file",
-                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            )
-        }
-        images = {
-            Attachment(
-                id="163862630",
-                filename="Save The Date.jpeg",
-                num_bytes=15111396,
-                pco_filetype="image",
-                mime_type="image/jpeg",
-            ),
-            Attachment(
-                id="163863943",
-                filename="Clean_Slate_Title.png",
-                num_bytes=215905,
-                pco_filetype="image",
-                mime_type="image/png",
-            ),
-        }
-        videos = {
-            Attachment(
-                id="162216121",
-                filename="clean_slate_bumper.mov",
-                num_bytes=43767222,
-                pco_filetype="video",
-                mime_type="video/quicktime",
-            ),
-            Attachment(
-                id="161125310",
-                filename="clean_slate_intro.mov",
-                num_bytes=73018536,
-                pco_filetype="video",
-                mime_type="video/quicktime",
-            ),
-        }
-        unknown_assets = {
-            Attachment(
-                id="163863127",
-                filename="MC Host Script.docx",
-                num_bytes=29471,
-                pco_filetype="file",
-                mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            )
-        }
-        all_attachments = kids_video.union(notes, images, videos, unknown_assets)
-        original_all_attachments = set(all_attachments)
-
-        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
-
-        k, n, i, v, u = _classify_attachments(
-            all_attachments,
-            kids_video_regex=config.kids_video_regex,
-            sermon_notes_regex=config.sermon_notes_regex,
+    def test_classify_announcements_0(self) -> None:
+        attachment = Attachment(
+            id="168445080",
+            filename="Announcement Video.mov",
+            num_bytes=65454784,
+            pco_filetype="video",
+            mime_type="video/quicktime",
         )
+        self.assertEqual(AssetCategory.ANNOUNCEMENTS, self._classify(attachment))
 
-        # Classifier should not mutate input
-        self.assertEqual(original_all_attachments, all_attachments)
-        self.assertEqual(kids_video, k)
-        self.assertEqual(notes, n)
-        self.assertEqual(images, i)
-        self.assertEqual(videos, v)
-        self.assertEqual(unknown_assets, u)
+    def test_classify_announcements_1(self) -> None:
+        attachment = Attachment(
+            id="168975407",
+            filename="Announcements.mov",
+            num_bytes=9087846,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.ANNOUNCEMENTS, self._classify(attachment))
 
-    def test_classify_kids_video_different_name(self):
+    def test_classify_kids_video_0(self) -> None:
+        kids_video = Attachment(
+            id="163865496",
+            filename="Kids_OnlineExperience_W1.mp4",
+            num_bytes=547786017,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual(AssetCategory.KIDS_VIDEO, self._classify(kids_video))
+
+    def test_classify_kids_video_1(self) -> None:
         kids_video = Attachment(
             id="163865496",
             filename="2402_Kids_OnlineExperience_W1.mp4",
@@ -96,10 +47,79 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="application/mp4",
         )
-        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
-        k, *_ = _classify_attachments(
-            {kids_video},
-            kids_video_regex=config.kids_video_regex,
-            sermon_notes_regex=config.sermon_notes_regex,
+        self.assertEqual(AssetCategory.KIDS_VIDEO, self._classify(kids_video))
+
+    def test_classify_sermon_notes(self) -> None:
+        notes = Attachment(
+            id="163869600",
+            filename="Notes – Clean Slate – Victory Through Dreams.docx",
+            num_bytes=16251,
+            pco_filetype="file",
+            mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
-        self.assertEqual({kids_video}, k)
+        self.assertEqual(AssetCategory.SERMON_NOTES, self._classify(notes))
+
+    def test_classify_jpg(self) -> None:
+        image = Attachment(
+            id="163862630",
+            filename="Save The Date.jpeg",
+            num_bytes=15111396,
+            pco_filetype="image",
+            mime_type="image/jpeg",
+        )
+        self.assertEqual(AssetCategory.IMAGE, self._classify(image))
+
+    def test_classify_png(self) -> None:
+        image = Attachment(
+            id="163863943",
+            filename="Clean_Slate_Title.png",
+            num_bytes=215905,
+            pco_filetype="image",
+            mime_type="image/png",
+        )
+        self.assertEqual(AssetCategory.IMAGE, self._classify(image))
+
+    def test_classify_mov_0(self) -> None:
+        video = Attachment(
+            id="162216121",
+            filename="clean_slate_bumper.mov",
+            num_bytes=43767222,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.VIDEO, self._classify(video))
+
+    def test_classify_mov_1(self) -> None:
+        video = Attachment(
+            id="161125310",
+            filename="clean_slate_intro.mov",
+            num_bytes=73018536,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(AssetCategory.VIDEO, self._classify(video))
+
+    def test_classify_mp4(self) -> None:
+        video = Attachment(
+            id="168543182",
+            filename="Worthy Sermon Bumper.mp4",
+            num_bytes=66443050,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual(AssetCategory.VIDEO, self._classify(video))
+
+    def test_classify_unknown(self) -> None:
+        attachment = Attachment(
+            id="163863127",
+            filename="MC Host Script.docx",
+            num_bytes=29471,
+            pco_filetype="file",
+            mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        self.assertEqual(AssetCategory.UNKNOWN, self._classify(attachment))
+
+    def _classify(self, a: Attachment) -> AssetCategory:
+        config = Config(ReccArgs.parse([]), allow_multiple_only_for_testing=True)
+        manager = AssetManager(config=config)
+        return manager._classify(a)
