@@ -1,10 +1,11 @@
 import asyncio
 import re
 import shutil
+from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -18,6 +19,12 @@ class AssetCategory(Enum):
     IMAGE = auto()
     VIDEO = auto()
     UNKNOWN = auto()
+
+
+@dataclass
+class Download:
+    attachment: Attachment
+    is_required: bool
 
 
 class AssetManager:
@@ -69,7 +76,7 @@ class AssetManager:
     ) -> None:
         cancellation_token = messenger.allow_cancel()
 
-        (downloads, kids_video_path) = self._plan_downloads(
+        downloads = self._plan_downloads(
             client=client,
             messenger=messenger,
             download_kids_video=download_kids_video,
@@ -91,28 +98,29 @@ class AssetManager:
 
         messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
         results = asyncio.run(
-            client.download_attachments(downloads, messenger, cancellation_token)
+            client.download_attachments(
+                {p: d.attachment for (p, d) in downloads.items()},
+                messenger,
+                cancellation_token,
+            )
         )
-        if download_kids_video:
-            if kids_video_path is None:
-                raise ValueError("Internal error: the kids video path is not known.")
-            kids_video_result = results[kids_video_path]
-            if kids_video_result is not None:
-                raise Exception(
-                    f"Failed to download the Kids Connection video: {kids_video_result} ({type(kids_video_result).__name__})."
-                ) from kids_video_result
-        for path in downloads.keys():
-            if path not in results:
+
+        # TODO: Move this to the end so it doesn't prevent deduplication?
+        for p, d in downloads.items():
+            if p not in results:
                 messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"The result of the download to '{path.as_posix()}' is unknown.",
+                    f"The result of the download to '{p.as_posix()}' is unknown.",
                 )
-            elif results[path] is not None:
-                # TODO: Refactor log_problem to take exception object as input
-                messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"Download to '{path.as_posix()}' failed: {results[path]} ({type(results[path]).__name__}).",
-                )
+                continue
+            result = results[p]
+            msg = f"Failed to download {d.attachment.filename}: {result} ({type(result).__name__})"
+            if result is not None:
+                if d.is_required:
+                    raise Exception(msg)
+                else:
+                    messenger.log_problem(ProblemLevel.WARN, msg)
+
         successful_image_downloads = [
             p
             for p in downloads.keys()
@@ -179,7 +187,7 @@ class AssetManager:
         messenger: Messenger,
         download_kids_video: bool,
         download_notes_docx: bool,
-    ) -> Tuple[Dict[Path, Attachment], Optional[Path]]:
+    ) -> Dict[Path, Download]:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
         )
@@ -224,9 +232,9 @@ class AssetManager:
 
         messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
         assets_by_service_dir = self._config.assets_by_service_dir
-        downloads: Dict[Path, Attachment] = {}
+        downloads: Dict[Path, Download] = {}
         announcements_path = assets_by_service_dir.joinpath(announcements.filename)
-        downloads[announcements_path] = announcements
+        downloads[announcements_path] = Download(announcements, is_required=True)
         kids_video_path = None
         if download_kids_video:
             # Should never happen, but check to make Pyright happy
@@ -234,19 +242,23 @@ class AssetManager:
                 raise ValueError("Missing kids video.")
             _check_kids_video_week_num(kids_video, today, messenger)
             kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-            downloads[kids_video_path] = kids_video
+            downloads[kids_video_path] = Download(
+                kids_video, is_required=download_kids_video
+            )
         if download_notes_docx:
             for sn in sermon_notes:
-                downloads[assets_by_service_dir.joinpath(sn.filename)] = sn
+                p = assets_by_service_dir.joinpath(sn.filename)
+                downloads[p] = Download(sn, is_required=False)
         for img in other_images:
-            downloads[self._config.temp_assets_dir.joinpath(img.filename)] = img
+            p = self._config.temp_assets_dir.joinpath(img.filename)
+            downloads[p] = Download(img, is_required=False)
         for vid in other_videos:
             vid_path = self._config.videos_dir.joinpath(vid.filename)
             # Assume the existing video is already correct
             if not vid_path.exists():
-                downloads[vid_path] = vid
+                downloads[vid_path] = Download(vid, is_required=False)
 
-        return (downloads, kids_video_path)
+        return downloads
 
 
 def _any(s: Set[Attachment]) -> Attachment:
