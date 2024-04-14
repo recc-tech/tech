@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Dict, Optional
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -175,81 +175,77 @@ class AssetManager:
         plan = client.find_plan_by_date(today)
         attachments = client.find_attachments(plan.id)
         category_by_attachment = {a: self._classify(a) for a in attachments}
+        messenger.log_debug(
+            f"{len(attachments)} attachments found on PCO: {category_by_attachment}"
+        )
         attachments_by_category = {
             cat: {a for (a, c) in category_by_attachment.items() if c == cat}
             for cat in AssetCategory
         }
-        sermon_notes = attachments_by_category[AssetCategory.SERMON_NOTES]
-        if len(sermon_notes) != 1 and download_notes_docx:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Found {len(sermon_notes)} attachments that look like sermon notes.",
-            )
-        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
-        if len(kids_videos) != 1 and download_kids_video:
-            raise ValueError(
-                f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
-            )
-        kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
-        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
-        if len(announcements) != 1 and require_announcements:
-            raise ValueError(
-                f"Found {len(announcements)} attachments that look like the announcements video."
-            )
-        announcements = _any(announcements) if len(announcements) > 0 else None
-        other_images = attachments_by_category[AssetCategory.IMAGE]
-        other_videos = attachments_by_category[AssetCategory.VIDEO]
-        unknown_attachments = attachments_by_category[AssetCategory.UNKNOWN]
-        messenger.log_debug(
-            f"{len(attachments)} attachments found on PCO.\n"
-            f" * Announcements video: {announcements}\n"
-            f" * Kids video: {kids_video}\n"
-            f" * Sermon notes: {sermon_notes}\n"
-            f" * Other images: {other_images}\n"
-            f" * Other videos: {other_videos}\n"
-            f" * Unknown: {unknown_attachments}"
-        )
-
-        messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
         assets_by_service_dir = self._config.assets_by_service_dir
         downloads: Dict[Path, Download] = {}
-        if announcements is not None:
-            announcements_path = assets_by_service_dir.joinpath(announcements.filename)
-            downloads[announcements_path] = Download(
-                announcements, is_required=require_announcements
-            )
-        kids_video_path = None
-        if download_kids_video:
-            # Should never happen, but check to make Pyright happy
-            if kids_video is None:
-                raise ValueError("Missing kids video.")
-            _check_kids_video_week_num(kids_video, today, messenger)
-            kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-            downloads[kids_video_path] = Download(
-                kids_video, is_required=download_kids_video
-            )
+
         if download_notes_docx:
+            sermon_notes = attachments_by_category[AssetCategory.SERMON_NOTES]
+            if len(sermon_notes) != 1:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+                )
             for sn in sermon_notes:
                 p = assets_by_service_dir.joinpath(sn.filename)
                 downloads[p] = Download(sn, is_required=False)
-        for img in other_images:
+
+        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
+        # Give this warning in every case because it might mean videos that
+        # should be downloaded (e.g., opener, bumper) are being misclassified
+        if len(kids_videos) > 1:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Found {len(kids_videos)} attachments that look like the Kids Connection video.",
+            )
+        if download_kids_video:
+            if len(kids_videos) == 0:
+                raise ValueError(
+                    "Found 0 attachments that look like the Kids Connection video."
+                )
+            for v in kids_videos:
+                _check_kids_video_week_num(v, today, messenger)
+                p = assets_by_service_dir.joinpath(v.filename)
+                downloads[p] = Download(v, is_required=True)
+
+        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
+        if len(announcements) == 0 and require_announcements:
+            raise ValueError(
+                f"Found 0 attachments that look like the announcements video."
+            )
+        elif len(announcements) != 1:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Found {len(announcements)} attachments that look like the announcements video.",
+            )
+        for a in announcements:
+            # Make it clear in the name which date the announcements are for,
+            # to avoid confusion with the previous week's video
+            stem = Path(a.filename).stem
+            ext = Path(a.filename).suffix
+            fname = f"{stem} {today.strftime('%Y-%m-%d')}{ext}"
+            p = assets_by_service_dir.joinpath(fname)
+            downloads[p] = Download(a, is_required=require_announcements)
+
+        for img in attachments_by_category[AssetCategory.IMAGE]:
             p = _find_available_path(
                 dest_dir=self._config.images_dir, name=img.filename
             )
             downloads[p] = Download(img, is_required=False)
-        for vid in other_videos:
+
+        for vid in attachments_by_category[AssetCategory.VIDEO]:
             vid_path = self._config.videos_dir.joinpath(vid.filename)
             # Assume the existing video is already correct
             if not vid_path.exists():
                 downloads[vid_path] = Download(vid, is_required=False)
 
         return downloads
-
-
-def _any(s: Set[Attachment]) -> Attachment:
-    for x in s:
-        return x
-    raise ValueError("Empty sequence.")
 
 
 def _find_available_path(dest_dir: Path, name: str) -> Path:
