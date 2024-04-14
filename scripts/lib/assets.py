@@ -1,7 +1,6 @@
 import asyncio
 import re
 import shutil
-import typing
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
@@ -67,7 +66,7 @@ class AssetManager:
         download_kids_video: bool,
         download_notes_docx: bool,
         dry_run: bool,
-    ) -> Optional[Path]:
+    ) -> None:
         cancellation_token = messenger.allow_cancel()
 
         (downloads, kids_video_path) = self._plan_downloads(
@@ -145,11 +144,6 @@ class AssetManager:
                         ProblemLevel.WARN,
                         f"There is already a file called {p.name} in the assets folder, but its contents are different. Maybe the old file should be archived.",
                     )
-
-        if download_kids_video:
-            return typing.cast(Path, kids_video_path)
-        else:
-            return None
 
     def _classify(self, attachment: Attachment) -> AssetCategory:
         is_announcement = attachment.file_type == FileType.VIDEO and bool(
