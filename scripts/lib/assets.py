@@ -192,11 +192,11 @@ class AssetManager:
             )
         kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
         announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
-        if len(announcements) != 1:
+        if len(announcements) != 1 and require_announcements:
             raise ValueError(
                 f"Found {len(announcements)} attachments that look like the announcements video."
             )
-        announcements = _any(announcements)
+        announcements = _any(announcements) if len(announcements) > 0 else None
         other_images = attachments_by_category[AssetCategory.IMAGE]
         other_videos = attachments_by_category[AssetCategory.VIDEO]
         unknown_attachments = attachments_by_category[AssetCategory.UNKNOWN]
@@ -213,10 +213,11 @@ class AssetManager:
         messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
         assets_by_service_dir = self._config.assets_by_service_dir
         downloads: Dict[Path, Download] = {}
-        announcements_path = assets_by_service_dir.joinpath(announcements.filename)
-        downloads[announcements_path] = Download(
-            announcements, is_required=require_announcements
-        )
+        if announcements is not None:
+            announcements_path = assets_by_service_dir.joinpath(announcements.filename)
+            downloads[announcements_path] = Download(
+                announcements, is_required=require_announcements
+            )
         kids_video_path = None
         if download_kids_video:
             # Should never happen, but check to make Pyright happy
