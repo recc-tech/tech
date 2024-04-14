@@ -14,6 +14,7 @@ def download_assets(
         messenger=messenger,
         download_kids_video=True,
         download_notes_docx=True,
+        require_announcements=False,
         dry_run=False,
     )
 

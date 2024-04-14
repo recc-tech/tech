@@ -70,8 +70,10 @@ class AssetManager:
         self,
         client: PlanningCenterClient,
         messenger: Messenger,
+        *,
         download_kids_video: bool,
         download_notes_docx: bool,
+        require_announcements: bool,
         dry_run: bool,
     ) -> None:
         cancellation_token = messenger.allow_cancel()
@@ -81,6 +83,7 @@ class AssetManager:
             messenger=messenger,
             download_kids_video=download_kids_video,
             download_notes_docx=download_notes_docx,
+            require_announcements=require_announcements,
         )
 
         if len(downloads) == 0:
@@ -163,6 +166,7 @@ class AssetManager:
         messenger: Messenger,
         download_kids_video: bool,
         download_notes_docx: bool,
+        require_announcements: bool,
     ) -> Dict[Path, Download]:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
@@ -210,7 +214,9 @@ class AssetManager:
         assets_by_service_dir = self._config.assets_by_service_dir
         downloads: Dict[Path, Download] = {}
         announcements_path = assets_by_service_dir.joinpath(announcements.filename)
-        downloads[announcements_path] = Download(announcements, is_required=True)
+        downloads[announcements_path] = Download(
+            announcements, is_required=require_announcements
+        )
         kids_video_path = None
         if download_kids_video:
             # Should never happen, but check to make Pyright happy
