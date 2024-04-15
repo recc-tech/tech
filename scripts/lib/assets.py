@@ -25,7 +25,7 @@ class AssetCategory(Enum):
 class Download:
     destination: Path
     is_required: bool
-    # TODO: Also specify whether to deduplicate
+    deduplicate: bool
 
 
 class DownloadResult:
@@ -171,10 +171,7 @@ class AssetManager:
         messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
         for a, d in downloads.items():
             p = d.destination
-            should_dedup = results.get(p, None) is None and (
-                p.is_relative_to(self._config.images_dir)
-                or p.is_relative_to(self._config.videos_dir)
-            )
+            should_dedup = results.get(p, None) is None and d.deduplicate
             if should_dedup and (dup_of := _find_original(p)):
                 ret[a] = DownloadDeduplicated(dup_of)
                 p.unlink()
@@ -257,7 +254,7 @@ class AssetManager:
                 )
             for sn in sermon_notes:
                 p = assets_by_service_dir.joinpath(sn.filename)
-                downloads[sn] = Download(p, is_required=False)
+                downloads[sn] = Download(p, is_required=False, deduplicate=False)
         else:
             for sn in sermon_notes:
                 downloads[sn] = DownloadSkipped(reason="sermon notes")
@@ -278,7 +275,7 @@ class AssetManager:
             for v in kids_videos:
                 _check_kids_video_week_num(v, today, messenger)
                 p = assets_by_service_dir.joinpath(v.filename)
-                downloads[v] = Download(p, is_required=True)
+                downloads[v] = Download(p, is_required=True, deduplicate=False)
         else:
             for v in kids_videos:
                 downloads[v] = DownloadSkipped(reason="kids video")
@@ -300,13 +297,15 @@ class AssetManager:
             ext = Path(a.filename).suffix
             fname = f"{stem} {today.strftime('%Y-%m-%d')}{ext}"
             p = assets_by_service_dir.joinpath(fname)
-            downloads[a] = Download(p, is_required=require_announcements)
+            downloads[a] = Download(
+                p, is_required=require_announcements, deduplicate=False
+            )
 
         for img in attachments_by_category[AssetCategory.IMAGE]:
             p = _find_available_path(
                 dest_dir=self._config.images_dir, name=img.filename
             )
-            downloads[img] = Download(p, is_required=False)
+            downloads[img] = Download(p, is_required=False, deduplicate=True)
 
         for vid in attachments_by_category[AssetCategory.VIDEO]:
             p = self._config.videos_dir.joinpath(vid.filename)
@@ -316,7 +315,7 @@ class AssetManager:
                     reason=f"{p.resolve().as_posix()} already exists"
                 )
             else:
-                downloads[vid] = Download(p, is_required=False)
+                downloads[vid] = Download(p, is_required=False, deduplicate=True)
 
         for a in attachments:
             if a not in downloads:
