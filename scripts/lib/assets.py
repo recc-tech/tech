@@ -333,7 +333,7 @@ def _find_available_path(dest_dir: Path, name: str) -> Path:
         new_filepath = (
             dest_dir.joinpath(f"{stem}{suffix}")
             if i == 0
-            else dest_dir.joinpath(f"{stem}-{i}{suffix}")
+            else dest_dir.joinpath(f"{stem} ({i}){suffix}")
         )
         if not new_filepath.exists():
             return new_filepath
