@@ -9,8 +9,14 @@ from unittest.mock import call, create_autospec
 from args import ReccArgs
 from autochecklist import Messenger, ProblemLevel
 from config import Config
-from external_services import CredentialStore, Plan, PlanningCenterClient, Song
-from lib import PlanItemsSummary, get_plan_summary
+from external_services import (
+    CredentialStore,
+    ItemNote,
+    Plan,
+    PlanningCenterClient,
+    Song,
+)
+from lib import AnnotatedSong, PlanItemsSummary, get_plan_summary
 
 _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
 _PLANS_URL = (
@@ -22,21 +28,14 @@ _PARAMS_20240225_PLANS = {
     "before": "2024-02-26",
     "after": "2024-02-25",
 }
-_PARAMS_20240225_PLAN_ITEMS = {"per_page": 200, "include": "song"}
-_PLAN_ITEMS_20240317_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/70722878/items"
-_PARAMS_20240317_PLANS = {
+_PARAMS_20240225_PLAN_ITEMS = {"per_page": 200, "include": "song,item_notes"}
+_PLAN_ITEMS_20240414_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/71699950/items"
+_PARAMS_20240414_PLANS = {
     "filter": "before,after",
-    "before": "2024-03-18",
-    "after": "2024-03-17",
+    "before": "2024-04-15",
+    "after": "2024-04-14",
 }
-_PARAMS_20240317_PLAN_ITEMS = {"per_page": 200, "include": "song"}
-_PLAN_ITEMS_20240407_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/71699742/items"
-_PARAMS_20240407_PLANS = {
-    "filter": "before,after",
-    "before": "2024-04-08",
-    "after": "2024-04-07",
-}
-_PARAMS_20240407_PLAN_ITEMS = {"per_page": 200, "include": "song"}
+_PARAMS_20240414_PLAN_ITEMS = {"per_page": 200, "include": "song,item_notes"}
 
 
 def _get_canned_response(fname: str) -> Dict[str, object]:
@@ -49,14 +48,10 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
         return _get_canned_response("20240225_plan.json")
     if url == _PLAN_ITEMS_20240225_URL and params == _PARAMS_20240225_PLAN_ITEMS:
         return _get_canned_response("20240225_plan_items.json")
-    if url == _PLANS_URL and params == _PARAMS_20240317_PLANS:
-        return _get_canned_response("20240317_plan.json")
-    if url == _PLAN_ITEMS_20240317_URL and params == _PARAMS_20240317_PLAN_ITEMS:
-        return _get_canned_response("20240317_plan_items.json")
-    if url == _PLANS_URL and params == _PARAMS_20240407_PLANS:
-        return _get_canned_response("20240407_plan.json")
-    if url == _PLAN_ITEMS_20240407_URL and params == _PARAMS_20240407_PLAN_ITEMS:
-        return _get_canned_response("20240407_plan_items.json")
+    if url == _PLANS_URL and params == _PARAMS_20240414_PLANS:
+        return _get_canned_response("20240414_plan.json")
+    if url == _PLAN_ITEMS_20240414_URL and params == _PARAMS_20240414_PLAN_ITEMS:
+        return _get_canned_response("20240414_plan_items.json")
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
@@ -114,25 +109,52 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "See You Next Sunday",
             ],
             songs=[
-                Song(
-                    ccli=None,
-                    title="You Are Mine (E)",
-                    author=None,
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="You Are Mine (E)",
+                        author=None,
+                    ),
+                    [
+                        ItemNote(
+                            category="Visuals",
+                            contents="Please show at the beginning\nIris will welcome, read these bible verses & pray. \nVerses: \n--\n”Why, my soul, are you downcast? Why so disturbed within me? Put your hope in God, for I will yet praise him, my Saviour and my God. My soul is downcast within me; therefore I will remember you from the land of the Jordan, the heights of Hermon—from Mount Mizar. Deep calls to deep in the roar of your waterfalls; all your waves and breakers have swept over me. By day the Lord directs his love, at night his song is with me— a prayer to the God of my life.\n\u202d\u202dPsalms\u202c \u202d42\u202c:\u202d5\u202c-8 \u202dNIV\u202c\u202c",
+                        )
+                    ],
                 ),
-                Song(
-                    ccli=None,
-                    title="Worthy of it All / I Exalt Thee (B)",
-                    author=None,
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Worthy of it All / I Exalt Thee (B)",
+                        author=None,
+                    ),
+                    [
+                        ItemNote(
+                            category="Visuals",
+                            contents="During the instrumental before the bridge:\n”May my prayer be set before you like incense; may the lifting up of my hands be like the evening sacrifice.“\n\u202d\u202dPsalms\u202c \u202d141\u202c:\u202d2\u202c \u202dNIV\u202c\u202c",
+                        )
+                    ],
                 ),
-                Song(
-                    ccli=None,
-                    title="Better is One Day (C)",
-                    author=None,
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Better is One Day (C)",
+                        author=None,
+                    ),
+                    [],
                 ),
-                Song(
-                    ccli=None,
-                    title="Same God (D)",
-                    author=None,
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Same God (D)",
+                        author=None,
+                    ),
+                    [
+                        ItemNote(
+                            category="Visuals",
+                            contents="During the first Instrumental before the bridge:\n--\n”Jesus Christ is the same yesterday and today and forever.“\n\u202d\u202dHebrews\u202c \u202d13\u202c:\u202d8\u202c \u202dNIV",
+                        )
+                    ],
                 ),
             ],
             bumper_video="Save The Date Bumper Video",
@@ -195,7 +217,7 @@ class SummarizePlanTestCase(unittest.TestCase):
         )
         self.assertEqual(2, messenger.log_problem.call_count)
 
-    def test_summarize_20240317(self) -> None:
+    def test_summarize_20240414(self) -> None:
         config = Config(
             args=ReccArgs.parse([]),
             profile="foh_dev",
@@ -212,129 +234,13 @@ class SummarizePlanTestCase(unittest.TestCase):
         pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
             get_canned_response
         )
-        dt = date(year=2024, month=3, day=17)
+        dt = date(year=2024, month=4, day=14)
 
         expected_summary = PlanItemsSummary(
             plan=Plan(
-                id="70722878",
-                series_title="The Walk To The Cross",
-                title="Crowned",
-                date=dt,
-            ),
-            walk_in_slides=[
-                "River’s Edge Community Church",
-                "Belong Before You Believe",
-                "The Way Of The Cross Series Title Slide",
-                "Ways To Give",
-                "The After party",
-                "RE Website",
-                "Follow Us Instagram",
-            ],
-            opener_video="Worship Intro Video",
-            announcements=[
-                "Thanks For Joining Us",
-                "Belong Before You Believe",
-                "Message Series - Title Slide",
-                "AGM",
-                "Cafe Volunteers",
-                "Community Kitchen Brunch",
-                "Pulse Retreat",
-                "Community Hall Fundraiser",
-                "4 Ways To Give",
-                "Prayer Ministry",
-                "Website",
-                "After Party",
-                "See You Next Sunday",
-            ],
-            songs=[
-                Song(
-                    ccli="7138371",
-                    title="Everlasting Light",
-                    author="Bede Benjamin-Korporaal, Jessie Early, and Mariah Gross",
-                ),
-                Song(
-                    ccli="2456623",
-                    title="You Are My King (Amazing Love)",
-                    author="Billy Foote",
-                ),
-                Song(
-                    ccli="6454621",
-                    title="Victor's Crown",
-                    author="Israel Houghton, Kari Jobe, and Darlene Zschech",
-                ),
-                Song(
-                    ccli="6219086",
-                    title="Redeemed",
-                    author="Michael Weaver and Benji Cowart",
-                ),
-            ],
-            bumper_video="24 Hours That Changed Everything",
-            message_notes=inspect.cleandoc(
-                """Crowned
-                Mark 14:61-65 NLT
-                John 18:35-37 NLT
-                A Twisted Truth
-                John 19:2 NLT
-                A Twisted Pain
-                Proverbs 22:5 NLT
-                A Twisted Crown
-                Genesis 3:17-18 NLT
-                A Twisted Curse
-                Hebrews 12:2-3 NLT
-                A Crowned King"""
-            ),
-        )
-        actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
-
-        # Compare field-by-field for better error message
-        self.assertEqual(expected_summary.plan, actual_summary.plan)
-        self.assertEqual(expected_summary.walk_in_slides, actual_summary.walk_in_slides)
-        self.assertEqual(expected_summary.opener_video, actual_summary.opener_video)
-        self.assertEqual(expected_summary.announcements, actual_summary.announcements)
-        self.assertEqual(expected_summary.songs, actual_summary.songs)
-        self.assertEqual(expected_summary.bumper_video, actual_summary.bumper_video)
-        self.assertEqual(expected_summary.message_notes, actual_summary.message_notes)
-        # Just in case
-        self.assertEqual(expected_summary, actual_summary)
-        messenger.log_problem.assert_has_calls(
-            [
-                call(
-                    level=ProblemLevel.WARN,
-                    message="Found 3 items that look like lists of announcements: MC Host Intro, Announcements, MC Host Outro.",
-                ),
-                call(
-                    level=ProblemLevel.WARN,
-                    message="Found 4 items that look like songs.",
-                ),
-            ]
-        )
-        self.assertEqual(2, messenger.log_problem.call_count)
-
-    # TODO: Need to update this test as the plan gets updated
-    def test_summarize_20240407(self) -> None:
-        config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        messenger = create_autospec(Messenger)
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
-        dt = date(year=2024, month=4, day=7)
-
-        expected_summary = PlanItemsSummary(
-            plan=Plan(
-                id="71699742",
+                id="71699950",
                 series_title="WORTHY",
-                title=None,  # pyright: ignore[reportArgumentType]
+                title="Worthy Of The Feast",
                 date=dt,
             ),
             walk_in_slides=[
@@ -349,50 +255,84 @@ class SummarizePlanTestCase(unittest.TestCase):
             opener_video="Welcome Opener Video",
             announcements=[
                 "PIANO playing In the Background",
-                "WELCOME to MOSAIC",
+                "WELCOME",
                 "PRAY For People",
                 "CONTINUE To Worship",
-                "GIVING TALK",
                 "Video Announcements",
+                "GIVING TALK",
                 "Prayer Ministry",
-                "Website",
                 "After Party",
                 "See You Next Sunday",
             ],
             songs=[
-                Song(
-                    ccli="7067558",
-                    title="Grateful",
-                    author="Chris Brown, Matthew Ntlele, Stefan Green, and Steven Furtick",
+                AnnotatedSong(
+                    Song(
+                        ccli="7104200",
+                        title="Echo",
+                        author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
+                    ),
+                    [],
                 ),
-                Song(
-                    ccli=None,
-                    title="Remembrance (Live/Acoustic)",
-                    author=None,
+                # Linked song, but no CCLI number or author
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Different (Live at Mosaic, Los Angeles, 2023)",
+                        author=None,
+                    ),
+                    [],
                 ),
-                Song(
-                    ccli="7065046",
-                    title="Now And Forever",
-                    author="Andres Figueroa and Mariah McManus",
+                AnnotatedSong(
+                    Song(
+                        ccli="5508444",
+                        title="One Thing Remains",
+                        author="Christa Black, Brian Johnson, and Jeremy Riddle",
+                    ),
+                    [
+                        ItemNote(
+                            category="Visuals",
+                            contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
+                        )
+                    ],
                 ),
-                Song(
-                    ccli="7136201",
-                    title="I Speak Jesus",
-                    author="Abby Benton, Carlene Prince, Dustin Smith, Jesse Reeves, Kristen Dutton, and Raina Pratt",
+                AnnotatedSong(
+                    Song(
+                        ccli="7117726",
+                        title="Goodness Of God",
+                        author="Ed Cash and Jenn Johnson",
+                    ),
+                    [
+                        ItemNote(
+                            category="Visuals",
+                            contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
+                        )
+                    ],
                 ),
-                Song(
-                    ccli="7136201",
-                    title="I Speak Jesus",
-                    author="Abby Benton, Carlene Prince, Dustin Smith, Jesse Reeves, Kristen Dutton, and Raina Pratt",
-                ),
-                Song(
-                    ccli="7065046",
-                    title="Now And Forever",
-                    author="Andres Figueroa and Mariah McManus",
+                # No linked song at all
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Song 5: DIFFERENT ",
+                        author=None,
+                    ),
+                    [],
                 ),
             ],
             bumper_video="Worthy Sermon Bumper Video",
-            message_notes=inspect.cleandoc(""""""),
+            message_notes=inspect.cleandoc(
+                """Worthy Of The Feast
+                Matthew 22:1-14 NLT
+                Our Worth Isn’t Earned It’s Given
+                Matthew 22:4
+                Our Worth Is Experienced Through Acceptance
+                Matthew 22:10
+                Our Worth Is Revealed By Our Garments
+                Matthew 22:11
+                You Are Worthy Because You Are Chosen
+                Matthew 22:14
+                Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+                Live According To The Level Of Worth We Have Received"""
+            ),
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
 

@@ -2,13 +2,15 @@
 Code for interacting with the Planning Center Services API.
 """
 
+from __future__ import annotations
+
 import asyncio
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 import aiohttp
 import config
@@ -20,6 +22,8 @@ from requests.auth import HTTPBasicAuth
 
 from .credentials import Credential, CredentialStore, InputPolicy
 
+T = TypeVar("T")
+
 
 @dataclass(frozen=True)
 class Song:
@@ -29,10 +33,17 @@ class Song:
 
 
 @dataclass(frozen=True)
+class ItemNote:
+    category: str
+    contents: str
+
+
+@dataclass(frozen=True)
 class PlanItem:
     title: str
     description: str
     song: Optional[Song]
+    notes: List[ItemNote]
 
 
 @dataclass(frozen=True)
@@ -131,17 +142,22 @@ class PlanningCenterClient:
         self,
         plan_id: str,
         include_songs: bool,
+        include_item_notes: bool,
         service_type: Optional[str] = None,
     ) -> List[PlanSection]:
         service_type = service_type or self._cfg.pco_service_type_id
         params: Dict[str, object] = {"per_page": 200}
+        include: List[str] = []
         if include_songs:
-            params["include"] = "song"
+            include.append("song")
+        if include_item_notes:
+            include.append("item_notes")
+        if include:
+            params["include"] = ",".join(include)
         items_json = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
             params=params,
         )
-        songs_json = [i for i in items_json["included"] if i["type"] == "Song"]
         sections: List[PlanSection] = []
         current_section_title: str = "[[FAKE SECTION]]"
         current_section_items: List[PlanItem] = []
@@ -157,42 +173,16 @@ class PlanningCenterClient:
                 current_section_title = itm["attributes"]["title"] or ""
                 current_section_items = []
             else:
-                song_rel_json = itm["relationships"]["song"]["data"]
-                song_id: Optional[str] = (
-                    None if song_rel_json is None else song_rel_json["id"] or ""
-                )
-                matching_songs = [s for s in songs_json if s["id"] == song_id]
-                song_json = (
-                    None
-                    if not song_id or len(matching_songs) == 0
-                    else matching_songs[0]
-                )
                 item_title = str(itm["attributes"]["title"])
-                song = (
-                    None
-                    if not song_json
-                    else Song(
-                        ccli=(
-                            str(ccli_num)
-                            if (ccli_num := song_json["attributes"]["ccli_number"])
-                            else None
-                        ),
-                        title=(
-                            str(t)
-                            if (t := song_json["attributes"]["title"])
-                            else item_title
-                        ),
-                        author=(
-                            str(aut)
-                            if (aut := song_json["attributes"]["author"])
-                            else None
-                        ),
-                    )
+                song = _find_song(
+                    itm, included=items_json["included"], default_title=item_title
                 )
+                notes = _find_notes(itm, included=items_json["included"])
                 item = PlanItem(
                     title=item_title,
                     description=itm["attributes"]["description"] or "",
                     song=song,
+                    notes=notes,
                 )
                 current_section_items.append(item)
         if current_section_title != "[[FAKE SECTION]]" or current_section_items:
@@ -205,7 +195,10 @@ class PlanningCenterClient:
         self, plan_id: str, service_type: Optional[str] = None
     ) -> str:
         sections = self.find_plan_items(
-            plan_id=plan_id, service_type=service_type, include_songs=False
+            plan_id=plan_id,
+            service_type=service_type,
+            include_songs=False,
+            include_item_notes=False,
         )
         message_items = [
             i
@@ -394,3 +387,64 @@ class PlanningCenterClient:
                     raise
         finally:
             messenger.delete_progress_bar(key)
+
+
+@dataclass
+class Maybe(Generic[T]):
+    data: Optional[T]
+
+    def bind(self, f: Callable[[T], T]) -> Maybe[T]:
+        if self.data is None:
+            return self
+        else:
+            return Maybe(f(self.data))
+
+
+def _get(d: Any, key: str) -> Maybe[Any]:
+    """
+    Make a series of accesses to a series of nested dictionaries, but check for
+    `None` at each step.
+    """
+    keys = key.split(".")
+    m = Maybe(d)
+    for k in keys:
+        m = m.bind(lambda d: d[k] if k in d else None)
+    return m
+
+
+def _find_song(itm: Any, included: List[Any], default_title: str) -> Optional[Song]:
+    song_id = _get(itm, "relationships.song.data.id").data
+    matching_songs = [i for i in included if i["type"] == "Song" and i["id"] == song_id]
+    song_json = None if not song_id or len(matching_songs) == 0 else matching_songs[0]
+
+    def make_song(s: Any) -> Song:
+        return Song(
+            ccli=_get(s, "attributes.ccli_number").bind(lambda s: str(s)).data,
+            title=_get(s, "attributes.title").bind(lambda s: str(s)).data
+            or default_title,
+            author=_get(s, "attributes.author").bind(lambda s: str(s)).data,
+        )
+
+    song = Maybe(song_json).bind(make_song)
+    return song.data
+
+
+def _find_notes(itm: Any, included: List[Any]) -> List[ItemNote]:
+    note_ids: List[int] = (
+        _get(itm, "relationships.item_notes.data")
+        .bind(lambda d: [x["id"] for x in d])
+        .data
+        or []
+    )
+    matching_notes = [
+        i
+        for i in included
+        if _get(i, "type").data == "ItemNote" and _get(i, "id").data in note_ids
+    ]
+    return [
+        ItemNote(
+            category=_get(n, "attributes.category_name").data or "",
+            contents=_get(n, "attributes.content").data or "",
+        )
+        for n in matching_notes
+    ]

@@ -7,16 +7,29 @@ from datetime import date
 from typing import List, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
-from external_services import Plan, PlanItem, PlanningCenterClient, PlanSection, Song
+from external_services import (
+    ItemNote,
+    Plan,
+    PlanItem,
+    PlanningCenterClient,
+    PlanSection,
+    Song,
+)
 
 
-@dataclass
+@dataclass(frozen=True)
+class AnnotatedSong:
+    song: Song
+    notes: List[ItemNote]
+
+
+@dataclass(frozen=True)
 class PlanItemsSummary:
     plan: Plan
     walk_in_slides: List[str]
     opener_video: str
     announcements: List[str]
-    songs: List[Song]
+    songs: List[AnnotatedSong]
     bumper_video: str
     message_notes: str
 
@@ -137,21 +150,25 @@ def _get_message_notes(sec: PlanSection) -> str:
     return matches[0].description.strip()
 
 
-def _get_songs(sections: List[PlanSection], messenger: Messenger) -> List[Song]:
+def _get_songs(
+    sections: List[PlanSection], messenger: Messenger
+) -> List[AnnotatedSong]:
     matching_items = [
         i
         for s in sections
         for i in s.items
         if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
     ]
-    if len(matching_items) != 6:
+    if len(matching_items) != 5:  # TODO: Move expected numbers of items to config
         messenger.log_problem(
             ProblemLevel.WARN,
             f"Found {len(matching_items)} items that look like songs.",
         )
-    songs = [
-        i.song or Song(ccli=None, title=i.title, author=None) for i in matching_items
-    ]
+    songs: List[AnnotatedSong] = []
+    for i in matching_items:
+        song = i.song or Song(ccli=None, title=i.title, author=None)
+        notes = [n for n in i.notes if n.category == "Visuals"]
+        songs.append(AnnotatedSong(song, notes))
     return songs
 
 
@@ -159,7 +176,9 @@ def get_plan_summary(
     client: PlanningCenterClient, messenger: Messenger, dt: date
 ) -> PlanItemsSummary:
     plan = client.find_plan_by_date(dt)
-    sections = client.find_plan_items(plan.id, include_songs=True)
+    sections = client.find_plan_items(
+        plan.id, include_songs=True, include_item_notes=True
+    )
     items = [i for s in sections for i in s.items]
     walk_in_slides = _get_walk_in_slides(items, messenger)
     opener_video = _get_opener_video(sections)
@@ -179,16 +198,17 @@ def get_plan_summary(
     )
 
 
-def _song_to_html(s: Song) -> str:
+def _song_to_html(s: AnnotatedSong) -> str:
+    # TODO: Also show notes, if any
     ccli = (
-        f"<span>{html.escape(s.ccli)}</span>"
-        if s.ccli
+        f"<span>{html.escape(s.song.ccli)}</span>"
+        if s.song.ccli
         else '<span class="missing">[[Unknown CCLI]]</span>'
     )
-    title = f"<i>{html.escape(s.title)}</i>"
+    title = f"<i>{html.escape(s.song.title)}</i>"
     author = (
-        f"<span>{html.escape(s.author)}</span>"
-        if s.author
+        f"<span>{html.escape(s.song.author)}</span>"
+        if s.song.author
         else '<span class="missing">[[Unknown Author]]</span>'
     )
     return f"{ccli} <span class='extra-info'>({title} by {author})</span>"
@@ -218,6 +238,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         if message_notes
         else '<span class="missing">[[None]]</span>'
     )
+    # TODO: Also warn the user if there are extra notes other than the ones for songs?
     return f"""
 <!DOCTYPE html>
 <html>
