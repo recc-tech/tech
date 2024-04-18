@@ -198,20 +198,43 @@ def get_plan_summary(
     )
 
 
-def _song_to_html(s: AnnotatedSong) -> str:
-    # TODO: Also show notes, if any
-    ccli = (
-        f"<span>{html.escape(s.song.ccli)}</span>"
-        if s.song.ccli
-        else '<span class="missing">[[Unknown CCLI]]</span>'
-    )
-    title = f"<i>{html.escape(s.song.title)}</i>"
-    author = (
-        f"<span>{html.escape(s.song.author)}</span>"
-        if s.song.author
-        else '<span class="missing">[[Unknown Author]]</span>'
-    )
-    return f"{ccli} <span class='extra-info'>({title} by {author})</span>"
+def _make_song_tr(s: AnnotatedSong) -> str:
+    notes_html_list: List[str] = []
+    for n in s.notes:
+        notes_html_list.append(
+            f"<span class='notes-title'>⚠️ {n.category}</span><br>{n.contents}"
+        )
+    notes = "<br>".join(notes_html_list)
+    return f"""
+<tr>
+    <td>{s.song.ccli or ''}</td>
+    <td class='extra-info'>{s.song.title or ''}</td>
+    <td class='extra-info'>{s.song.author or ''}</td>
+    <td>{notes}</td>
+</tr>
+""".strip()
+
+
+def _indent(code: str, indent: str) -> str:
+    return "\n".join([f"{indent}{c}" for c in code.split("\n")])
+
+
+def _make_songs_table(songs: List[AnnotatedSong]) -> str:
+    trs = [_make_song_tr(s) for s in songs]
+    trs = "\n".join([_indent(t, "        ") for t in trs])
+    return f"""
+<table>
+    <tbody>
+        <tr>
+            <th>CCLI</th>
+            <th class='extra-info'>Title</th>
+            <th class='extra-info'>Author</th>
+            <th>Notes</th>
+        </tr>
+{trs}
+    </tbody>
+</table>
+""".strip()
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
@@ -228,9 +251,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     opener_video = html.escape(summary.opener_video)
     announcement_bullets = [f"<li>{html.escape(a)}</li>" for a in summary.announcements]
     announcements = f"<ul>{''.join(announcement_bullets)}</ul>"
-    song_descriptions = [_song_to_html(s) for s in summary.songs]
-    song_elems = [f"<li>{d}</li>" for d in song_descriptions]
-    songs = f"<ul>{''.join(song_elems)}</ul>"
+    songs_table = _make_songs_table(summary.songs)
     bumper_video = html.escape(summary.bumper_video)
     message_notes = html.escape(summary.message_notes)
     message_notes_btn = (
@@ -254,17 +275,39 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             body {{
                 margin: 0;
             }}
-            #header {{
+            header {{
                 /* Same as the website */
                 background-color: #1a7ee5;
                 color: white;
-                padding: 0.5em;
+                padding: 1em;
+            }}
+            #main-content {{
+                margin: 1em 1em 5em 1em;
+            }}
+            h1 {{
+                font-size: x-large;
+            }}
+            h2 {{
+                font-size: large;
+            }}
+            table {{
+                border-collapse: collapse;
+                width: 100%;
+            }}
+            th, td {{
+                border: 1px solid black;
+                padding: 0.25em;
+                margin: 0;
+                vertical-align: top;
             }}
             .extra-info {{
                 color: grey;
             }}
             .missing {{
                 color: red;
+            }}
+            .notes-title {{
+                font-weight: bolder;
             }}
         </style>
         <script>
@@ -277,26 +320,29 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </script>
     </head>
     <body>
-        <div id="header">
+        <header>
             <h1>{title}</h1>
             <h2>{subtitle}</h2>
+        </header>
+        <div id='main-content'>
+            <h2>Walk-In Slides</h2>
+            {walk_in_slides}
+            <h2>Opener Video</h2>
+            {opener_video}
+            <h2>Announcements</h2>
+            {announcements}
+            <h2>Songs</h2>
+            {songs_table}
+            <h2>Bumper Video</h2>
+            {bumper_video}
+            <h2>Message Notes</h2>
+            {message_notes_btn}
+            <span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>
+            <details class="extra-info">
+                <summary>Show notes</summary>
+                <pre id="message-notes">{message_notes}</pre>
+            </details>
         </div>
-        <ul>
-            <li><b>Walk-in slides:</b> {walk_in_slides}</li>
-            <li><b>Opener video:</b> {opener_video}</li>
-            <li><b>Announcements:</b> {announcements}</li>
-            <li><b>Songs:</b> {songs}</li>
-            <li><b>Bumper video:</b> {bumper_video}</li>
-            <li>
-                <b>Message notes:</b>
-                {message_notes_btn}
-                <span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>
-                <details class="extra-info">
-                    <summary>Show notes</summary>
-                    <pre id="message-notes">{message_notes}</pre>
-                </details>
-            </li>
-        </ul>
     </body>
 </html>
-"""
+""".lstrip()
