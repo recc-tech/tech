@@ -108,6 +108,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "After Party",
                 "See You Next Sunday",
             ],
+            announcements_video=None,
             songs=[
                 AnnotatedSong(
                     Song(
@@ -205,10 +206,7 @@ class SummarizePlanTestCase(unittest.TestCase):
         self.assertEqual(expected_summary, actual_summary)
         messenger.log_problem.assert_has_calls(
             [
-                call(
-                    level=ProblemLevel.WARN,
-                    message="Found 3 items that look like lists of announcements: MC Host Intro, Announcements, MC Host Outro.",
-                ),
+                call(level=ProblemLevel.WARN, message="No announcements video found."),
                 call(
                     level=ProblemLevel.WARN,
                     message="Found 4 items that look like songs.",
@@ -258,12 +256,12 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "WELCOME",
                 "PRAY For People",
                 "CONTINUE To Worship",
-                "Video Announcements",
                 "GIVING TALK",
                 "Prayer Ministry",
                 "After Party",
                 "See You Next Sunday",
             ],
+            announcements_video="Video Announcements",
             songs=[
                 AnnotatedSong(
                     Song(
