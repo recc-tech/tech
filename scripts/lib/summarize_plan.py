@@ -40,6 +40,7 @@ class PlanItemsSummary:
     announcements_video: Optional[AnnotatedItem]
     songs: List[AnnotatedSong]
     message_notes: Optional[AnnotatedItem]
+    has_visuals_notes: bool
 
 
 T = TypeVar("T")
@@ -229,6 +230,8 @@ def get_plan_summary(
         bumper_video = _get_bumper_video(msg_sec, messenger)
         message_notes = _get_message_notes(msg_sec, messenger)
     songs = _get_songs(sections, messenger)
+    all_notes = [n for s in sections for i in s.items for n in i.notes]
+    visuals_notes = _filter_notes(all_notes)
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
@@ -238,6 +241,7 @@ def get_plan_summary(
         announcements_video=announcements_video,
         songs=songs,
         message_notes=message_notes,
+        has_visuals_notes=len(visuals_notes) > 0,
     )
 
 
@@ -246,6 +250,7 @@ _HEADER_CLS = "header-row"
 _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
 _NOTES_TITLE_CLS = "notes-title"
+_NOTES_WARNING_CLS = "notes-warning"
 
 
 def _indent(code: str, n: int) -> str:
@@ -398,7 +403,6 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
-    # TODO: Also warn the user if there are extra notes other than the ones for songs?
     title = (
         _escape(f"{summary.plan.series_title}: {summary.plan.title}")
         if summary.plan.series_title
@@ -414,6 +418,13 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     )
     songs_table = _make_songs_table(songs=summary.songs)
     message_table = _make_message_table(summary.message_notes)
+    show_notes_warning = (
+        'alert("Heads up! There are some notes in the plan. They might call '
+        + "for adjustments to the presentations, such as changes to songs' "
+        + 'lyrics.");'
+        if summary.has_visuals_notes
+        else ""
+    )
     return f"""
 <!DOCTYPE html>
 <html>
@@ -481,6 +492,14 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             #copy-btn {{
                 font-size: large;
             }}
+            .{_NOTES_WARNING_CLS} {{
+                visibility: {'visible' if summary.has_visuals_notes else 'hidden'};
+                border: 2px solid #b57b0e;
+                color: #b57b0e;
+                background-color: #fffaa0;
+                border-radius: 5px;
+                padding: 0.5em;
+            }}
 {_indent(videos_table.to_css(), 3)}
 {_indent(songs_table.to_css(),3)}
 {_indent(message_table.to_css(),3)}
@@ -492,6 +511,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
             }}
+            window.addEventListener("DOMContentLoaded", () => {{
+                {show_notes_warning}
+            }});
         </script>
     </head>
     <body>
@@ -500,6 +522,16 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <h2>{subtitle}</h2>
         </header>
         <div id='main-content'>
+            <div class="{_NOTES_WARNING_CLS}">
+                Heads up!
+                There are some notes in the plan.
+                They might call for adjustments to the presentations,
+                such as changes to songs lyrics.
+                Check the plan in Planning Center to make sure you see them all.
+                Make sure the visuals notes are visible by clicking on the
+                button at the top right-hand corner with the three vertical bars
+                and ensure the "Visuals" checkbox is checked.
+            </div>
             <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
 {_indent(walk_in_slides_list, 3)}
             <div class="{_SUPERHEADER_CLS}">Announcements</div>

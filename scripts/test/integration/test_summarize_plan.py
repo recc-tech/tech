@@ -196,6 +196,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 ),
                 notes=[ItemNote(category="Visuals", contents="Name slide")],
             ),
+            has_visuals_notes=True,
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
 
@@ -339,6 +340,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 ),
                 notes=[ItemNote(category="Visuals", contents="Name slide")],
             ),
+            has_visuals_notes=True,
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
 
