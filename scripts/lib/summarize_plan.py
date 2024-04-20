@@ -36,7 +36,6 @@ class AnnotatedItem:
 @dataclass(frozen=True)
 class PlanItemsSummary:
     plan: Plan
-    # TODO: Notes for announcements slides?
     walk_in_slides: List[str]
     announcements: List[str]
     opener_video: Optional[AnnotatedItem]
@@ -211,7 +210,7 @@ def _get_songs(
         for i in s.items
         if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
     ]
-    if len(matching_items) != 5:  # TODO: Move expected numbers of items to config
+    if len(matching_items) != 5:
         messenger.log_problem(
             ProblemLevel.WARN,
             f"Found {len(matching_items)} items that look like songs.",
