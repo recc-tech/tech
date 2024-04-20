@@ -16,7 +16,7 @@ from external_services import (
     PlanningCenterClient,
     Song,
 )
-from lib import AnnotatedSong, PlanItemsSummary, get_plan_summary
+from lib import AnnotatedItem, AnnotatedSong, PlanItemsSummary, get_plan_summary
 
 _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
 _PLANS_URL = (
@@ -94,7 +94,9 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "RE Website",
                 "Follow Us Instagram",
             ],
-            opener_video="Relationship Goals Intro Video",
+            opener_video=AnnotatedItem(
+                content="Relationship Goals Intro Video", notes=[]
+            ),
             announcements=[
                 "Thanks For Joining Us",
                 "Belong Before You Believe",
@@ -158,38 +160,41 @@ class SummarizePlanTestCase(unittest.TestCase):
                     ],
                 ),
             ],
-            bumper_video="Save The Date Bumper Video",
-            message_notes=inspect.cleandoc(
-                """Disappointed Yet Deeply Hopeful 
-                God’s Heart Is That You Find The One & That It Lasts Matthew 19:4-6 NIV
-                God’s Gives Us Wisdom In Avoiding Disappointment
-                Proverbs 27:12 NLT
-                How do I find the right person?
-                How do I become the right person?
-                How you see marriage shapes how you approach relationships. 
-                You don’t attract what you want; you attract what you are.
-                Proverbs 27:19 NLT
-                Clear Signs To Avoid The Wrong Person & Being The Wrong Person
-                When they’re not consistently pursuing Jesus.
-                People talk about and live out what they value most.
-                2 Corinthians 6:14-15 NIV 
-                Amos 3:3 NLT
-                Why You Settle & Accept Less Than You Deserve
-                Proverbs 27:7 NLT 
-                Don’t give them your heart if God doesn’t have theirs.
-                When those you love don’t love who you’re dating. 
-                Proverbs 27:9 NLT
-                Proverbs 12:15 NLT
-                When you don’t experience healthy conflict.
-                James 1:19-20 NIV 
-                Proverbs 27:14-16 NLT
-                When you find it difficult to trust the one you’re with.
-                1 Corinthians 13:7 NIV
-                Proverbs 27:8 NLT
-                Proverbs 5:15-17 NLT
-                When they’re leading you away from Jesus instead of closer to Jesus.
-                Matthew 24:4 NLT
-                Psalm 119:115 NLT"""
+            bumper_video=AnnotatedItem(content="Save The Date Bumper Video", notes=[]),
+            message_notes=AnnotatedItem(
+                content=inspect.cleandoc(
+                    """Disappointed Yet Deeply Hopeful 
+                    God’s Heart Is That You Find The One & That It Lasts Matthew 19:4-6 NIV
+                    God’s Gives Us Wisdom In Avoiding Disappointment
+                    Proverbs 27:12 NLT
+                    How do I find the right person?
+                    How do I become the right person?
+                    How you see marriage shapes how you approach relationships. 
+                    You don’t attract what you want; you attract what you are.
+                    Proverbs 27:19 NLT
+                    Clear Signs To Avoid The Wrong Person & Being The Wrong Person
+                    When they’re not consistently pursuing Jesus.
+                    People talk about and live out what they value most.
+                    2 Corinthians 6:14-15 NIV 
+                    Amos 3:3 NLT
+                    Why You Settle & Accept Less Than You Deserve
+                    Proverbs 27:7 NLT 
+                    Don’t give them your heart if God doesn’t have theirs.
+                    When those you love don’t love who you’re dating. 
+                    Proverbs 27:9 NLT
+                    Proverbs 12:15 NLT
+                    When you don’t experience healthy conflict.
+                    James 1:19-20 NIV 
+                    Proverbs 27:14-16 NLT
+                    When you find it difficult to trust the one you’re with.
+                    1 Corinthians 13:7 NIV
+                    Proverbs 27:8 NLT
+                    Proverbs 5:15-17 NLT
+                    When they’re leading you away from Jesus instead of closer to Jesus.
+                    Matthew 24:4 NLT
+                    Psalm 119:115 NLT""",
+                ),
+                notes=[ItemNote(category="Visuals", contents="Name slide")],
             ),
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
@@ -250,7 +255,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "Website",
                 "Follow Us Instagram",
             ],
-            opener_video="Welcome Opener Video",
+            opener_video=AnnotatedItem(content="Welcome Opener Video", notes=[]),
             announcements=[
                 "PIANO playing In the Background",
                 "WELCOME",
@@ -261,7 +266,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 "After Party",
                 "See You Next Sunday",
             ],
-            announcements_video="Video Announcements",
+            announcements_video=AnnotatedItem(content="Video Announcements", notes=[]),
             songs=[
                 AnnotatedSong(
                     Song(
@@ -316,20 +321,23 @@ class SummarizePlanTestCase(unittest.TestCase):
                     [],
                 ),
             ],
-            bumper_video="Worthy Sermon Bumper Video",
-            message_notes=inspect.cleandoc(
-                """Worthy Of The Feast
-                Matthew 22:1-14 NLT
-                Our Worth Isn’t Earned It’s Given
-                Matthew 22:4
-                Our Worth Is Experienced Through Acceptance
-                Matthew 22:10
-                Our Worth Is Revealed By Our Garments
-                Matthew 22:11
-                You Are Worthy Because You Are Chosen
-                Matthew 22:14
-                Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
-                Live According To The Level Of Worth We Have Received"""
+            bumper_video=AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[]),
+            message_notes=AnnotatedItem(
+                content=inspect.cleandoc(
+                    """Worthy Of The Feast
+                    Matthew 22:1-14 NLT
+                    Our Worth Isn’t Earned It’s Given
+                    Matthew 22:4
+                    Our Worth Is Experienced Through Acceptance
+                    Matthew 22:10
+                    Our Worth Is Revealed By Our Garments
+                    Matthew 22:11
+                    You Are Worthy Because You Are Chosen
+                    Matthew 22:14
+                    Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+                    Live According To The Level Of Worth We Have Received""",
+                ),
+                notes=[ItemNote(category="Visuals", contents="Name slide")],
             ),
         )
         actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)

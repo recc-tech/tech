@@ -15,6 +15,7 @@ from .slides import (
     SlideGenerator,
 )
 from .summarize_plan import (
+    AnnotatedItem,
     AnnotatedSong,
     PlanItemsSummary,
     get_plan_summary,

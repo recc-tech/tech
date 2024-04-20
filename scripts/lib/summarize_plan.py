@@ -24,18 +24,42 @@ class AnnotatedSong:
 
 
 @dataclass(frozen=True)
+class AnnotatedItem:
+    content: str
+    notes: List[ItemNote]
+
+
+@dataclass(frozen=True)
 class PlanItemsSummary:
     plan: Plan
+    # TODO: Notes for announcements slides?
     walk_in_slides: List[str]
-    opener_video: str
     announcements: List[str]
+    opener_video: Optional[AnnotatedItem]
+    bumper_video: Optional[AnnotatedItem]
+    announcements_video: Optional[AnnotatedItem]
     songs: List[AnnotatedSong]
-    bumper_video: str
-    announcements_video: Optional[str]
-    message_notes: str
+    message_notes: Optional[AnnotatedItem]
 
 
 T = TypeVar("T")
+
+
+def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
+    if len(items) == 0:
+        messenger.log_problem(ProblemLevel.WARN, f"No {name} found.")
+        return None
+    elif len(items) == 1:
+        return items[0]
+    else:
+        messenger.log_problem(
+            ProblemLevel.WARN, f"Found {len(items)} items that look like {name}."
+        )
+        return None
+
+
+def _filter_notes(notes: List[ItemNote]) -> List[ItemNote]:
+    return [n for n in notes if n.category == "Visuals"]
 
 
 def _get_announcement_slide_names(item: PlanItem) -> List[str]:
@@ -82,20 +106,6 @@ def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str
     return slide_names
 
 
-def _get_opener_video(sections: List[PlanSection]) -> str:
-    matching_sections = [
-        s for s in sections if re.search("opener video", s.title, re.IGNORECASE)
-    ]
-    if len(matching_sections) != 1:
-        raise ValueError(
-            f"Found {len(matching_sections)} sections that look like the opener video."
-        )
-    sec = matching_sections[0]
-    if len(sec.items) != 1:
-        raise ValueError(f"The opener video section has {len(sec.items)} items.")
-    return sec.items[0].title
-
-
 def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]:
     pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
@@ -118,54 +128,63 @@ def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]
     return slide_names
 
 
+def _get_opener_video(
+    sections: List[PlanSection], messenger: Messenger
+) -> Optional[AnnotatedItem]:
+    matching_sections = [
+        s for s in sections if re.search("opener video", s.title, re.IGNORECASE)
+    ]
+    sec = _get_one(matching_sections, messenger, "opener video section")
+    itm = None if sec is None else _get_one(sec.items, messenger, "opener video")
+    return None if itm is None else AnnotatedItem(itm.title, _filter_notes(itm.notes))
+
+
+def _get_bumper_video(
+    sec: PlanSection, messenger: Messenger
+) -> Optional[AnnotatedItem]:
+    matches = [i for i in sec.items if re.search("bumper", i.title, re.IGNORECASE)]
+    itm = _get_one(matches, messenger, "bumper video")
+    name = None if itm is None else itm.title
+    prefix = "bumper video: "
+    if name and name.lower().startswith(prefix):
+        name = name[len(prefix) :]
+    return (
+        None
+        if itm is None or name is None
+        else AnnotatedItem(name, _filter_notes(itm.notes))
+    )
+
+
 def _get_announcements_video(
     items: List[PlanItem], messenger: Messenger
-) -> Optional[str]:
+) -> Optional[AnnotatedItem]:
     matches = [
         i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) == 0:
-        messenger.log_problem(ProblemLevel.WARN, "No announcements video found.")
-        return None
-    elif len(matches) == 1:
-        return matches[0].title
-    else:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matches)} items that look like the announcements video",
-        )
-        return None
+    itm = _get_one(matches, messenger, "announcements video")
+    return None if itm is None else AnnotatedItem(itm.title, _filter_notes(itm.notes))
 
 
-def _get_message_section(sections: List[PlanSection]) -> PlanSection:
+def _get_message_section(
+    sections: List[PlanSection], messenger: Messenger
+) -> Optional[PlanSection]:
     matching_sections = [s for s in sections if s.title.lower() == "message"]
-    if len(matching_sections) != 1:
-        raise ValueError(
-            f"Found {len(matching_sections)} sections that look like the message."
-        )
-    return matching_sections[0]
+    sec = _get_one(matching_sections, messenger, "message section")
+    return sec
 
 
-def _get_bumper_video(sec: PlanSection) -> str:
-    matches = [i for i in sec.items if re.search("bumper", i.title, re.IGNORECASE)]
-    if len(matches) != 1:
-        raise ValueError(f"Found {len(matches)} items that look like the bumper video.")
-    name = matches[0].title
-    prefix = "bumper video: "
-    if name.lower().startswith(prefix):
-        name = name[len(prefix) :]
-    return name
-
-
-def _get_message_notes(sec: PlanSection) -> str:
+def _get_message_notes(
+    sec: PlanSection, messenger: Messenger
+) -> Optional[AnnotatedItem]:
     matches = [
         i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 1:
-        raise ValueError(
-            f"Found {len(matches)} items that look like the message matches."
-        )
-    return matches[0].description.strip()
+    itm = _get_one(matches, messenger, "message notes")
+    return (
+        None
+        if itm is None
+        else AnnotatedItem(itm.description.strip(), _filter_notes(itm.notes))
+    )
 
 
 def _get_songs(
@@ -199,21 +218,25 @@ def get_plan_summary(
     )
     items = [i for s in sections for i in s.items]
     walk_in_slides = _get_walk_in_slides(items, messenger)
-    opener_video = _get_opener_video(sections)
+    opener_video = _get_opener_video(sections, messenger)
     announcements = _get_announcements(items, messenger)
     announcements_video = _get_announcements_video(items, messenger)
-    msg_sec = _get_message_section(sections)
-    bumper_video = _get_bumper_video(msg_sec)
-    message_notes = _get_message_notes(msg_sec)
+    msg_sec = _get_message_section(sections, messenger)
+    if msg_sec is None:
+        bumper_video = None
+        message_notes = None
+    else:
+        bumper_video = _get_bumper_video(msg_sec, messenger)
+        message_notes = _get_message_notes(msg_sec, messenger)
     songs = _get_songs(sections, messenger)
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
-        opener_video=opener_video,
         announcements=announcements,
-        songs=songs,
+        opener_video=opener_video,
         bumper_video=bumper_video,
         announcements_video=announcements_video,
+        songs=songs,
         message_notes=message_notes,
     )
 
@@ -230,6 +253,18 @@ _NOTES_TITLE_CLS = "notes-title"
 
 def _indent(code: str, n: int) -> str:
     return "\n".join([f"{'    ' * n}{c}" for c in code.split("\n")])
+
+
+def _escape(text: str) -> str:
+    return html.escape(text).replace("\r\n", "\n").replace("\n", "<br>")
+
+
+def _show_notes(notes: List[ItemNote]) -> str:
+    notes_str = [
+        f"<span class='{_NOTES_TITLE_CLS}'>⚠️ {_escape(n.category)}</span><br>\n{_escape(n.contents)}"
+        for n in notes
+    ]
+    return "\n".join(notes_str)
 
 
 @dataclass
@@ -269,7 +304,7 @@ class WalkInSlidesSection:
     slides: List[str]
 
     def to_html(self) -> str:
-        items = "\n".join([f"<li>{html.escape(s)}</li>" for s in self.slides])
+        items = "\n".join([f"<li>{_escape(s)}</li>" for s in self.slides])
         return f"""
 <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
 <ul>
@@ -283,7 +318,7 @@ class AnnouncementsSection:
     slides: List[str]
 
     def to_html(self) -> str:
-        items = "\n".join([f"<li>{html.escape(s)}</li>" for s in self.slides])
+        items = "\n".join([f"<li>{_escape(s)}</li>" for s in self.slides])
         return f"""
 <div class="{_SUPERHEADER_CLS}">Announcements</div>
 <ul>
@@ -294,25 +329,30 @@ class AnnouncementsSection:
 
 @dataclass
 class VideosSection:
-    opener: Optional[str]
-    bumper: Optional[str]
-    announcements: Optional[str]
+    opener: Optional[AnnotatedItem]
+    bumper: Optional[AnnotatedItem]
+    announcements: Optional[AnnotatedItem]
 
     def to_html(self) -> str:
-        rows = (
-            ([["Opener", html.escape(self.opener)]] if self.opener is not None else [])
-            + (
-                [["Bumper", html.escape(self.bumper)]]
-                if self.bumper is not None
-                else []
-            )
-            + (
-                [["Announcements", html.escape(self.announcements)]]
-                if self.announcements is not None
-                else []
-            )
+        missing = "<span class='missing'>None found</span>"
+        opener = self.opener.content if self.opener is not None else missing
+        opener_notes = _show_notes(self.opener.notes) if self.opener is not None else ""
+        bumper = self.bumper.content if self.bumper is not None else missing
+        bumper_notes = _show_notes(self.bumper.notes) if self.bumper is not None else ""
+        announcements = (
+            self.announcements.content if self.announcements is not None else missing
         )
-        tab = HtmlTable(cls=_VIDEO_TAB_CLS, ncols=2, header=None, rows=rows)
+        announcements_notes = (
+            _show_notes(self.announcements.notes)
+            if self.announcements is not None
+            else ""
+        )
+        rows = [
+            ["Opener", _escape(opener), opener_notes],
+            ["Bumper", _escape(bumper), bumper_notes],
+            ["Announcements", _escape(announcements), announcements_notes],
+        ]
+        tab = HtmlTable(cls=_VIDEO_TAB_CLS, ncols=3, header=None, rows=rows)
         return f"""
 <div class="{_SUPERHEADER_CLS}">Videos</div>
 {tab.to_html()}
@@ -324,18 +364,11 @@ class SongSection:
     songs: List[AnnotatedSong]
 
     def _make_row(self, s: AnnotatedSong) -> List[str]:
-        # TODO: Line breaks aren't being represented properly here
-        notes = [
-            f"<span class='{_NOTES_TITLE_CLS}'>⚠️ {html.escape(n.category)}</span><br>{html.escape(n.contents)}"
-            for n in s.notes
-            if n.category == "Visuals"
-        ]
-        notes = "\n".join(notes)
         return [
-            html.escape(s.song.ccli or ""),
-            notes,
-            html.escape(s.song.title or ""),
-            html.escape(s.song.author or ""),
+            _escape(s.song.ccli or ""),
+            _show_notes(s.notes),
+            _escape(s.song.title or ""),
+            _escape(s.song.author or ""),
         ]
 
     def to_html(self) -> str:
@@ -355,17 +388,23 @@ class SongSection:
 
 @dataclass
 class MessageSection:
-    notes: str
+    message: Optional[AnnotatedItem]
 
     def to_html(self) -> str:
-        # TODO: There's too much indentation here
-        btn = '<button id="copy-btn" onclick="copyMessageNotes()">Copy</button><br><span id="copy-confirm" style="visibility: hidden;">Copied &check;</span>'
-        notes = f"<details><summary>Show notes</summary><pre id='message-notes'>{html.escape(self.notes)}</pre></details>"
-        row = [
-            f"<div class='{_EVEN_ROW_CLS}'>{btn}</div>",
-            f"<div class='{_EVEN_ROW_CLS}'>{notes}</div>",
-        ]
-        tab = HtmlTable(cls=_MESSAGE_TAB_CLS, ncols=2, header=None, rows=[row])
+        sermon_notes = self.message.content if self.message else ""
+        has_sermon_notes = bool(sermon_notes.strip())
+        sermon_notes = (
+            f"<details><summary>Show notes</summary><span id='message-notes'>{_escape(sermon_notes)}</span></details>"
+            if sermon_notes
+            else "<span class='missing'>No Notes Available</span>"
+        )
+        disabled = "disabled" if not has_sermon_notes else ""
+        btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><br><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
+        visuals_notes = (
+            _show_notes(self.message.notes) if self.message is not None else ""
+        )
+        row = [btn, sermon_notes, visuals_notes]
+        tab = HtmlTable(cls=_MESSAGE_TAB_CLS, ncols=3, header=None, rows=[row])
         return f"""
 <div class='{_SUPERHEADER_CLS}'>Message</div>
 {tab.to_html()}
@@ -375,11 +414,11 @@ class MessageSection:
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     # TODO: Also warn the user if there are extra notes other than the ones for songs?
     title = (
-        html.escape(f"{summary.plan.series_title}: {summary.plan.title}")
+        _escape(f"{summary.plan.series_title}: {summary.plan.title}")
         if summary.plan.series_title
-        else html.escape(summary.plan.title)
+        else _escape(summary.plan.title)
     )
-    subtitle = html.escape(summary.plan.date.strftime("%B %d, %Y"))
+    subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slides_section = WalkInSlidesSection(summary.walk_in_slides)
     announcements_section = AnnouncementsSection(summary.announcements)
     videos_section = VideosSection(
@@ -463,13 +502,13 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             }}
             .{_MESSAGE_TAB_CLS} {{
                 display: grid;
-                grid-template-columns: 7.5em 30em 1fr;
+                grid-template-columns: min-content 1fr 1fr;
                 border: 2px solid var(--dark-background-color);
                 border-top: 0;
             }}
             .{_VIDEO_TAB_CLS} {{
                 display: grid;
-                grid-template-columns: 15em 1fr;
+                grid-template-columns: min-content 1fr 1fr;
                 border: 2px solid var(--dark-background-color);
                 border-top: 0;
             }}
@@ -493,7 +532,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
 {_indent(announcements_section.to_html(), 3)}
 {_indent(videos_section.to_html(), 3)}
 {_indent(songs_section.to_html(), 3)}
-{message_section.to_html()}
+{_indent(message_section.to_html(), 3)}
         </div>
     </body>
 </html>
