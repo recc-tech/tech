@@ -355,6 +355,7 @@ _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
+_ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon.png")
 
 
 def _indent(code: str, n: int) -> str:
@@ -535,6 +536,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     <head>
         <meta charset="UTF-8" />
         <title>Plan Summary</title>
+        <link rel='shortcut icon' href='{_ICON_PATH.as_posix()}' />
         <style>
             html {{
                 /* Same as Planning Center */
