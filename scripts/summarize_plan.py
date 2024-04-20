@@ -21,12 +21,17 @@ from autochecklist import (
 from config import Config
 from external_services import CredentialStore, PlanningCenterClient
 
+_DEMO_FILE = Path(__file__).parent.joinpath(
+    "test", "integration", "summarize_plan_data", "20240414_summary.json"
+)
+
 
 class SummarizePlanArgs(ReccArgs):
     DESCRIPTION = "This script will generate a summary of the plan for today's service."
 
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         self.no_open: bool = args.no_open
+        self.demo: bool = args.demo
         super().__init__(args, error)
 
     @classmethod
@@ -35,6 +40,11 @@ class SummarizePlanArgs(ReccArgs):
             "--no-open",
             action="store_true",
             help="Do not open the summary in the browser.",
+        )
+        parser.add_argument(
+            "--demo",
+            action="store_true",
+            help="Show a summary of a previous service to show the appearance, rather than pulling up-to-date data from Planning Center.",
         )
         return super().set_up_parser(parser)
 
@@ -95,12 +105,15 @@ def summarize_plan(
     config: Config,
     messenger: Messenger,
 ) -> None:
-    summary = lib.get_plan_summary(
-        client=pco_client,
-        messenger=messenger,
-        config=config,
-        dt=config.start_time.date(),
-    )
+    if args.demo:
+        summary = lib.load_plan_summary(_DEMO_FILE)
+    else:
+        summary = lib.get_plan_summary(
+            client=pco_client,
+            messenger=messenger,
+            config=config,
+            dt=config.start_time.date(),
+        )
     html = lib.plan_summary_to_html(summary)
     config.plan_summary_file.parent.mkdir(parents=True, exist_ok=True)
     config.plan_summary_file.write_text(str(html), encoding="utf-8")
