@@ -461,6 +461,9 @@ class Config(BaseConfig):
 
             # Plan Summaries
             self.plan_summary_file = reader.get_file("plan_summary.file")
+            self.plan_summary_note_categories = reader.get_str_list(
+                "plan_summary.note_categories"
+            )
 
             # Slides
             self.message_notes_filename = reader.get_str(

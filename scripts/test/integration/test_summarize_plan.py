@@ -198,7 +198,9 @@ class SummarizePlanTestCase(unittest.TestCase):
             ),
             has_visuals_notes=True,
         )
-        actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
+        actual_summary = get_plan_summary(
+            client=pco_client, messenger=messenger, config=config, dt=dt
+        )
 
         # Compare field-by-field for better error message
         self.assertEqual(expected_summary.plan, actual_summary.plan)
@@ -342,7 +344,9 @@ class SummarizePlanTestCase(unittest.TestCase):
             ),
             has_visuals_notes=True,
         )
-        actual_summary = get_plan_summary(client=pco_client, messenger=messenger, dt=dt)
+        actual_summary = get_plan_summary(
+            client=pco_client, messenger=messenger, config=config, dt=dt
+        )
 
         # Compare field-by-field for better error message
         self.assertEqual(expected_summary.plan, actual_summary.plan)

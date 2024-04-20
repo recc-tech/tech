@@ -96,7 +96,10 @@ def summarize_plan(
     messenger: Messenger,
 ) -> None:
     summary = lib.get_plan_summary(
-        client=pco_client, messenger=messenger, dt=config.start_time.date()
+        client=pco_client,
+        messenger=messenger,
+        config=config,
+        dt=config.start_time.date(),
     )
     html = lib.plan_summary_to_html(summary)
     config.plan_summary_file.parent.mkdir(parents=True, exist_ok=True)

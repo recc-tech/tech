@@ -7,6 +7,7 @@ from datetime import date
 from typing import List, Optional, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
+from config import Config
 from external_services import (
     ItemNote,
     Plan,
@@ -59,8 +60,8 @@ def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
         return None
 
 
-def _filter_notes(notes: List[ItemNote]) -> List[ItemNote]:
-    return [n for n in notes if n.category == "Visuals"]
+def _filter_notes(notes: List[ItemNote], categories: List[str]) -> List[ItemNote]:
+    return [n for n in notes if n.category in categories]
 
 
 def _get_announcement_slide_names(item: PlanItem) -> List[str]:
@@ -130,18 +131,22 @@ def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]
 
 
 def _get_opener_video(
-    sections: List[PlanSection], messenger: Messenger
+    sections: List[PlanSection], messenger: Messenger, note_categories: List[str]
 ) -> Optional[AnnotatedItem]:
     matching_sections = [
         s for s in sections if re.search("opener video", s.title, re.IGNORECASE)
     ]
     sec = _get_one(matching_sections, messenger, "opener video section")
     itm = None if sec is None else _get_one(sec.items, messenger, "opener video")
-    return None if itm is None else AnnotatedItem(itm.title, _filter_notes(itm.notes))
+    return (
+        None
+        if itm is None
+        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+    )
 
 
 def _get_bumper_video(
-    sec: PlanSection, messenger: Messenger
+    sec: PlanSection, messenger: Messenger, note_categories: List[str]
 ) -> Optional[AnnotatedItem]:
     matches = [i for i in sec.items if re.search("bumper", i.title, re.IGNORECASE)]
     itm = _get_one(matches, messenger, "bumper video")
@@ -152,18 +157,22 @@ def _get_bumper_video(
     return (
         None
         if itm is None or name is None
-        else AnnotatedItem(name, _filter_notes(itm.notes))
+        else AnnotatedItem(name, _filter_notes(itm.notes, note_categories))
     )
 
 
 def _get_announcements_video(
-    items: List[PlanItem], messenger: Messenger
+    items: List[PlanItem], messenger: Messenger, note_categories: List[str]
 ) -> Optional[AnnotatedItem]:
     matches = [
         i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
     ]
     itm = _get_one(matches, messenger, "announcements video")
-    return None if itm is None else AnnotatedItem(itm.title, _filter_notes(itm.notes))
+    return (
+        None
+        if itm is None
+        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+    )
 
 
 def _get_message_section(
@@ -175,7 +184,7 @@ def _get_message_section(
 
 
 def _get_message_notes(
-    sec: PlanSection, messenger: Messenger
+    sec: PlanSection, messenger: Messenger, note_categories: List[str]
 ) -> Optional[AnnotatedItem]:
     matches = [
         i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
@@ -184,12 +193,14 @@ def _get_message_notes(
     return (
         None
         if itm is None
-        else AnnotatedItem(itm.description.strip(), _filter_notes(itm.notes))
+        else AnnotatedItem(
+            itm.description.strip(), _filter_notes(itm.notes, note_categories)
+        )
     )
 
 
 def _get_songs(
-    sections: List[PlanSection], messenger: Messenger
+    sections: List[PlanSection], messenger: Messenger, note_categories: List[str]
 ) -> List[AnnotatedSong]:
     matching_items = [
         i
@@ -205,13 +216,13 @@ def _get_songs(
     songs: List[AnnotatedSong] = []
     for i in matching_items:
         song = i.song or Song(ccli=None, title=i.title, author=None)
-        notes = [n for n in i.notes if n.category == "Visuals"]
+        notes = _filter_notes(i.notes, note_categories)
         songs.append(AnnotatedSong(song, notes))
     return songs
 
 
 def get_plan_summary(
-    client: PlanningCenterClient, messenger: Messenger, dt: date
+    client: PlanningCenterClient, messenger: Messenger, config: Config, dt: date
 ) -> PlanItemsSummary:
     plan = client.find_plan_by_date(dt)
     sections = client.find_plan_items(
@@ -219,19 +230,29 @@ def get_plan_summary(
     )
     items = [i for s in sections for i in s.items]
     walk_in_slides = _get_walk_in_slides(items, messenger)
-    opener_video = _get_opener_video(sections, messenger)
+    opener_video = _get_opener_video(
+        sections, messenger, note_categories=config.plan_summary_note_categories
+    )
     announcements = _get_announcements(items, messenger)
-    announcements_video = _get_announcements_video(items, messenger)
+    announcements_video = _get_announcements_video(
+        items, messenger, note_categories=config.plan_summary_note_categories
+    )
     msg_sec = _get_message_section(sections, messenger)
     if msg_sec is None:
         bumper_video = None
         message_notes = None
     else:
-        bumper_video = _get_bumper_video(msg_sec, messenger)
-        message_notes = _get_message_notes(msg_sec, messenger)
-    songs = _get_songs(sections, messenger)
+        bumper_video = _get_bumper_video(
+            msg_sec, messenger, note_categories=config.plan_summary_note_categories
+        )
+        message_notes = _get_message_notes(
+            msg_sec, messenger, note_categories=config.plan_summary_note_categories
+        )
+    songs = _get_songs(
+        sections, messenger, note_categories=config.plan_summary_note_categories
+    )
     all_notes = [n for s in sections for i in s.items for n in i.notes]
-    visuals_notes = _filter_notes(all_notes)
+    visuals_notes = _filter_notes(all_notes, config.plan_summary_note_categories)
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
