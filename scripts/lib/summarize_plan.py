@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import html
+import json
 import re
+import typing
 from dataclasses import dataclass
-from datetime import date
-from typing import List, Optional, TypeVar
+from datetime import date, datetime
+from pathlib import Path
+from typing import List, Optional, Type, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
 from config import Config
@@ -263,6 +266,86 @@ def get_plan_summary(
         songs=songs,
         message_notes=message_notes,
         has_visuals_notes=len(visuals_notes) > 0,
+    )
+
+
+def _cast(t: Type[T], x: object) -> T:
+    if not isinstance(x, t):
+        raise TypeError(
+            f"Expected object of type {t}, but found object of type {type(x).__name__}."
+        )
+    return x
+
+
+def _parse_note(note: object) -> ItemNote:
+    note = typing.cast(dict[object, object], _cast(dict, note))
+    return ItemNote(
+        category=_cast(str, note["category"]),
+        contents=_cast(str, note["contents"]),
+    )
+
+
+def _parse_annotated_item(data: object) -> Optional[AnnotatedItem]:
+    if data is None:
+        return None
+    data = typing.cast(dict[object, object], _cast(dict, data))
+    content = _cast(str, data["content"])
+    raw_notes = typing.cast(list[object], _cast(list, data["notes"]))
+    notes = [_parse_note(n) for n in raw_notes]
+    return AnnotatedItem(content=content, notes=notes)
+
+
+def _parse_song(song: object) -> Song:
+    song = typing.cast(dict[object, object], _cast(dict, song))
+    ccli = song["ccli"]
+    if ccli is not None:
+        ccli = _cast(str, song["ccli"])
+    title = _cast(str, song["title"])
+    author = song["author"]
+    if author is not None:
+        author = _cast(str, author)
+    return Song(ccli=ccli, title=title, author=author)
+
+
+def _parse_annotated_song(song: object) -> AnnotatedSong:
+    song = typing.cast(dict[object, object], _cast(dict, song))
+    raw_notes = typing.cast(list[object], _cast(list, song["notes"]))
+    return AnnotatedSong(
+        song=_parse_song(song["song"]), notes=[_parse_note(n) for n in raw_notes]
+    )
+
+
+def load_plan_summary(path: Path) -> PlanItemsSummary:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    opener_vid = (
+        _parse_annotated_item(data["opener_video"]) if "opener_video" in data else None
+    )
+    bumper_vid = (
+        _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
+    )
+    announcements_vid = (
+        _parse_annotated_item(data["announcements_video"])
+        if "announcements_video" in data
+        else None
+    )
+    songs = [_parse_annotated_song(s) for s in data["songs"]]
+    message_notes = _parse_annotated_item(data["message_notes"])
+    return PlanItemsSummary(
+        plan=Plan(
+            id=data["plan"]["id"],
+            series_title=data["plan"]["series_title"],
+            title=data["plan"]["title"],
+            date=datetime.strptime(data["plan"]["date"], "%Y-%m-%d").date(),
+        ),
+        walk_in_slides=data["walk_in_slides"],
+        announcements=data["announcements"],
+        opener_video=opener_vid,
+        bumper_video=bumper_vid,
+        announcements_video=announcements_vid,
+        songs=songs,
+        message_notes=message_notes,
+        has_visuals_notes=data["has_visuals_notes"],
     )
 
 

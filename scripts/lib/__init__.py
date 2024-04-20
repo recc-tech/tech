@@ -19,5 +19,6 @@ from .summarize_plan import (
     AnnotatedSong,
     PlanItemsSummary,
     get_plan_summary,
+    load_plan_summary,
     plan_summary_to_html,
 )

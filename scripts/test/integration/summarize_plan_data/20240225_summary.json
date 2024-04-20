@@ -1,0 +1,98 @@
+{
+	"plan": {
+		"id": "69868600",
+		"series_title": "Save The Date",
+		"title": "Disappointed Yet Deeply Hopeful",
+		"date": "2024-02-25"
+	},
+	"walk_in_slides": [
+		"River’s Edge Community Church",
+		"Belong Before You Believe",
+		"Save The Date Series Title Slide",
+		"Ways To Give",
+		"The After party",
+		"RE Website",
+		"Follow Us Instagram"
+	],
+	"opener_video": {
+		"content": "Relationship Goals Intro Video",
+		"notes": []
+	},
+	"announcements": [
+		"Thanks For Joining Us",
+		"Belong Before You Believe",
+		"Message Series - Title Slide",
+		"Worship & Prayer Room",
+		"Pulse Retreat",
+		"Community Hall Fundraiser",
+		"Ways To Give",
+		"Prayer Ministry",
+		"Website",
+		"After Party",
+		"See You Next Sunday"
+	],
+	"announcements_video": null,
+	"songs": [
+		{
+			"song": {
+				"ccli": null,
+				"title": "You Are Mine (E)",
+				"author": null
+			},
+			"notes": [
+				{
+					"category": "Visuals",
+					"contents": "Please show at the beginning\nIris will welcome, read these bible verses & pray. \nVerses: \n--\n”Why, my soul, are you downcast? Why so disturbed within me? Put your hope in God, for I will yet praise him, my Saviour and my God. My soul is downcast within me; therefore I will remember you from the land of the Jordan, the heights of Hermon—from Mount Mizar. Deep calls to deep in the roar of your waterfalls; all your waves and breakers have swept over me. By day the Lord directs his love, at night his song is with me— a prayer to the God of my life.\n\u202d\u202dPsalms\u202c \u202d42\u202c:\u202d5\u202c-8 \u202dNIV\u202c\u202c"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Worthy of it All / I Exalt Thee (B)",
+				"author": null
+			},
+			"notes": [
+				{
+					"category": "Visuals",
+					"contents": "During the instrumental before the bridge:\n”May my prayer be set before you like incense; may the lifting up of my hands be like the evening sacrifice.“\n\u202d\u202dPsalms\u202c \u202d141\u202c:\u202d2\u202c \u202dNIV\u202c\u202c"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Better is One Day (C)",
+				"author": null
+			},
+			"notes": []
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Same God (D)",
+				"author": null
+			},
+			"notes": [
+				{
+					"category": "Visuals",
+					"contents": "During the first Instrumental before the bridge:\n--\n”Jesus Christ is the same yesterday and today and forever.“\n\u202d\u202dHebrews\u202c \u202d13\u202c:\u202d8\u202c \u202dNIV"
+				}
+			]
+		}
+	],
+	"bumper_video": {
+		"content": "Save The Date Bumper Video",
+		"notes": []
+	},
+	"message_notes": {
+		"content": "Disappointed Yet Deeply Hopeful \nGod’s Heart Is That You Find The One & That It Lasts Matthew 19:4-6 NIV\nGod’s Gives Us Wisdom In Avoiding Disappointment\nProverbs 27:12 NLT\nHow do I find the right person?\nHow do I become the right person?\nHow you see marriage shapes how you approach relationships. \nYou don’t attract what you want; you attract what you are.\nProverbs 27:19 NLT\nClear Signs To Avoid The Wrong Person & Being The Wrong Person\nWhen they’re not consistently pursuing Jesus.\nPeople talk about and live out what they value most.\n2 Corinthians 6:14-15 NIV \nAmos 3:3 NLT\nWhy You Settle & Accept Less Than You Deserve\nProverbs 27:7 NLT \nDon’t give them your heart if God doesn’t have theirs.\nWhen those you love don’t love who you’re dating. \nProverbs 27:9 NLT\nProverbs 12:15 NLT\nWhen you don’t experience healthy conflict.\nJames 1:19-20 NIV \nProverbs 27:14-16 NLT\nWhen you find it difficult to trust the one you’re with.\n1 Corinthians 13:7 NIV\nProverbs 27:8 NLT\nProverbs 5:15-17 NLT\nWhen they’re leading you away from Jesus instead of closer to Jesus.\nMatthew 24:4 NLT\nPsalm 119:115 NLT",
+		"notes": [
+			{
+				"category": "Visuals",
+				"contents": "Name slide"
+			}
+		]
+	},
+	"has_visuals_notes": true
+}
