@@ -355,7 +355,6 @@ def _make_videos_table(
 
 
 def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
-    # TODO: Omit notes column if there are no notes?
     rows = [
         [
             _escape(s.song.ccli or ""),
@@ -365,10 +364,15 @@ def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
         ]
         for s in songs
     ]
+    col_widths = ["min-content", "3fr", "2fr", "3fr"]
+    header = ["CCLI", "Notes", "Title", "Author"]
+    # No notes
+    if all(not r[1] for r in rows):
+        col_widths[1] = "min-content"
     return HtmlTable(
         cls="songs-table",
-        col_widths=["min-content", "5fr", "3fr", "3fr"],
-        header=["CCLI", "Notes", "Title", "Author"],
+        col_widths=col_widths,
+        header=header,
         rows=rows,
     )
 
