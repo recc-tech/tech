@@ -10,6 +10,7 @@ from .credentials import Credential, CredentialStore, InputPolicy
 from .planning_center import (
     Attachment,
     FileType,
+    ItemNote,
     Plan,
     PlanItem,
     PlanningCenterClient,
