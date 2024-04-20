@@ -12,23 +12,20 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 - [ ] Turn on the projectors and make sure they're lined up properly.
 - [ ] Download any new media from Planning Center Online to `/Users/visuals/Documents/ProPresenter Assets`.
-- Set up the playlist according to the plan on Planning Center Online.
-    - [ ] Worship and reprise
-        - Make sure you have the "No NDI" look on the background loops.
+- Set up the standard playlist elements:
+    - [ ] Walk-in slides and announcements
+    - [ ] Videos (opener, bumper, announcements)
+    - [ ] Songs
     - [ ] Message
-        - Make sure to use the right translation for scripture. _NOTE:_ in ProPresenter, you must set the translation first and then enter the book, chapter, and verses.
-    - [ ] Walk-in slides
-        - Make sure each slide has its "Go to Next Timer" set to five seconds and that the last one loops back to the beginning.
-    - [ ] MC welcome, announcements, and goodbye slides
-        - Make sure there's no "Go to Next Timer" for these slides.
-    - [ ] Videos
-    - [ ] For each slide, make sure you use the correct look:
-        - "Lyrics" for song lyrics
-        - "Scripture" for Bible verses
-        - "Message" for the sermon notes
-        - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
+- [ ] For each slide, make sure you use the correct look:
+    - "Lyrics" for song lyrics
+    - "Scripture" for Bible verses
+    - "Message" for the sermon notes
+    - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
 - [ ] Look for special events in the plan on Planning Center Online (e.g., baptism, child dedication).
-- [ ] Look for special requests (e.g., custom lyrics, scripture before worship) at tech@riversedge.life.
+- [ ] Look for special requests or notes (e.g., custom lyrics, scripture to be shown before worship):
+    - [ ] On Planning Center
+    - [ ] By email (tech@riversedge.life)
 - [ ] Once the rehearsal is done, play each video to make sure the sound is working.
 - [ ] Turn off the red light and the stage lights.
 - [ ] Play some music from Spotify.
