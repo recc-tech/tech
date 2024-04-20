@@ -243,9 +243,6 @@ def get_plan_summary(
 
 _SUPERHEADER_CLS = "superheader"
 _HEADER_CLS = "header-row"
-_VIDEO_TAB_CLS = "videos-table"
-_SONG_TAB_CLS = "songs-table"
-_MESSAGE_TAB_CLS = "message-notes-table"
 _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
 _NOTES_TITLE_CLS = "notes-title"
@@ -270,21 +267,34 @@ def _show_notes(notes: List[ItemNote]) -> str:
 @dataclass
 class HtmlTable:
     cls: str
-    ncols: int
+    col_widths: List[str]
     header: Optional[List[str]]
     rows: List[List[str]]
 
+    def __post_init__(self) -> None:
+        self._check_ncols()
+
     def _check_ncols(self) -> None:
-        if self.header is not None and len(self.header) != self.ncols:
+        ncols = len(self.col_widths)
+        if self.header is not None and len(self.header) != ncols:
             raise ValueError("Number of columns in header is not as expected.")
         for i, r in enumerate(self.rows):
-            if len(r) != self.ncols:
+            if len(r) != ncols:
                 raise ValueError(
-                    f"Number of columns in row {i} is not as expected. Expected {self.ncols} but found {len(r)}."
+                    f"Number of columns in row {i} is not as expected. Expected {ncols} but found {len(r)}."
                 )
 
+    def to_css(self) -> str:
+        return f"""
+.{self.cls} {{
+    display: grid;
+    border: 2px solid var(--dark-background-color);
+    border-top: 0;
+    grid-template-columns: {' '.join(self.col_widths)};
+}}
+""".strip()
+
     def to_html(self) -> str:
-        self._check_ncols()
         divs: List[str] = []
         if self.header is not None:
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
@@ -299,116 +309,88 @@ class HtmlTable:
 """.strip()
 
 
-@dataclass
-class WalkInSlidesSection:
-    slides: List[str]
-
-    def to_html(self) -> str:
-        items = "\n".join([f"<li>{_escape(s)}</li>" for s in self.slides])
-        return f"""
-<div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
+def _make_walk_in_slides_list(slides: List[str]) -> str:
+    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
+    return f"""
 <ul>
 {_indent(items, 1)}
 </ul>
 """.strip()
 
 
-@dataclass
-class AnnouncementsSection:
-    slides: List[str]
-
-    def to_html(self) -> str:
-        items = "\n".join([f"<li>{_escape(s)}</li>" for s in self.slides])
-        return f"""
-<div class="{_SUPERHEADER_CLS}">Announcements</div>
+def _make_announcements_list(slides: List[str]) -> str:
+    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
+    return f"""
 <ul>
 {_indent(items, 1)}
 </ul>
 """.strip()
 
 
-@dataclass
-class VideosSection:
-    opener: Optional[AnnotatedItem]
-    bumper: Optional[AnnotatedItem]
-    announcements: Optional[AnnotatedItem]
-
-    def to_html(self) -> str:
-        missing = "<span class='missing'>None found</span>"
-        opener = self.opener.content if self.opener is not None else missing
-        opener_notes = _show_notes(self.opener.notes) if self.opener is not None else ""
-        bumper = self.bumper.content if self.bumper is not None else missing
-        bumper_notes = _show_notes(self.bumper.notes) if self.bumper is not None else ""
-        announcements = (
-            self.announcements.content if self.announcements is not None else missing
-        )
-        announcements_notes = (
-            _show_notes(self.announcements.notes)
-            if self.announcements is not None
-            else ""
-        )
-        rows = [
-            ["Opener", _escape(opener), opener_notes],
-            ["Bumper", _escape(bumper), bumper_notes],
-            ["Announcements", _escape(announcements), announcements_notes],
-        ]
-        tab = HtmlTable(cls=_VIDEO_TAB_CLS, ncols=3, header=None, rows=rows)
-        return f"""
-<div class="{_SUPERHEADER_CLS}">Videos</div>
-{tab.to_html()}
-""".strip()
+def _make_videos_table(
+    opener: Optional[AnnotatedItem],
+    bumper: Optional[AnnotatedItem],
+    announcements: Optional[AnnotatedItem],
+) -> HtmlTable:
+    missing = "<span class='missing'>None found</span>"
+    opener_name = opener.content if opener is not None else missing
+    opener_notes = _show_notes(opener.notes) if opener is not None else ""
+    bumper_name = bumper.content if bumper is not None else missing
+    bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
+    announcements_name = announcements.content if announcements is not None else missing
+    announcements_notes = (
+        _show_notes(announcements.notes) if announcements is not None else ""
+    )
+    rows = [
+        ["Opener", _escape(opener_name), opener_notes],
+        ["Bumper", _escape(bumper_name), bumper_notes],
+        ["Announcements", _escape(announcements_name), announcements_notes],
+    ]
+    return HtmlTable(
+        cls="videos-table",
+        col_widths=["min-content", "1fr", "1fr"],
+        header=None,
+        rows=rows,
+    )
 
 
-@dataclass
-class SongSection:
-    songs: List[AnnotatedSong]
-
-    def _make_row(self, s: AnnotatedSong) -> List[str]:
-        return [
+def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
+    # TODO: Omit notes column if there are no notes?
+    rows = [
+        [
             _escape(s.song.ccli or ""),
             _show_notes(s.notes),
             _escape(s.song.title or ""),
             _escape(s.song.author or ""),
         ]
-
-    def to_html(self) -> str:
-        # TODO: Omit notes column if there are no notes?
-        rows = [self._make_row(s) for s in self.songs]
-        tab = HtmlTable(
-            cls=_SONG_TAB_CLS,
-            ncols=4,
-            header=["CCLI", "Notes", "Title", "Author"],
-            rows=rows,
-        )
-        return f"""
-<div class='{_SUPERHEADER_CLS}'>Songs</div>
-{tab.to_html()}
-""".strip()
+        for s in songs
+    ]
+    return HtmlTable(
+        cls="songs-table",
+        col_widths=["min-content", "5fr", "3fr", "3fr"],
+        header=["CCLI", "Notes", "Title", "Author"],
+        rows=rows,
+    )
 
 
-@dataclass
-class MessageSection:
-    message: Optional[AnnotatedItem]
-
-    def to_html(self) -> str:
-        sermon_notes = self.message.content if self.message else ""
-        has_sermon_notes = bool(sermon_notes.strip())
-        sermon_notes = (
-            f"<details><summary>Show notes</summary><span id='message-notes'>{_escape(sermon_notes)}</span></details>"
-            if sermon_notes
-            else "<span class='missing'>No Notes Available</span>"
-        )
-        disabled = "disabled" if not has_sermon_notes else ""
-        btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><br><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
-        visuals_notes = (
-            _show_notes(self.message.notes) if self.message is not None else ""
-        )
-        row = [btn, sermon_notes, visuals_notes]
-        tab = HtmlTable(cls=_MESSAGE_TAB_CLS, ncols=3, header=None, rows=[row])
-        return f"""
-<div class='{_SUPERHEADER_CLS}'>Message</div>
-{tab.to_html()}
-""".strip()
+def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
+    sermon_notes = message.content if message else ""
+    has_sermon_notes = bool(sermon_notes.strip())
+    sermon_notes = (
+        f"<details><summary>Show notes</summary><span id='message-notes'>{_escape(sermon_notes)}</span></details>"
+        if sermon_notes
+        else "<span class='missing'>No Notes Available</span>"
+    )
+    disabled = "disabled" if not has_sermon_notes else ""
+    btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><br><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
+    visuals_notes = _show_notes(message.notes) if message is not None else ""
+    row = [btn, sermon_notes, visuals_notes]
+    return HtmlTable(
+        cls="message-table",
+        col_widths=["min-content", "1fr", "1fr"],
+        header=None,
+        rows=[row],
+    )
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
@@ -419,15 +401,15 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         else _escape(summary.plan.title)
     )
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
-    walk_in_slides_section = WalkInSlidesSection(summary.walk_in_slides)
-    announcements_section = AnnouncementsSection(summary.announcements)
-    videos_section = VideosSection(
+    walk_in_slides_list = _make_walk_in_slides_list(summary.walk_in_slides)
+    announcements_list = _make_announcements_list(summary.announcements)
+    videos_table = _make_videos_table(
         opener=summary.opener_video,
         bumper=summary.bumper_video,
         announcements=summary.announcements_video,
     )
-    songs_section = SongSection(songs=summary.songs)
-    message_section = MessageSection(summary.message_notes)
+    songs_table = _make_songs_table(songs=summary.songs)
+    message_table = _make_message_table(summary.message_notes)
     return f"""
 <!DOCTYPE html>
 <html>
@@ -441,6 +423,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 background-color: var(--background-color);
                 /* Same as the website */
                 --highlight-color: #1a7ee5;
+                --dim-highlight-color: #8ea0b7;
                 --background-color: #fafafa;
                 --dark-background-color: rgb(235, 235, 235);
             }}
@@ -468,12 +451,12 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 color: red;
             }}
             .superheader, .header-row, .even-row, .odd-row {{
-                padding: 0.25em;
+                padding: 0.25em 0.5em 0.25em 0.5em;
             }}
             .{_SUPERHEADER_CLS} {{
                 font-size: x-large;
                 font-weight: bolder;
-                background-color: #8ea0b7;
+                background-color: var(--dim-highlight-color);
                 border: 2px solid var(--dark-background-color);
                 border-bottom: 0;
                 color: white;
@@ -482,7 +465,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             .{_HEADER_CLS} {{
                 font-weight: bolder;
                 font-size: large;
-                background-color: #8ea0b7;
+                background-color: var(--dim-highlight-color);
                 color: white;
             }}
             .{_EVEN_ROW_CLS} {{
@@ -494,24 +477,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             #copy-btn {{
                 font-size: large;
             }}
-            .{_SONG_TAB_CLS} {{
-                display: grid;
-                grid-template-columns: 8em 5fr 3fr 3fr;
-                border: 2px solid var(--dark-background-color);
-                border-top: 0;
-            }}
-            .{_MESSAGE_TAB_CLS} {{
-                display: grid;
-                grid-template-columns: min-content 1fr 1fr;
-                border: 2px solid var(--dark-background-color);
-                border-top: 0;
-            }}
-            .{_VIDEO_TAB_CLS} {{
-                display: grid;
-                grid-template-columns: min-content 1fr 1fr;
-                border: 2px solid var(--dark-background-color);
-                border-top: 0;
-            }}
+{_indent(videos_table.to_css(), 3)}
+{_indent(songs_table.to_css(),3)}
+{_indent(message_table.to_css(),3)}
         </style>
         <script>
             function copyMessageNotes() {{
@@ -528,11 +496,16 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <h2>{subtitle}</h2>
         </header>
         <div id='main-content'>
-{_indent(walk_in_slides_section.to_html(), 3)}
-{_indent(announcements_section.to_html(), 3)}
-{_indent(videos_section.to_html(), 3)}
-{_indent(songs_section.to_html(), 3)}
-{_indent(message_section.to_html(), 3)}
+            <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
+{_indent(walk_in_slides_list, 3)}
+            <div class="{_SUPERHEADER_CLS}">Announcements</div>
+{_indent(announcements_list, 3)}
+            <div class="{_SUPERHEADER_CLS}">Videos</div>
+{_indent(videos_table.to_html(), 3)}
+            <div class='{_SUPERHEADER_CLS}'>Songs</div>
+{_indent(songs_table.to_html(), 3)}
+            <div class='{_SUPERHEADER_CLS}'>Message</div>
+{_indent(message_table.to_html(), 3)}
         </div>
     </body>
 </html>
