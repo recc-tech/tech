@@ -391,7 +391,7 @@ def _find_original(p: Path) -> Optional[Path]:
     for other in directory.iterdir():
         if p.resolve() == other.resolve() or not other.is_file():
             continue
-        if filecmp.cmp(p, other):
+        if filecmp.cmp(p, other, shallow=False):
             return other
     return None
 

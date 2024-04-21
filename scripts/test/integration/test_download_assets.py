@@ -3,14 +3,24 @@
 import shutil
 import unittest
 from pathlib import Path
+from typing import Dict, Optional
 from unittest.mock import create_autospec
 
 from args import ReccArgs
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import CancellationToken, Messenger, ProblemLevel
 from config import Config
-from lib import AssetManager, Attachment, Download, DownloadSkipped
+from external_services import PlanningCenterClient
+from lib import (
+    AssetManager,
+    Attachment,
+    Download,
+    DownloadDeduplicated,
+    DownloadSkipped,
+    DownloadSucceeded,
+)
 
 _TEST_DIR = Path(__file__).resolve().parent.parent
+_DATA_DIR = Path(__file__).parent.joinpath("download_assets_data")
 _KIDS_VID = Attachment(
     id="168545664",
     filename="Kids_OnlineExperience_W2.mp4",
@@ -25,6 +35,7 @@ _KIDS_VID_COPY = Attachment(
     pco_filetype="video",
     mime_type="application/mp4",
 )
+_KIDS_VID_FAKE = _DATA_DIR.joinpath("Kids_OnlineExperience_W2.mp4")
 _KIDS_VID_20240421 = Attachment(
     id="168545806",
     filename="Kids_OnlineExperience_W3.mp4",
@@ -39,6 +50,7 @@ _BUMPER_VID = Attachment(
     pco_filetype="video",
     mime_type="application/mp4",
 )
+_BUMPER_VID_FAKE = _DATA_DIR.joinpath("Worthy Sermon Bumper.mp4")
 _OPENER_VID = Attachment(
     id="169500434",
     filename="Welcome Opener Video.mp4",
@@ -53,6 +65,22 @@ _OPENER_VID_COPY = Attachment(
     pco_filetype="video",
     mime_type="application/mp4",
 )
+_OPENER_VID_COPY_NEW_NAME = Attachment(
+    id="169500434_copy_2",
+    filename="Welcome Opener Video (New Name).mp4",
+    num_bytes=72145534,
+    pco_filetype="video",
+    mime_type="application/mp4",
+)
+_OPENER_VID_FAKE = _DATA_DIR.joinpath("Welcome Opener Video.mp4")
+_BAPTISM_VID = Attachment(
+    id="baptism",
+    filename="BaptismHD.mp4",
+    num_bytes=42,
+    pco_filetype="video",
+    mime_type="application/mp4",
+)
+_BAPTISM_VID_FAKE = _DATA_DIR.joinpath("BaptismHD.mp4")
 _SERIES_TITLE_IMG = Attachment(
     id="169501904",
     filename="WORTHY Title Slide.PNG",
@@ -66,6 +94,24 @@ _SERIES_TITLE_IMG_COPY = Attachment(
     num_bytes=1999823,
     pco_filetype="image",
     mime_type="image/png",
+)
+_SERIES_TITLE_IMG_COPY_NEW_NAME = Attachment(
+    id="169501904_copy_2",
+    filename="Title Slide.png",
+    num_bytes=1999823,
+    pco_filetype="image",
+    mime_type="image/png",
+)
+_SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT = Attachment(
+    id="169501904_copy_3",
+    filename="WORTHY Title Slide.PNG",
+    num_bytes=1999823,
+    pco_filetype="image",
+    mime_type="image/png",
+)
+_SERIES_TITLE_IMG_FAKE = _DATA_DIR.joinpath("WORTHY Title Slide.PNG")
+_SERIES_TITLE_NEW_CONTENT_FAKE = _DATA_DIR.joinpath(
+    "WORTHY Title Slide Different Content.PNG"
 )
 _ANNOUNCEMENT_VID = Attachment(
     id="169505461",
@@ -81,6 +127,7 @@ _ANNOUNCEMENT_VID_COPY = Attachment(
     pco_filetype="video",
     mime_type="video/quicktime",
 )
+_ANNOUNCEMENT_VID_FAKE = _DATA_DIR.joinpath("Announcement Video.mov")
 _SERMON_NOTES_DOCX = Attachment(
     id="169508339",
     filename="Notes - Worthy - Week 2 - Worthy Of The Feast.docx",
@@ -95,6 +142,9 @@ _SERMON_NOTES_DOCX_COPY = Attachment(
     pco_filetype="file",
     mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 )
+_SERMON_NOTES_DOCX_FAKE = _DATA_DIR.joinpath(
+    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+)
 _HOST_SCRIPT_DOCX = Attachment(
     id="169508360",
     filename="MC HOST SCRIPT – NEW FORMAT.docx",
@@ -104,7 +154,7 @@ _HOST_SCRIPT_DOCX = Attachment(
 )
 
 
-class PlanDownloadAssetsTestCase(unittest.TestCase):
+class DownloadAssetsTestCase(unittest.TestCase):
     _FOH_CONFIG = Config(
         ReccArgs.parse(["", "--date", "2024-04-14"]),
         profile="foh_dev",
@@ -786,3 +836,130 @@ class PlanDownloadAssetsTestCase(unittest.TestCase):
             message="The current week number is 2, but the Kids Connection video seems to be from week 3.",
         )
         self.assertEqual(1, messenger.log_problem.call_count)
+
+    # Full download test
+
+    def test_download(self) -> None:
+        config = self._FOH_CONFIG
+        manager = AssetManager(config)
+        pco_client = create_autospec(PlanningCenterClient)
+        pco_client.download_attachments = _fake_download
+        pco_client.find_attachments.return_value = {
+            _KIDS_VID,
+            _BUMPER_VID,
+            _OPENER_VID,
+            _SERIES_TITLE_IMG,
+            _ANNOUNCEMENT_VID,
+            _SERMON_NOTES_DOCX,
+            _HOST_SCRIPT_DOCX,
+        }
+        messenger = create_autospec(Messenger)
+        results = manager.download_pco_assets(
+            client=pco_client,
+            messenger=messenger,
+            download_kids_video=True,
+            download_notes_docx=True,
+            require_announcements=True,
+            dry_run=False,
+        )
+        expected_results = {
+            _KIDS_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath("Kids_OnlineExperience_W2.mp4")
+            ),
+            _BUMPER_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("Worthy Sermon Bumper.mp4")
+            ),
+            _OPENER_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("Welcome Opener Video.mp4")
+            ),
+            _SERIES_TITLE_IMG: DownloadSucceeded(
+                config.images_dir.joinpath("WORTHY Title Slide.PNG")
+            ),
+            _ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "Announcement Video 2024-04-14.mov"
+                )
+            ),
+            _SERMON_NOTES_DOCX: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                )
+            ),
+            _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
+        }
+        self.assertEqual(expected_results, results)
+        # In the FOH config, all files go in the same directory
+        expected_files = {
+            d.destination
+            for d in expected_results.values()
+            if isinstance(d, DownloadSucceeded)
+        }
+        actual_files = {p.resolve() for p in config.images_dir.iterdir()}
+        self.assertEqual(expected_files, actual_files)
+        messenger.log_problem.assert_not_called()
+
+        # Check that deduplication works properly
+        pco_client.find_attachments.return_value = {
+            _SERIES_TITLE_IMG_COPY_NEW_NAME,
+            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT,
+            _ANNOUNCEMENT_VID,
+            _OPENER_VID_COPY_NEW_NAME,
+            _BAPTISM_VID,
+        }
+        results = manager.download_pco_assets(
+            client=pco_client,
+            messenger=messenger,
+            download_kids_video=False,
+            download_notes_docx=False,
+            require_announcements=True,
+            dry_run=False,
+        )
+        expected_results = {
+            _SERIES_TITLE_IMG_COPY_NEW_NAME: DownloadDeduplicated(
+                original=config.images_dir.joinpath("WORTHY Title Slide.PNG")
+            ),
+            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: DownloadSucceeded(
+                config.images_dir.joinpath("WORTHY Title Slide (1).PNG")
+            ),
+            _ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "Announcement Video 2024-04-14.mov"
+                )
+            ),
+            _OPENER_VID_COPY_NEW_NAME: DownloadDeduplicated(
+                original=config.videos_dir.joinpath("Welcome Opener Video.mp4")
+            ),
+            _BAPTISM_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("BaptismHD.mp4")
+            ),
+        }
+        self.assertEqual(expected_results, results)
+        expected_files = expected_files | {
+            config.images_dir.joinpath("WORTHY Title Slide (1).PNG"),
+            config.videos_dir.joinpath("BaptismHD.mp4"),
+        }
+        actual_files = {p.resolve() for p in config.images_dir.iterdir()}
+        self.assertEqual(expected_files, actual_files)
+        messenger.log_problem.assert_not_called()
+
+
+async def _fake_download(
+    downloads: Dict[Path, Attachment],
+    messenger: Messenger,
+    cancellation_token: Optional[CancellationToken],
+) -> Dict[Path, Optional[BaseException]]:
+    for p, a in downloads.items():
+        src = {
+            _KIDS_VID: _KIDS_VID_FAKE,
+            _BUMPER_VID: _BUMPER_VID_FAKE,
+            _OPENER_VID: _OPENER_VID_FAKE,
+            _OPENER_VID_COPY_NEW_NAME: _OPENER_VID_FAKE,
+            _SERIES_TITLE_IMG: _SERIES_TITLE_IMG_FAKE,
+            _SERIES_TITLE_IMG_COPY_NEW_NAME: _SERIES_TITLE_IMG_FAKE,
+            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: _SERIES_TITLE_NEW_CONTENT_FAKE,
+            _BAPTISM_VID: _BAPTISM_VID_FAKE,
+            _ANNOUNCEMENT_VID: _ANNOUNCEMENT_VID_FAKE,
+            _SERMON_NOTES_DOCX: _SERMON_NOTES_DOCX_FAKE,
+        }[a]
+        shutil.copy(src, p)
+    return {p: None for p in downloads.keys()}
