@@ -389,7 +389,6 @@ def _find_available_path(
 def _find_original(p: Path) -> Optional[Path]:
     directory = p.parent
     for other in directory.iterdir():
-        # TODO: This is buggy; need to check that other != p
         if p.resolve() == other.resolve() or not other.is_file():
             continue
         if filecmp.cmp(p, other):
