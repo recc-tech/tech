@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Set, Union
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -114,8 +114,10 @@ class AssetManager:
     ) -> Dict[Attachment, DownloadResult]:
         cancellation_token = messenger.allow_cancel()
 
+        plan = client.find_plan_by_date(self._config.start_time.date())
+        attachments = client.find_attachments(plan.id)
         download_plan = self._plan_downloads(
-            client=client,
+            attachments=attachments,
             messenger=messenger,
             download_kids_video=download_kids_video,
             download_notes_docx=download_notes_docx,
@@ -222,7 +224,7 @@ class AssetManager:
 
     def _plan_downloads(
         self,
-        client: PlanningCenterClient,
+        attachments: Set[Attachment],
         messenger: Messenger,
         download_kids_video: bool,
         download_notes_docx: bool,
@@ -232,14 +234,16 @@ class AssetManager:
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
         )
         today = self._config.start_time.date()
-        plan = client.find_plan_by_date(today)
-        attachments = client.find_attachments(plan.id)
         category_by_attachment = {a: self._classify(a) for a in attachments}
         messenger.log_debug(
             f"{len(attachments)} attachments found on PCO: {category_by_attachment}"
         )
+        # Sort so that results are deterministic, can be tested
         attachments_by_category = {
-            cat: {a for (a, c) in category_by_attachment.items() if c == cat}
+            cat: sorted(
+                [a for (a, c) in category_by_attachment.items() if c == cat],
+                key=lambda a: a.id,
+            )
             for cat in AssetCategory
         }
         assets_by_service_dir = self._config.assets_by_service_dir
@@ -253,7 +257,12 @@ class AssetManager:
                     f"Found {len(sermon_notes)} attachments that look like sermon notes.",
                 )
             for sn in sermon_notes:
-                p = assets_by_service_dir.joinpath(sn.filename)
+                p = _find_available_path(
+                    assets_by_service_dir,
+                    sn.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
                 downloads[sn] = Download(p, is_required=False, deduplicate=False)
         else:
             for sn in sermon_notes:
@@ -269,12 +278,15 @@ class AssetManager:
             )
         if download_kids_video:
             if len(kids_videos) == 0:
-                raise ValueError(
-                    "Found 0 attachments that look like the Kids Connection video."
-                )
+                raise ValueError("No Kids Connection video found.")
             for v in kids_videos:
                 _check_kids_video_week_num(v, today, messenger)
-                p = assets_by_service_dir.joinpath(v.filename)
+                p = _find_available_path(
+                    assets_by_service_dir,
+                    v.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
                 downloads[v] = Download(p, is_required=True, deduplicate=False)
         else:
             for v in kids_videos:
@@ -282,9 +294,7 @@ class AssetManager:
 
         announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
         if len(announcements) == 0 and require_announcements:
-            raise ValueError(
-                f"Found 0 attachments that look like the announcements video."
-            )
+            raise ValueError(f"No announcements video found.")
         elif len(announcements) != 1:
             messenger.log_problem(
                 ProblemLevel.WARN,
@@ -296,14 +306,22 @@ class AssetManager:
             stem = Path(a.filename).stem
             ext = Path(a.filename).suffix
             fname = f"{stem} {today.strftime('%Y-%m-%d')}{ext}"
-            p = assets_by_service_dir.joinpath(fname)
+            p = _find_available_path(
+                assets_by_service_dir,
+                fname,
+                planned=_get_planned_paths(downloads),
+                overwrite=True,
+            )
             downloads[a] = Download(
                 p, is_required=require_announcements, deduplicate=False
             )
 
         for img in attachments_by_category[AssetCategory.IMAGE]:
             p = _find_available_path(
-                dest_dir=self._config.images_dir, name=img.filename
+                dest_dir=self._config.images_dir,
+                name=img.filename,
+                planned=_get_planned_paths(downloads),
+                overwrite=False,
             )
             downloads[img] = Download(p, is_required=False, deduplicate=True)
 
@@ -315,6 +333,12 @@ class AssetManager:
                     reason=f"{p.resolve().as_posix()} already exists"
                 )
             else:
+                p = _find_available_path(
+                    self._config.videos_dir,
+                    vid.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
                 downloads[vid] = Download(p, is_required=False, deduplicate=True)
 
         for a in attachments:
@@ -324,7 +348,24 @@ class AssetManager:
         return downloads
 
 
-def _find_available_path(dest_dir: Path, name: str) -> Path:
+def _get_planned_paths(
+    downloads: Dict[Attachment, Union[Download, DownloadSkipped]]
+) -> Set[Path]:
+    return {d.destination for d in downloads.values() if isinstance(d, Download)}
+
+
+def _find_available_path(
+    dest_dir: Path, name: str, planned: Set[Path], overwrite: bool
+) -> Path:
+    """
+    Find a path for a new file that is not already used.
+    If `overwrite = True`, then this function will ignore files that already
+    exist in the destination directory (i.e., it will potentially overwrite
+    them).
+    Otherwise, it will choose a name that is not used by any existing file in
+    the destination directory.
+    In either case, the new path will not be in the `planned` set.
+    """
     MAX_ATTEMPTS = 1000
     file = Path(name)
     suffix = file.suffix
@@ -335,7 +376,10 @@ def _find_available_path(dest_dir: Path, name: str) -> Path:
             if i == 0
             else dest_dir.joinpath(f"{stem} ({i}){suffix}")
         )
-        if not new_filepath.exists():
+        is_available = (
+            overwrite or not new_filepath.exists()
+        ) and new_filepath not in planned
+        if is_available:
             return new_filepath
     raise ValueError(
         f"Failed to move {name} into {dest_dir.as_posix()} because no suitable name could be found (all attempted ones were already taken)."
