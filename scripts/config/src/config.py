@@ -341,7 +341,7 @@ class Config(BaseConfig):
         self.reload()
 
     def reload(self) -> None:
-        profile = get_active_profile() or self._profile
+        profile = self._profile
         data = _read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
         # found in the global file
