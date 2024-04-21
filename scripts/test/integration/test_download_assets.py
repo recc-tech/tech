@@ -121,13 +121,25 @@ class PlanDownloadAssetsTestCase(unittest.TestCase):
     def setUp(self) -> None:
         # Try to avoid wiping any important data
         self.assertTrue(
-            self._FOH_CONFIG.assets_by_service_dir.is_relative_to(_TEST_DIR)
+            self._FOH_CONFIG.assets_by_service_dir.is_relative_to(_TEST_DIR),
+            f"The FOH assets by service directory ({self._FOH_CONFIG.assets_by_service_dir.resolve().as_posix()})"
+            f" must be inside the test directory ({_TEST_DIR.resolve().as_posix()}).",
         )
-        self.assertTrue(self._FOH_CONFIG.assets_by_type_dir.is_relative_to(_TEST_DIR))
         self.assertTrue(
-            self._MCR_CONFIG.assets_by_service_dir.is_relative_to(_TEST_DIR)
+            self._FOH_CONFIG.assets_by_type_dir.is_relative_to(_TEST_DIR),
+            f"The FOH assets by type directory ({self._FOH_CONFIG.assets_by_type_dir.resolve().as_posix()})"
+            f" must be inside the test directory ({_TEST_DIR.resolve().as_posix()}).",
         )
-        self.assertTrue(self._MCR_CONFIG.assets_by_type_dir.is_relative_to(_TEST_DIR))
+        self.assertTrue(
+            self._MCR_CONFIG.assets_by_service_dir.is_relative_to(_TEST_DIR),
+            f"The MCR assets by service directory ({self._MCR_CONFIG.assets_by_service_dir.resolve().as_posix()})"
+            f" must be inside the test directory ({_TEST_DIR.resolve().as_posix()}).",
+        )
+        self.assertTrue(
+            self._MCR_CONFIG.assets_by_type_dir.is_relative_to(_TEST_DIR),
+            f"The MCR assets by type directory ({self._MCR_CONFIG.assets_by_type_dir.resolve().as_posix()})"
+            f" must be inside the test directory ({_TEST_DIR.resolve().as_posix()}).",
+        )
 
         if self._FOH_CONFIG.assets_by_service_dir.is_dir():
             shutil.rmtree(self._FOH_CONFIG.assets_by_service_dir)
