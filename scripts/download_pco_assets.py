@@ -11,6 +11,7 @@ from autochecklist import (
     Messenger,
     Script,
     TaskModel,
+    TaskStatus,
     TkMessenger,
 )
 from config import Config
@@ -88,7 +89,7 @@ def download_PCO_assets(
     messenger: Messenger,
     manager: AssetManager,
 ):
-    manager.download_pco_assets(
+    results = manager.download_pco_assets(
         client=client,
         messenger=messenger,
         download_kids_video=config.station == "mcr",
@@ -96,6 +97,8 @@ def download_PCO_assets(
         require_announcements=config.station == "foh",
         dry_run=args.dry_run,
     )
+    msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
+    messenger.log_status(TaskStatus.DONE, msg)
 
 
 if __name__ == "__main__":

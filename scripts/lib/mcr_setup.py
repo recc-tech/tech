@@ -9,7 +9,7 @@ from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 def download_assets(
     client: PlanningCenterClient, messenger: Messenger, manager: AssetManager
 ):
-    manager.download_pco_assets(
+    results = manager.download_pco_assets(
         client=client,
         messenger=messenger,
         download_kids_video=True,
@@ -17,6 +17,8 @@ def download_assets(
         require_announcements=False,
         dry_run=False,
     )
+    msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
+    messenger.log_status(TaskStatus.DONE, msg)
 
 
 def import_Kids_Connection_video(

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, Union
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -23,8 +23,45 @@ class AssetCategory(Enum):
 
 @dataclass
 class Download:
-    attachment: Attachment
+    destination: Path
     is_required: bool
+    deduplicate: bool
+
+
+class DownloadResult:
+    pass
+
+
+@dataclass
+class DownloadSkipped(DownloadResult):
+    reason: str
+
+    def __str__(self) -> str:
+        return f"Not downloaded (reason: {self.reason})"
+
+
+@dataclass
+class DownloadFailed(DownloadResult):
+    exc: BaseException
+
+    def __str__(self) -> str:
+        return f"Download failed: {self.exc} ({type(self.exc).__name__})"
+
+
+@dataclass
+class DownloadSucceeded(DownloadResult):
+    destination: Path
+
+    def __str__(self) -> str:
+        return f"Successfully downloaded to {self.destination.resolve().as_posix()}"
+
+
+@dataclass
+class DownloadDeduplicated(DownloadResult):
+    original: Path
+
+    def __str__(self) -> str:
+        return f"Duplicate of {self.original.resolve().as_posix()}"
 
 
 class AssetManager:
@@ -65,7 +102,6 @@ class AssetManager:
         else:
             return None
 
-    # TODO: Split this into separate functions for FOH and MCR?
     def download_pco_assets(
         self,
         client: PlanningCenterClient,
@@ -75,23 +111,39 @@ class AssetManager:
         download_notes_docx: bool,
         require_announcements: bool,
         dry_run: bool,
-    ) -> None:
+    ) -> Dict[Attachment, DownloadResult]:
         cancellation_token = messenger.allow_cancel()
 
-        downloads = self._plan_downloads(
-            client=client,
+        plan = client.find_plan_by_date(self._config.start_time.date())
+        attachments = client.find_attachments(plan.id)
+        download_plan = self._plan_downloads(
+            attachments=attachments,
             messenger=messenger,
             download_kids_video=download_kids_video,
             download_notes_docx=download_notes_docx,
             require_announcements=require_announcements,
         )
+        downloads = {
+            a: d for (a, d) in download_plan.items() if isinstance(d, Download)
+        }
 
         if len(downloads) == 0:
             messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
-            return
+            return {
+                a: d
+                for (a, d) in download_plan.items()
+                if isinstance(d, DownloadSkipped)
+            }
         if dry_run:
             messenger.log_debug("Skipping downloading assets: dry run.")
-            return None
+            return {
+                a: (
+                    d
+                    if isinstance(d, DownloadSkipped)
+                    else DownloadSucceeded(d.destination)
+                )
+                for (a, d) in download_plan.items()
+            }
 
         self._config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
         # Just in case
@@ -101,36 +153,46 @@ class AssetManager:
         messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
         results = asyncio.run(
             client.download_attachments(
-                {p: d.attachment for (p, d) in downloads.items()},
+                {d.destination: a for (a, d) in downloads.items()},
                 messenger,
                 cancellation_token,
             )
         )
 
+        ret: Dict[Attachment, DownloadResult] = {}
+        for a, d in download_plan.items():
+            if isinstance(d, DownloadSkipped):
+                ret[a] = d
+            elif d.destination not in results:
+                ret[a] = DownloadSkipped("unknown reason")
+            elif (e := results[d.destination]) is not None:
+                ret[a] = DownloadFailed(e)
+            else:
+                ret[a] = DownloadSucceeded(d.destination)
+
         messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
-        for p, d in downloads.items():
-            should_dedup = results.get(p, None) is None and (
-                p.is_relative_to(self._config.images_dir)
-                or p.is_relative_to(self._config.videos_dir)
-            )
-            if should_dedup and _is_duplicate(p):
+        for a, d in downloads.items():
+            p = d.destination
+            should_dedup = results.get(p, None) is None and d.deduplicate
+            if should_dedup and (dup_of := _find_original(p)):
+                ret[a] = DownloadDeduplicated(dup_of)
                 p.unlink()
 
         messenger.log_status(TaskStatus.RUNNING, "Checking download results.")
-        for p, d in downloads.items():
-            if p not in results:
+        for a, d in downloads.items():
+            if d.destination not in results:
                 messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"The result of the download to '{p.as_posix()}' is unknown.",
+                    f"The result of the download to '{d.destination.as_posix()}' is unknown.",
                 )
-                continue
-            result = results[p]
-            msg = f"Failed to download {d.attachment.filename}: {result} ({type(result).__name__})"
-            if result is not None:
+            elif (exc := results[d.destination]) is not None:
+                msg = f"Failed to download {a.filename}: {exc} ({type(exc).__name__})"
                 if d.is_required:
                     raise Exception(msg)
                 else:
                     messenger.log_problem(ProblemLevel.WARN, msg)
+
+        return ret
 
     def _classify(self, attachment: Attachment) -> AssetCategory:
         is_announcement = attachment.file_type == FileType.VIDEO and bool(
@@ -162,96 +224,148 @@ class AssetManager:
 
     def _plan_downloads(
         self,
-        client: PlanningCenterClient,
+        attachments: Set[Attachment],
         messenger: Messenger,
         download_kids_video: bool,
         download_notes_docx: bool,
         require_announcements: bool,
-    ) -> Dict[Path, Download]:
+    ) -> Dict[Attachment, Union[Download, DownloadSkipped]]:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
         )
         today = self._config.start_time.date()
-        plan = client.find_plan_by_date(today)
-        attachments = client.find_attachments(plan.id)
         category_by_attachment = {a: self._classify(a) for a in attachments}
+        messenger.log_debug(
+            f"{len(attachments)} attachments found on PCO: {category_by_attachment}"
+        )
+        # Sort so that results are deterministic, can be tested
         attachments_by_category = {
-            cat: {a for (a, c) in category_by_attachment.items() if c == cat}
+            cat: sorted(
+                [a for (a, c) in category_by_attachment.items() if c == cat],
+                key=lambda a: a.id,
+            )
             for cat in AssetCategory
         }
+        assets_by_service_dir = self._config.assets_by_service_dir
+        downloads: Dict[Attachment, Union[Download, DownloadSkipped]] = {}
+
         sermon_notes = attachments_by_category[AssetCategory.SERMON_NOTES]
-        if len(sermon_notes) != 1 and download_notes_docx:
+        if download_notes_docx:
+            if len(sermon_notes) != 1:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+                )
+            for sn in sermon_notes:
+                p = _find_available_path(
+                    assets_by_service_dir,
+                    sn.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
+                downloads[sn] = Download(p, is_required=False, deduplicate=False)
+        else:
+            for sn in sermon_notes:
+                downloads[sn] = DownloadSkipped(reason="sermon notes")
+
+        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
+        # Give this warning in every case because it might mean videos that
+        # should be downloaded (e.g., opener, bumper) are being misclassified
+        if len(kids_videos) > 1:
             messenger.log_problem(
                 ProblemLevel.WARN,
-                f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+                f"Found {len(kids_videos)} attachments that look like the Kids Connection video.",
             )
-        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
-        if len(kids_videos) != 1 and download_kids_video:
-            raise ValueError(
-                f"Found {len(kids_videos)} attachments that look like the Kids Connection video."
-            )
-        kids_video = _any(kids_videos) if len(kids_videos) > 0 else None
-        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
-        if len(announcements) != 1:
-            raise ValueError(
-                f"Found {len(announcements)} attachments that look like the announcements video."
-            )
-        announcements = _any(announcements)
-        other_images = attachments_by_category[AssetCategory.IMAGE]
-        other_videos = attachments_by_category[AssetCategory.VIDEO]
-        unknown_attachments = attachments_by_category[AssetCategory.UNKNOWN]
-        messenger.log_debug(
-            f"{len(attachments)} attachments found on PCO.\n"
-            f" * Announcements video: {announcements}\n"
-            f" * Kids video: {kids_video}\n"
-            f" * Sermon notes: {sermon_notes}\n"
-            f" * Other images: {other_images}\n"
-            f" * Other videos: {other_videos}\n"
-            f" * Unknown: {unknown_attachments}"
-        )
-
-        messenger.log_status(TaskStatus.RUNNING, "Preparing for download.")
-        assets_by_service_dir = self._config.assets_by_service_dir
-        downloads: Dict[Path, Download] = {}
-        announcements_path = assets_by_service_dir.joinpath(announcements.filename)
-        downloads[announcements_path] = Download(
-            announcements, is_required=require_announcements
-        )
-        kids_video_path = None
         if download_kids_video:
-            # Should never happen, but check to make Pyright happy
-            if kids_video is None:
-                raise ValueError("Missing kids video.")
-            _check_kids_video_week_num(kids_video, today, messenger)
-            kids_video_path = assets_by_service_dir.joinpath(kids_video.filename)
-            downloads[kids_video_path] = Download(
-                kids_video, is_required=download_kids_video
+            if len(kids_videos) == 0:
+                raise ValueError("No Kids Connection video found.")
+            for v in kids_videos:
+                _check_kids_video_week_num(v, today, messenger)
+                p = _find_available_path(
+                    assets_by_service_dir,
+                    v.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
+                downloads[v] = Download(p, is_required=True, deduplicate=False)
+        else:
+            for v in kids_videos:
+                downloads[v] = DownloadSkipped(reason="kids video")
+
+        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
+        if len(announcements) == 0 and require_announcements:
+            raise ValueError(f"No announcements video found.")
+        elif len(announcements) != 1:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Found {len(announcements)} attachments that look like the announcements video.",
             )
-        if download_notes_docx:
-            for sn in sermon_notes:
-                p = assets_by_service_dir.joinpath(sn.filename)
-                downloads[p] = Download(sn, is_required=False)
-        for img in other_images:
+        for a in announcements:
+            # Make it clear in the name which date the announcements are for,
+            # to avoid confusion with the previous week's video
+            stem = Path(a.filename).stem
+            ext = Path(a.filename).suffix
+            fname = f"{stem} {today.strftime('%Y-%m-%d')}{ext}"
             p = _find_available_path(
-                dest_dir=self._config.images_dir, name=img.filename
+                assets_by_service_dir,
+                fname,
+                planned=_get_planned_paths(downloads),
+                overwrite=True,
             )
-            downloads[p] = Download(img, is_required=False)
-        for vid in other_videos:
-            vid_path = self._config.videos_dir.joinpath(vid.filename)
+            downloads[a] = Download(
+                p, is_required=require_announcements, deduplicate=False
+            )
+
+        for img in attachments_by_category[AssetCategory.IMAGE]:
+            p = _find_available_path(
+                dest_dir=self._config.images_dir,
+                name=img.filename,
+                planned=_get_planned_paths(downloads),
+                overwrite=False,
+            )
+            downloads[img] = Download(p, is_required=False, deduplicate=True)
+
+        for vid in attachments_by_category[AssetCategory.VIDEO]:
+            p = self._config.videos_dir.joinpath(vid.filename)
             # Assume the existing video is already correct
-            if not vid_path.exists():
-                downloads[vid_path] = Download(vid, is_required=False)
+            if p.exists():
+                downloads[vid] = DownloadSkipped(
+                    reason=f"{p.resolve().as_posix()} already exists"
+                )
+            else:
+                p = _find_available_path(
+                    self._config.videos_dir,
+                    vid.filename,
+                    planned=_get_planned_paths(downloads),
+                    overwrite=True,
+                )
+                downloads[vid] = Download(p, is_required=False, deduplicate=True)
+
+        for a in attachments:
+            if a not in downloads:
+                downloads[a] = DownloadSkipped(reason="unknown attachment")
 
         return downloads
 
 
-def _any(s: Set[Attachment]) -> Attachment:
-    for x in s:
-        return x
-    raise ValueError("Empty sequence.")
+def _get_planned_paths(
+    downloads: Dict[Attachment, Union[Download, DownloadSkipped]]
+) -> Set[Path]:
+    return {d.destination for d in downloads.values() if isinstance(d, Download)}
 
 
-def _find_available_path(dest_dir: Path, name: str) -> Path:
+def _find_available_path(
+    dest_dir: Path, name: str, planned: Set[Path], overwrite: bool
+) -> Path:
+    """
+    Find a path for a new file that is not already used.
+    If `overwrite = True`, then this function will ignore files that already
+    exist in the destination directory (i.e., it will potentially overwrite
+    them).
+    Otherwise, it will choose a name that is not used by any existing file in
+    the destination directory.
+    In either case, the new path will not be in the `planned` set.
+    """
     MAX_ATTEMPTS = 1000
     file = Path(name)
     suffix = file.suffix
@@ -260,23 +374,26 @@ def _find_available_path(dest_dir: Path, name: str) -> Path:
         new_filepath = (
             dest_dir.joinpath(f"{stem}{suffix}")
             if i == 0
-            else dest_dir.joinpath(f"{stem}-{i}{suffix}")
+            else dest_dir.joinpath(f"{stem} ({i}){suffix}")
         )
-        if not new_filepath.exists():
+        is_available = (
+            overwrite or not new_filepath.exists()
+        ) and new_filepath not in planned
+        if is_available:
             return new_filepath
     raise ValueError(
         f"Failed to move {name} into {dest_dir.as_posix()} because no suitable name could be found (all attempted ones were already taken)."
     )
 
 
-def _is_duplicate(p: Path) -> bool:
+def _find_original(p: Path) -> Optional[Path]:
     directory = p.parent
     for other in directory.iterdir():
-        if not other.is_file():
+        if p.resolve() == other.resolve() or not other.is_file():
             continue
-        if filecmp.cmp(p, other):
-            return True
-    return False
+        if filecmp.cmp(p, other, shallow=False):
+            return other
+    return None
 
 
 def _check_kids_video_week_num(
