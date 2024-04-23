@@ -5,6 +5,7 @@ htmlcov/
 /test/integration/boxcast_test_home/
 /test/integration/captions_analysis/worship_caption_removal_stats.json
 /test/integration/planning_center_temp/
+/test/integration/summarize_plan_temp/
 /test/manual/home/
 __pycache__/
 config/active_profile.txt

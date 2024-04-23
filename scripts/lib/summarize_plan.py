@@ -379,6 +379,7 @@ class HtmlTable:
     col_widths: List[str]
     header: Optional[List[str]]
     rows: List[List[str]]
+    indent: bool = True
 
     def __post_init__(self) -> None:
         self._check_ncols()
@@ -413,7 +414,7 @@ class HtmlTable:
         divs_str = "\n".join(divs)
         return f"""
 <div class="{self.cls}">
-{_indent(divs_str, 1)}
+{_indent(divs_str, 1 if self.indent else 0)}
 </div>
 """.strip()
 
@@ -490,7 +491,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
     sermon_notes = message.content if message else ""
     has_sermon_notes = bool(sermon_notes.strip())
     sermon_notes = (
-        f"<details><summary>Show notes</summary><span id='message-notes'>{_escape(sermon_notes)}</span></details>"
+        f"<details><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
         if sermon_notes
         else "<span class='missing'>No Notes Available</span>"
     )
@@ -503,6 +504,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
         rows=[row],
+        indent=False,
     )
 
 
@@ -597,6 +599,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             #copy-btn {{
                 font-size: large;
             }}
+            #message-notes {{
+                font-family: inherit;
+            }}
             .{_NOTES_WARNING_CLS} {{
                 visibility: {'visible' if summary.has_visuals_notes else 'hidden'};
                 border: 2px solid #b57b0e;
@@ -646,7 +651,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <div class='{_SUPERHEADER_CLS}'>Songs</div>
 {_indent(songs_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Message</div>
-{_indent(message_table.to_html(), 3)}
+{message_table.to_html()}
         </div>
     </body>
 </html>
