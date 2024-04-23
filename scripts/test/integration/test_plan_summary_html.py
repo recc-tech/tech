@@ -22,6 +22,7 @@ class PlanSummaryHtmlTestCase(unittest.TestCase):
         summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
         summary_html = plan_summary_to_html(summary)
         f = _TEMP_DIR.joinpath("summary.html")
+        f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(summary_html, encoding="utf-8")
 
         # NOTE: Copying doesn't work in headless mode for some reason
