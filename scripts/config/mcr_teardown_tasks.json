@@ -69,6 +69,13 @@
 							"prerequisites": [
 								"export_to_Vimeo"
 							]
+						},
+						{
+							"name": "copy_Vimeo_url_to_COP",
+							"description": "Take the link to today's Vimeo video and copy it to Church Online Platform. To find the URL, go to https://vimeo.com/manage/videos, locate today's video, and click 'Copy link.' Then, on Church Online Platform, go to the Admin view, go to Setup, and paste the link.",
+							"prerequisites": [
+								"export_to_Vimeo"
+							]
 						}
 					]
 				},
