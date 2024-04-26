@@ -33,6 +33,8 @@ original = "%{folder.captions}%/original.vtt"
 final = "%{folder.captions}%/final.vtt"
 
 [boxcast]
+base_url = "https://rest.boxcast.com"
+auth_base_url = "https://auth.boxcast.com"
 live_event_title = "Sunday Gathering LIVE: %{args.startup_mdy}%"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"

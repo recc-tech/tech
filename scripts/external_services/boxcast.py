@@ -6,9 +6,11 @@ import traceback
 from datetime import datetime, timedelta
 from inspect import cleandoc
 from pathlib import Path
+from threading import Lock
 from typing import Optional
 
 import autochecklist
+import requests
 from autochecklist import (
     CancellationToken,
     Messenger,
@@ -16,6 +18,8 @@ from autochecklist import (
     TaskStatus,
     sleep_attentively,
 )
+from config import Config
+from requests.auth import HTTPBasicAuth
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -26,7 +30,82 @@ from .credentials import Credential, CredentialStore, InputPolicy
 from .web_driver import ReccWebDriver
 
 
-class BoxCastClient(ReccWebDriver):
+class BoxCastApiClient:
+    def __init__(
+        self,
+        messenger: Messenger,
+        credential_store: CredentialStore,
+        config: Config,
+        lazy_login: bool,
+    ) -> None:
+        self._messenger = messenger
+        self._credential_store = credential_store
+        self._config = config
+        self._token: Optional[str] = None
+        self._mutex = Lock()
+        if not lazy_login:
+            self._get_current_oauth_token(old_token=None)
+
+    def _get_current_oauth_token(
+        self, old_token: Optional[str], max_attempts: int = 3
+    ) -> str:
+        with self._mutex:
+            is_old_token_outdated = old_token != self._token
+            if is_old_token_outdated and self._token is not None:
+                # Try again with the latest token.
+                return self._token
+
+            # The current token is apparently invalid! Request a fresh one
+            for i in range(max_attempts):
+                try:
+                    credentials = self._credential_store.get_multiple(
+                        prompt="Enter the BoxCast API credentials.",
+                        credentials=[
+                            Credential.BOXCAST_CLIENT_ID,
+                            Credential.BOXCAST_CLIENT_SECRET,
+                        ],
+                        # Maybe the first attempt failed because the stored
+                        # credentials are wrong
+                        request_input=(
+                            InputPolicy.AS_REQUIRED if i == 0 else InputPolicy.ALWAYS
+                        ),
+                    )
+                    client_id = credentials[Credential.BOXCAST_CLIENT_ID]
+                    client_secret = credentials[Credential.BOXCAST_CLIENT_SECRET]
+                    tok = self._get_new_oauth_token(
+                        client_id=client_id, client_secret=client_secret
+                    )
+                    self._token = tok
+                    return tok
+                except ValueError:
+                    self._messenger.log_problem(
+                        ProblemLevel.WARN,
+                        f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{max_attempts}).",
+                        stacktrace=traceback.format_exc(),
+                    )
+
+            raise ValueError(
+                f"Failed to get OAuth token from the BoxCast API ({max_attempts} attempts)."
+            )
+
+    def _get_new_oauth_token(self, client_id: str, client_secret: str) -> str:
+        auth = HTTPBasicAuth(client_id, client_secret)
+        base_url = self._config.boxcast_auth_base_url
+        response = requests.post(
+            f"{base_url}/oauth2/token",
+            data="grant_type=client_credentials",
+            auth=auth,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        if response.status_code // 100 != 2:
+            raise ValueError(
+                f"Token request failed with status code {response.status_code}."
+            )
+        data = response.json()
+        return data["access_token"]
+
+
+class BoxCastGuiClient(ReccWebDriver):
     _LOGIN_URL = "https://login.boxcast.com/login"
 
     def __new__(
@@ -37,7 +116,7 @@ class BoxCastClient(ReccWebDriver):
         headless: bool = True,
         lazy_login: bool = False,
         log_file: Optional[Path] = None,
-    ) -> BoxCastClient:
+    ) -> BoxCastGuiClient:
         driver = super().__new__(
             cls, messenger=messenger, headless=headless, log_file=log_file
         )
@@ -82,13 +161,13 @@ class BoxCastClient(ReccWebDriver):
         redirect_timeout = 10
         self.wait(
             condition=lambda driver: driver.current_url
-            in [url, BoxCastClient._LOGIN_URL],
+            in [url, BoxCastGuiClient._LOGIN_URL],
             timeout=timedelta(seconds=redirect_timeout),
             message=f"Did not get redirected to the target page ({url}) or to the login page within {redirect_timeout} seconds.",
             cancellation_token=cancellation_token,
         )
 
-        if self.current_url.startswith(BoxCastClient._LOGIN_URL):
+        if self.current_url.startswith(BoxCastGuiClient._LOGIN_URL):
             self._login_with_retries(
                 target_url=url, max_attempts=3, cancellation_token=cancellation_token
             )
@@ -105,7 +184,7 @@ class BoxCastClient(ReccWebDriver):
             # For some reason, the login often fails if we try going to the target page and are redirected to the login
             # page. On the other hand, going to the login page, logging in, and only then going to the target page
             # seems to work.
-            super().get(BoxCastClient._LOGIN_URL)
+            super().get(BoxCastGuiClient._LOGIN_URL)
             credentials = self._credential_store.get_multiple(
                 prompt="Enter the BoxCast credentials.",
                 credentials=[Credential.BOXCAST_USERNAME, Credential.BOXCAST_PASSWORD],
@@ -120,7 +199,7 @@ class BoxCastClient(ReccWebDriver):
             try:
                 self.wait(
                     condition=(
-                        lambda driver: driver.current_url != BoxCastClient._LOGIN_URL
+                        lambda driver: driver.current_url != BoxCastGuiClient._LOGIN_URL
                     ),
                     timeout=timedelta(seconds=max_seconds_to_redirect),
                     message=f"Login failed: still on the login page after {max_seconds_to_redirect} seconds.",
@@ -200,7 +279,7 @@ class BoxCastClientFactory:
 
     def get_client(
         self, cancellation_token: Optional[CancellationToken]
-    ) -> BoxCastClient:
+    ) -> BoxCastGuiClient:
         if not self._log_directory:
             log_file = None
         else:
@@ -209,7 +288,7 @@ class BoxCastClientFactory:
             log_file = self._log_directory.joinpath(
                 f"{date_ymd} {current_time} {self._log_file_name}.log"
             )
-        return BoxCastClient(
+        return BoxCastGuiClient(
             messenger=self._messenger,
             credential_store=self._credential_store,
             headless=self._headless,
@@ -227,7 +306,7 @@ class BoxCastClientFactory:
 
 
 def export_to_vimeo(
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     event_url: str,
     cancellation_token: CancellationToken,
 ):
@@ -272,7 +351,7 @@ def export_to_vimeo(
 
 
 def download_captions(
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     captions_tab_url: str,
     download_path: Path,
     destination_path: Path,
@@ -305,7 +384,7 @@ def download_captions(
 
 
 def upload_captions_to_boxcast(
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     url: str,
     file_path: Path,
     cancellation_token: CancellationToken,
@@ -354,7 +433,7 @@ def create_rebroadcast(
     source_broadcast_title: str,
     rebroadcast_title: str,
     start_datetime: datetime,
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     messenger: Messenger,
     cancellation_token: CancellationToken,
 ):
@@ -408,7 +487,7 @@ def _wait_for_file_to_exist(
 def _get_rebroadcast_page(
     rebroadcast_setup_url: str,
     expected_source_name: str,
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     messenger: Messenger,
     cancellation_token: CancellationToken,
 ):
@@ -448,7 +527,7 @@ def _get_rebroadcast_page(
 
 
 def _set_event_name(
-    name: str, client: BoxCastClient, cancellation_token: CancellationToken
+    name: str, client: BoxCastGuiClient, cancellation_token: CancellationToken
 ):
     name_label = client.wait_for_single_element(
         By.XPATH,
@@ -466,7 +545,7 @@ def _set_event_name(
 
 def _set_event_start_time(
     start_datetime: datetime,
-    client: BoxCastClient,
+    client: BoxCastGuiClient,
     cancellation_token: CancellationToken,
 ):
     time_12h = start_datetime.strftime("%I:%M %p")
@@ -500,7 +579,7 @@ def _set_event_start_time(
 
 
 def _make_event_not_recorded(
-    client: BoxCastClient, cancellation_token: CancellationToken
+    client: BoxCastGuiClient, cancellation_token: CancellationToken
 ):
     recording_options_button = client.wait_for_single_element(
         By.XPATH,
@@ -523,7 +602,7 @@ def _make_event_not_recorded(
 
 
 def _press_schedule_broadcast_button(
-    client: BoxCastClient, cancellation_token: CancellationToken
+    client: BoxCastGuiClient, cancellation_token: CancellationToken
 ):
     submit_button = client.wait_for_single_element(
         By.XPATH,

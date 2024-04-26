@@ -16,6 +16,7 @@ from autochecklist import (
 )
 from config import Config
 from external_services import (
+    BoxCastApiClient,
     BoxCastClientFactory,
     Credential,
     CredentialStore,
@@ -24,8 +25,14 @@ from external_services import (
     ReccVimeoClient,
 )
 
-CredentialName = Literal["boxcast", "vimeo", "planning_center"]
-ALL_CREDENTIALS: Set[CredentialName] = {"boxcast", "vimeo", "planning_center"}
+# TODO: Remove the "boxcast_gui" option
+CredentialName = Literal["boxcast", "boxcast_gui", "vimeo", "planning_center"]
+ALL_CREDENTIALS: Set[CredentialName] = {
+    "boxcast",
+    "boxcast_gui",
+    "vimeo",
+    "planning_center",
+}
 
 
 class CheckCredentialsArgs(ReccArgs):
@@ -90,6 +97,14 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         self, args: CheckCredentialsArgs, config: Config, messenger: Messenger
     ) -> Tuple[TaskModel | Path, FunctionFinder]:
         subtasks: List[TaskModel] = []
+        if "boxcast_gui" in args.credentials:
+            subtasks.append(
+                TaskModel(
+                    name="log_into_BoxCast_GUI",
+                    description="Failed to log into BoxCast.",
+                    only_auto=True,
+                )
+            )
         if "boxcast" in args.credentials:
             subtasks.append(
                 TaskModel(
@@ -146,6 +161,19 @@ def log_into_Vimeo(
 
 
 def log_into_BoxCast(
+    config: Config, credential_store: CredentialStore, messenger: Messenger
+) -> None:
+    BoxCastApiClient(
+        messenger=messenger,
+        credential_store=credential_store,
+        config=config,
+        # Since lazy_login = false, the login should be tested eagerly
+        lazy_login=False,
+    )
+    messenger.log_status(TaskStatus.DONE, "Successfully connected to BoxCast.")
+
+
+def log_into_BoxCast_GUI(
     config: Config,
     credential_store: CredentialStore,
     messenger: Messenger,

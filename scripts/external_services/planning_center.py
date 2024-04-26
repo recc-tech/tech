@@ -327,6 +327,7 @@ class PlanningCenterClient:
                 Credential.PLANNING_CENTER_APP_ID,
                 Credential.PLANNING_CENTER_SECRET,
             ],
+            # TODO: It should be InputPolicy.ALWAYS if this is a retry
             request_input=InputPolicy.AS_REQUIRED,
         )
         app_id = credentials[Credential.PLANNING_CENTER_APP_ID]

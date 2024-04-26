@@ -396,6 +396,8 @@ class Config(BaseConfig):
             self.final_captions_file = reader.get_file("captions.final")
 
             # BoxCast
+            self.boxcast_base_url = reader.get_str("boxcast.base_url")
+            self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
             self.live_event_title = reader.get_str("boxcast.live_event_title")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
             self.live_event_url_template = reader.get_template("boxcast.live_event_url")
