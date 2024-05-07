@@ -34,11 +34,18 @@
 					]
 				},
 				{
+					"name": "wait_for_BoxCast_recording",
+					"description": "Wait until the BoxCast recording is available."
+				},
+				{
 					"name": "rebroadcasts",
 					"subtasks": [
 						{
 							"name": "create_rebroadcast_1pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 1:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details."
+							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 1:00 pm. See https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast for details.",
+							"prerequisites": [
+								"wait_for_BoxCast_recording"
+							]
 						},
 						{
 							"name": "create_rebroadcast_5pm",
@@ -61,7 +68,10 @@
 					"subtasks": [
 						{
 							"name": "export_to_Vimeo",
-							"description": "On BoxCast, export the recording to Vimeo. On the live event page, go to Download or Export Recording > Vimeo."
+							"description": "On BoxCast, export the recording to Vimeo. On the live event page, go to Download or Export Recording > Vimeo.",
+							"prerequisites": [
+								"wait_for_BoxCast_recording"
+							]
 						},
 						{
 							"name": "rename_video_on_Vimeo",
@@ -71,7 +81,7 @@
 							]
 						},
 						{
-							"name": "copy_Vimeo_url_to_COP",
+							"name": "copy_Vimeo_URL_to_COP",
 							"description": "Take the link to today's Vimeo video and copy it to Church Online Platform. To find the URL, go to https://vimeo.com/manage/videos, locate today's video, and click 'Copy link.' Then, on Church Online Platform, go to the Admin view, go to Setup, and paste the link.",
 							"prerequisites": [
 								"export_to_Vimeo"
@@ -81,14 +91,20 @@
 				},
 				{
 					"name": "create_video_markers",
-					"description": "On BoxCast, create video markers. See https://github.com/recc-tech/tech/wiki/Video-Markers for the list of chapters."
+					"description": "On BoxCast, create video markers. See https://github.com/recc-tech/tech/wiki/Video-Markers for the list of chapters.",
+					"prerequisites": [
+						"wait_for_BoxCast_recording"
+					]
 				},
 				{
 					"name": "captions",
 					"subtasks": [
 						{
 							"name": "review_and_publish_captions",
-							"description": "***IMPORTANT*** Publish BEFORE leaving the page, otherwise your changes will be lost. ***IMPORTANT*** On BoxCast, review low-confidence cues and publish the captions, but don't download them yet."
+							"description": "***IMPORTANT*** Publish BEFORE leaving the page, otherwise your changes will be lost. ***IMPORTANT*** On BoxCast, review low-confidence cues and publish the captions, but don't download them yet.",
+							"prerequisites": [
+								"wait_for_BoxCast_recording"
+							]
 						},
 						{
 							"name": "download_captions",
@@ -130,7 +146,8 @@
 							"name": "upload_captions_to_Vimeo",
 							"description": "On Vimeo, upload the captions and make sure they are enabled.",
 							"prerequisites": [
-								"disable_automatic_captions"
+								"disable_automatic_captions",
+								"export_to_Vimeo"
 							]
 						}
 					]

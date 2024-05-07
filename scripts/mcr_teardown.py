@@ -23,6 +23,7 @@ from autochecklist import (
 )
 from config import Config, McrTeardownArgs, McrTeardownConfig
 from external_services import (
+    BoxCastApiClient,
     BoxCastClientFactory,
     CredentialStore,
     PlanningCenterClient,
@@ -81,9 +82,21 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
             log_directory=config.log_dir,
             log_file_name=config.mcr_teardown_webdriver_log_name,
         )
+        boxcast_api_client = BoxCastApiClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=args.lazy_login,
+        )
         function_finder = FunctionFinder(
             module=mcr_teardown,
-            arguments=[boxcast_client_factory, config, messenger, vimeo_client],
+            arguments=[
+                boxcast_client_factory,
+                boxcast_api_client,
+                config,
+                messenger,
+                vimeo_client,
+            ],
             messenger=messenger,
         )
         task_list_file = (
