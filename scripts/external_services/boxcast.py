@@ -3,13 +3,15 @@ from __future__ import annotations
 import shutil
 import time
 import traceback
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from inspect import cleandoc
 from pathlib import Path
 from threading import Lock
 from typing import Optional
 
 import autochecklist
+import dateutil.parser
 import requests
 from autochecklist import (
     CancellationToken,
@@ -30,7 +32,15 @@ from .credentials import Credential, CredentialStore, InputPolicy
 from .web_driver import ReccWebDriver
 
 
+@dataclass
+class Broadcast:
+    id: str
+    start_time: datetime
+
+
 class BoxCastApiClient:
+    MAX_ATTEMPTS = 3
+
     def __init__(
         self,
         messenger: Messenger,
@@ -46,17 +56,56 @@ class BoxCastApiClient:
         if not lazy_login:
             self._get_current_oauth_token(old_token=None)
 
-    def _get_current_oauth_token(
-        self, old_token: Optional[str], max_attempts: int = 3
-    ) -> str:
+    def find_main_broadcast_by_date(self, dt: date) -> Optional[Broadcast]:
+        url = f"{self._config.boxcast_base_url}/account/broadcasts"
+        params = {
+            "l": 1,
+            "s": "-starts_at",
+            "filter.has_recording": "true",
+            "q": f"starts_at:[{dt.strftime('%Y-%m-%dT00:00:00')} TO {dt.strftime('%Y-%m-%dT23:59:59')}]",
+        }
+        token = None
+        for i in range(self.MAX_ATTEMPTS):
+            token = self._get_current_oauth_token(old_token=token)
+            headers = {"Authorization": f"Bearer {token}"}
+            response = requests.get(url=url, params=params, headers=headers)
+            if response.status_code // 100 == 2:
+                data = response.json()
+                if len(data) == 0:
+                    return None
+                else:
+                    broadcast_json = data[0]
+                    return Broadcast(
+                        id=broadcast_json["id"],
+                        start_time=dateutil.parser.isoparse(
+                            broadcast_json["starts_at"]
+                        ),
+                    )
+            elif response.status_code == 401:
+                self._messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"Request to BoxCast failed with status 401 (unauthorized). Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
+                )
+            else:
+                msg = (
+                    f"Request to {url} failed with status code {response.status_code}."
+                )
+                self._messenger.log_debug(f"{msg} Response body: {response.json()}\n")
+                raise ValueError(msg)
+        raise ValueError(f"Request to {url} failed ({self.MAX_ATTEMPTS} attempts).")
+
+    def _get_current_oauth_token(self, old_token: Optional[str]) -> str:
         with self._mutex:
+            if old_token is None and self._token is not None:
+                # Caller doesn't have any token at all
+                return self._token
             is_old_token_outdated = old_token != self._token
             if is_old_token_outdated and self._token is not None:
-                # Try again with the latest token.
+                # Try again with the latest token
                 return self._token
 
             # The current token is apparently invalid! Request a fresh one
-            for i in range(max_attempts):
+            for i in range(self.MAX_ATTEMPTS):
                 try:
                     credentials = self._credential_store.get_multiple(
                         prompt="Enter the BoxCast API credentials.",
@@ -80,12 +129,12 @@ class BoxCastApiClient:
                 except ValueError:
                     self._messenger.log_problem(
                         ProblemLevel.WARN,
-                        f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{max_attempts}).",
+                        f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{self.MAX_ATTEMPTS}).",
                         stacktrace=traceback.format_exc(),
                     )
 
             raise ValueError(
-                f"Failed to get OAuth token from the BoxCast API ({max_attempts} attempts)."
+                f"Failed to get OAuth token from the BoxCast API ({self.MAX_ATTEMPTS} attempts)."
             )
 
     def _get_new_oauth_token(self, client_id: str, client_secret: str) -> str:

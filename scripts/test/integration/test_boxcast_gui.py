@@ -18,7 +18,7 @@ EVENT_ID = "oajqcyzetaazjvduyqz5"
 BOXCAST_TEST_USERNAME = "tech@riversedge.life"
 
 
-class BoxCastTestCase(unittest.TestCase):
+class BoxCastGuiTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         def input_mock(*args: object, **kwargs: object):
@@ -92,7 +92,9 @@ class BoxCastTestCase(unittest.TestCase):
             config=config,
             messenger=self.messenger,
         )
-        expected_file = Path(__file__).parent.joinpath("boxcast_data", "captions.vtt")
+        expected_file = Path(__file__).parent.joinpath(
+            "boxcast_gui_data", "captions.vtt"
+        )
         with open(expected_file, mode="r", encoding="utf-8") as f:
             expected_captions = f.read()
         with open(config.original_captions_file, mode="r", encoding="utf-8") as f:
