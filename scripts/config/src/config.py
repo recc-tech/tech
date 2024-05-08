@@ -359,7 +359,6 @@ class Config(BaseConfig):
             )
 
             # Folder structure
-            self.downloads_dir = reader.get_directory("folder.downloads")
             self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
@@ -409,9 +408,6 @@ class Config(BaseConfig):
             )
             self.boxcast_edit_captions_url_template = reader.get_template(
                 "boxcast.edit_captions_url"
-            )
-            self.captions_download_path_template = reader.get_template(
-                "boxcast.captions_download_path"
             )
 
             # Planning Center

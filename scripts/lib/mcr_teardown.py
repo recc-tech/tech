@@ -115,19 +115,14 @@ def rename_video_on_Vimeo(
     vimeo_client.rename_video(video_uri, config.vimeo_video_title)
 
 
-def download_captions(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.download_captions(
-            client=client,
-            captions_tab_url=config.live_event_captions_tab_url,
-            download_path=config.captions_download_path,
-            destination_path=config.original_captions_file,
-            cancellation_token=cancellation_token,
+def download_captions(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.download_captions(
+            broadcast_id=broadcast.id,
+            path=config.original_captions_file,
         )
 
 

@@ -39,7 +39,6 @@ live_event_title = "Sunday Gathering LIVE: %{args.startup_mdy}%"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
 live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
-captions_download_path = "%{folder.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
 rebroadcast_setup_url = "https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId=!{BOXCAST_EVENT_ID}!"
 edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
 

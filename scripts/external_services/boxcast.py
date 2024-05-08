@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import shutil
-import time
 import traceback
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -109,6 +107,8 @@ class BoxCastApiClient:
         for i in range(self.MAX_ATTEMPTS):
             token = self._get_current_oauth_token(old_token=token)
             headers = {"Authorization": f"Bearer {token}"}
+            # TODO: Set timeout
+            # TODO: Accept a cancellation token
             response = requests.get(url=url, headers=headers)
             if response.status_code // 100 == 2:
                 json_captions = response.json()
@@ -466,39 +466,6 @@ def export_to_vimeo(
     vimeo_export_button.click()
 
 
-def download_captions(
-    client: BoxCastGuiClient,
-    captions_tab_url: str,
-    download_path: Path,
-    destination_path: Path,
-    cancellation_token: CancellationToken,
-):
-    client.get(captions_tab_url, cancellation_token)
-    download_captions_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Download Captions')]",
-        cancellation_token=cancellation_token,
-        timeout=timedelta(minutes=60),
-    )
-    download_captions_button.click()
-    vtt_download_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'WebVTT File (.vtt)')]",
-        cancellation_token=cancellation_token,
-        timeout=timedelta(seconds=1),
-    )
-    vtt_download_button.click()
-
-    _wait_for_file_to_exist(
-        download_path,
-        timeout=timedelta(seconds=60),
-        cancellation_token=cancellation_token,
-    )
-    if not destination_path.parent.exists():
-        destination_path.parent.mkdir(exist_ok=True, parents=True)
-    shutil.move(download_path, destination_path)
-
-
 def upload_captions_to_boxcast(
     client: BoxCastGuiClient,
     url: str,
@@ -585,19 +552,6 @@ def create_rebroadcast(
         message=f"Did not get redirected to the expected page (starting with {expected_prefix}) within {redirect_timeout} seconds.",
         cancellation_token=cancellation_token,
     )
-
-
-def _wait_for_file_to_exist(
-    path: Path, timeout: timedelta, cancellation_token: CancellationToken
-):
-    wait_start = datetime.now()
-    while True:
-        cancellation_token.raise_if_cancelled()
-        if path.exists():
-            return
-        if datetime.now() - wait_start > timeout:
-            raise FileNotFoundError(f"Did not find file at '{path}' within {timeout}.")
-        time.sleep(1)
 
 
 def _get_rebroadcast_page(
