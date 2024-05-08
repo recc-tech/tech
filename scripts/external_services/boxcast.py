@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from inspect import cleandoc
 from pathlib import Path
 from threading import Lock
-from typing import Optional
+from typing import List, Optional
 
 import autochecklist
 import dateutil.parser
@@ -38,6 +38,13 @@ class Broadcast:
     start_time: datetime
 
 
+@dataclass
+class Cue:
+    start_time: float
+    end_time: float
+    text: str
+
+
 class BoxCastApiClient:
     MAX_ATTEMPTS = 3
 
@@ -64,6 +71,7 @@ class BoxCastApiClient:
             "filter.has_recording": "true",
             "q": f"starts_at:[{dt.strftime('%Y-%m-%dT00:00:00')} TO {dt.strftime('%Y-%m-%dT23:59:59')}]",
         }
+        # TODO: Extract the retry/status check logic to a separate function?
         token = None
         for i in range(self.MAX_ATTEMPTS):
             token = self._get_current_oauth_token(old_token=token)
@@ -84,7 +92,45 @@ class BoxCastApiClient:
             elif response.status_code == 401:
                 self._messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"Request to BoxCast failed with status 401 (unauthorized). Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
+                    f"Request to BoxCast failed with status 401 (unauthorized)."
+                    + f" Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
+                )
+            else:
+                msg = (
+                    f"Request to {url} failed with status code {response.status_code}."
+                )
+                self._messenger.log_debug(f"{msg} Response body: {response.json()}\n")
+                raise ValueError(msg)
+        raise ValueError(f"Request to {url} failed ({self.MAX_ATTEMPTS} attempts).")
+
+    def download_captions(self, broadcast_id: str, path: Path) -> None:
+        url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
+        token = None
+        for i in range(self.MAX_ATTEMPTS):
+            token = self._get_current_oauth_token(old_token=token)
+            headers = {"Authorization": f"Bearer {token}"}
+            response = requests.get(url=url, headers=headers)
+            if response.status_code // 100 == 2:
+                json_captions = response.json()
+                if len(json_captions) == 0:
+                    raise ValueError("No captions found.")
+                else:
+                    json_cues = json_captions[0]["cues"]
+                    cues = [
+                        Cue(
+                            start_time=c["start_time"],
+                            end_time=c["end_time"],
+                            text=c["text"],
+                        )
+                        for c in json_cues
+                    ]
+                    _save_captions(cues, path)
+                    return
+            elif response.status_code == 401:
+                self._messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"Request to BoxCast failed with status 401 (unauthorized)."
+                    + f" Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
                 )
             else:
                 msg = (
@@ -152,6 +198,27 @@ class BoxCastApiClient:
             )
         data = response.json()
         return data["access_token"]
+
+
+def _save_captions(cues: List[Cue], p: Path) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", encoding="utf-8") as f:
+        f.write("WEBVTT\n\n")
+        for i, c in enumerate(cues, start=1):
+            start_td = timedelta(seconds=c.start_time)
+            end_td = timedelta(seconds=c.end_time)
+            f.write(f"{i}\n")
+            f.write(f"{_format_timedelta(start_td)} --> {_format_timedelta(end_td)}\n")
+            f.write(f"{c.text}\n\n")
+
+
+def _format_timedelta(td: timedelta) -> str:
+    tot_seconds = int(td.total_seconds())
+    seconds = tot_seconds % 60
+    minutes = (tot_seconds // 60) % 60
+    hours = tot_seconds // (60 * 60)
+    millis = td.microseconds // 1_000
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{millis:03d}"
 
 
 class BoxCastGuiClient(ReccWebDriver):
