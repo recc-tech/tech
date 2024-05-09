@@ -6,10 +6,11 @@ from datetime import date, datetime, timedelta
 from inspect import cleandoc
 from pathlib import Path
 from threading import Lock
-from typing import List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 import autochecklist
 import dateutil.parser
+import dateutil.tz
 import requests
 from autochecklist import (
     CancellationToken,
@@ -64,72 +65,95 @@ class BoxCastApiClient:
     def find_main_broadcast_by_date(self, dt: date) -> Optional[Broadcast]:
         url = f"{self._config.boxcast_base_url}/account/broadcasts"
         params = {
-            "l": 1,
+            "l": "1",
             "s": "-starts_at",
             "filter.has_recording": "true",
             "q": f"starts_at:[{dt.strftime('%Y-%m-%dT00:00:00')} TO {dt.strftime('%Y-%m-%dT23:59:59')}]",
         }
-        # TODO: Extract the retry/status check logic to a separate function?
-        token = None
-        for i in range(self.MAX_ATTEMPTS):
-            token = self._get_current_oauth_token(old_token=token)
-            headers = {"Authorization": f"Bearer {token}"}
-            response = requests.get(url=url, params=params, headers=headers)
-            if response.status_code // 100 == 2:
-                data = response.json()
-                if len(data) == 0:
-                    return None
-                else:
-                    broadcast_json = data[0]
-                    return Broadcast(
-                        id=broadcast_json["id"],
-                        start_time=dateutil.parser.isoparse(
-                            broadcast_json["starts_at"]
-                        ),
-                    )
-            elif response.status_code == 401:
-                self._messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"Request to BoxCast failed with status 401 (unauthorized)."
-                    + f" Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
-                )
-            else:
-                msg = (
-                    f"Request to {url} failed with status code {response.status_code}."
-                )
-                self._messenger.log_debug(f"{msg} Response body: {response.json()}\n")
-                raise ValueError(msg)
-        raise ValueError(f"Request to {url} failed ({self.MAX_ATTEMPTS} attempts).")
+        data = self._send_and_check("GET", url, params=params)
+        if len(data) == 0:
+            return None
+        else:
+            broadcast_json = data[0]
+            return Broadcast(
+                id=broadcast_json["id"],
+                start_time=dateutil.parser.isoparse(broadcast_json["starts_at"]),
+            )
 
     def download_captions(self, broadcast_id: str, path: Path) -> None:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
+        json_captions = self._send_and_check("GET", url)
+        if len(json_captions) == 0:
+            raise ValueError("No captions found.")
+        else:
+            json_cues = json_captions[0]["cues"]
+            cues = [
+                Cue(
+                    start_time=c["start_time"],
+                    end_time=c["end_time"],
+                    text=c["text"],
+                )
+                for c in json_cues
+            ]
+            _save_captions(cues, path)
+
+    def schedule_rebroadcast(
+        self, broadcast_id: str, name: str, start: datetime
+    ) -> None:
+        current_dt = datetime.combine(
+            date=self._config.start_time.date(),
+            time=datetime.now().time(),
+        )
+        if start <= current_dt:
+            raise ValueError("Rebroadcast start time is in the past.")
+        url = f"{self._config.boxcast_base_url}/account/broadcasts"
+        start_utc = start.astimezone(dateutil.tz.tzutc())
+        starts_at = start_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        payload = {
+            "name": name,
+            "stream_source": "recording",
+            "source_broadcast_id": broadcast_id,
+            "starts_at": starts_at,
+            "is_private": False,
+            "is_ticketed": False,
+            "do_not_record": True,
+            "requests_captioning": False,
+        }
+        headers = {"Content-Type": "application/json"}
+        self._send_and_check(method="POST", url=url, json=payload, headers=headers)
+
+    def _send_and_check(
+        self,
+        method: str,
+        url: str,
+        params: Optional[Mapping[str, str]] = None,
+        json: Optional[Mapping[str, object]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Any:
+        headers = headers or {}
+        self._messenger.log_debug(
+            f"Attempting to send HTTP request {method} {url} with"
+            + f" params {params}, data {json}, and headers {headers}"
+        )
         token = None
         for i in range(self.MAX_ATTEMPTS):
             token = self._get_current_oauth_token(old_token=token)
-            headers = {"Authorization": f"Bearer {token}"}
+            headers["Authorization"] = f"Bearer {token}"
             # TODO: Set timeout
             # TODO: Accept a cancellation token
-            response = requests.get(url=url, headers=headers)
+            response = requests.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json,
+                headers=headers,
+            )
             if response.status_code // 100 == 2:
-                json_captions = response.json()
-                if len(json_captions) == 0:
-                    raise ValueError("No captions found.")
-                else:
-                    json_cues = json_captions[0]["cues"]
-                    cues = [
-                        Cue(
-                            start_time=c["start_time"],
-                            end_time=c["end_time"],
-                            text=c["text"],
-                        )
-                        for c in json_cues
-                    ]
-                    _save_captions(cues, path)
-                    return
+                return response.json()
             elif response.status_code == 401:
                 self._messenger.log_problem(
                     ProblemLevel.WARN,
-                    f"Request to BoxCast failed with status 401 (unauthorized)."
+                    f"Request to {url} failed with status 401 (unauthorized)."
                     + f" Attempt {i + 1}/{self.MAX_ATTEMPTS}.",
                 )
             else:
@@ -172,7 +196,10 @@ class BoxCastApiClient:
                     )
                     self._token = tok
                     return tok
-                except ValueError:
+                except ValueError as e:
+                    raise ValueError(
+                        f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{self.MAX_ATTEMPTS})."
+                    ) from e
                     self._messenger.log_problem(
                         ProblemLevel.WARN,
                         f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{self.MAX_ATTEMPTS}).",
