@@ -32,57 +32,39 @@ def wait_for_BoxCast_recording(
             )
 
 
-def create_rebroadcast_1pm(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.create_rebroadcast(
-            rebroadcast_setup_url=config.rebroadcast_setup_url,
-            source_broadcast_title=config.live_event_title,
-            rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.start_time.replace(hour=13, minute=0, second=0),
-            client=client,
-            messenger=messenger,
-            cancellation_token=cancellation_token,
+def create_rebroadcast_1pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.schedule_rebroadcast(
+            broadcast_id=broadcast.id,
+            name=config.rebroadcast_title,
+            start=config.start_time.replace(hour=13, minute=0, second=0),
         )
 
 
-def create_rebroadcast_5pm(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.create_rebroadcast(
-            rebroadcast_setup_url=config.rebroadcast_setup_url,
-            source_broadcast_title=config.live_event_title,
-            rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.start_time.replace(hour=17, minute=0, second=0),
-            client=client,
-            messenger=messenger,
-            cancellation_token=cancellation_token,
+def create_rebroadcast_5pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.schedule_rebroadcast(
+            broadcast_id=broadcast.id,
+            name=config.rebroadcast_title,
+            start=config.start_time.replace(hour=17, minute=0, second=0),
         )
 
 
-def create_rebroadcast_7pm(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.create_rebroadcast(
-            rebroadcast_setup_url=config.rebroadcast_setup_url,
-            source_broadcast_title=config.live_event_title,
-            rebroadcast_title=config.rebroadcast_title,
-            start_datetime=config.start_time.replace(hour=19, minute=0, second=0),
-            client=client,
-            messenger=messenger,
-            cancellation_token=cancellation_token,
+def create_rebroadcast_7pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.schedule_rebroadcast(
+            broadcast_id=broadcast.id,
+            name=config.rebroadcast_title,
+            start=config.start_time.replace(hour=19, minute=0, second=0),
         )
 
 

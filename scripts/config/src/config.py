@@ -400,14 +400,10 @@ class Config(BaseConfig):
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
-            self.live_event_title = reader.get_str("boxcast.live_event_title")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
             self.live_event_url_template = reader.get_template("boxcast.live_event_url")
             self.live_event_captions_tab_url_template = reader.get_template(
                 "boxcast.live_event_captions_tab_url"
-            )
-            self.rebroadcast_setup_url_template = reader.get_template(
-                "boxcast.rebroadcast_setup_url"
             )
             self.boxcast_edit_captions_url_template = reader.get_template(
                 "boxcast.edit_captions_url"

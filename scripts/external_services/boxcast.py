@@ -8,22 +8,14 @@ from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Mapping, Optional
 
-import autochecklist
 import dateutil.parser
 import dateutil.tz
 import requests
-from autochecklist import (
-    CancellationToken,
-    Messenger,
-    ProblemLevel,
-    TaskStatus,
-    sleep_attentively,
-)
+from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
 from config import Config
 from requests.auth import HTTPBasicAuth
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.select import Select
 
@@ -534,177 +526,6 @@ def upload_captions_to_boxcast(
         "//button[contains(., 'Save Uploaded Caption File')]",
         cancellation_token=cancellation_token,
         timeout=timedelta(seconds=10),
-    )
-    submit_button.click()
-
-
-def create_rebroadcast(
-    rebroadcast_setup_url: str,
-    source_broadcast_title: str,
-    rebroadcast_title: str,
-    start_datetime: datetime,
-    client: BoxCastGuiClient,
-    messenger: Messenger,
-    cancellation_token: CancellationToken,
-):
-    _get_rebroadcast_page(
-        rebroadcast_setup_url,
-        source_broadcast_title,
-        client,
-        messenger,
-        cancellation_token,
-    )
-
-    _set_event_name(rebroadcast_title, client, cancellation_token)
-
-    _set_event_start_time(start_datetime, client, cancellation_token)
-
-    try:
-        _make_event_not_recorded(client, cancellation_token)
-    except Exception as e:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Failed to make rebroadcast not recorded: {e}",
-            stacktrace=traceback.format_exc(),
-        )
-
-    _press_schedule_broadcast_button(client, cancellation_token)
-
-    # The website should redirect to the page for the newly-created rebroadcast after the button is pressed
-    expected_prefix = "https://dashboard.boxcast.com/broadcasts"
-    redirect_timeout = 10
-    client.wait(
-        condition=lambda driver: driver.current_url.startswith(expected_prefix),
-        timeout=timedelta(seconds=10),
-        message=f"Did not get redirected to the expected page (starting with {expected_prefix}) within {redirect_timeout} seconds.",
-        cancellation_token=cancellation_token,
-    )
-
-
-def _get_rebroadcast_page(
-    rebroadcast_setup_url: str,
-    expected_source_name: str,
-    client: BoxCastGuiClient,
-    messenger: Messenger,
-    cancellation_token: CancellationToken,
-):
-    """
-    Get the rebroadcast page and wait until the source broadcast is available.
-    """
-    retry_seconds = 60
-    max_retries = 60
-    for _ in range(max_retries):
-        client.get(rebroadcast_setup_url, cancellation_token)
-        # Give the page a moment to load
-        sleep_attentively(timedelta(seconds=5), cancellation_token=cancellation_token)
-        by = By.XPATH
-        value = f"//a[contains(., '{expected_source_name}')]"
-        elements = client.find_elements(by, value)
-        if not elements:
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                f"The source broadcast is not yet available as of {datetime.now().strftime('%H:%M:%S')}. Retrying in {retry_seconds} seconds.",
-            )
-            autochecklist.sleep_attentively(
-                timedelta(seconds=retry_seconds), cancellation_token
-            )
-        elif len(elements) == 1:
-            messenger.log_status(
-                TaskStatus.RUNNING,
-                "Rebroadcast page loaded: source broadcast is as expected.",
-            )
-            return
-        else:
-            raise ValueError(
-                f"{len(elements)} elements matched the given criteria (by = {by}, value = '{value}')."
-            )
-    raise ValueError(
-        f"The rebroadcast setup page did not load within {max_retries} attempts."
-    )
-
-
-def _set_event_name(
-    name: str, client: BoxCastGuiClient, cancellation_token: CancellationToken
-):
-    name_label = client.wait_for_single_element(
-        By.XPATH,
-        "//label[contains(., 'Broadcast Name')]",
-        cancellation_token=cancellation_token,
-    )
-    name_input = client.wait_for_single_element(
-        By.ID,
-        _get_attribute(name_label, "for"),
-        cancellation_token=cancellation_token,
-    )
-    name_input.clear()
-    _send_keys(name_input, name)
-
-
-def _set_event_start_time(
-    start_datetime: datetime,
-    client: BoxCastGuiClient,
-    cancellation_token: CancellationToken,
-):
-    time_12h = start_datetime.strftime("%I:%M %p")
-    # BoxCast removes leading 0, so we need to as well when comparing the
-    # expected and actual values
-    if time_12h.startswith("0"):
-        time_12h = time_12h[1:]
-
-    start_time_input = client.wait_for_single_element(
-        By.XPATH,
-        "//div[@id='schedule-date-time-starts-at']//input",
-        cancellation_token=cancellation_token,
-    )
-    # Time should normally not be longer than 8 characters, but use large
-    # safety margin because hitting backspace should be quick
-    for _ in range(100):
-        if not _get_attribute(start_time_input, "value"):
-            break
-        _send_keys(start_time_input, Keys.BACKSPACE)
-    if _get_attribute(start_time_input, "value"):
-        raise ValueError("Failed to clear the start time input.")
-    _send_keys(start_time_input, time_12h)
-    # Move focus away from the input element and then check that the value was
-    # accepted and not ignored
-    _send_keys(start_time_input, Keys.TAB)
-    actual_value = _get_attribute(start_time_input, "value")
-    if actual_value != time_12h:
-        raise ValueError(
-            f"Failed to set time: tried to write '{time_12h}' but the input's actual value is '{actual_value}'."
-        )
-
-
-def _make_event_not_recorded(
-    client: BoxCastGuiClient, cancellation_token: CancellationToken
-):
-    recording_options_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Recording Options')]",
-        cancellation_token=cancellation_token,
-    )
-    recording_options_button.click()
-    record_broadcast_label = client.wait_for_single_element(
-        By.XPATH,
-        "//label[contains(., 'Record Broadcast')]",
-        cancellation_token=cancellation_token,
-    )
-    record_broadcast_checkbox = client.wait_for_single_element(
-        By.ID,
-        _get_attribute(record_broadcast_label, "for"),
-        cancellation_token=cancellation_token,
-    )
-    if _get_attribute(record_broadcast_checkbox, "checked") == "true":
-        record_broadcast_checkbox.click()
-
-
-def _press_schedule_broadcast_button(
-    client: BoxCastGuiClient, cancellation_token: CancellationToken
-):
-    submit_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Schedule Broadcast')]",
-        cancellation_token=cancellation_token,
     )
     submit_button.click()
 

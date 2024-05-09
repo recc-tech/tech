@@ -36,11 +36,9 @@ final = "%{folder.captions}%/final.vtt"
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
-live_event_title = "Sunday Gathering LIVE: %{args.startup_mdy}%"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
 live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
-rebroadcast_setup_url = "https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId=!{BOXCAST_EVENT_ID}!"
 edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
 
 [planning_center]

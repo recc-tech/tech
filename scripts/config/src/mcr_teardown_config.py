@@ -34,9 +34,6 @@ class McrTeardownConfig(Config):
         self.boxcast_edit_captions_url = self.boxcast_edit_captions_url_template.fill(
             {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
         )
-        self.rebroadcast_setup_url = self.rebroadcast_setup_url_template.fill(
-            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-        )
         self.vimeo_video_title = self.vimeo_video_title_template.fill(
             {
                 "MESSAGE_SERIES": self._args.message_series,
@@ -52,9 +49,6 @@ class McrTeardownConfig(Config):
         )
         text = text.replace(
             "%{boxcast.edit_captions_url}%", self.boxcast_edit_captions_url
-        )
-        text = text.replace(
-            "%{boxcast.rebroadcast_setup_url}%", self.rebroadcast_setup_url
         )
         text = text.replace("%{vimeo.video_title}%", self.vimeo_video_title)
         return super().fill_placeholders(text)
