@@ -41,6 +41,7 @@ Welcome to the River's Edge Production Team repository!
 
 		![Dependencies Between Packages](./scripts/dependoc/dependencies.svg)
 
-	- `scripts/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
-		- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
-		- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+	- `scripts/test/`. These are tests to ensure the scripts work as expected. Run all the automated tests using `python -m unittest` or run specific automated tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
+		- `scripts/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
+		- `scripts/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+		- `scripts/test/manual`. This package is meant to guide you through testing the project for cases where automated testing is impractical. Run it by moving into the `scripts` directory and then running `python -m test.manual`.
