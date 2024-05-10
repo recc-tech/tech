@@ -1,3 +1,4 @@
+import subprocess
 import sys
 from datetime import datetime, time, timedelta
 from typing import Tuple
@@ -75,6 +76,44 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
                     description="Press 'Done' once you are ready to start testing.",
                 ),
                 TaskModel(
+                    name="test_run_GUI",
+                    subtasks=[
+                        TaskModel(
+                            name="ready_run_GUI",
+                            description=(
+                                "The next task will open a separate GUI window."
+                                " Follow the instructions on that window and check that the GUI itself works as expected."
+                            ),
+                        ),
+                        TaskModel(
+                            name="run_GUI",
+                            description="Run the GUI and see if it works.",
+                            only_auto=True,
+                            prerequisites={"ready_run_GUI"},
+                        ),
+                    ],
+                    prerequisites={"ready"},
+                ),
+                TaskModel(
+                    name="test_cancel_GUI",
+                    subtasks=[
+                        TaskModel(
+                            name="ready_cancel_GUI",
+                            description=(
+                                "The next task will open a separate GUI window."
+                                " Complete one or two tasks and then close the window without completing the test."
+                            ),
+                        ),
+                        TaskModel(
+                            name="cancel_GUI",
+                            description="Run the GUI and see if closing it early works.",
+                            only_auto=True,
+                            prerequisites={"ready_cancel_GUI"},
+                        ),
+                    ],
+                    prerequisites={"test_run_GUI"},
+                ),
+                TaskModel(
                     name="test_schedule_rebroadcast",
                     subtasks=[
                         TaskModel(
@@ -96,11 +135,25 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
                             prerequisites={"schedule_rebroadcast"},
                         ),
                     ],
-                    prerequisites={"ready"},
+                    prerequisites={"test_cancel_GUI"},
                 ),
             ],
         )
         return task_model, function_finder
+
+
+def run_GUI() -> None:
+    # Run in a separate process because having multiple GUIs open in the same
+    # Python process is not supported (and not normally needed anyway)
+    # TODO: Running in a separate process messes with coverage :( Pass in a
+    # command-line arg to use `coverage run` instead of `python`?
+    subprocess.run(["python", "-m", "autochecklist"])
+
+
+def cancel_GUI() -> None:
+    # Run in a separate process because having multiple GUIs open in the same
+    # Python process is not supported (and not normally needed anyway)
+    subprocess.run(["python", "-m", "autochecklist"])
 
 
 def schedule_rebroadcast(client: BoxCastApiClient) -> None:
