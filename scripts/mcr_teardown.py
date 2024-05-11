@@ -137,9 +137,8 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
         if len(params) == 0:
             return
 
-        # TODO: Do away with this entirely if the Planning Center info was found?
         inputs = messenger.input_multiple(
-            params, prompt="The script needs some more information to get started."
+            params, prompt="The script needs some information to get started."
         )
         if "message_series" in inputs:
             args.message_series = str(inputs["message_series"])

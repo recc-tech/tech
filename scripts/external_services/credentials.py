@@ -10,10 +10,6 @@ from autochecklist import Messenger, Parameter
 
 class Credential(Enum):
     # The names (the first element in each tuple) MUST be unique
-    # TODO: Delete the BoxCast password and username
-    # See https://github.com/recc-tech/tech/issues/293
-    BOXCAST_PASSWORD = ("boxcast_password", "BoxCast password", True)
-    BOXCAST_USERNAME = ("boxcast_username", "BoxCast username", False)
     BOXCAST_CLIENT_ID = ("boxcast_client_id", "BoxCast client ID", True)
     BOXCAST_CLIENT_SECRET = ("boxcast_client_secret", "BoxCast client secret", True)
     VIMEO_ACCESS_TOKEN = ("vimeo_access_token", "Vimeo access token", True)
