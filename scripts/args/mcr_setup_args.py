@@ -14,6 +14,7 @@ class McrSetupArgs(ReccArgs):
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
+        # TODO: Is this needed anymore?
         parser.add_argument(
             "--show-browser",
             action="store_true",

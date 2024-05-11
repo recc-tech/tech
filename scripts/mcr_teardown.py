@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import re
 import sys
 import traceback
-from argparse import ArgumentTypeError
 from datetime import date
 from pathlib import Path
 from typing import Dict, Tuple
@@ -24,7 +22,6 @@ from autochecklist import (
 from config import Config, McrTeardownArgs, McrTeardownConfig
 from external_services import (
     BoxCastApiClient,
-    BoxCastClientFactory,
     CredentialStore,
     PlanningCenterClient,
     ReccVimeoClient,
@@ -73,15 +70,6 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
             cancellation_token=None,
             lazy_login=args.lazy_login,
         )
-        boxcast_client_factory = BoxCastClientFactory(
-            messenger=messenger,
-            credential_store=credential_store,
-            cancellation_token=None,
-            headless=not args.show_browser,
-            lazy_login=args.lazy_login,
-            log_directory=config.log_dir,
-            log_file_name=config.mcr_teardown_webdriver_log_name,
-        )
         boxcast_api_client = BoxCastApiClient(
             messenger=messenger,
             credential_store=credential_store,
@@ -91,7 +79,6 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
         function_finder = FunctionFinder(
             module=mcr_teardown,
             arguments=[
-                boxcast_client_factory,
                 boxcast_api_client,
                 config,
                 messenger,
@@ -147,15 +134,10 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
                 description='This is the title of today\'s sermon. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the title was "Avoiding Road Rage".',
                 default=message_title,
             )
-        if not args.boxcast_event_id:
-            params["boxcast_event_id"] = Parameter(
-                "BoxCast Event URL",
-                parser=_parse_boxcast_event_url,
-                description="This is the URL of today's live event on BoxCast. For example, https://dashboard.boxcast.com/broadcasts/abcdefghijklm0123456.",
-            )
         if len(params) == 0:
             return
 
+        # TODO: Do away with this entirely if the Planning Center info was found?
         inputs = messenger.input_multiple(
             params, prompt="The script needs some more information to get started."
         )
@@ -163,30 +145,6 @@ class McrTeardownScript(Script[McrTeardownArgs, McrTeardownConfig]):
             args.message_series = str(inputs["message_series"])
         if "message_title" in inputs:
             args.message_title = str(inputs["message_title"])
-        if "boxcast_event_id" in inputs:
-            args.boxcast_event_id = str(inputs["boxcast_event_id"])
-
-
-def _parse_boxcast_event_url(event_url: str) -> str:
-    if not event_url:
-        raise ArgumentTypeError("Empty input. The event URL is required.")
-    if all(c == "\x16" for c in event_url):
-        raise ArgumentTypeError(
-            "You entered the value CTRL+V, which is not a valid event URL. Try right-clicking to paste."
-        )
-
-    # The event URL should be in the form "https://dashboard.boxcast.com/broadcasts/<EVENT-ID>"
-    # Allow a trailing forward slash just in case
-    event_url = event_url.strip()
-    regex = "^https://dashboard\\.boxcast\\.com/broadcasts/([a-zA-Z0-9]{20,20})/?(?:\\?.*)?$"
-    pattern = re.compile(regex)
-    regex_match = pattern.search(event_url)
-    if not regex_match:
-        raise ArgumentTypeError(
-            f"Expected the BoxCast event URL to match the regular expression '{regex}', but received '{event_url}'. Are you sure you copied the URL correctly? If you think there is a problem with the script, try entering the BoxCast event ID directly instead."
-        )
-    event_id = regex_match.group(1)
-    return event_id
 
 
 if __name__ == "__main__":

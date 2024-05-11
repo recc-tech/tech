@@ -26,6 +26,7 @@ Welcome to the River's Edge Production Team repository!
 4. Install the required external libraries by running `pip install -r setup/requirements-dev.txt`
 5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r setup/requirements-dev.txt`.
 6. Activate the configuration profile by running `python manage_config.py activate --profile PROFILE`. To see the full list of available profiles, run `python manage_config.py list`.
+7. Activate the Git pre-commit hook using `git config core.hooksPath ./.git-hooks`.
 
 ## Repository Structure
 

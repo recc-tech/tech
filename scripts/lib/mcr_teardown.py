@@ -3,12 +3,11 @@ import stat
 from datetime import datetime, timedelta
 
 import autochecklist
-import external_services.boxcast as boxcast_tasks
 import lib
 import webvtt
 from autochecklist import Messenger, TaskStatus
 from config import Config, McrTeardownConfig
-from external_services import BoxCastApiClient, BoxCastClientFactory, ReccVimeoClient
+from external_services import BoxCastApiClient, ReccVimeoClient
 
 
 def wait_for_BoxCast_recording(
@@ -68,17 +67,15 @@ def create_rebroadcast_7pm(client: BoxCastApiClient, config: McrTeardownConfig) 
         )
 
 
-def export_to_Vimeo(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.export_to_vimeo(
-            client=client,
-            event_url=config.live_event_url,
-            cancellation_token=cancellation_token,
+def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.export_to_vimeo(
+            broadcast_id=broadcast.id,
+            vimeo_user_id=config.vimeo_user_id,
+            title=config.vimeo_video_title,
         )
 
 
@@ -90,6 +87,9 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
+# TODO: Is this necessary anymore now that the export function provides a title?
+# Maybe it's good for reliability (e.g., in case the automatic Vimeo export fails),
+# but maybe the extra code is not worth it
 def rename_video_on_Vimeo(
     config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
 ):

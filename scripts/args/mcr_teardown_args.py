@@ -21,9 +21,7 @@ class McrTeardownArgs(ReccArgs):
 
         self.message_series: str = args.message_series or ""
         self.message_title: str = args.message_title or ""
-        self.boxcast_event_id: str = args.boxcast_event_id or ""
         self.lazy_login: bool = args.lazy_login
-        self.show_browser: bool = args.show_browser
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -50,11 +48,6 @@ class McrTeardownArgs(ReccArgs):
             "--lazy-login",
             action="store_true",
             help="If this flag is provided, then the script will not immediately log in to services like Vimeo and BoxCast. Instead, it will wait until that particular service is specifically requested.",
-        )
-        debug_args.add_argument(
-            "--show-browser",
-            action="store_true",
-            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
         )
 
         return super().set_up_parser(parser)

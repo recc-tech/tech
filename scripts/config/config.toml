@@ -5,7 +5,7 @@
 #   arguments that are applicable to all scripts, like the startup time). Use
 #   this form whenever possible.
 # - !{PLACEHOLDER}! may refer to values that are only available for certain
-#   scripts, such as the BoxCast event ID during MCR teardown. Use this form as
+#   scripts, such as the message title during MCR teardown. Use this form as
 #   little as possible.
 
 [ui]
@@ -37,8 +37,6 @@ final = "%{folder.captions}%/final.vtt"
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
-# TODO: Delete this once I switch to API for exporting to Vimeo
-live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
@@ -62,6 +60,8 @@ captions_type = "subtitles"
 captions_language = "en-CA"
 captions_name = "English (Canada)"
 video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
+# One way of finding this is to export a recording from BoxCast to Vimeo and,
+# in the dev tools network tab, check the request payload
 user_id = "viac_bvteonscuog48b2lnilu"
 
 [vmix]

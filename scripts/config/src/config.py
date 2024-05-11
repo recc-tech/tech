@@ -401,7 +401,6 @@ class Config(BaseConfig):
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
-            self.live_event_url_template = reader.get_template("boxcast.live_event_url")
 
             # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")

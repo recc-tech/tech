@@ -17,19 +17,16 @@ from autochecklist import (
 from config import Config
 from external_services import (
     BoxCastApiClient,
-    BoxCastClientFactory,
-    Credential,
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
     ReccVimeoClient,
 )
 
-# TODO: Remove the "boxcast_gui" option
-CredentialName = Literal["boxcast", "boxcast_gui", "vimeo", "planning_center"]
+# TODO: Replace with enum?
+CredentialName = Literal["boxcast", "vimeo", "planning_center"]
 ALL_CREDENTIALS: Set[CredentialName] = {
     "boxcast",
-    "boxcast_gui",
     "vimeo",
     "planning_center",
 }
@@ -97,14 +94,6 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         self, args: CheckCredentialsArgs, config: Config, messenger: Messenger
     ) -> Tuple[TaskModel | Path, FunctionFinder]:
         subtasks: List[TaskModel] = []
-        if "boxcast_gui" in args.credentials:
-            subtasks.append(
-                TaskModel(
-                    name="log_into_BoxCast_GUI",
-                    description="Failed to log into BoxCast.",
-                    only_auto=True,
-                )
-            )
         if "boxcast" in args.credentials:
             subtasks.append(
                 TaskModel(
@@ -140,7 +129,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[messenger, credential_store, args, config],
+            arguments=[messenger, credential_store, config],
             messenger=messenger,
         )
         return task_model, function_finder
@@ -171,31 +160,6 @@ def log_into_BoxCast(
         lazy_login=False,
     )
     messenger.log_status(TaskStatus.DONE, "Successfully connected to BoxCast.")
-
-
-def log_into_BoxCast_GUI(
-    config: Config,
-    credential_store: CredentialStore,
-    messenger: Messenger,
-    args: CheckCredentialsArgs,
-) -> None:
-    cancellation_token = messenger.allow_cancel()
-    BoxCastClientFactory(
-        messenger=messenger,
-        credential_store=credential_store,
-        cancellation_token=cancellation_token,
-        headless=not args.show_browser,
-        # Since lazy_login = false, the login should be tested eagerly
-        lazy_login=False,
-        log_directory=config.log_dir,
-        log_file_name=config.check_credentials_webdriver_log_name,
-    )
-    username = credential_store.get(
-        Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER
-    )
-    messenger.log_status(
-        TaskStatus.DONE, f"Successfully logged into BoxCast as {username}"
-    )
 
 
 def log_into_Planning_Center(
