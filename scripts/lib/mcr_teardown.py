@@ -87,16 +87,6 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
-# TODO: Is this necessary anymore now that the export function provides a title?
-# Maybe it's good for reliability (e.g., in case the automatic Vimeo export fails),
-# but maybe the extra code is not worth it
-def rename_video_on_Vimeo(
-    config: McrTeardownConfig, vimeo_client: ReccVimeoClient, messenger: Messenger
-):
-    (video_uri, _) = vimeo_client.get_video_data(messenger.allow_cancel())
-    vimeo_client.rename_video(video_uri, config.vimeo_video_title)
-
-
 def download_captions(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
     if broadcast is None:
