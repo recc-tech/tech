@@ -7,7 +7,7 @@ from typing import Callable, Literal, Tuple, TypeVar
 
 T = TypeVar("T")
 
-from . import (  # TODO; EelMessenger,
+from . import (
     BaseArgs,
     BaseConfig,
     ConsoleMessenger,

@@ -5,7 +5,7 @@
 #   arguments that are applicable to all scripts, like the startup time). Use
 #   this form whenever possible.
 # - !{PLACEHOLDER}! may refer to values that are only available for certain
-#   scripts, such as the BoxCast event ID during MCR teardown. Use this form as
+#   scripts, such as the message title during MCR teardown. Use this form as
 #   little as possible.
 
 [ui]
@@ -27,19 +27,16 @@ mcr_setup_webdriver              = "%{folder.logs}%/%{args.startup_timestamp}% m
 mcr_teardown                     = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
 mcr_teardown_webdriver_name      = "mcr_teardown_webdriver"
 summarize_plan                   = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"
+schedule_rebroadcast             = "%{folder.logs}%/%{args.startup_timestamp}% schedule_rebroadcast.log"
 
 [captions]
 original = "%{folder.captions}%/original.vtt"
 final = "%{folder.captions}%/final.vtt"
 
 [boxcast]
-live_event_title = "Sunday Gathering LIVE: %{args.startup_mdy}%"
+base_url = "https://rest.boxcast.com"
+auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
-live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
-live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
-captions_download_path = "%{folder.downloads}%/!{BOXCAST_EVENT_ID}!_captions.vtt"
-rebroadcast_setup_url = "https://dashboard.boxcast.com/schedule/broadcast?streamSource=recording&sourceBroadcastId=!{BOXCAST_EVENT_ID}!"
-edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
@@ -63,6 +60,9 @@ captions_type = "subtitles"
 captions_language = "en-CA"
 captions_name = "English (Canada)"
 video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
+# One way of finding this is to export a recording from BoxCast to Vimeo and,
+# in the dev tools network tab, check the request payload
+user_id = "viac_bvteonscuog48b2lnilu"
 
 [vmix]
 base_url = "http://192.168.0.65:8088/api"

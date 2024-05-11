@@ -9,13 +9,13 @@ Welcome to the River's Edge Production Team repository!
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
-3. Install the required external libraries by running `pip install -r requirements.txt`
+3. Install the required external libraries by running `pip install -r setup/requirements.txt`
 4. Create a desktop shortcut for each top-level script (batch files on Windows, shell scripts on macOS).
-	- On Windows, run `New-Shortcuts.ps1` in PowerShell.
-	- On macOS, run `make_shortcuts.sh` in bash.
+	- On Windows, run `setup/New-Shortcuts.ps1` in PowerShell.
+	- On macOS, run `setup/make_shortcuts.sh` in bash.
 5. Set up scripts to run on startup.
-	- At the MCR station, run `update_scripts.bat` on startup. You can do this by copying a shortcut to the script into the startup folder (https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd).
-	- At the FOH station, run `update_scripts.command`, `download_pco_assets.command`, and `summarize_plan.command` on startup. You can do this by adding a new "login item" in the System Preferences (https://stackoverflow.com/a/6445525).
+	- At the MCR station, run `startup.bat` on startup. You can do this by copying a shortcut to the script into the startup folder (https://support.microsoft.com/en-us/windows/add-an-app-to-run-automatically-at-startup-in-windows-10-150da165-dcd9-7230-517b-cf3c295d89dd).
+	- At the FOH station, run `startup.command` on startup. You can do this by adding a new "login item" in the System Preferences (https://stackoverflow.com/a/6445525).
 6. Activate the configuration profile by running `python manage_config.py activate`.
 
 ## Setting Up a New Development Environment
@@ -23,9 +23,10 @@ Welcome to the River's Edge Production Team repository!
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
 3. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
-4. Install the required external libraries by running `pip install -r requirements.txt`
-5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r requirements-dev.txt`.
+4. Install the required external libraries by running `pip install -r setup/requirements-dev.txt`
+5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r setup/requirements-dev.txt`.
 6. Activate the configuration profile by running `python manage_config.py activate --profile PROFILE`. To see the full list of available profiles, run `python manage_config.py list`.
+7. Activate the Git pre-commit hook using `git config core.hooksPath ./.git-hooks`.
 
 ## Repository Structure
 
@@ -41,6 +42,7 @@ Welcome to the River's Edge Production Team repository!
 
 		![Dependencies Between Packages](./scripts/dependoc/dependencies.svg)
 
-	- `scripts/test/`. These are tests to ensure the scripts work as expected. Run them all using `python -m unittest` or run specific tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
-		- `/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
-		- `/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+	- `scripts/test/`. These are tests to ensure the scripts work as expected. Run all the automated tests using `python -m unittest` or run specific automated tests using `python -m unittest discover -t . -s <PATH-TO-TESTS>`.
+		- `scripts/test/unit`. These are "unit tests" - they test individual software components and avoid side-effects like accessing the file system or the Internet.
+		- `scripts/test/integration`. These are "integration tests" - they test multiple components or have side-effects like accessing the file system or the Internet. As a result, they tend to be slower.
+		- `scripts/test/manual`. This package is meant to guide you through testing the project for cases where automated testing is impractical. Run it by moving into the `scripts` directory and then running `python -m test.manual`.

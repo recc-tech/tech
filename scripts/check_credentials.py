@@ -16,8 +16,7 @@ from autochecklist import (
 )
 from config import Config
 from external_services import (
-    BoxCastClientFactory,
-    Credential,
+    BoxCastApiClient,
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
@@ -25,7 +24,11 @@ from external_services import (
 )
 
 CredentialName = Literal["boxcast", "vimeo", "planning_center"]
-ALL_CREDENTIALS: Set[CredentialName] = {"boxcast", "vimeo", "planning_center"}
+ALL_CREDENTIALS: Set[CredentialName] = {
+    "boxcast",
+    "vimeo",
+    "planning_center",
+}
 
 
 class CheckCredentialsArgs(ReccArgs):
@@ -36,7 +39,6 @@ class CheckCredentialsArgs(ReccArgs):
         super().__init__(args, error)
         self.credentials: Set[CredentialName] = set(args.credentials or ALL_CREDENTIALS)
         self.force_input: bool = args.force_input
-        self.show_browser: bool = args.show_browser
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -52,11 +54,6 @@ class CheckCredentialsArgs(ReccArgs):
             "--force-input",
             action="store_true",
             help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
-        )
-        parser.add_argument(
-            "--show-browser",
-            action="store_true",
-            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
         )
         return super().set_up_parser(parser)
 
@@ -125,7 +122,7 @@ class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[messenger, credential_store, args, config],
+            arguments=[messenger, credential_store, config],
             messenger=messenger,
         )
         return task_model, function_finder
@@ -146,28 +143,16 @@ def log_into_Vimeo(
 
 
 def log_into_BoxCast(
-    config: Config,
-    credential_store: CredentialStore,
-    messenger: Messenger,
-    args: CheckCredentialsArgs,
+    config: Config, credential_store: CredentialStore, messenger: Messenger
 ) -> None:
-    cancellation_token = messenger.allow_cancel()
-    BoxCastClientFactory(
+    BoxCastApiClient(
         messenger=messenger,
         credential_store=credential_store,
-        cancellation_token=cancellation_token,
-        headless=not args.show_browser,
+        config=config,
         # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
-        log_directory=config.log_dir,
-        log_file_name=config.check_credentials_webdriver_log_name,
     )
-    username = credential_store.get(
-        Credential.BOXCAST_USERNAME, request_input=InputPolicy.NEVER
-    )
-    messenger.log_status(
-        TaskStatus.DONE, f"Successfully logged into BoxCast as {username}"
-    )
+    messenger.log_status(TaskStatus.DONE, "Successfully connected to BoxCast.")
 
 
 def log_into_Planning_Center(
@@ -177,6 +162,7 @@ def log_into_Planning_Center(
         messenger=messenger,
         credential_store=credential_store,
         config=config,
+        # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
     )
     messenger.log_status(TaskStatus.DONE, "Successfully connected to Planning Center.")

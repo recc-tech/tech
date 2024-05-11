@@ -1,4 +1,5 @@
 aiohttp>=3.9
+python-dateutil==2.8.2
 keyring==23.13.1
 matplotlib>=3.8
 pillow>=10.3

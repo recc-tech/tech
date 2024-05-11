@@ -359,7 +359,6 @@ class Config(BaseConfig):
             )
 
             # Folder structure
-            self.downloads_dir = reader.get_directory("folder.downloads")
             self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
@@ -390,27 +389,18 @@ class Config(BaseConfig):
                 "logging.mcr_teardown_webdriver_name"
             )
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
+            self.schedule_rebroadcast_log = reader.get_file(
+                "logging.schedule_rebroadcast"
+            )
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")
             self.final_captions_file = reader.get_file("captions.final")
 
             # BoxCast
-            self.live_event_title = reader.get_str("boxcast.live_event_title")
+            self.boxcast_base_url = reader.get_str("boxcast.base_url")
+            self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
-            self.live_event_url_template = reader.get_template("boxcast.live_event_url")
-            self.live_event_captions_tab_url_template = reader.get_template(
-                "boxcast.live_event_captions_tab_url"
-            )
-            self.rebroadcast_setup_url_template = reader.get_template(
-                "boxcast.rebroadcast_setup_url"
-            )
-            self.boxcast_edit_captions_url_template = reader.get_template(
-                "boxcast.edit_captions_url"
-            )
-            self.captions_download_path_template = reader.get_template(
-                "boxcast.captions_download_path"
-            )
 
             # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")
@@ -438,6 +428,7 @@ class Config(BaseConfig):
             self.vimeo_captions_language = reader.get_str("vimeo.captions_language")
             self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
             self.vimeo_video_title_template = reader.get_template("vimeo.video_title")
+            self.vimeo_user_id = reader.get_str("vimeo.user_id")
 
             # vMix
             self.vmix_base_url = reader.get_str("vmix.base_url")
