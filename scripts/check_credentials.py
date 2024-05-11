@@ -23,7 +23,6 @@ from external_services import (
     ReccVimeoClient,
 )
 
-# TODO: Replace with enum?
 CredentialName = Literal["boxcast", "vimeo", "planning_center"]
 ALL_CREDENTIALS: Set[CredentialName] = {
     "boxcast",
@@ -40,7 +39,6 @@ class CheckCredentialsArgs(ReccArgs):
         super().__init__(args, error)
         self.credentials: Set[CredentialName] = set(args.credentials or ALL_CREDENTIALS)
         self.force_input: bool = args.force_input
-        self.show_browser: bool = args.show_browser
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -56,11 +54,6 @@ class CheckCredentialsArgs(ReccArgs):
             "--force-input",
             action="store_true",
             help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
-        )
-        parser.add_argument(
-            "--show-browser",
-            action="store_true",
-            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
         )
         return super().set_up_parser(parser)
 
@@ -169,6 +162,7 @@ def log_into_Planning_Center(
         messenger=messenger,
         credential_store=credential_store,
         config=config,
+        # Since lazy_login = false, the login should be tested eagerly
         lazy_login=False,
     )
     messenger.log_status(TaskStatus.DONE, "Successfully connected to Planning Center.")
