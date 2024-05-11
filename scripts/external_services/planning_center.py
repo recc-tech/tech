@@ -246,7 +246,7 @@ class PlanningCenterClient:
         downloads_list = list(downloads.items())
         paths = [p for (p, _) in downloads_list]
         try:
-            app_id, secret = self._get_auth()
+            app_id, secret = self._get_auth(force_input=False)
             auth = aiohttp.BasicAuth(login=app_id, password=secret)
             async with aiohttp.ClientSession() as session:
                 tasks = [
@@ -291,7 +291,7 @@ class PlanningCenterClient:
     def _test_credentials(self, max_attempts: int):
         url = f"{self._cfg.pco_base_url}/people/v2/me"
         for attempt_num in range(1, max_attempts + 1):
-            response = self._send(url=url, params={})
+            response = self._send(url=url, params={}, force_auth=attempt_num > 1)
             if response.status_code // 100 == 2:
                 return
             elif response.status_code == 401:
@@ -303,8 +303,10 @@ class PlanningCenterClient:
                     f"Test request to GET {url} failed with status code {response.status_code}."
                 )
 
-    def _send(self, url: str, params: Dict[str, object]) -> requests.Response:
-        app_id, secret = self._get_auth()
+    def _send(
+        self, url: str, params: Dict[str, object], force_auth: bool
+    ) -> requests.Response:
+        app_id, secret = self._get_auth(force_input=force_auth)
         return requests.get(
             url=url,
             params=params,  # pyright: ignore[reportArgumentType]
@@ -313,22 +315,23 @@ class PlanningCenterClient:
         )
 
     def _send_and_check_status(self, url: str, params: Dict[str, object]) -> Any:
-        response = self._send(url=url, params=params)
+        response = self._send(url=url, params=params, force_auth=False)
         if response.status_code // 100 != 2:
             raise ValueError(
                 f"Request to {url} failed with status code {response.status_code}"
             )
         return response.json()
 
-    def _get_auth(self) -> Tuple[str, str]:
+    def _get_auth(self, force_input: bool) -> Tuple[str, str]:
         credentials = self._credential_store.get_multiple(
             prompt="Enter the Planning Center credentials.",
             credentials=[
                 Credential.PLANNING_CENTER_APP_ID,
                 Credential.PLANNING_CENTER_SECRET,
             ],
-            # TODO: It should be InputPolicy.ALWAYS if this is a retry
-            request_input=InputPolicy.AS_REQUIRED,
+            request_input=(
+                InputPolicy.ALWAYS if force_input else InputPolicy.AS_REQUIRED
+            ),
         )
         app_id = credentials[Credential.PLANNING_CENTER_APP_ID]
         secret = credentials[Credential.PLANNING_CENTER_SECRET]
