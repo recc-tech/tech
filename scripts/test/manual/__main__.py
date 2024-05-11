@@ -46,6 +46,7 @@ class ManualTestArgs(ReccArgs):
         self.tests: List[TestCase] = (
             list(TestCase) if not args.test else [TestCase(t) for t in args.test]
         )
+        self.coverage: bool = args.coverage
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -54,6 +55,11 @@ class ManualTestArgs(ReccArgs):
             action="append",
             choices=[t.value for t in TestCase],
             help="Test cases to run (default: all of them)",
+        )
+        parser.add_argument(
+            "--coverage",
+            action="store_true",
+            help="If this flag is provided, Python child processes will be run using coverage run --append instead of python.",
         )
         return super().set_up_parser(parser)
 
@@ -94,7 +100,7 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[client, config],
+            arguments=[client, config, args],
             messenger=messenger,
         )
         task_model = _make_task_model(args.tests)
@@ -222,7 +228,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                 TaskModel(
                     name="ready_Vimeo_export",
                     description=(
-                        "The next task should export the captions to Vimeo."
+                        "The next task should export a video to Vimeo."
                         f" [IMPORTANT] Log in to Vimeo before continuing."
                     ),
                 ),
@@ -245,18 +251,18 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     return TaskModel(name="test_manually", subtasks=tasks)
 
 
-def run_GUI() -> None:
+def run_GUI(args: ManualTestArgs) -> None:
     # Run in a separate process because having multiple GUIs open in the same
     # Python process is not supported (and not normally needed anyway)
-    # TODO: Running in a separate process messes with coverage :( Pass in a
-    # command-line arg to use `coverage run` instead of `python`?
-    subprocess.run(["python", "-m", "autochecklist"])
+    cmd = ["coverage", "run", "--append"] if args.coverage else ["python"]
+    subprocess.run(cmd + ["-m", "autochecklist"])
 
 
-def cancel_GUI() -> None:
+def cancel_GUI(args: ManualTestArgs) -> None:
     # Run in a separate process because having multiple GUIs open in the same
     # Python process is not supported (and not normally needed anyway)
-    subprocess.run(["python", "-m", "autochecklist"])
+    cmd = ["coverage", "run", "--append"] if args.coverage else ["python"]
+    subprocess.run(cmd + ["-m", "autochecklist"])
 
 
 def schedule_rebroadcast(client: BoxCastApiClient) -> None:
