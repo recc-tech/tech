@@ -26,14 +26,6 @@ class McrTeardownConfig(Config):
         self.live_event_url = self.live_event_url_template.fill(
             {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
         )
-        self.live_event_captions_tab_url = (
-            self.live_event_captions_tab_url_template.fill(
-                {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-            )
-        )
-        self.boxcast_edit_captions_url = self.boxcast_edit_captions_url_template.fill(
-            {"BOXCAST_EVENT_ID": self._args.boxcast_event_id}
-        )
         self.vimeo_video_title = self.vimeo_video_title_template.fill(
             {
                 "MESSAGE_SERIES": self._args.message_series,
@@ -43,12 +35,5 @@ class McrTeardownConfig(Config):
 
     def fill_placeholders(self, text: str) -> str:
         text = text.replace("%{boxcast.live_event_url}%", self.live_event_url)
-        # TODO: These seem to be unused
-        text = text.replace(
-            "%{boxcast.live_event_captions_tab_url}%", self.live_event_captions_tab_url
-        )
-        text = text.replace(
-            "%{boxcast.edit_captions_url}%", self.boxcast_edit_captions_url
-        )
         text = text.replace("%{vimeo.video_title}%", self.vimeo_video_title)
         return super().fill_placeholders(text)

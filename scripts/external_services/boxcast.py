@@ -422,6 +422,7 @@ class BoxCastGuiClient(ReccWebDriver):
         login_button.click()
 
 
+# TODO: Delete this
 class BoxCastClientFactory:
     def __init__(
         self,
@@ -515,51 +516,6 @@ def export_to_vimeo(
         cancellation_token=cancellation_token,
     )
     vimeo_export_button.click()
-
-
-def upload_captions_to_boxcast(
-    client: BoxCastGuiClient,
-    url: str,
-    file_path: Path,
-    cancellation_token: CancellationToken,
-):
-    client.get(url, cancellation_token)
-
-    # There is also a settings "button" in the sidebar, but it is represented
-    # with an <a> tag rather than a <button> tag. Just in case, check that the
-    # button selected here is not in the sidebar.
-    settings_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Settings')][not(ancestor::nav)]",
-        cancellation_token=cancellation_token,
-        timeout=timedelta(seconds=10),
-    )
-    settings_button.click()
-
-    replace_captions_option = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Replace Captions with WebVTT File')]",
-        cancellation_token=cancellation_token,
-    )
-    replace_captions_option.click()
-
-    file_input = client.wait_for_single_element(
-        By.XPATH,
-        "//input[@type='file'][contains(@accept, '.vtt')]",
-        cancellation_token=cancellation_token,
-        clickable=False,
-    )
-    # Don't send file_path.as_posix(), otherwise BoxCast won't find the file
-    # for some reason
-    _send_keys(file_input, str(file_path))
-
-    submit_button = client.wait_for_single_element(
-        By.XPATH,
-        "//button[contains(., 'Save Uploaded Caption File')]",
-        cancellation_token=cancellation_token,
-        timeout=timedelta(seconds=10),
-    )
-    submit_button.click()
 
 
 def _get_attribute(element: WebElement, name: str) -> str:

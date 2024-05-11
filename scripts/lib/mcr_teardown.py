@@ -123,17 +123,14 @@ def remove_worship_captions(config: McrTeardownConfig):
 
 
 def upload_captions_to_BoxCast(
-    boxcast_client_factory: BoxCastClientFactory,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-):
-    cancellation_token = messenger.allow_cancel()
-    with boxcast_client_factory.get_client(cancellation_token) as client:
-        boxcast_tasks.upload_captions_to_boxcast(
-            client=client,
-            url=config.boxcast_edit_captions_url,
-            file_path=config.final_captions_file,
-            cancellation_token=cancellation_token,
+    client: BoxCastApiClient, config: McrTeardownConfig
+) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    else:
+        client.upload_captions(
+            broadcast_id=broadcast.id, path=config.final_captions_file
         )
 
 

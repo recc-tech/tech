@@ -37,9 +37,8 @@ final = "%{folder.captions}%/final.vtt"
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
+# TODO: Delete this once I switch to API for exporting to Vimeo
 live_event_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!"
-live_event_captions_tab_url = "%{boxcast.live_event_url}%?tab=captions"
-edit_captions_url = "https://dashboard.boxcast.com/broadcasts/!{BOXCAST_EVENT_ID}!/edit-captions"
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
