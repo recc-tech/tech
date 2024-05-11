@@ -107,8 +107,7 @@ class BoxCastApiClient:
                 "end_time": c.end_time,
                 "text": c.text,
                 # BoxCast seems to default to 1 when uploading via UI
-                # TODO: Use 1
-                "confidence": 0,
+                "confidence": 1,
             }
             for c in _load_captions(p=path)
         ]
@@ -139,6 +138,22 @@ class BoxCastApiClient:
         }
         headers = {"Content-Type": "application/json"}
         self._send_and_check(method="POST", url=url, json=payload, headers=headers)
+
+    def export_to_vimeo(
+        self, broadcast_id: str, vimeo_user_id: str, title: str
+    ) -> None:
+        recording_id = self._get_recording_id(broadcast_id=broadcast_id)
+        url = f"{self._config.boxcast_base_url}/account/recordings/{recording_id}/vimeo_export"
+        payload = {
+            "vimeo_user_id": vimeo_user_id,
+            "video_info": {"name": title, "description": ""},
+        }
+        self._send_and_check(method="POST", url=url, json=payload)
+
+    def _get_recording_id(self, broadcast_id: str) -> str:
+        url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}"
+        data = self._send_and_check(method="GET", url=url)
+        return data["recording_id"]
 
     def _send_and_check(
         self,

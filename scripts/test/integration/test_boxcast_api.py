@@ -16,11 +16,11 @@ from external_services import (
     InputPolicy,
 )
 
-BROADCAST_20240505_ID = "orn5qh81x7dojxwlbbng"
-EXPECTED_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
+_BROADCAST_20240505_ID = "orn5qh81x7dojxwlbbng"
+_EXPECTED_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
     "boxcast_api_data", "captions_20240505.vtt"
 )
-ACTUAL_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
+_ACTUAL_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
     "boxcast_temp", "captions_20240505.vtt"
 )
 
@@ -33,7 +33,7 @@ class BoxCastTestCase(unittest.TestCase):
             year=2024, month=5, day=5, hour=14, minute=25, second=0, tzinfo=tzutc()
         )
         self.assertEqual(
-            Broadcast(id=BROADCAST_20240505_ID, start_time=expected_start_time),
+            Broadcast(id=_BROADCAST_20240505_ID, start_time=expected_start_time),
             broadcast,
         )
         log_problem_mock.assert_not_called()
@@ -45,7 +45,7 @@ class BoxCastTestCase(unittest.TestCase):
             year=2024, month=5, day=5, hour=14, minute=25, second=0, tzinfo=tzutc()
         )
         self.assertEqual(
-            Broadcast(id=BROADCAST_20240505_ID, start_time=expected_start_time),
+            Broadcast(id=_BROADCAST_20240505_ID, start_time=expected_start_time),
             broadcast,
         )
         log_problem_mock.assert_not_called()
@@ -59,10 +59,11 @@ class BoxCastTestCase(unittest.TestCase):
     def test_download_captions_20240505(self) -> None:
         (client, log_problem_mock, _) = _set_up_dependencies()
         client.download_captions(
-            broadcast_id=BROADCAST_20240505_ID, path=ACTUAL_CAPTIONS_20240505
+            broadcast_id=_BROADCAST_20240505_ID, path=_ACTUAL_CAPTIONS_20240505
         )
         self.assertEqual(
-            EXPECTED_CAPTIONS_20240505.read_text(), ACTUAL_CAPTIONS_20240505.read_text()
+            _EXPECTED_CAPTIONS_20240505.read_text(),
+            _ACTUAL_CAPTIONS_20240505.read_text(),
         )
         log_problem_mock.assert_not_called()
 

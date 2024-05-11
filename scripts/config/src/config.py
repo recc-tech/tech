@@ -429,6 +429,7 @@ class Config(BaseConfig):
             self.vimeo_captions_language = reader.get_str("vimeo.captions_language")
             self.vimeo_captions_name = reader.get_str("vimeo.captions_name")
             self.vimeo_video_title_template = reader.get_template("vimeo.video_title")
+            self.vimeo_user_id = reader.get_str("vimeo.user_id")
 
             # vMix
             self.vmix_base_url = reader.get_str("vmix.base_url")

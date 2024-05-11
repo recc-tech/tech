@@ -21,6 +21,7 @@ from external_services import BoxCastApiClient, CredentialStore
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
 _REBROADCAST_TITLE = f"Test Rebroadcast {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+_VIMEO_TITLE = f"Test Video {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 _REBROADCAST_START = datetime.combine(
     date=datetime.now().date() + timedelta(days=1),
     time=time(hour=13, minute=3, second=14),
@@ -33,6 +34,7 @@ class TestCase(Enum):
     CANCEL_GUI = "cancel_gui"
     REBROADCAST = "rebroadcast"
     CAPTIONS = "captions"
+    VIMEO_EXPORT = "vimeo_export"
 
 
 class ManualTestArgs(ReccArgs):
@@ -92,7 +94,7 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[client],
+            arguments=[client, config],
             messenger=messenger,
         )
         task_model = _make_task_model(args.tests)
@@ -159,7 +161,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                     name="ready_schedule_rebroadcast",
                     description=(
                         f"The next task should create a broadcast called '{_REBROADCAST_TITLE}' starting at {_REBROADCAST_START.strftime('%Y-%m-%d %H:%M:%S')}."
-                        + f" [IMPORTANT] You should log into BoxCast using the owner account before starting."
+                        + f" [IMPORTANT] Log in to BoxCast using the owner account before continuing."
                     ),
                 ),
                 TaskModel(
@@ -213,6 +215,33 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         )
         tasks.append(t)
         latest_task = t.name
+    if TestCase.VIMEO_EXPORT in cases:
+        t = TaskModel(
+            name="test_Vimeo_export",
+            subtasks=[
+                TaskModel(
+                    name="ready_Vimeo_export",
+                    description=(
+                        "The next task should export the captions to Vimeo."
+                        f" [IMPORTANT] Log in to Vimeo before continuing."
+                    ),
+                ),
+                TaskModel(
+                    name="export_to_Vimeo",
+                    description="Export to Vimeo.",
+                    only_auto=True,
+                    prerequisites={"ready_Vimeo_export"},
+                ),
+                TaskModel(
+                    name="delete_Vimeo_export",
+                    description="Check that the video was exported to Vimeo and then delete it.",
+                    prerequisites={"export_to_Vimeo"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
     return TaskModel(name="test_manually", subtasks=tasks)
 
 
@@ -242,6 +271,14 @@ def download_captions(client: BoxCastApiClient) -> None:
 
 def upload_captions(client: BoxCastApiClient) -> None:
     client.upload_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
+
+
+def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
+    client.export_to_vimeo(
+        broadcast_id=_BROADCAST_ID,
+        vimeo_user_id=config.vimeo_user_id,
+        title=f"{_VIMEO_TITLE} (BoxCast ID {_BROADCAST_ID})",
+    )
 
 
 if __name__ == "__main__":
