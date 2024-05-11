@@ -1,7 +1,10 @@
 import subprocess
 import sys
+from argparse import ArgumentParser, Namespace
 from datetime import datetime, time, timedelta
-from typing import Tuple
+from enum import Enum
+from pathlib import Path
+from typing import Callable, List, Tuple
 
 from args import ReccArgs
 from autochecklist import (
@@ -16,17 +19,41 @@ from autochecklist import (
 from config import Config
 from external_services import BoxCastApiClient, CredentialStore
 
-_BROADCAST_ID = "orn5qh81x7dojxwlbbng"
+_BROADCAST_ID = "on8bvqsbddurxkmhppld"
 _REBROADCAST_TITLE = f"Test Rebroadcast {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 _REBROADCAST_START = datetime.combine(
     date=datetime.now().date() + timedelta(days=1),
     time=time(hour=13, minute=3, second=14),
 )
+_CAPTIONS_PATH = Path(__file__).resolve().parent.joinpath("data", "captions.vtt")
+
+
+class TestCase(Enum):
+    RUN_GUI = "run_gui"
+    CANCEL_GUI = "cancel_gui"
+    REBROADCAST = "rebroadcast"
+    CAPTIONS = "captions"
 
 
 class ManualTestArgs(ReccArgs):
     NAME = "test_manually"
     DESCRIPTION = "This script will guide you through testing parts of the project for which fully automated testing is impractical."
+
+    def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
+        super().__init__(args, error)
+        self.tests: List[TestCase] = (
+            list(TestCase) if not args.test else [TestCase(t) for t in args.test]
+        )
+
+    @classmethod
+    def set_up_parser(cls, parser: ArgumentParser) -> None:
+        parser.add_argument(
+            "--test",
+            action="append",
+            choices=[t.value for t in TestCase],
+            help="Test cases to run (default: all of them)",
+        )
+        return super().set_up_parser(parser)
 
 
 class ManualTestScript(Script[ManualTestArgs, Config]):
@@ -68,78 +95,125 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
             arguments=[client],
             messenger=messenger,
         )
-        task_model = TaskModel(
-            name="test_manually",
+        task_model = _make_task_model(args.tests)
+        return task_model, function_finder
+
+
+def _make_task_model(cases: List[TestCase]) -> TaskModel:
+    tasks = [
+        TaskModel(
+            name="ready",
+            description="Press 'Done' once you are ready to start testing.",
+        ),
+    ]
+    latest_task = "ready"
+    if TestCase.RUN_GUI in cases:
+        t = TaskModel(
+            name="test_run_GUI",
             subtasks=[
                 TaskModel(
-                    name="ready",
-                    description="Press 'Done' once you are ready to start testing.",
+                    name="ready_run_GUI",
+                    description=(
+                        "The next task will open a separate GUI window."
+                        " Follow the instructions on that window and check that the GUI itself works as expected."
+                    ),
                 ),
                 TaskModel(
-                    name="test_run_GUI",
-                    subtasks=[
-                        TaskModel(
-                            name="ready_run_GUI",
-                            description=(
-                                "The next task will open a separate GUI window."
-                                " Follow the instructions on that window and check that the GUI itself works as expected."
-                            ),
-                        ),
-                        TaskModel(
-                            name="run_GUI",
-                            description="Run the GUI and see if it works.",
-                            only_auto=True,
-                            prerequisites={"ready_run_GUI"},
-                        ),
-                    ],
-                    prerequisites={"ready"},
-                ),
-                TaskModel(
-                    name="test_cancel_GUI",
-                    subtasks=[
-                        TaskModel(
-                            name="ready_cancel_GUI",
-                            description=(
-                                "The next task will open a separate GUI window."
-                                " Complete one or two tasks and then close the window without completing the test."
-                            ),
-                        ),
-                        TaskModel(
-                            name="cancel_GUI",
-                            description="Run the GUI and see if closing it early works.",
-                            only_auto=True,
-                            prerequisites={"ready_cancel_GUI"},
-                        ),
-                    ],
-                    prerequisites={"test_run_GUI"},
-                ),
-                TaskModel(
-                    name="test_schedule_rebroadcast",
-                    subtasks=[
-                        TaskModel(
-                            name="ready_schedule_rebroadcast",
-                            description=(
-                                f"The next task should create a broadcast called '{_REBROADCAST_TITLE}' starting at {_REBROADCAST_START.strftime('%Y-%m-%d %H:%M:%S')}."
-                                + f" [IMPORTANT] You should log into BoxCast using the owner account before starting."
-                            ),
-                        ),
-                        TaskModel(
-                            name="schedule_rebroadcast",
-                            description="Failed to schedule rebroadcast.",
-                            only_auto=True,
-                            prerequisites={"ready_schedule_rebroadcast"},
-                        ),
-                        TaskModel(
-                            name="delete_rebroadcast",
-                            description="Go to BoxCast, check that the rebroadcast was created properly, and then delete it.",
-                            prerequisites={"schedule_rebroadcast"},
-                        ),
-                    ],
-                    prerequisites={"test_cancel_GUI"},
+                    name="run_GUI",
+                    description="Run the GUI and see if it works.",
+                    only_auto=True,
+                    prerequisites={"ready_run_GUI"},
                 ),
             ],
+            prerequisites={latest_task},
         )
-        return task_model, function_finder
+        tasks.append(t)
+        latest_task = t.name
+    if TestCase.CANCEL_GUI in cases:
+        t = TaskModel(
+            name="test_cancel_GUI",
+            subtasks=[
+                TaskModel(
+                    name="ready_cancel_GUI",
+                    description=(
+                        "The next task will open a separate GUI window."
+                        " Complete one or two tasks and then close the window without completing the test."
+                    ),
+                ),
+                TaskModel(
+                    name="cancel_GUI",
+                    description="Run the GUI and see if closing it early works.",
+                    only_auto=True,
+                    prerequisites={"ready_cancel_GUI"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
+    if TestCase.REBROADCAST in cases:
+        t = TaskModel(
+            name="test_schedule_rebroadcast",
+            subtasks=[
+                TaskModel(
+                    name="ready_schedule_rebroadcast",
+                    description=(
+                        f"The next task should create a broadcast called '{_REBROADCAST_TITLE}' starting at {_REBROADCAST_START.strftime('%Y-%m-%d %H:%M:%S')}."
+                        + f" [IMPORTANT] You should log into BoxCast using the owner account before starting."
+                    ),
+                ),
+                TaskModel(
+                    name="schedule_rebroadcast",
+                    description="Failed to schedule rebroadcast.",
+                    only_auto=True,
+                    prerequisites={"ready_schedule_rebroadcast"},
+                ),
+                TaskModel(
+                    name="delete_rebroadcast",
+                    description="Go to BoxCast, check that the rebroadcast was created properly, and then delete it.",
+                    prerequisites={"schedule_rebroadcast"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
+    if TestCase.CAPTIONS in cases:
+        t = TaskModel(
+            name="test_update_captions",
+            subtasks=[
+                TaskModel(
+                    name="ready_update_captions",
+                    description="The next task should download captions and reupload them to BoxCast.",
+                ),
+                TaskModel(
+                    name="download_captions",
+                    description="Download captions",
+                    only_auto=True,
+                    prerequisites={"ready_update_captions"},
+                ),
+                TaskModel(
+                    name="tweak_captions",
+                    description=f"Tweak the captions in {_CAPTIONS_PATH.as_posix()} so that you'll be able to recognize the difference when re-uploaded.",
+                    prerequisites={"download_captions"},
+                ),
+                TaskModel(
+                    name="upload_captions",
+                    description="Upload captions",
+                    only_auto=True,
+                    prerequisites={"tweak_captions"},
+                ),
+                TaskModel(
+                    name="check_captions",
+                    description=f"Check that the captions were uploaded properly (https://dashboard.boxcast.com/broadcasts/{_BROADCAST_ID}?tab=captions).",
+                    prerequisites={"upload_captions"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
+    return TaskModel(name="test_manually", subtasks=tasks)
 
 
 def run_GUI() -> None:
@@ -160,6 +234,14 @@ def schedule_rebroadcast(client: BoxCastApiClient) -> None:
     client.schedule_rebroadcast(
         broadcast_id=_BROADCAST_ID, name=_REBROADCAST_TITLE, start=_REBROADCAST_START
     )
+
+
+def download_captions(client: BoxCastApiClient) -> None:
+    client.download_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
+
+
+def upload_captions(client: BoxCastApiClient) -> None:
+    client.upload_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
 
 
 if __name__ == "__main__":

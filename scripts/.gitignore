@@ -8,5 +8,6 @@ htmlcov/
 /test/integration/planning_center_temp/
 /test/integration/summarize_plan_temp/
 /test/manual/home/
+/test/manual/data/
 __pycache__/
 config/active_profile.txt

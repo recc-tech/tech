@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Mapping, Optional
 import dateutil.parser
 import dateutil.tz
 import requests
+import webvtt
 from autochecklist import CancellationToken, Messenger, ProblemLevel, TaskStatus
 from config import Config
 from requests.auth import HTTPBasicAuth
@@ -88,6 +89,31 @@ class BoxCastApiClient:
                 for c in json_cues
             ]
             _save_captions(cues, path)
+
+    def _get_captions_id(self, broadcast_id: str) -> str:
+        url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
+        json_captions = self._send_and_check("GET", url)
+        if len(json_captions) == 0:
+            raise ValueError("No captions found.")
+        else:
+            return json_captions[0]["id"]
+
+    def upload_captions(self, broadcast_id: str, path: Path) -> None:
+        captions_id = self._get_captions_id(broadcast_id=broadcast_id)
+        url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"
+        cues = [
+            {
+                "start_time": c.start_time,
+                "end_time": c.end_time,
+                "text": c.text,
+                # BoxCast seems to default to 1 when uploading via UI
+                # TODO: Use 1
+                "confidence": 0,
+            }
+            for c in _load_captions(p=path)
+        ]
+        payload = {"cues": cues}
+        self._send_and_check("PUT", url, json=payload)
 
     def schedule_rebroadcast(
         self, broadcast_id: str, name: str, start: datetime
@@ -188,10 +214,7 @@ class BoxCastApiClient:
                     )
                     self._token = tok
                     return tok
-                except ValueError as e:
-                    raise ValueError(
-                        f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{self.MAX_ATTEMPTS})."
-                    ) from e
+                except ValueError:
                     self._messenger.log_problem(
                         ProblemLevel.WARN,
                         f"Failed to get OAuth token from the BoxCast API (attempt {i + 1}/{self.MAX_ATTEMPTS}).",
@@ -229,6 +252,15 @@ def _save_captions(cues: List[Cue], p: Path) -> None:
             f.write(f"{i}\n")
             f.write(f"{_format_timedelta(start_td)} --> {_format_timedelta(end_td)}\n")
             f.write(f"{c.text}\n\n")
+
+
+def _load_captions(p: Path) -> List[Cue]:
+    vtt = webvtt.read(p)
+    vtt.captions
+    return [
+        Cue(start_time=c.start_in_seconds, end_time=c.end_in_seconds, text=c.text)
+        for c in vtt.captions
+    ]
 
 
 def _format_timedelta(td: timedelta) -> str:
