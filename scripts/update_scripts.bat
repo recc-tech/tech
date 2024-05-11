@@ -9,7 +9,3 @@ git switch main
 git pull
 
 pip install --upgrade -r ./setup/requirements.txt
-
-ECHO(
-ECHO Successfully updated scripts. You can now close this window.
-PAUSE
