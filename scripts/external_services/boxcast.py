@@ -166,14 +166,13 @@ class BoxCastApiClient:
         for i in range(self.MAX_ATTEMPTS):
             token = self._get_current_oauth_token(old_token=token)
             headers["Authorization"] = f"Bearer {token}"
-            # TODO: Set timeout
-            # TODO: Accept a cancellation token
             response = requests.request(
                 method=method,
                 url=url,
                 params=params,
                 json=json,
                 headers=headers,
+                timeout=self._config.timeout_seconds,
             )
             if response.status_code // 100 == 2:
                 return response.json()
@@ -242,6 +241,7 @@ class BoxCastApiClient:
             data="grant_type=client_credentials",
             auth=auth,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=self._config.timeout_seconds,
         )
         if response.status_code // 100 != 2:
             raise ValueError(
