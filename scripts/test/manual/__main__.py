@@ -6,6 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, List, Tuple
 
+import summarize_plan
 from args import ReccArgs
 from autochecklist import (
     ConsoleMessenger,
@@ -17,7 +18,8 @@ from autochecklist import (
     TkMessenger,
 )
 from config import Config
-from external_services import BoxCastApiClient, CredentialStore
+from external_services import BoxCastApiClient, CredentialStore, PlanningCenterClient
+from summarize_plan import SummarizePlanArgs
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
 _REBROADCAST_TITLE = f"Test Rebroadcast {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -35,6 +37,8 @@ class TestCase(Enum):
     REBROADCAST = "rebroadcast"
     CAPTIONS = "captions"
     VIMEO_EXPORT = "vimeo_export"
+    PLAN_SUMMARY_20240414 = "plan_summary_20240414"
+    PLAN_SUMMARY_20240505 = "plan_summary_20240505"
 
 
 class ManualTestArgs(ReccArgs):
@@ -91,16 +95,22 @@ class ManualTestScript(Script[ManualTestArgs, Config]):
         self, args: ManualTestArgs, config: Config, messenger: Messenger
     ) -> Tuple[TaskModel, FunctionFinder]:
         credential_store = CredentialStore(messenger=messenger)
-        client = BoxCastApiClient(
+        boxcast_client = BoxCastApiClient(
             messenger=messenger,
             credential_store=credential_store,
             config=config,
-            lazy_login=False,
+            lazy_login=True,
+        )
+        pco_client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=True,
         )
         function_finder = FunctionFinder(
             # Use the current module
             module=sys.modules[__name__],
-            arguments=[client, config, args],
+            arguments=[boxcast_client, pco_client, messenger, config, args],
             messenger=messenger,
         )
         task_model = _make_task_model(args.tests)
@@ -248,6 +258,54 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         )
         tasks.append(t)
         latest_task = t.name
+    if TestCase.PLAN_SUMMARY_20240414 in cases:
+        t = TaskModel(
+            name="test_summarize_plan_20240414",
+            subtasks=[
+                TaskModel(
+                    name="ready_summarize_plan_20240414",
+                    description="The next task should show a summary of the plan from April 14, 2024.",
+                ),
+                TaskModel(
+                    name="summarize_plan_20240414",
+                    description="Show a summary of the plan from April 14, 2024.",
+                    only_auto=True,
+                    prerequisites={"ready_summarize_plan_20240414"},
+                ),
+                TaskModel(
+                    name="check_plan_summary_20240414",
+                    description="Check that the plan summary looks good.",
+                    prerequisites={"summarize_plan_20240414"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
+    if TestCase.PLAN_SUMMARY_20240505 in cases:
+        t = TaskModel(
+            name="test_summarize_plan_20240505",
+            subtasks=[
+                TaskModel(
+                    name="ready_summarize_plan_20240505",
+                    description="The next task should show a summary of the plan from May 5, 2024.",
+                ),
+                TaskModel(
+                    name="summarize_plan_20240505",
+                    description="Show a summary of the plan from May 5, 2024.",
+                    only_auto=True,
+                    prerequisites={"ready_summarize_plan_20240505"},
+                ),
+                TaskModel(
+                    name="check_plan_summary_20240505",
+                    description="Check that the plan summary looks good.",
+                    prerequisites={"summarize_plan_20240505"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
     return TaskModel(name="test_manually", subtasks=tasks)
 
 
@@ -284,6 +342,28 @@ def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
         broadcast_id=_BROADCAST_ID,
         vimeo_user_id=config.vimeo_user_id,
         title=f"{_VIMEO_TITLE} (BoxCast ID {_BROADCAST_ID})",
+    )
+
+
+def summarize_plan_20240414(client: PlanningCenterClient, messenger: Messenger) -> None:
+    args = SummarizePlanArgs.parse(["", "--date", "2024-04-14"])
+    cfg = Config(args=args, allow_multiple_only_for_testing=True)
+    summarize_plan.summarize_plan(
+        pco_client=client,
+        args=args,
+        config=cfg,
+        messenger=messenger,
+    )
+
+
+def summarize_plan_20240505(client: PlanningCenterClient, messenger: Messenger) -> None:
+    args = SummarizePlanArgs.parse(["", "--date", "2024-05-05"])
+    cfg = Config(args=args, allow_multiple_only_for_testing=True)
+    summarize_plan.summarize_plan(
+        pco_client=client,
+        args=args,
+        config=cfg,
+        messenger=messenger,
     )
 
 
