@@ -25,6 +25,7 @@ from external_services import (
 class AnnotatedSong:
     song: Song
     notes: List[ItemNote]
+    description: str
 
 
 @dataclass(frozen=True)
@@ -219,7 +220,7 @@ def _get_songs(
     for i in matching_items:
         song = i.song or Song(ccli=None, title=i.title, author=None)
         notes = _filter_notes(i.notes, note_categories)
-        songs.append(AnnotatedSong(song, notes))
+        songs.append(AnnotatedSong(song, notes=notes, description=i.description))
     return songs
 
 
@@ -310,7 +311,9 @@ def _parse_annotated_song(song: object) -> AnnotatedSong:
     song = typing.cast(dict[object, object], _cast(dict, song))
     raw_notes = typing.cast(list[object], _cast(list, song["notes"]))
     return AnnotatedSong(
-        song=_parse_song(song["song"]), notes=[_parse_note(n) for n in raw_notes]
+        song=_parse_song(song["song"]),
+        notes=[_parse_note(n) for n in raw_notes],
+        description=str(song["description"]),
     )
 
 
@@ -471,11 +474,12 @@ def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
             _show_notes(s.notes),
             _escape(s.song.title or ""),
             _escape(s.song.author or ""),
+            _escape(s.description or ""),
         ]
         for s in songs
     ]
-    col_widths = ["min-content", "3fr", "2fr", "3fr"]
-    header = ["CCLI", "Notes", "Title", "Author"]
+    col_widths = ["min-content", "3fr", "2fr", "3fr", "3fr"]
+    header = ["CCLI", "Notes", "Title", "Author", "Description"]
     # No notes
     if all(not r[1] for r in rows):
         col_widths[1] = "min-content"

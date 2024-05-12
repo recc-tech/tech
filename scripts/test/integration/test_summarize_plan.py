@@ -3,8 +3,8 @@ import json
 import unittest
 from datetime import date
 from pathlib import Path
-from typing import Dict
-from unittest.mock import call, create_autospec
+from typing import Dict, Tuple
+from unittest.mock import Mock, call, create_autospec
 
 from args import ReccArgs
 from autochecklist import Messenger, ProblemLevel
@@ -28,20 +28,25 @@ _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
 _PLANS_URL = (
     "https://api.planningcenteronline.com/services/v2/service_types/882857/plans"
 )
+_PARAMS_PLAN_ITEMS = {"per_page": 200, "include": "song,item_notes"}
 _PLAN_ITEMS_20240225_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/69868600/items"
 _PARAMS_20240225_PLANS = {
     "filter": "before,after",
     "before": "2024-02-26",
     "after": "2024-02-25",
 }
-_PARAMS_20240225_PLAN_ITEMS = {"per_page": 200, "include": "song,item_notes"}
 _PLAN_ITEMS_20240414_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/71699950/items"
 _PARAMS_20240414_PLANS = {
     "filter": "before,after",
     "before": "2024-04-15",
     "after": "2024-04-14",
 }
-_PARAMS_20240414_PLAN_ITEMS = {"per_page": 200, "include": "song,item_notes"}
+_PLAN_ITEMS_20240505_URL = "https://api.planningcenteronline.com/services/v2/service_types/882857/plans/72395216/items"
+_PARAMS_20240505_PLANS = {
+    "filter": "before,after",
+    "before": "2024-05-06",
+    "after": "2024-05-05",
+}
 
 
 def _get_canned_response(fname: str) -> Dict[str, object]:
@@ -52,12 +57,16 @@ def _get_canned_response(fname: str) -> Dict[str, object]:
 def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object]:
     if url == _PLANS_URL and params == _PARAMS_20240225_PLANS:
         return _get_canned_response("20240225_plan.json")
-    if url == _PLAN_ITEMS_20240225_URL and params == _PARAMS_20240225_PLAN_ITEMS:
+    if url == _PLAN_ITEMS_20240225_URL and params == _PARAMS_PLAN_ITEMS:
         return _get_canned_response("20240225_plan_items.json")
     if url == _PLANS_URL and params == _PARAMS_20240414_PLANS:
         return _get_canned_response("20240414_plan.json")
-    if url == _PLAN_ITEMS_20240414_URL and params == _PARAMS_20240414_PLAN_ITEMS:
+    if url == _PLAN_ITEMS_20240414_URL and params == _PARAMS_PLAN_ITEMS:
         return _get_canned_response("20240414_plan_items.json")
+    if url == _PLANS_URL and params == _PARAMS_20240505_PLANS:
+        return _get_canned_response("20240505_plan.json")
+    if url == _PLAN_ITEMS_20240505_URL and params == _PARAMS_PLAN_ITEMS:
+        return _get_canned_response("20240505_plan_items.json")
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
@@ -101,7 +110,8 @@ class SummarizePlanTestCase(unittest.TestCase):
                         title="Echo",
                         author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
                     ),
-                    [],
+                    notes=[],
+                    description="",
                 ),
                 # Linked song, but no CCLI number or author
                 AnnotatedSong(
@@ -110,7 +120,8 @@ class SummarizePlanTestCase(unittest.TestCase):
                         title="Different (Live at Mosaic, Los Angeles, 2023)",
                         author=None,
                     ),
-                    [],
+                    notes=[],
+                    description="",
                 ),
                 AnnotatedSong(
                     Song(
@@ -118,12 +129,13 @@ class SummarizePlanTestCase(unittest.TestCase):
                         title="One Thing Remains",
                         author="Christa Black, Brian Johnson, and Jeremy Riddle",
                     ),
-                    [
+                    notes=[
                         ItemNote(
                             category="Visuals",
                             contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
                         )
                     ],
+                    description="",
                 ),
                 AnnotatedSong(
                     Song(
@@ -131,12 +143,13 @@ class SummarizePlanTestCase(unittest.TestCase):
                         title="Goodness Of God",
                         author="Ed Cash and Jenn Johnson",
                     ),
-                    [
+                    notes=[
                         ItemNote(
                             category="Visuals",
                             contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
                         )
                     ],
+                    description="",
                 ),
                 # No linked song at all
                 AnnotatedSong(
@@ -145,7 +158,8 @@ class SummarizePlanTestCase(unittest.TestCase):
                         title="Song 5: DIFFERENT ",
                         author=None,
                     ),
-                    [],
+                    notes=[],
+                    description="",
                 ),
             ],
             bumper_video=AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[]),
@@ -171,23 +185,10 @@ class SummarizePlanTestCase(unittest.TestCase):
         actual_summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
         self.assert_equal_summary(expected_summary, actual_summary)
 
+    # Not a particularly important case now that 2024-05-05 is tested, but it
+    # doesn't hurt to keep it around.
     def test_summarize_20240225(self) -> None:
-        config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        messenger = create_autospec(Messenger)
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
+        (pco_client, messenger, log_problem_mock, config) = self._set_up()
         dt = date(year=2024, month=2, day=25)
 
         expected_summary = load_plan_summary(
@@ -198,7 +199,7 @@ class SummarizePlanTestCase(unittest.TestCase):
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        messenger.log_problem.assert_has_calls(
+        log_problem_mock.assert_has_calls(
             [
                 call(level=ProblemLevel.WARN, message="No announcements video found."),
                 call(
@@ -207,25 +208,15 @@ class SummarizePlanTestCase(unittest.TestCase):
                 ),
             ]
         )
-        self.assertEqual(2, messenger.log_problem.call_count)
+        self.assertEqual(2, log_problem_mock.call_count)
 
+    # Interesting characteristics of this test case:
+    #  * CCLI provided for most, but not all songs
+    #  * Plan item with no linked song
+    #  * Plan item with a linked song but no CCLI number
+    #  * Empty description for each song
     def test_summarize_20240414(self) -> None:
-        config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        messenger = create_autospec(Messenger)
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
+        (pco_client, messenger, log_problem_mock, config) = self._set_up()
         dt = date(year=2024, month=4, day=14)
 
         expected_summary = load_plan_summary(
@@ -236,7 +227,23 @@ class SummarizePlanTestCase(unittest.TestCase):
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        messenger.log_problem.assert_not_called()
+        log_problem_mock.assert_not_called()
+
+    # Interesting characteristics of this test case:
+    #  * CCLI number in the description of each song
+    def test_summarize_20240505(self) -> None:
+        (pco_client, messenger, log_problem_mock, config) = self._set_up()
+        dt = date(year=2024, month=5, day=5)
+
+        expected_summary = load_plan_summary(
+            _DATA_DIR.joinpath("20240505_summary.json")
+        )
+        actual_summary = get_plan_summary(
+            client=pco_client, messenger=messenger, config=config, dt=dt
+        )
+
+        self.assert_equal_summary(expected_summary, actual_summary)
+        log_problem_mock.assert_not_called()
 
     def assert_equal_summary(
         self, expected: PlanItemsSummary, actual: PlanItemsSummary
@@ -251,3 +258,22 @@ class SummarizePlanTestCase(unittest.TestCase):
         self.assertEqual(expected.message_notes, actual.message_notes)
         # Just in case
         self.assertEqual(expected, actual)
+
+    def _set_up(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
+        config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        messenger = create_autospec(Messenger)
+        pco_client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=True,
+        )
+        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+        return (pco_client, messenger, messenger.log_problem, config)

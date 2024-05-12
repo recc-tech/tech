@@ -39,7 +39,8 @@
 				"title": "Echo",
 				"author": "Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas"
 			},
-			"notes": []
+			"notes": [],
+			"description": ""
 		},
 		{
 			"song": {
@@ -47,7 +48,8 @@
 				"title": "Different (Live at Mosaic, Los Angeles, 2023)",
 				"author": null
 			},
-			"notes": []
+			"notes": [],
+			"description": ""
 		},
 		{
 			"song": {
@@ -60,7 +62,8 @@
 					"category": "Visuals",
 					"contents": "Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n"
 				}
-			]
+			],
+			"description": ""
 		},
 		{
 			"song": {
@@ -73,7 +76,8 @@
 					"category": "Visuals",
 					"contents": "Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               \"I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life.\"                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. "
 				}
-			]
+			],
+			"description": ""
 		},
 		{
 			"song": {
@@ -81,7 +85,8 @@
 				"title": "Song 5: DIFFERENT ",
 				"author": null
 			},
-			"notes": []
+			"notes": [],
+			"description": ""
 		}
 	],
 	"bumper_video": {
