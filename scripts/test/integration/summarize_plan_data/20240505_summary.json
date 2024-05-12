@@ -1,9 +1,9 @@
 {
 	"plan": {
-		"id": "71699950",
+		"id": "72395216",
+		"title": "Running Father + Communion - Yohan Larochelle",
 		"series_title": "WORTHY",
-		"title": "Worthy Of The Feast",
-		"date": "2024-04-14"
+		"date": "2024-05-05"
 	},
 	"walk_in_slides": [
 		"River’s Edge",
@@ -14,10 +14,6 @@
 		"Website",
 		"Follow Us Instagram"
 	],
-	"opener_video": {
-		"content": "Welcome Opener Video",
-		"notes": []
-	},
 	"announcements": [
 		"PIANO playing In the Background",
 		"WELCOME",
@@ -28,6 +24,14 @@
 		"After Party",
 		"See You Next Sunday"
 	],
+	"opener_video": {
+		"content": "Welcome Opener Video",
+		"notes": []
+	},
+	"bumper_video": {
+		"content": "Worthy Sermon Bumper Video",
+		"notes": []
+	},
 	"announcements_video": {
 		"content": "Video Announcements",
 		"notes": []
@@ -89,12 +93,8 @@
 			"description": ""
 		}
 	],
-	"bumper_video": {
-		"content": "Worthy Sermon Bumper Video",
-		"notes": []
-	},
 	"message_notes": {
-		"content": "Worthy Of The Feast\nMatthew 22:1-14 NLT\nOur Worth Isn’t Earned It’s Given\nMatthew 22:4\nOur Worth Is Experienced Through Acceptance\nMatthew 22:10\nOur Worth Is Revealed By Our Garments\nMatthew 22:11\nYou Are Worthy Because You Are Chosen\nMatthew 22:14\nOur Worth Is Connected To Our Embrace Of The Worth Of The Feast\nLive According To The Level Of Worth We Have Received",
+		"content": "Worthy Of The Feast\nMatthew 22:1-14 NLT\nOur Worth Isn\u2019t Earned It\u2019s Given\nMatthew 22:4\nOur Worth Is Experienced Through Acceptance\nMatthew 22:10\nOur Worth Is Revealed By Our Garments\nMatthew 22:11\nYou Are Worthy Because You Are Chosen\nMatthew 22:14\nOur Worth Is Connected To Our Embrace Of The Worth Of The Feast\nLive According To The Level Of Worth We Have Received",
 		"notes": [
 			{
 				"category": "Visuals",
