@@ -9,27 +9,29 @@
 		"River’s Edge",
 		"Faith - Love - Hope",
 		"Worthy Series Title Slide",
-		"Give Generously",
+		"Love Gives",
 		"The After Party",
+		"Next Steps",
 		"Website",
 		"Follow Us Instagram"
 	],
 	"announcements": [
 		"PIANO playing In the Background",
-		"WELCOME",
+		"WELCOME to MOSAIC",
 		"PRAY For People",
 		"CONTINUE To Worship",
 		"GIVING TALK",
-		"Prayer Ministry",
+		"Prayer Ministry ",
+		"NEXT STEPS",
 		"After Party",
 		"See You Next Sunday"
 	],
 	"opener_video": {
-		"content": "Welcome Opener Video",
+		"content": "Welcome Intro Video",
 		"notes": []
 	},
 	"bumper_video": {
-		"content": "Worthy Sermon Bumper Video",
+		"content": "Worthy Bumper Video",
 		"notes": []
 	},
 	"announcements_video": {
@@ -39,62 +41,62 @@
 	"songs": [
 		{
 			"song": {
-				"ccli": "7104200",
-				"title": "Echo",
-				"author": "Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas"
-			},
-			"notes": [],
-			"description": ""
-		},
-		{
-			"song": {
 				"ccli": null,
-				"title": "Different (Live at Mosaic, Los Angeles, 2023)",
+				"title": "Come Now Is The Time To Worship (C to A)",
 				"author": null
-			},
-			"notes": [],
-			"description": ""
-		},
-		{
-			"song": {
-				"ccli": "5508444",
-				"title": "One Thing Remains",
-				"author": "Christa Black, Brian Johnson, and Jeremy Riddle"
 			},
 			"notes": [
 				{
 					"category": "Visuals",
-					"contents": "Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n"
+					"contents": "Bible Verse at the beginning of the service: \n\nEphesians 2: 8-10 (NIV)\n\n\"For it is by grace you have been saved, through faith - and this not from yourselves, it is the gift of God - not by works, so that no one can boast. For we are God's workmanship, created in Christ Jesus to do good works, which God prepared in advance for us to do.\" "
 				}
 			],
-			"description": ""
-		},
-		{
-			"song": {
-				"ccli": "7117726",
-				"title": "Goodness Of God",
-				"author": "Ed Cash and Jenn Johnson"
-			},
-			"notes": [
-				{
-					"category": "Visuals",
-					"contents": "Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               \"I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life.\"                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. "
-				}
-			],
-			"description": ""
+			"description": "CCLI Song # 2430948"
 		},
 		{
 			"song": {
 				"ccli": null,
-				"title": "Song 5: DIFFERENT ",
+				"title": "Miracle / All Hail King Jesus (C)",
 				"author": null
 			},
 			"notes": [],
-			"description": ""
+			"description": "Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216"
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "How Deep The Father's Love For Us / He Lives (B)",
+				"author": null
+			},
+			"notes": [],
+			"description": "How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098"
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "What a Beautiful Name / Agnus Dei (B)",
+				"author": null
+			},
+			"notes": [],
+			"description": "What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713"
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Worthy Of It All / I Exalt Thee (B)",
+				"author": null
+			},
+			"notes": [
+				{
+					"category": "Visuals",
+					"contents": "During Instrumental: \n“May my prayer be set before you like incense; may the lifting of my hands be like the evening sacrifice.” Psalms 141:2 NIV"
+				}
+			],
+			"description": "Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803"
 		}
 	],
 	"message_notes": {
-		"content": "Worthy Of The Feast\nMatthew 22:1-14 NLT\nOur Worth Isn\u2019t Earned It\u2019s Given\nMatthew 22:4\nOur Worth Is Experienced Through Acceptance\nMatthew 22:10\nOur Worth Is Revealed By Our Garments\nMatthew 22:11\nYou Are Worthy Because You Are Chosen\nMatthew 22:14\nOur Worth Is Connected To Our Embrace Of The Worth Of The Feast\nLive According To The Level Of Worth We Have Received",
+		"content": "",
 		"notes": [
 			{
 				"category": "Visuals",

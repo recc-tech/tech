@@ -158,15 +158,6 @@ class PlanningCenterClient:
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
             params=params,
         )
-        # TODO
-        import json
-
-        with open(
-            "test/integration/summarize_plan_data/20240505_plan_items.json",
-            "w",
-            encoding="utf-8",
-        ) as f:
-            json.dump(items_json, f)
         sections: List[PlanSection] = []
         current_section_title: str = "[[FAKE SECTION]]"
         current_section_items: List[PlanItem] = []
