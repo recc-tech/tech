@@ -286,7 +286,7 @@ class BibleVerse:
             translations = "KJ21|ASV|AMP|AMPC|BRG|CSB|CEB|CJB|CEV|DARBY|DLNT|DRA|ERV|EHV|ESV|ESVUK|EXB|GNV|GW|GNT|HCSB|ICB|ISV|PHILLIPS|JUB|KJV|AKJV|LSB|LEB|TLB|MSG|MEV|MOUNCE|NOG|NABRE|NASB|NASB1995|NCB|NCV|NET|NIRV|NIV|NIVUK|NKJV|NLV|NLT|NMB|NRSVA|NRSVACE|NRSVCE|NRSVUE|NTE|OJB|RGT|RSV|RSVCE|TLV|VOICE|WEB|WE|WYC|YLT"
             translation_regex = r"(?:\s+\(?(" + translations + r")\)?)?"
             verse_regex = re.compile(
-                f"{books_regex} {chapter_regex}\\s*:\\s*{verses_regex}{translation_regex}(.*)".replace(
+                f"{books_regex} {chapter_regex}\\s*(?:\\s|:)\\s*{verses_regex}{translation_regex}(.*)".replace(
                     " ", r"\s+"
                 ),
                 re.IGNORECASE,
@@ -333,13 +333,11 @@ class BibleVerseFinder:
     def __init__(self, driver: ReccWebDriver, messenger: Messenger):
         self._driver = driver
         self._messenger = messenger
-        self._are_page_options_set = False
+        self._set_cookies()
 
     def find(
         self, verse: BibleVerse, cancellation_token: Optional[CancellationToken] = None
     ) -> Optional[str]:
-        if not self._are_page_options_set:
-            self._try_set_page_options(cancellation_token)
         try:
             self._get_page(verse)
             by = By.XPATH
@@ -366,18 +364,16 @@ class BibleVerseFinder:
             url += "&interface=print"
         self._driver.get(url)
 
-    def _try_set_page_options(
-        self, cancellation_token: Optional[CancellationToken]
-    ) -> None:
-        try:
-            self._set_page_options(cancellation_token)
-            self._are_page_options_set = True
-        except Exception:
-            self._messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to set page options on BibleGateway. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
-                stacktrace=traceback.format_exc(),
-            )
+    def _set_cookies(self) -> None:
+        # Need to be on BibleGateway website before cookies can be set
+        self._driver.get(
+            "https://www.biblegateway.com/passage/?search=john+3%3A16&version=NLT&interface=print"
+        )
+        self._driver.add_cookie({"name": "BGP_pslookup_showxrefs", "value": "no"})
+        self._driver.add_cookie({"name": "BGP_pslookup_showfootnotes", "value": "no"})
+        self._driver.add_cookie({"name": "BGP_pslookup_showversenums", "value": "no"})
+        self._driver.add_cookie({"name": "BGP_pslookup_showheadings", "value": "no"})
+        self._driver.add_cookie({"name": "BGP_pslookup_showwoj", "value": "no"})
 
     def _set_page_options(self, cancellation_token: Optional[CancellationToken]):
         self._get_page(BibleVerse("Genesis", 1, 1, "NLT"), use_print_interface=False)
