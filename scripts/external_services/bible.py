@@ -286,7 +286,7 @@ class BibleVerse:
             translations = "KJ21|ASV|AMP|AMPC|BRG|CSB|CEB|CJB|CEV|DARBY|DLNT|DRA|ERV|EHV|ESV|ESVUK|EXB|GNV|GW|GNT|HCSB|ICB|ISV|PHILLIPS|JUB|KJV|AKJV|LSB|LEB|TLB|MSG|MEV|MOUNCE|NOG|NABRE|NASB|NASB1995|NCB|NCV|NET|NIRV|NIV|NIVUK|NKJV|NLV|NLT|NMB|NRSVA|NRSVACE|NRSVCE|NRSVUE|NTE|OJB|RGT|RSV|RSVCE|TLV|VOICE|WEB|WE|WYC|YLT"
             translation_regex = r"(?:\s+\(?(" + translations + r")\)?)?"
             verse_regex = re.compile(
-                f"{books_regex} {chapter_regex}\\s*:\\s*{verses_regex}{translation_regex}(.*)".replace(
+                f"{books_regex} {chapter_regex}\\s*(?:\\s|:)\\s*{verses_regex}{translation_regex}(.*)".replace(
                     " ", r"\s+"
                 ),
                 re.IGNORECASE,

@@ -51,6 +51,11 @@ class BibleVerseParsingTest(unittest.TestCase):
         self.assertEqual(BibleVerse.parse("Deut 11:31 NLT"), expected)
         self.assertEqual(BibleVerse.parse("deut. 11:31 NLT"), expected)
 
+    def test_no_colon(self) -> None:
+        # Example from 2024-05-12 service
+        expected = ([BibleVerse("Proverbs", 31, 10, "NLT")], "")
+        self.assertEqual(BibleVerse.parse("Proverbs 31 10 NLT"), expected)
+
     def test_consecutive_verses(self):
         self.assertEqual(
             BibleVerse.parse("Numbers 11:11-15 (NLT)"),
