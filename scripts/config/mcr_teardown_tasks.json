@@ -3,8 +3,16 @@
 	"name": "mcr_teardown",
 	"subtasks": [
 		{
+			"name": "get_service_info",
+			"description": "Failed to fetch the plan information from Planning Center.",
+			"only_auto": true
+		},
+		{
 			"name": "stop_broadcast",
-			"description": "If you have not already done so, stop the broadcast on BoxCast and then in vMix."
+			"description": "If you have not already done so, stop the broadcast on BoxCast and then in vMix.",
+			"prerequisites": [
+				"get_service_info"
+			]
 		},
 		{
 			"name": "main_tasks",

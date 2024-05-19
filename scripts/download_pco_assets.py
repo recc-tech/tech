@@ -1,22 +1,13 @@
 import sys
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
-from typing import Callable, Tuple, Union
+from typing import Callable
 
+import autochecklist
 from args import ReccArgs
-from autochecklist import (
-    ConsoleMessenger,
-    FileMessenger,
-    FunctionFinder,
-    Messenger,
-    Script,
-    TaskModel,
-    TaskStatus,
-    TkMessenger,
-)
+from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
-from external_services import CredentialStore, PlanningCenterClient
-from lib import AssetManager
+from external_services import PlanningCenterClient
+from lib import AssetManager, ReccDependencyProvider
 
 
 class DownloadAssetsArgs(ReccArgs):
@@ -35,51 +26,6 @@ class DownloadAssetsArgs(ReccArgs):
             help="Detect available assets without actually downloading any.",
         )
         return super().set_up_parser(parser)
-
-
-class DownloadAssetsScript(Script[DownloadAssetsArgs, Config]):
-    def parse_args(self) -> DownloadAssetsArgs:
-        return DownloadAssetsArgs.parse(sys.argv)
-
-    def create_config(self, args: DownloadAssetsArgs) -> Config:
-        return Config(args)
-
-    def create_messenger(self, args: DownloadAssetsArgs, config: Config) -> Messenger:
-        file_messenger = FileMessenger(config.download_assets_log)
-        input_messenger = (
-            TkMessenger(
-                "Autochecklist",
-                DownloadAssetsArgs.DESCRIPTION,
-                theme=config.ui_theme,
-                show_statuses_by_default=True,
-            )
-            if args.ui == "tk"
-            else ConsoleMessenger(
-                DownloadAssetsArgs.DESCRIPTION, show_task_status=args.verbose
-            )
-        )
-        return Messenger(file_messenger, input_messenger)
-
-    def create_services(
-        self, args: DownloadAssetsArgs, config: Config, messenger: Messenger
-    ) -> Tuple[Union[Path, TaskModel], FunctionFinder]:
-        credential_store = CredentialStore(messenger)
-        planning_center_client = PlanningCenterClient(
-            messenger, credential_store, config
-        )
-        manager = AssetManager(config)
-        function_finder = FunctionFinder(
-            # Use the current module
-            module=sys.modules[__name__],
-            arguments=[args, config, planning_center_client, messenger, manager],
-            messenger=messenger,
-        )
-        task_model = TaskModel(
-            name="download_PCO_assets",
-            description="Failed to download assets.",
-            only_auto=True,
-        )
-        return task_model, function_finder
 
 
 def download_PCO_assets(
@@ -102,4 +48,25 @@ def download_PCO_assets(
 
 
 if __name__ == "__main__":
-    DownloadAssetsScript().run()
+    args = DownloadAssetsArgs.parse(sys.argv)
+    config = Config(args)
+    tasks = TaskModel(
+        name="download_PCO_assets",
+        description="Failed to download assets.",
+        only_auto=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args,
+        config=config,
+        log_file=config.download_assets_log,
+        script_name="Download PCO Assets",
+        description=DownloadAssetsArgs.DESCRIPTION,
+        show_statuses_by_default=True,
+    )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dependency_provider,
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )

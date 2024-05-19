@@ -1,6 +1,6 @@
 from typing import List
 
-from autochecklist import BaseConfig
+from autochecklist import BaseConfig, DependencyProvider
 
 
 class MyList:
@@ -22,6 +22,20 @@ class TestConfig(BaseConfig):
             .replace("%{QUX}%", self.QUX)
         )
         return super().fill_placeholders(text)
+
+
+class MyDependencyProvider(DependencyProvider):
+    def __init__(self, my_list: MyList, config: TestConfig) -> None:
+        self._my_list = my_list
+        self._config = config
+
+    def get(self, typ: type[object]) -> object:
+        if typ == MyList:
+            return self._my_list
+        elif typ == TestConfig:
+            return self._config
+        else:
+            raise ValueError(f"Invalid type {typ}")
 
 
 def add_foo(my_list: MyList, config: TestConfig):

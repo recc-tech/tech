@@ -14,7 +14,7 @@ from autochecklist import (
 )
 
 from .autochecklist_data import example_tasks
-from .autochecklist_data.example_tasks import MyList, TestConfig
+from .autochecklist_data.example_tasks import MyDependencyProvider, MyList, TestConfig
 
 
 class TaskGraphTestCase(unittest.TestCase):
@@ -36,7 +36,9 @@ class TaskGraphTestCase(unittest.TestCase):
         )
         config = TestConfig()
         function_finder = FunctionFinder(
-            module=example_tasks, arguments=[my_list, config], messenger=messenger
+            module=example_tasks,
+            messenger=messenger,
+            dependency_provider=MyDependencyProvider(my_list=my_list, config=config),
         )
 
         json_file = Path(__file__).parent.joinpath(
@@ -52,12 +54,13 @@ class TaskGraphTestCase(unittest.TestCase):
         )
         graph.run()
 
+        valid_results = [
+            [TestConfig.FOO, "wait", "wait", TestConfig.BAZ, TestConfig.QUX],
+            [TestConfig.FOO, "wait", "wait", TestConfig.QUX, TestConfig.BAZ],
+        ]
         self.assertIn(
             my_list.the_list,
-            [
-                [TestConfig.FOO, "wait", "wait", TestConfig.BAZ, TestConfig.QUX],
-                [TestConfig.FOO, "wait", "wait", TestConfig.QUX, TestConfig.BAZ],
-            ],
+            valid_results,
         )
         messenger.wait.assert_has_calls(
             [

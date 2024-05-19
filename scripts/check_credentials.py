@@ -1,19 +1,10 @@
 import sys
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
-from typing import Callable, List, Literal, Set, Tuple
+from typing import Callable
 
+import autochecklist
 from args import ReccArgs
-from autochecklist import (
-    ConsoleMessenger,
-    FileMessenger,
-    FunctionFinder,
-    Messenger,
-    Script,
-    TaskModel,
-    TaskStatus,
-    TkMessenger,
-)
+from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
 from external_services import (
     BoxCastApiClient,
@@ -22,13 +13,7 @@ from external_services import (
     PlanningCenterClient,
     ReccVimeoClient,
 )
-
-CredentialName = Literal["boxcast", "vimeo", "planning_center"]
-ALL_CREDENTIALS: Set[CredentialName] = {
-    "boxcast",
-    "vimeo",
-    "planning_center",
-}
+from lib import ReccDependencyProvider
 
 
 class CheckCredentialsArgs(ReccArgs):
@@ -37,18 +22,10 @@ class CheckCredentialsArgs(ReccArgs):
 
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         super().__init__(args, error)
-        self.credentials: Set[CredentialName] = set(args.credentials or ALL_CREDENTIALS)
         self.force_input: bool = args.force_input
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
-        parser.add_argument(
-            "-c",
-            "--credentials",
-            action="append",
-            choices=ALL_CREDENTIALS,
-            help="Which credentials to check.",
-        )
         parser.add_argument(
             "-f",
             "--force-input",
@@ -56,76 +33,6 @@ class CheckCredentialsArgs(ReccArgs):
             help="If this flag is provided, then the user will be asked to enter all credentials regardless of whether they have previously been stored.",
         )
         return super().set_up_parser(parser)
-
-
-class CheckCredentialsScript(Script[CheckCredentialsArgs, Config]):
-    def parse_args(self) -> CheckCredentialsArgs:
-        return CheckCredentialsArgs.parse(sys.argv)
-
-    def create_config(self, args: CheckCredentialsArgs) -> Config:
-        return Config(args)
-
-    def create_messenger(self, args: CheckCredentialsArgs, config: Config) -> Messenger:
-        file_messenger = FileMessenger(log_file=config.check_credentials_log)
-        input_messenger = (
-            ConsoleMessenger(
-                description=CheckCredentialsArgs.DESCRIPTION,
-                show_task_status=args.verbose,
-            )
-            if args.ui == "console"
-            else TkMessenger(
-                title="Check Credentials",
-                description=CheckCredentialsArgs.DESCRIPTION,
-                theme=config.ui_theme,
-                show_statuses_by_default=True,
-            )
-        )
-        messenger = Messenger(file_messenger, input_messenger)
-        return messenger
-
-    def create_services(
-        self, args: CheckCredentialsArgs, config: Config, messenger: Messenger
-    ) -> Tuple[TaskModel | Path, FunctionFinder]:
-        subtasks: List[TaskModel] = []
-        if "boxcast" in args.credentials:
-            subtasks.append(
-                TaskModel(
-                    name="log_into_BoxCast",
-                    description="Failed to log into BoxCast.",
-                    only_auto=True,
-                )
-            )
-        if "planning_center" in args.credentials:
-            subtasks.append(
-                TaskModel(
-                    name="log_into_Planning_Center",
-                    description="Failed to connect to the Planning Center API.",
-                    only_auto=True,
-                )
-            )
-        if "vimeo" in args.credentials:
-            subtasks.append(
-                TaskModel(
-                    name="log_into_Vimeo",
-                    description="Failed to connect to the Vimeo API.",
-                    only_auto=True,
-                )
-            )
-
-        task_model = TaskModel(name="check_credentials", subtasks=subtasks)
-        credential_store = CredentialStore(
-            messenger=messenger,
-            request_input=(
-                InputPolicy.ALWAYS if args.force_input else InputPolicy.AS_REQUIRED
-            ),
-        )
-        function_finder = FunctionFinder(
-            # Use the current module
-            module=sys.modules[__name__],
-            arguments=[messenger, credential_store, config],
-            messenger=messenger,
-        )
-        return task_model, function_finder
 
 
 def log_into_Vimeo(
@@ -169,4 +76,44 @@ def log_into_Planning_Center(
 
 
 if __name__ == "__main__":
-    CheckCredentialsScript().run()
+    args = CheckCredentialsArgs.parse(sys.argv)
+    config = Config(args)
+    tasks = TaskModel(
+        name="check_credentials",
+        subtasks=[
+            TaskModel(
+                name="log_into_BoxCast",
+                description="Failed to log into BoxCast.",
+                only_auto=True,
+            ),
+            TaskModel(
+                name="log_into_Planning_Center",
+                description="Failed to connect to the Planning Center API.",
+                only_auto=True,
+            ),
+            TaskModel(
+                name="log_into_Vimeo",
+                description="Failed to connect to the Vimeo API.",
+                only_auto=True,
+            ),
+        ],
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args,
+        config=config,
+        log_file=config.check_credentials_log,
+        script_name="Check Credentials",
+        description=CheckCredentialsArgs.DESCRIPTION,
+        show_statuses_by_default=True,
+        credentials_input_policy=(
+            InputPolicy.ALWAYS if args.force_input else InputPolicy.AS_REQUIRED
+        ),
+    )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dependency_provider,
+        # TODO: Provide a way to run only specific tasks (in any script)
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )

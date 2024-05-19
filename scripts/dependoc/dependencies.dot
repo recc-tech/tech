@@ -10,5 +10,5 @@ digraph G {
     "external_services" [shape="rect"];
     "external_services" -> {"autochecklist", "config"};
     "lib" [shape="rect"];
-    "lib" -> {"autochecklist", "config", "external_services"};
+    "lib" -> {"args", "autochecklist", "config", "external_services"};
 }

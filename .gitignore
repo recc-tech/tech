@@ -6,6 +6,7 @@ htmlcov/
 __pycache__/
 .coverage
 
+/scripts/error.log
 /scripts/config/active_profile.txt
 /scripts/test/integration/actual_message_blueprints/
 /scripts/test/integration/boxcast_test_home/
