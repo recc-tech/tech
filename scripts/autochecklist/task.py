@@ -352,10 +352,11 @@ class DependencyProvider:
         description: str,
         show_statuses_by_default: bool,
         ui_theme: Literal["light", "dark"],
+        messenger: Optional[Messenger],
     ) -> None:
         self._args = args
         self._config = config
-        self.messenger = self._make_messenger(
+        self.messenger = messenger or self._make_messenger(
             log_file=log_file,
             script_name=script_name,
             description=description,
@@ -395,7 +396,7 @@ class DependencyProvider:
         elif typ == Messenger:
             return self.messenger
         else:
-            raise ValueError(f"Unknown argument type {typ}")
+            raise ValueError(f"Unknown argument type {typ.__name__}")
 
     def shut_down(self) -> None:
         pass
@@ -426,6 +427,9 @@ class FunctionFinder:
             return {f: None for f in names}
 
         unused_function_names = self._detect_unused_functions(names)
+        # Allow function called "main," in case the script has the task
+        # implementations all in the same file
+        unused_function_names -= {"main"}
         if len(unused_function_names) > 0:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
@@ -462,7 +466,9 @@ class FunctionFinder:
         try:
             inputs = self._find_arguments(signature)
         except Exception as e:
-            raise ValueError(f"Failed to find arguments for function '{name}'.") from e
+            raise ValueError(
+                f"Failed to find arguments for function '{name}' ({e})."
+            ) from e
 
         def f():
             original_function(**inputs)

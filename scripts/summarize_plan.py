@@ -74,14 +74,24 @@ def summarize_plan(
             )
 
 
-if __name__ == "__main__":
-    args = SummarizePlanArgs.parse(sys.argv)
-    config = Config(args)
+def main(args: SummarizePlanArgs, config: Config, dep: ReccDependencyProvider) -> None:
     tasks = TaskModel(
         "summarize_plan",
         description="Failed to generate summary.",
         only_auto=True,
     )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dep,
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )
+
+
+if __name__ == "__main__":
+    args = SummarizePlanArgs.parse(sys.argv)
+    config = Config(args)
     dependency_provider = ReccDependencyProvider(
         args=args,
         config=config,
@@ -90,10 +100,4 @@ if __name__ == "__main__":
         description=SummarizePlanArgs.DESCRIPTION,
         show_statuses_by_default=True,
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dependency_provider,
-        tasks=tasks,
-        module=sys.modules[__name__],
-    )
+    main(args, config, dependency_provider)

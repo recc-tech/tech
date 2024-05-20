@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Type
 
 from args import ReccArgs
-from autochecklist import DependencyProvider
+from autochecklist import DependencyProvider, Messenger
 from config import Config
 from external_services import (
     BibleVerseFinder,
@@ -29,6 +29,7 @@ class ReccDependencyProvider(DependencyProvider):
         script_name: str,
         description: str,
         show_statuses_by_default: bool,
+        messenger: Optional[Messenger] = None,
         lazy_login: bool = False,
         headless: bool = True,
         webdriver_log: Optional[Path] = None,
@@ -37,6 +38,7 @@ class ReccDependencyProvider(DependencyProvider):
         super().__init__(
             args=args,
             config=config,
+            messenger=messenger,
             log_file=log_file,
             script_name=script_name,
             description=description,
@@ -82,7 +84,7 @@ class ReccDependencyProvider(DependencyProvider):
         for t, f in method_by_type.items():
             if issubclass(t, typ):
                 return f()
-        raise ValueError(f"Unknown argument type {typ}")
+        raise ValueError(f"Unknown argument type {typ.__name__}")
 
     def shut_down(self) -> None:
         if self._web_driver is not None:

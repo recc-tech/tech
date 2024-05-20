@@ -8,6 +8,20 @@ import lib.mcr_teardown as mcr_teardown
 from config import McrTeardownArgs, McrTeardownConfig
 from lib import ReccDependencyProvider
 
+
+def main(
+    args: McrTeardownArgs, config: McrTeardownConfig, dep: ReccDependencyProvider
+) -> None:
+    tasks = Path(__file__).parent.joinpath("config").joinpath("mcr_teardown_tasks.json")
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dep,
+        tasks=tasks,
+        module=mcr_teardown,
+    )
+
+
 if __name__ == "__main__":
     args = McrTeardownArgs.parse(sys.argv)
     config = McrTeardownConfig(args)
@@ -19,11 +33,4 @@ if __name__ == "__main__":
         description=McrTeardownArgs.DESCRIPTION,
         show_statuses_by_default=False,
     )
-    tasks = Path(__file__).parent.joinpath("config").joinpath("mcr_teardown_tasks.json")
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dependency_provider,
-        tasks=tasks,
-        module=mcr_teardown,
-    )
+    main(args, config, dependency_provider)

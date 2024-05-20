@@ -217,9 +217,9 @@ def _get_demo_slides() -> List[SlideBlueprint]:
     ]
 
 
-if __name__ == "__main__":
-    args = GenerateSlidesArgs.parse(sys.argv)
-    config = GenerateSlidesConfig(args, profile=None, strict=False)
+def main(
+    args: GenerateSlidesArgs, config: GenerateSlidesConfig, dep: ReccDependencyProvider
+) -> None:
     tasks = TaskModel(
         name="main",
         subtasks=[
@@ -242,6 +242,18 @@ if __name__ == "__main__":
             ),
         ],
     )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dep,
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )
+
+
+if __name__ == "__main__":
+    args = GenerateSlidesArgs.parse(sys.argv)
+    config = GenerateSlidesConfig(args, profile=None, strict=False)
     dependency_provider = ReccDependencyProvider(
         args=args,
         config=config,
@@ -252,10 +264,4 @@ if __name__ == "__main__":
         headless=not args.show_browser,
         webdriver_log=config.generate_slides_webdriver_log,
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dependency_provider,
-        tasks=tasks,
-        module=sys.modules[__name__],
-    )
+    main(args, config, dependency_provider)

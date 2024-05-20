@@ -138,7 +138,7 @@ def _run_worker(
             except Exception as e:
                 messenger.log_problem(
                     ProblemLevel.FATAL,
-                    f"Failed to run the tasks: {e}",
+                    f"Failed to run the tasks: {e} ({type(e).__name__})",
                     traceback.format_exc(),
                 )
                 messenger.log_status(TaskStatus.DONE, _FAIL_MESSAGE)

@@ -75,9 +75,9 @@ def log_into_Planning_Center(
     messenger.log_status(TaskStatus.DONE, "Successfully connected to Planning Center.")
 
 
-if __name__ == "__main__":
-    args = CheckCredentialsArgs.parse(sys.argv)
-    config = Config(args)
+def main(
+    args: CheckCredentialsArgs, config: Config, dep: ReccDependencyProvider
+) -> None:
     tasks = TaskModel(
         name="check_credentials",
         subtasks=[
@@ -98,6 +98,19 @@ if __name__ == "__main__":
             ),
         ],
     )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dep,
+        # TODO: Provide a way to run only specific tasks (in any script)
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )
+
+
+if __name__ == "__main__":
+    args = CheckCredentialsArgs.parse(sys.argv)
+    config = Config(args)
     dependency_provider = ReccDependencyProvider(
         args=args,
         config=config,
@@ -109,11 +122,4 @@ if __name__ == "__main__":
             InputPolicy.ALWAYS if args.force_input else InputPolicy.AS_REQUIRED
         ),
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dependency_provider,
-        # TODO: Provide a way to run only specific tasks (in any script)
-        tasks=tasks,
-        module=sys.modules[__name__],
-    )
+    main(args, config, dependency_provider)

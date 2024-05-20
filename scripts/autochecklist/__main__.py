@@ -214,6 +214,7 @@ if __name__ == "__main__":
     dependency_provider = DependencyProvider(
         args=args,
         config=config,
+        messenger=None,
         log_file=Path(__file__).parent.joinpath("demo.log"),
         script_name="AutoChecklist Demo",
         description=_DESCRIPTION,

@@ -7,9 +7,20 @@ from args import McrSetupArgs
 from config import McrSetupConfig
 from lib import ReccDependencyProvider
 
+
+def main(
+    args: McrSetupArgs, config: McrSetupConfig, dep: ReccDependencyProvider
+) -> None:
+    autochecklist.run(
+        args=args,
+        config=config,
+        tasks=Path(__file__).parent.joinpath("config").joinpath("mcr_setup_tasks.json"),
+        module=mcr_setup,
+        dependency_provider=dep,
+    )
+
+
 if __name__ == "__main__":
-    # TODO: Write a main function which takes these as arguments so that the
-    # startup can be tested?
     args = McrSetupArgs.parse(sys.argv)
     config = McrSetupConfig(args, profile=None, strict=False)
     dependency_provider = ReccDependencyProvider(
@@ -22,10 +33,4 @@ if __name__ == "__main__":
         headless=not args.show_browser,
         webdriver_log=config.mcr_setup_webdriver_log,
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        tasks=Path(__file__).parent.joinpath("config").joinpath("mcr_setup_tasks.json"),
-        module=mcr_setup,
-        dependency_provider=dependency_provider,
-    )
+    main(args, config, dependency_provider)

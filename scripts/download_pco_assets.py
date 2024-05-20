@@ -47,14 +47,24 @@ def download_PCO_assets(
     messenger.log_status(TaskStatus.DONE, msg)
 
 
-if __name__ == "__main__":
-    args = DownloadAssetsArgs.parse(sys.argv)
-    config = Config(args)
+def main(args: DownloadAssetsArgs, config: Config, dep: ReccDependencyProvider) -> None:
     tasks = TaskModel(
         name="download_PCO_assets",
         description="Failed to download assets.",
         only_auto=True,
     )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dep,
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )
+
+
+if __name__ == "__main__":
+    args = DownloadAssetsArgs.parse(sys.argv)
+    config = Config(args)
     dependency_provider = ReccDependencyProvider(
         args=args,
         config=config,
@@ -63,10 +73,4 @@ if __name__ == "__main__":
         description=DownloadAssetsArgs.DESCRIPTION,
         show_statuses_by_default=True,
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dependency_provider,
-        tasks=tasks,
-        module=sys.modules[__name__],
-    )
+    main(args, config, dependency_provider)
