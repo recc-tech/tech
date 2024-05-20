@@ -1,4 +1,3 @@
-import os
 import threading
 import unittest
 from pathlib import Path
@@ -36,6 +35,8 @@ from .startup_smoke_test_data import (
 )
 
 T = TypeVar("T")
+
+_LOG_FILE = Path(__file__).parent.joinpath("startup_smoke_test_data", "test.log")
 
 
 class MockInputMessenger(InputMessenger):
@@ -126,17 +127,18 @@ class MockInputMessenger(InputMessenger):
 
 class MockDependencyProvider(ReccDependencyProvider):
     def __init__(self, *, args: check_credentials.ReccArgs, config: Config) -> None:
-        file_messenger = FileMessenger(Path(os.devnull))
+        file_messenger = FileMessenger(_LOG_FILE)
         self.input_messenger = MockInputMessenger()
         messenger = Messenger(file_messenger, self.input_messenger)
         super().__init__(
             args=args,
             config=config,
             messenger=messenger,
-            log_file=Path(os.devnull),
+            log_file=_LOG_FILE,
             script_name="test",
             description="test",
             show_statuses_by_default=True,
+            lazy_login=True,
         )
         self._credentials_mock = create_autospec(CredentialStore)
 

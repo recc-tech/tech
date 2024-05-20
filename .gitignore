@@ -16,3 +16,4 @@ __pycache__/
 /scripts/test/integration/summarize_plan_temp/
 /scripts/test/manual/home/
 /scripts/test/manual/data/
+/scripts/test/integration/startup_smoke_test_data/test.log
