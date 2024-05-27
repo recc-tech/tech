@@ -25,7 +25,6 @@ _REBROADCAST_START = datetime.combine(
 _CAPTIONS_PATH = Path(__file__).resolve().parent.joinpath("data", "captions.vtt")
 
 
-# TODO: Get rid of this and introduce a general way to skip tasks?
 class TestCase(Enum):
     RUN_GUI = "run_gui"
     CANCEL_GUI = "cancel_gui"

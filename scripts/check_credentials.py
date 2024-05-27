@@ -102,7 +102,6 @@ def main(
         args=args,
         config=config,
         dependency_provider=dep,
-        # TODO: Provide a way to run only specific tasks (in any script)
         tasks=tasks,
         module=sys.modules[__name__],
     )
