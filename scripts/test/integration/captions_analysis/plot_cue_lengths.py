@@ -39,11 +39,15 @@ def main():
         list(range(len(original_vtt))),
         cue_lengths,
         color=[
-            "green"
-            if was_removed_manually[i] == was_removed_automatically[i]
-            else "red"
-            if was_removed_automatically[i] and not was_removed_manually[i]
-            else "purple"
+            (
+                "green"
+                if was_removed_manually[i] == was_removed_automatically[i]
+                else (
+                    "red"
+                    if was_removed_automatically[i] and not was_removed_manually[i]
+                    else "purple"
+                )
+            )
             for i in original_ids
         ],
         width=1.0,

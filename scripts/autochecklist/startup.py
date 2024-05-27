@@ -29,9 +29,7 @@ def run(
     # pythonw sets sys.stderr to None.
     # Open the file even when not using pythonw for easier debugging.
     with open(_ERROR_FILE, "w", encoding="utf-8") as se:
-        has_terminal = (
-            sys.stderr is not None  # pyright: ignore[reportUnnecessaryComparison]
-        )
+        has_terminal = sys.stderr is not None
         if has_terminal:
             _run_main(
                 args=args,
