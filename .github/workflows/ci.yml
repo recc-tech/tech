@@ -18,11 +18,17 @@ jobs:
       run:
         working-directory: ./scripts
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
+    # To be able to run Selenium tests
+    - name: Install Firefox
+      uses: browser-actions/setup-firefox@v1
+      with:
+        firefox-version: latest
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:

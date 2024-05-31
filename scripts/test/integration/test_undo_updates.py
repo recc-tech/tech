@@ -37,10 +37,22 @@ class UndoUpdatesTestCase(unittest.TestCase):
             check=True,
             capture_output=True,
         )
-        cls.avail_tags = sorted(_get_tags(), reverse=True)[:5]
+        os.chdir(INNER_REPO_ROOT)
+        all_tags = _get_tags()
+        cls.avail_tags = sorted(all_tags, reverse=True)[:5]
+        # TODO
+        print(f"All tags: {all_tags}")
+        print(f"Recent tags: {cls.avail_tags}")
+        r = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            encoding="utf-8",
+        )
+        print(f"Commit: {r.stdout}")
+
         cls.maxDiff = None
         cls.original_cwd = os.getcwd()
-        os.chdir(INNER_REPO_ROOT)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -49,7 +61,7 @@ class UndoUpdatesTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
         current_os = platform.system().lower().strip()
-        if current_os in {"macos", "linux"}:
+        if current_os in {"darwin", "linux"}:
             self.outer_undo_updates_script = OUTER_UNDO_UPDATES_NIX
             self.inner_undo_updates_script = INNER_UNDO_UPDATES_NIX
         elif current_os == "windows":
@@ -117,8 +129,8 @@ SELECT THE VERSION TO USE:
 > Press ENTER to exit..."""
         expected_stderr = f"{RED}Invalid choice.{RESET_COLOR}\n"
         self.assertNotEqual(0, result.returncode)
-        self.assertEqual(expected_stdout, result.stdout)
         self.assertEqual(expected_stderr, result.stderr)
+        self.assertEqual(expected_stdout, result.stdout)
 
 
 def _get_tags() -> List[str]:
@@ -129,4 +141,4 @@ def _get_tags() -> List[str]:
         encoding="utf-8",
     )
     out = result.stdout
-    return [l for l in out.split("\n") if l]
+    return [l.lower() for l in out.split("\n") if l]
