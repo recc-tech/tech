@@ -44,7 +44,7 @@ function undo_updates {
 		return
 	fi
 
-	echo -e "${GREEN}OK: currently on version ${current_tag}${RESET_COLOR}"
+	echo -e "${GREEN}OK: currently on version ${current_tag}.${RESET_COLOR}"
 }
 
 undo_updates

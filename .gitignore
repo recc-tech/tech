@@ -12,6 +12,7 @@ __pycache__/
 /scripts/test/integration/captions_analysis/worship_caption_removal_stats.json
 /scripts/test/integration/boxcast_temp/
 /scripts/test/integration/planning_center_temp/
+/scripts/test/integration/repo_copy/
 /scripts/test/integration/summarize_plan_temp/
 /scripts/test/manual/home/
 /scripts/test/manual/data/
