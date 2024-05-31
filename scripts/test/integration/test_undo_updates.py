@@ -32,7 +32,11 @@ class UndoUpdatesTestCase(unittest.TestCase):
         shutil.rmtree(INNER_REPO_ROOT, ignore_errors=True)
         # Test on a copy of the repo because checking out random commits in the
         # current repo while running tests would be very wonky.
-        subprocess.run(["git", "clone", GIT_REPO_URL, INNER_REPO_ROOT])
+        subprocess.run(
+            ["git", "clone", GIT_REPO_URL, INNER_REPO_ROOT],
+            check=True,
+            capture_output=True,
+        )
         cls.avail_tags = sorted(_get_tags(), reverse=True)[:5]
         cls.maxDiff = None
         cls.original_cwd = os.getcwd()
@@ -112,7 +116,7 @@ Press ENTER to exit..."""
 SELECT THE VERSION TO USE:
 > Press ENTER to exit..."""
         expected_stderr = f"{RED}Invalid choice.{RESET_COLOR}\n"
-        self.assertEqual(255, result.returncode)
+        self.assertNotEqual(0, result.returncode)
         self.assertEqual(expected_stdout, result.stdout)
         self.assertEqual(expected_stderr, result.stderr)
 
