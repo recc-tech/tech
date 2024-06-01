@@ -1,0 +1,51 @@
+# This worklow tags the latest commit on main with the current date.
+# This makes it easy to roll back to the code that was used on a previous
+# Sunday in case something is not working.
+
+name: Tag releases
+
+on:
+  schedule:
+    # https://crontab.guru/#15_12_*_*_SUN
+    # 12:15 UTC is either 8:15 or 7:15 eastern time, depending on whether we're currently in daylight savings time
+    - cron: '15 12 * * SUN'
+  # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
+  workflow_dispatch:
+
+permissions:
+  contents: read, write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get today's date
+        id: get_date
+        run: |
+          echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Check out main branch
+        uses: actions/checkout@v3
+        with:
+          ref: 'main'
+      # https://stackoverflow.com/a/64479344
+      - name: Check if latest commit is already tagged
+        id: check_existing_tag
+        shell: bash
+        run: |
+          git describe --exact-match
+          if [[ "$?" == 0 ]]; then
+            echo "ALREADY_TAGGED=false" >> $GITHUB_OUTPUT
+          else
+            echo "ALREADY_TAGGED=true" >> $GITHUB_OUTPUT
+          fi
+      - name: Create tag
+        if: steps.check_existing_tag.outputs.ALREADY_TAGGED == 'false'
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              ref:   'refs/tags/${{steps.get_date.outputs.TODAY}}',
+              sha:   context.sha
+            });
