@@ -33,7 +33,7 @@ def main():
 
     input("Press ENTER to exit...")
     if error:
-        sys.exit(-1)
+        sys.exit(255)
 
 
 def _get_tags() -> List[str]:
@@ -52,7 +52,9 @@ def _check_out_latest() -> None:
 
 
 def _check_out_tag(tag: str) -> None:
-    subprocess.run(["git", "checkout", f"tags/{tag}"], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "checkout", f"tags/{tag}", "--force"], check=True, capture_output=True
+    )
 
 
 def _get_current_tag() -> str:
