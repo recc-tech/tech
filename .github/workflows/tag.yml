@@ -17,7 +17,7 @@ on:
       - make-tag-workflow
 
 permissions:
-  contents: read, write
+  contents: write
 
 jobs:
   tag:
@@ -31,17 +31,26 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: 'main'
+          fetch-tags: true
       # https://stackoverflow.com/a/64479344
       - name: Check if latest commit is already tagged
         id: check_existing_tag
         shell: bash
         run: |
-          git describe --exact-match
+          # set +e is necessary to prevent the whole job from failing if git
+          # describe exits with non-zero status.
+          set +e
+          git describe main --tags --exact-match
+          # git describe will return non-zero status if it fails to find a tag
           if [[ "$?" == 0 ]]; then
-            echo "ALREADY_TAGGED=false" >> $GITHUB_OUTPUT
-          else
             echo "ALREADY_TAGGED=true" >> $GITHUB_OUTPUT
+          else
+            echo "ALREADY_TAGGED=false" >> $GITHUB_OUTPUT
           fi
+      - name: Get SHA hash for main
+        id: main_sha
+        run: |
+          echo "SHA=$(git rev-parse main)" >> $GITHUB_OUTPUT
       - name: Create tag
         if: steps.check_existing_tag.outputs.ALREADY_TAGGED == 'false'
         uses: actions/github-script@v5
@@ -51,5 +60,5 @@ jobs:
               owner: context.repo.owner,
               repo:  context.repo.repo,
               ref:   'refs/tags/${{steps.get_date.outputs.TODAY}}',
-              sha:   context.sha
+              sha:   '${{ steps.main_sha.outputs.SHA }}'
             });
