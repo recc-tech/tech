@@ -19,10 +19,6 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      - name: Get today's date
-        id: get_date
-        run: |
-          echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
       - name: Check out main branch
         uses: actions/checkout@v3
         with:
@@ -42,6 +38,10 @@ jobs:
           else
             echo "ALREADY_TAGGED=false" >> $GITHUB_OUTPUT
           fi
+      - name: Get today's date
+        id: get_date
+        run: |
+          echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
       - name: Get SHA hash for main
         id: main_sha
         run: |
