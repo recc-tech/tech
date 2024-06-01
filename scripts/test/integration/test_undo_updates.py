@@ -37,22 +37,11 @@ class UndoUpdatesTestCase(unittest.TestCase):
             check=True,
             capture_output=True,
         )
+        cls.original_cwd = os.getcwd()
         os.chdir(INNER_REPO_ROOT)
         all_tags = _get_tags()
         cls.avail_tags = sorted(all_tags, reverse=True)[:5]
-        # TODO
-        print(f"All tags: {all_tags}")
-        print(f"Recent tags: {cls.avail_tags}")
-        r = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            encoding="utf-8",
-        )
-        print(f"Commit: {r.stdout}")
-
         cls.maxDiff = None
-        cls.original_cwd = os.getcwd()
 
     @classmethod
     def tearDownClass(cls) -> None:
