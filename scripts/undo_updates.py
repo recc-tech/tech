@@ -59,7 +59,7 @@ def _check_out_tag(tag: str) -> None:
 
 def _get_current_tag() -> str:
     result = subprocess.run(
-        ["git", "describe", "--exact-match"],
+        ["git", "describe", "HEAD", "--tags", "--exact-match"],
         check=True,
         capture_output=True,
         encoding="utf-8",
