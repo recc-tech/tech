@@ -11,6 +11,10 @@ on:
     - cron: '15 12 * * SUN'
   # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
   workflow_dispatch:
+  # TODO
+  push:
+    branches:
+      - make-tag-workflow
 
 permissions:
   contents: read, write
