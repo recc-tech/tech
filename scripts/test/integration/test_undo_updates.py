@@ -12,8 +12,11 @@ OUTER_UNDO_UPDATES_NIX = OUTER_REPO_ROOT.joinpath("scripts", "undo_updates.comma
 OUTER_UNDO_UPDATES_WINDOWS = OUTER_REPO_ROOT.joinpath("scripts", "undo_updates.bat")
 OUTER_UNDO_UPDATES_PY = OUTER_REPO_ROOT.joinpath("scripts", "undo_updates.py")
 INNER_REPO_ROOT = Path(__file__).resolve().parent.joinpath("repo_copy")
-INNER_UNDO_UPDATES_NIX = INNER_REPO_ROOT.joinpath("scripts", "undo_updates.command")
-INNER_UNDO_UPDATES_WINDOWS = INNER_REPO_ROOT.joinpath("scripts", "undo_updates.bat")
+# Give the .command and .bat files different names than the real scripts.
+# Otherwise, checking out a commit from before the undo_updates script existed
+# causes the file to be deleted and (at least on Windows) this causes an error.
+INNER_UNDO_UPDATES_NIX = INNER_REPO_ROOT.joinpath("scripts", "undo_updates_1.command")
+INNER_UNDO_UPDATES_WINDOWS = INNER_REPO_ROOT.joinpath("scripts", "undo_updates_1.bat")
 INNER_UNDO_UPDATES_PY = INNER_REPO_ROOT.joinpath("scripts", "undo_updates.py")
 
 RED = "\033[0;31m"
@@ -78,11 +81,12 @@ class UndoUpdatesTestCase(unittest.TestCase):
 SELECT THE VERSION TO USE:
 > {GREEN}OK: currently on the latest version.{RESET_COLOR}
 Press ENTER to exit..."""
-        self.assertEqual(0, result.returncode)
-        self.assertEqual(expected, result.stdout)
         self.assertEqual("", result.stderr)
+        self.assertEqual(expected, result.stdout)
+        self.assertEqual(0, result.returncode)
 
     def test_rollback_to_second_latest(self) -> None:
+        self.assertTrue(self.inner_undo_updates_script.is_file())
         tag = self.avail_tags[1]
         result = subprocess.run(
             [self.inner_undo_updates_script.as_posix()],
@@ -98,9 +102,9 @@ Press ENTER to exit..."""
 SELECT THE VERSION TO USE:
 > {GREEN}OK: currently on version {tag}.{RESET_COLOR}
 Press ENTER to exit..."""
-        self.assertEqual(0, result.returncode)
-        self.assertEqual(expected, result.stdout)
         self.assertEqual("", result.stderr)
+        self.assertEqual(expected, result.stdout)
+        self.assertEqual(0, result.returncode)
 
     def test_rollback_to_invalid(self) -> None:
         result = subprocess.run(
@@ -117,9 +121,9 @@ Press ENTER to exit..."""
 SELECT THE VERSION TO USE:
 > Press ENTER to exit..."""
         expected_stderr = f"{RED}Invalid choice.{RESET_COLOR}\n"
-        self.assertNotEqual(0, result.returncode)
         self.assertEqual(expected_stderr, result.stderr)
         self.assertEqual(expected_stdout, result.stdout)
+        self.assertEqual(255, result.returncode)
 
 
 def _get_tags() -> List[str]:
