@@ -28,7 +28,6 @@ jobs:
         with:
           ref: 'main'
           fetch-tags: true
-      # https://stackoverflow.com/a/64479344
       - name: Check if latest commit is already tagged
         id: check_existing_tag
         shell: bash
@@ -47,6 +46,7 @@ jobs:
         id: main_sha
         run: |
           echo "SHA=$(git rev-parse main)" >> $GITHUB_OUTPUT
+      # https://stackoverflow.com/a/64479344
       - name: Create tag
         if: steps.check_existing_tag.outputs.ALREADY_TAGGED == 'false'
         uses: actions/github-script@v5
