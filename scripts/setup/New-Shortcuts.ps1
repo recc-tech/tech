@@ -12,6 +12,7 @@ $Desktop = "D:\Users\Tech\Desktop"
 $ScriptsDir = "D:\Users\Tech\Documents\tech\scripts"
 
 New-Shortcut -LinkPath "$Desktop\Update Scripts.lnk"    -TargetPath "$ScriptsDir\update_scripts.bat"
+New-Shortcut -LinkPath "$Desktop\Undo Updates.lnk"      -TargetPath "$ScriptsDir\undo_updates.bat"
 New-Shortcut -LinkPath "$Desktop\Check Credentials.lnk" -TargetPath "$ScriptsDir\check_credentials.bat"
 New-Shortcut -LinkPath "$Desktop\Download Assets.lnk"   -TargetPath "$ScriptsDir\download_pco_assets.bat"
 New-Shortcut -LinkPath "$Desktop\Generate Slides.lnk"   -TargetPath "$ScriptsDir\generate_slides.bat"
