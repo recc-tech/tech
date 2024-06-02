@@ -3,14 +3,16 @@
 	"subtasks": [
 		{
 			"name": "A",
-			"description": "Task A"
+			"description": "Task A",
+			"only_auto": true
 		},
 		{
 			"name": "B",
 			"description": "Task B",
 			"prerequisites": [
 				"A"
-			]
+			],
+			"only_auto": true
 		},
 		{
 			"name": "C",

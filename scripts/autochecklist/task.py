@@ -224,7 +224,9 @@ class _Task:
         if self._only_auto:
             allowed_responses.remove(UserResponse.DONE)
         response = self._messenger.wait(
-            self._description, allowed_responses=allowed_responses
+            self._description,
+            allowed_responses=allowed_responses,
+            task_name=self.name,
         )
         return response
 

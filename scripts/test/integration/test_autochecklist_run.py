@@ -1,72 +1,57 @@
-import sys
+import test.integration.autochecklist_data.abcde as abcde
+import test.integration.autochecklist_data.cancel as cancel
+import test.integration.autochecklist_data.fail_then_succeed as fail_then_succeed
+import test.integration.autochecklist_data.keyboard_interrupt as keyboard_interrupt
 import unittest
 from pathlib import Path
+from test.integration.autochecklist_data.abcde import Foo
+from test.integration.autochecklist_data.fail_then_succeed import RetryCounter
 from test.mock import FixedDependencyProvider, MockMessenger
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 import autochecklist
 from autochecklist import (
     BaseArgs,
     BaseConfig,
-    Messenger,
     ProblemLevel,
     TaskModel,
     TaskStatus,
+    UserResponse,
 )
 
 _DATA_DIR = Path(__file__).parent.joinpath("autochecklist_data")
-
-
-def A(msg: Messenger) -> None:
-    msg.log_status(TaskStatus.RUNNING, "Running A")
-
-
-def B(msg: Messenger) -> None:
-    msg.log_status(TaskStatus.RUNNING, "Running B")
-
-
-def C(msg: Messenger) -> None:
-    msg.log_status(TaskStatus.RUNNING, "Running C")
-
-
-def D(msg: Messenger) -> None:
-    # TODO: Make this one fail the first time
-    msg.log_status(TaskStatus.RUNNING, "Running D")
-
-
-def E(msg: Messenger) -> None:
-    msg.log_status(TaskStatus.RUNNING, "Running E")
+_LOG = _DATA_DIR.joinpath("test.log")
 
 
 class TaskGraphTestCase(unittest.TestCase):
     def test_script_from_file(self) -> None:
-        msg = MockMessenger(log_file=_DATA_DIR.joinpath("run_from_file.log"))
+        msg = MockMessenger(log_file=_LOG)
         args = BaseArgs.parse([])
         config = BaseConfig()
-        dep = FixedDependencyProvider(messenger=msg, args=[])
-        tasks = _DATA_DIR.joinpath("tasks.json")
+        dep = FixedDependencyProvider(messenger=msg, args=[Foo(42)])
+        tasks = _DATA_DIR.joinpath("abcde.json")
         autochecklist.run(
             args=args,
             config=config,
             dependency_provider=dep,
             tasks=tasks,
-            module=sys.modules[__name__],
+            module=abcde,
         )
-        self._check_status_trace(msg.mock_input_messenger.statuses, p=tasks)
+        self._check_status_trace(msg.mock_input_messenger.statuses, p=tasks, x=42)
         self.assertEqual([], msg.mock_input_messenger.errors)
 
-    # TODO: Make some of the tasks manual? Have some of them fail at first but
-    # work on repeat attempts?
     def test_script_from_model(self) -> None:
-        msg = MockMessenger(log_file=_DATA_DIR.joinpath("run_from_model.log"))
+        msg = MockMessenger(log_file=_LOG)
         args = BaseArgs.parse([])
         config = BaseConfig()
-        dep = FixedDependencyProvider(messenger=msg, args=[])
+        dep = FixedDependencyProvider(messenger=msg, args=[Foo(99)])
         tasks = TaskModel(
             name="script_from_model",
             subtasks=[
-                TaskModel(name="A", description="Task A"),
-                TaskModel(name="B", description="Task B", prerequisites={"A"}),
+                TaskModel(name="A", description="Task A", only_auto=True),
+                TaskModel(
+                    name="B", description="Task B", prerequisites={"A"}, only_auto=True
+                ),
                 TaskModel(name="C", description="Task C", prerequisites={"A"}),
                 TaskModel(name="D", description="Task D", prerequisites={"B", "C"}),
                 TaskModel(name="E", description="Task E", prerequisites={"D"}),
@@ -77,16 +62,16 @@ class TaskGraphTestCase(unittest.TestCase):
             config=config,
             dependency_provider=dep,
             tasks=tasks,
-            module=sys.modules[__name__],
+            module=abcde,
         )
-        self._check_status_trace(msg.mock_input_messenger.statuses, p=None)
+        self._check_status_trace(msg.mock_input_messenger.statuses, p=None, x=99)
         self.assertEqual([], msg.mock_input_messenger.errors)
 
     def test_script_with_error(self) -> None:
-        msg = MockMessenger(log_file=_DATA_DIR.joinpath("run_from_model.log"))
+        msg = MockMessenger(log_file=_LOG)
         args = BaseArgs.parse([])
         config = BaseConfig()
-        dep = FixedDependencyProvider(messenger=msg, args=[])
+        dep = FixedDependencyProvider(messenger=msg, args=[Foo(42)])
         tasks = TaskModel(
             name="script_from_model",
             subtasks=[
@@ -99,7 +84,7 @@ class TaskGraphTestCase(unittest.TestCase):
             config=config,
             dependency_provider=dep,
             tasks=tasks,
-            module=sys.modules[__name__],
+            module=abcde,
         )
         expected_status_trace = [
             ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
@@ -116,8 +101,260 @@ class TaskGraphTestCase(unittest.TestCase):
         ]
         self.assertEqual(expected_error_trace, msg.mock_input_messenger.errors)
 
+    def test_manual_task(self) -> None:
+        def wait(
+            task_name: str,
+            index: Optional[int],
+            prompt: str,
+            allowed_responses: Set[UserResponse],
+        ) -> UserResponse:
+            self.assertEqual("manual", task_name)
+            self.assertEqual("This task must be completed manually.", prompt)
+            self.assertEqual({UserResponse.DONE, UserResponse.SKIP}, allowed_responses)
+            return UserResponse.DONE
+
+        msg = MockMessenger(log_file=_LOG)
+        msg.mock_input_messenger.wait = wait
+        args = BaseArgs.parse([])
+        config = BaseConfig()
+        dep = FixedDependencyProvider(messenger=msg, args=[])
+        tasks = TaskModel(
+            name="manual",
+            description="This task must be completed manually.",
+        )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=None,
+        )
+        expected_status_trace = [
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Running tasks."),
+            ("manual", TaskStatus.NOT_STARTED, "-"),
+            ("manual", TaskStatus.WAITING_FOR_USER, "This task is not automated."),
+            ("manual", TaskStatus.DONE, "Task completed manually."),
+            ("SCRIPT MAIN", TaskStatus.DONE, "All done!"),
+            ("dependency_provider", TaskStatus.RUNNING, "Shut down."),
+        ]
+        self.assertEqual(expected_status_trace, msg.mock_input_messenger.statuses)
+        self.assertEqual([], msg.mock_input_messenger.errors)
+
+    def test_fail_and_retry(self) -> None:
+        def wait(
+            task_name: str,
+            index: Optional[int],
+            prompt: str,
+            allowed_responses: Set[UserResponse],
+        ) -> UserResponse:
+            self.assertEqual("fail_then_succeed", task_name)
+            self.assertEqual("This task will fail the first time.", prompt)
+            self.assertEqual({UserResponse.RETRY, UserResponse.SKIP}, allowed_responses)
+            return UserResponse.RETRY
+
+        msg = MockMessenger(log_file=_LOG)
+        msg.mock_input_messenger.wait = wait
+        args = BaseArgs.parse([])
+        config = BaseConfig()
+        dep = FixedDependencyProvider(messenger=msg, args=[RetryCounter()])
+        tasks = TaskModel(
+            name="fail_then_succeed",
+            description="This task will fail the first time.",
+            only_auto=True,
+        )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=fail_then_succeed,
+        )
+        expected_status_trace = [
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Running tasks."),
+            ("fail_then_succeed", TaskStatus.NOT_STARTED, "-"),
+            ("fail_then_succeed", TaskStatus.RUNNING, "Task started."),
+            (
+                "fail_then_succeed",
+                TaskStatus.WAITING_FOR_USER,
+                "The task automation failed. Requesting user input.",
+            ),
+            ("fail_then_succeed", TaskStatus.RUNNING, "Task started."),
+            ("fail_then_succeed", TaskStatus.DONE, "Success!"),
+            # Since the task logged its own status as DONE, the usual "Task
+            # completed manually" message should be skipped.
+            ("SCRIPT MAIN", TaskStatus.DONE, "All done!"),
+            ("dependency_provider", TaskStatus.RUNNING, "Shut down."),
+        ]
+        self.assertEqual(expected_status_trace, msg.mock_input_messenger.statuses)
+        self.assertEqual(
+            [
+                (
+                    "fail_then_succeed",
+                    ProblemLevel.ERROR,
+                    "An error occurred while trying to complete the task automatically: Epic fail.",
+                ),
+            ],
+            msg.mock_input_messenger.errors,
+        )
+
+    def test_fail_and_skip(self) -> None:
+        def wait(
+            task_name: str,
+            index: Optional[int],
+            prompt: str,
+            allowed_responses: Set[UserResponse],
+        ) -> UserResponse:
+            self.assertEqual("fail_then_succeed", task_name)
+            self.assertEqual("This task will fail the first time.", prompt)
+            self.assertEqual(
+                {UserResponse.DONE, UserResponse.RETRY, UserResponse.SKIP},
+                allowed_responses,
+            )
+            return UserResponse.SKIP
+
+        msg = MockMessenger(log_file=_LOG)
+        msg.mock_input_messenger.wait = wait
+        args = BaseArgs.parse([])
+        config = BaseConfig()
+        dep = FixedDependencyProvider(messenger=msg, args=[RetryCounter()])
+        tasks = TaskModel(
+            name="fail_then_succeed",
+            description="This task will fail the first time.",
+        )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=fail_then_succeed,
+        )
+        expected_status_trace = [
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Running tasks."),
+            ("fail_then_succeed", TaskStatus.NOT_STARTED, "-"),
+            ("fail_then_succeed", TaskStatus.RUNNING, "Task started."),
+            (
+                "fail_then_succeed",
+                TaskStatus.WAITING_FOR_USER,
+                "The task automation failed. Requesting user input.",
+            ),
+            ("fail_then_succeed", TaskStatus.SKIPPED, "Task skipped."),
+            ("SCRIPT MAIN", TaskStatus.DONE, "All done!"),
+            ("dependency_provider", TaskStatus.RUNNING, "Shut down."),
+        ]
+        self.assertEqual(expected_status_trace, msg.mock_input_messenger.statuses)
+        self.assertEqual(
+            [
+                (
+                    "fail_then_succeed",
+                    ProblemLevel.ERROR,
+                    "An error occurred while trying to complete the task automatically: Epic fail.",
+                ),
+            ],
+            msg.mock_input_messenger.errors,
+        )
+
+    def test_keyboard_interrupt(self) -> None:
+        msg = MockMessenger(log_file=_LOG)
+        args = BaseArgs.parse([])
+        config = BaseConfig()
+        dep = FixedDependencyProvider(messenger=msg, args=[])
+        tasks = TaskModel(
+            name="script_with_kbd_interrupt",
+            subtasks=[
+                TaskModel(name="keyboard_interrupt", description="Cancels everything."),
+                TaskModel(
+                    name="never_call_this",
+                    description="Should not run",
+                    prerequisites={"keyboard_interrupt"},
+                ),
+            ],
+        )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=keyboard_interrupt,
+        )
+        expected_status_trace = [
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Running tasks."),
+            ("keyboard_interrupt", TaskStatus.NOT_STARTED, "-"),
+            ("never_call_this", TaskStatus.NOT_STARTED, "-"),
+            ("keyboard_interrupt", TaskStatus.RUNNING, "Task started."),
+            # Maybe this should say something like "Script cancelled" instead.
+            # But then again, if this happens then it means the user already
+            # closed the window, so it doesn't really matter.
+            ("SCRIPT MAIN", TaskStatus.DONE, "All done!"),
+            ("dependency_provider", TaskStatus.RUNNING, "Shut down."),
+        ]
+        self.assertEqual(expected_status_trace, msg.mock_input_messenger.statuses)
+        self.assertEqual([], msg.mock_input_messenger.errors)
+
+    def test_cancel(self) -> None:
+        def wait(
+            task_name: str,
+            index: Optional[int],
+            prompt: str,
+            allowed_responses: Set[UserResponse],
+        ) -> UserResponse:
+            self.assertEqual("cancel", task_name)
+            self.assertEqual("Cancels one task.", prompt)
+            self.assertEqual(
+                {UserResponse.DONE, UserResponse.RETRY, UserResponse.SKIP},
+                allowed_responses,
+            )
+            return UserResponse.DONE
+
+        msg = MockMessenger(log_file=_LOG)
+        msg.mock_input_messenger.wait = wait
+        args = BaseArgs.parse([])
+        config = BaseConfig()
+        dep = FixedDependencyProvider(messenger=msg, args=[])
+        tasks = TaskModel(
+            name="script_with_cancel",
+            subtasks=[
+                TaskModel(name="cancel", description="Cancels one task."),
+                TaskModel(
+                    name="foo",
+                    description="This task should run as usual.",
+                    prerequisites={"cancel"},
+                ),
+            ],
+        )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=cancel,
+        )
+        expected_status_trace = [
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Loading tasks."),
+            ("SCRIPT MAIN", TaskStatus.RUNNING, "Running tasks."),
+            ("cancel", TaskStatus.NOT_STARTED, "-"),
+            ("foo", TaskStatus.NOT_STARTED, "-"),
+            ("cancel", TaskStatus.RUNNING, "Task started."),
+            (
+                "cancel",
+                TaskStatus.WAITING_FOR_USER,
+                "The task was cancelled by the user. Requesting user input.",
+            ),
+            ("cancel", TaskStatus.DONE, "Task completed manually."),
+            ("foo", TaskStatus.RUNNING, "Task started."),
+            ("foo", TaskStatus.RUNNING, "foo running as usual."),
+            ("foo", TaskStatus.DONE, "Task completed automatically."),
+            ("SCRIPT MAIN", TaskStatus.DONE, "All done!"),
+            ("dependency_provider", TaskStatus.RUNNING, "Shut down."),
+        ]
+        self.assertEqual(expected_status_trace, msg.mock_input_messenger.statuses)
+        self.assertEqual([], msg.mock_input_messenger.errors)
+
     def _check_status_trace(
-        self, status_trace: List[Tuple[str, TaskStatus, str]], p: Optional[Path]
+        self, status_trace: List[Tuple[str, TaskStatus, str]], p: Optional[Path], x: int
     ) -> None:
         load_msg = (
             "Loading tasks."
@@ -133,7 +370,7 @@ class TaskGraphTestCase(unittest.TestCase):
             ("D", TaskStatus.NOT_STARTED, "-"),
             ("E", TaskStatus.NOT_STARTED, "-"),
             ("A", TaskStatus.RUNNING, "Task started."),
-            ("A", TaskStatus.RUNNING, "Running A"),
+            ("A", TaskStatus.RUNNING, f"Running A with x = {x}"),
             ("A", TaskStatus.DONE, "Task completed automatically."),
         ]
         n_start = len(expected_start_trace)

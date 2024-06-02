@@ -134,5 +134,9 @@ def _run_worker(
     except KeyboardInterrupt:
         pass
     finally:
-        messenger.close()
+        # The integration tests in test_autochecklist_run.py depend on the
+        # dependency provider being able to use the messenger (maybe a bit
+        # sketchy, but whatever). Therefore, call shut_down() before closing
+        # the messenger.
         dependency_provider.shut_down()
+        messenger.close()
