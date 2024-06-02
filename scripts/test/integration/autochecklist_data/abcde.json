@@ -1,0 +1,40 @@
+{
+	"name": "run_from_file",
+	"subtasks": [
+		{
+			"name": "A",
+			"description": "Task A",
+			"only_auto": true
+		},
+		{
+			"name": "B",
+			"description": "Task B",
+			"prerequisites": [
+				"A"
+			],
+			"only_auto": true
+		},
+		{
+			"name": "C",
+			"description": "Task C",
+			"prerequisites": [
+				"A"
+			]
+		},
+		{
+			"name": "D",
+			"description": "Task D",
+			"prerequisites": [
+				"B",
+				"C"
+			]
+		},
+		{
+			"name": "E",
+			"description": "Task E",
+			"prerequisites": [
+				"D"
+			]
+		}
+	]
+}

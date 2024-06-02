@@ -1,96 +1,36 @@
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
+import autochecklist
 import lib.mcr_setup as mcr_setup
 from args import McrSetupArgs
-from autochecklist import (
-    ConsoleMessenger,
-    FileMessenger,
-    FunctionFinder,
-    Messenger,
-    Script,
-    TkMessenger,
-)
-from config import Config, McrSetupConfig
-from external_services import (
-    CredentialStore,
-    PlanningCenterClient,
-    ReccWebDriver,
-    VmixClient,
-)
-from lib import AssetManager, BibleVerseFinder, SlideBlueprintReader, SlideGenerator
+from config import McrSetupConfig
+from lib import ReccDependencyProvider
 
 
-class McrSetupScript(Script[McrSetupArgs, McrSetupConfig]):
-    def __init__(self) -> None:
-        self._web_driver: Optional[ReccWebDriver] = None
-
-    def parse_args(self) -> McrSetupArgs:
-        return McrSetupArgs.parse(sys.argv)
-
-    def create_config(self, args: McrSetupArgs) -> McrSetupConfig:
-        return McrSetupConfig(args, profile=None, strict=False)
-
-    def create_messenger(self, args: McrSetupArgs, config: Config) -> Messenger:
-        file_messenger = FileMessenger(log_file=config.mcr_setup_log)
-        input_messenger = (
-            ConsoleMessenger(
-                description=f"{McrSetupArgs.DESCRIPTION}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
-                show_task_status=args.verbose,
-            )
-            if args.ui == "console"
-            else TkMessenger(
-                title="MCR Setup",
-                description=McrSetupArgs.DESCRIPTION,
-                theme=config.ui_theme,
-                show_statuses_by_default=False,
-            )
-        )
-        messenger = Messenger(
-            file_messenger=file_messenger, input_messenger=input_messenger
-        )
-        return messenger
-
-    def create_services(
-        self, args: McrSetupArgs, config: Config, messenger: Messenger
-    ) -> Tuple[Path, FunctionFinder]:
-        credential_store = CredentialStore(messenger)
-        planning_center_client = PlanningCenterClient(
-            messenger, credential_store, config
-        )
-        vmix_client = VmixClient(config=config)
-        self._web_driver = ReccWebDriver(
-            messenger=messenger,
-            headless=not args.show_browser,
-            log_file=config.mcr_setup_webdriver_log,
-        )
-        bible_verse_finder = BibleVerseFinder(self._web_driver, messenger)
-        reader = SlideBlueprintReader(messenger, bible_verse_finder)
-        generator = SlideGenerator(messenger, config)
-        manager = AssetManager(config)
-        function_finder = FunctionFinder(
-            mcr_setup,
-            [
-                planning_center_client,
-                vmix_client,
-                config,
-                messenger,
-                reader,
-                generator,
-                manager,
-            ],
-            messenger,
-        )
-        task_list_file = (
-            Path(__file__).parent.joinpath("config").joinpath("mcr_setup_tasks.json")
-        )
-        return task_list_file, function_finder
-
-    def shut_down(self, args: McrSetupArgs, config: Config) -> None:
-        if self._web_driver is not None:
-            self._web_driver.quit()
+def main(
+    args: McrSetupArgs, config: McrSetupConfig, dep: ReccDependencyProvider
+) -> None:
+    autochecklist.run(
+        args=args,
+        config=config,
+        tasks=Path(__file__).parent.joinpath("config").joinpath("mcr_setup_tasks.json"),
+        module=mcr_setup,
+        dependency_provider=dep,
+    )
 
 
 if __name__ == "__main__":
-    McrSetupScript().run()
+    args = McrSetupArgs.parse(sys.argv)
+    config = McrSetupConfig(args, profile=None, strict=False)
+    dependency_provider = ReccDependencyProvider(
+        args=args,
+        config=config,
+        log_file=config.mcr_setup_log,
+        script_name="MCR Setup",
+        description=McrSetupArgs.DESCRIPTION,
+        show_statuses_by_default=False,
+        headless=not args.show_browser,
+        webdriver_log=config.mcr_setup_webdriver_log,
+    )
+    main(args, config, dependency_provider)

@@ -4,21 +4,15 @@ from argparse import ArgumentParser, Namespace
 from datetime import datetime, time, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, List
 
+import autochecklist
 import summarize_plan
 from args import ReccArgs
-from autochecklist import (
-    ConsoleMessenger,
-    FileMessenger,
-    FunctionFinder,
-    Messenger,
-    Script,
-    TaskModel,
-    TkMessenger,
-)
+from autochecklist import Messenger, TaskModel
 from config import Config
-from external_services import BoxCastApiClient, CredentialStore, PlanningCenterClient
+from external_services import BoxCastApiClient, PlanningCenterClient
+from lib import ReccDependencyProvider
 from summarize_plan import SummarizePlanArgs
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
@@ -66,55 +60,6 @@ class ManualTestArgs(ReccArgs):
             help="If this flag is provided, Python child processes will be run using coverage run --append instead of python.",
         )
         return super().set_up_parser(parser)
-
-
-class ManualTestScript(Script[ManualTestArgs, Config]):
-    def parse_args(self) -> ManualTestArgs:
-        return ManualTestArgs.parse(sys.argv)
-
-    def create_config(self, args: ReccArgs) -> Config:
-        return Config(args)
-
-    def create_messenger(self, args: ReccArgs, config: Config) -> Messenger:
-        file_messenger = FileMessenger(config.schedule_rebroadcast_log)
-        input_messenger = (
-            TkMessenger(
-                "Autochecklist",
-                ManualTestArgs.DESCRIPTION,
-                theme=config.ui_theme,
-                show_statuses_by_default=True,
-            )
-            if args.ui == "tk"
-            else ConsoleMessenger(
-                ManualTestArgs.DESCRIPTION, show_task_status=args.verbose
-            )
-        )
-        return Messenger(file_messenger, input_messenger)
-
-    def create_services(
-        self, args: ManualTestArgs, config: Config, messenger: Messenger
-    ) -> Tuple[TaskModel, FunctionFinder]:
-        credential_store = CredentialStore(messenger=messenger)
-        boxcast_client = BoxCastApiClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        function_finder = FunctionFinder(
-            # Use the current module
-            module=sys.modules[__name__],
-            arguments=[boxcast_client, pco_client, messenger, config, args],
-            messenger=messenger,
-        )
-        task_model = _make_task_model(args.tests)
-        return task_model, function_finder
 
 
 def _make_task_model(cases: List[TestCase]) -> TaskModel:
@@ -368,4 +313,20 @@ def summarize_plan_20240505(client: PlanningCenterClient, messenger: Messenger) 
 
 
 if __name__ == "__main__":
-    ManualTestScript().run()
+    args = ManualTestArgs.parse(sys.argv)
+    config = Config(args)
+    dependency_provider = ReccDependencyProvider(
+        args=args,
+        config=config,
+        log_file=config.manual_test_log,
+        script_name="Manual Test",
+        description=ManualTestArgs.DESCRIPTION,
+        show_statuses_by_default=True,
+    )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dependency_provider,
+        tasks=_make_task_model(args.tests),
+        module=sys.modules[__name__],
+    )

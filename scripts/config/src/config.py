@@ -372,9 +372,6 @@ class Config(BaseConfig):
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")
-            self.check_credentials_webdriver_log_name = reader.get_str(
-                "logging.check_credentials_webdriver_name"
-            )
             self.download_assets_log = reader.get_file("logging.download_pco_assets")
             self.generate_slides_log = reader.get_file("logging.generate_slides")
             self.generate_slides_webdriver_log = reader.get_file(
@@ -385,13 +382,8 @@ class Config(BaseConfig):
                 "logging.mcr_setup_webdriver"
             )
             self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
-            self.mcr_teardown_webdriver_log_name = reader.get_str(
-                "logging.mcr_teardown_webdriver_name"
-            )
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
-            self.schedule_rebroadcast_log = reader.get_file(
-                "logging.schedule_rebroadcast"
-            )
+            self.manual_test_log = reader.get_file("logging.manual_test")
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")

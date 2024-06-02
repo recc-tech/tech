@@ -1,13 +1,69 @@
 import shutil
 import stat
-from datetime import datetime, timedelta
+import traceback
+from datetime import date, datetime, timedelta
+from typing import Dict
 
+import args.parsing_helpers as parse
 import autochecklist
 import lib
 import webvtt
-from autochecklist import Messenger, TaskStatus
+from args import McrTeardownArgs
+from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
 from config import Config, McrTeardownConfig
-from external_services import BoxCastApiClient, ReccVimeoClient
+from external_services import BoxCastApiClient, PlanningCenterClient, ReccVimeoClient
+
+
+def get_service_info(
+    args: McrTeardownArgs,
+    config: Config,
+    messenger: Messenger,
+    planning_center_client: PlanningCenterClient,
+) -> None:
+    message_series = ""
+    message_title = ""
+    if not (args.message_series and args.message_title):
+        try:
+            today = args.start_time.date() or date.today()
+            todays_plan = planning_center_client.find_plan_by_date(today)
+            message_series = todays_plan.series_title
+            message_title = todays_plan.title
+        except:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                "Failed to fetch today's plan from Planning Center.",
+                stacktrace=traceback.format_exc(),
+            )
+
+    params: Dict[str, Parameter] = {}
+    if not args.message_series:
+        params["message_series"] = Parameter(
+            "Message Series",
+            parser=parse.parse_non_empty_string,
+            description='This is the name of the series to which today\'s sermon belongs. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the series was "Getting There".',
+            default=message_series,
+        )
+    if not args.message_title:
+        params["message_title"] = Parameter(
+            "Message Title",
+            parser=parse.parse_non_empty_string,
+            description='This is the title of today\'s sermon. For example, on July 23, 2023 (https://services.planningcenteronline.com/plans/65898313), the title was "Avoiding Road Rage".',
+            default=message_title,
+        )
+    if len(params) == 0:
+        return
+
+    inputs = messenger.input_multiple(
+        params, prompt="The script needs some information to get started."
+    )
+    if "message_series" in inputs:
+        args.message_series = str(inputs["message_series"])
+    if "message_title" in inputs:
+        args.message_title = str(inputs["message_title"])
+
+    # Need to reload so that the Vimeo video title, BoxCast URLs, etc. get
+    # updated with today's service info
+    config.reload()
 
 
 def wait_for_BoxCast_recording(

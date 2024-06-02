@@ -9,15 +9,18 @@ from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Literal, Optional, Set, Type
 
 from .base_args import BaseArgs
 from .base_config import BaseConfig
 from .messenger import (
+    ConsoleMessenger,
+    FileMessenger,
     Messenger,
     ProblemLevel,
     TaskCancelledException,
     TaskStatus,
+    TkMessenger,
     UserResponse,
 )
 
@@ -221,7 +224,9 @@ class _Task:
         if self._only_auto:
             allowed_responses.remove(UserResponse.DONE)
         response = self._messenger.wait(
-            self._description, allowed_responses=allowed_responses
+            self._description,
+            allowed_responses=allowed_responses,
+            task_name=self.name,
         )
         return response
 
@@ -339,16 +344,75 @@ class TaskModel:
         return [cls._parse(st) for st in subtasks_list]
 
 
+class DependencyProvider:
+    def __init__(
+        self,
+        args: BaseArgs,
+        config: BaseConfig,
+        log_file: Path,
+        script_name: str,
+        description: str,
+        show_statuses_by_default: bool,
+        ui_theme: Literal["light", "dark"],
+        messenger: Optional[Messenger],
+    ) -> None:
+        self._args = args
+        self._config = config
+        self.messenger = messenger or self._make_messenger(
+            log_file=log_file,
+            script_name=script_name,
+            description=description,
+            show_statuses_by_default=show_statuses_by_default,
+            ui_theme=ui_theme,
+        )
+
+    def _make_messenger(
+        self,
+        log_file: Path,
+        script_name: str,
+        description: str,
+        show_statuses_by_default: bool,
+        ui_theme: Literal["light", "dark"],
+    ) -> Messenger:
+        file_messenger = FileMessenger(log_file=log_file)
+        input_messenger = (
+            ConsoleMessenger(
+                description=f"{description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+                show_task_status=self._args.verbose,
+            )
+            if self._args.ui == "console"
+            else TkMessenger(
+                title=script_name,
+                description=description,
+                theme=ui_theme,
+                show_statuses_by_default=show_statuses_by_default,
+            )
+        )
+        return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
+
+    def get(self, typ: Type[object]) -> object:
+        if typ == BaseArgs:
+            return self._args
+        elif typ == BaseConfig:
+            return self._config
+        elif typ == Messenger:
+            return self.messenger
+        else:
+            raise ValueError(f"Unknown argument type {typ.__name__}")
+
+    def shut_down(self) -> None:
+        pass
+
+
 class FunctionFinder:
     def __init__(
         self,
         module: Optional[ModuleType],
-        arguments: List[Any],
+        dependency_provider: DependencyProvider,
         messenger: Messenger,
-    ):
+    ) -> None:
         self._module = module
-        self._arguments = arguments
-        self._is_argument_used = {id(a): False for a in self._arguments}
+        self._dependency_provider = dependency_provider
         self._messenger = messenger
 
     def find_functions(
@@ -365,6 +429,9 @@ class FunctionFinder:
             return {f: None for f in names}
 
         unused_function_names = self._detect_unused_functions(names)
+        # Allow function called "main," in case the script has the task
+        # implementations all in the same file
+        unused_function_names -= {"main"}
         if len(unused_function_names) > 0:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
@@ -374,14 +441,6 @@ class FunctionFinder:
         function_assignments = {
             name: self._find_function_with_args(name) for name in names
         }
-
-        unused_args = {a for a in self._arguments if not self._is_argument_used[id(a)]}
-        if unused_args:
-            message = (
-                "The following arguments are not used by any task implementations: "
-                + "".join([f"\n * {repr(a)}" for a in unused_args])
-            )
-            self._messenger.log_problem(ProblemLevel.WARN, message)
 
         auto_tasks = {k for (k, v) in function_assignments.items() if v is not None}
         self._messenger.log_debug(
@@ -409,7 +468,9 @@ class FunctionFinder:
         try:
             inputs = self._find_arguments(signature)
         except Exception as e:
-            raise ValueError(f"Failed to find arguments for function '{name}'.") from e
+            raise ValueError(
+                f"Failed to find arguments for function '{name}' ({e})."
+            ) from e
 
         def f():
             original_function(**inputs)
@@ -424,22 +485,12 @@ class FunctionFinder:
 
     def _find_arguments(self, signature: Signature) -> Dict[str, object]:
         params = signature.parameters.values()
-        return {p.name: self._find_single_argument(p) for p in params}
+        return {p.name: self._get_one_arg(p) for p in params}
 
-    def _find_single_argument(self, param: Parameter) -> Any:
-        matching_args = [
-            a for a in self._arguments if issubclass(type(a), param.annotation)
-        ]
-        if len(matching_args) < 1:
-            raise ValueError(f"Parameter '{param.name}' is unknown.")
-        elif len(matching_args) > 1:
-            raise ValueError(
-                f"Parameter '{param.name}' is ambiguous - there are multiple arguments that could be assigned to it."
-            )
-        else:
-            arg = matching_args[0]
-            self._is_argument_used[id(arg)] = True
-            return arg
+    def _get_one_arg(self, p: Parameter) -> object:
+        if p.annotation == Parameter.empty:
+            raise ValueError(f"Missing annotation for parameter {p.name}.")
+        return self._dependency_provider.get(p.annotation)
 
     def _detect_unused_functions(self, used_function_names: List[str]) -> Set[str]:
         all_functions = inspect.getmembers(self._module, inspect.isfunction)

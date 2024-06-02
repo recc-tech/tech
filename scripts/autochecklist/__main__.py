@@ -3,25 +3,23 @@ import random
 import sys
 from datetime import timedelta
 from pathlib import Path
-from typing import Callable, Literal, Tuple, TypeVar
+from typing import Callable, Literal, TypeVar
 
-T = TypeVar("T")
+import autochecklist
 
 from . import (
     BaseArgs,
     BaseConfig,
-    ConsoleMessenger,
-    FileMessenger,
-    FunctionFinder,
+    DependencyProvider,
     Messenger,
     Parameter,
     ProblemLevel,
-    Script,
     TaskModel,
     TaskStatus,
-    TkMessenger,
     wait,
 )
+
+T = TypeVar("T")
 
 _DESCRIPTION = "This is a demo of the autochecklist package."
 
@@ -159,96 +157,74 @@ class DemoArgs(BaseArgs):
         return super().set_up_parser(parser)
 
 
-class DemoScript(Script[DemoArgs, BaseConfig]):
-    def parse_args(self) -> DemoArgs:
-        return DemoArgs.parse(sys.argv)
-
-    def create_config(self, args: DemoArgs) -> BaseConfig:
-        return BaseConfig()
-
-    def create_messenger(self, args: DemoArgs, config: BaseConfig) -> Messenger:
-        file_messenger = FileMessenger(
-            log_file=Path(__file__).parent.joinpath("demo.log")
-        )
-        input_messenger = (
-            ConsoleMessenger(description=_DESCRIPTION, show_task_status=args.verbose)
-            if args.ui == "console"
-            else TkMessenger(
-                title="autochecklist demo",
-                description=_DESCRIPTION,
-                theme=args.ui_theme,
-                show_statuses_by_default=False,
-            )
-            # if args.ui == "tk"
-            # else EelMessenger(title="autochecklist demo", description=_DESCRIPTION)
-        )
-        messenger = Messenger(
-            file_messenger=file_messenger, input_messenger=input_messenger
-        )
-        return messenger
-
-    def create_services(
-        self, args: BaseArgs, config: BaseConfig, messenger: Messenger
-    ) -> Tuple[TaskModel, FunctionFinder]:
-        function_finder = FunctionFinder(
-            # Use the current module
-            module=sys.modules[__name__],
-            arguments=[messenger],
-            messenger=messenger,
-        )
-        task_model = TaskModel(
-            name="demo",
-            subtasks=[
-                TaskModel(
-                    name="demo_manual",
-                    description="This is what a non-automated task looks like.",
-                ),
-                TaskModel(
-                    name="demo_input",
-                    description="This task will ask for various kinds of input.",
-                    prerequisites={"demo_manual"},
-                ),
-                TaskModel(
-                    name="demo_errors",
-                    description="This task will always fail. Try retrying it once or twice, then press 'Done.'",
-                    prerequisites={"demo_input"},
-                ),
-                TaskModel(
-                    name="demo_progress",
-                    prerequisites={"demo_errors"},
-                    subtasks=[
-                        TaskModel(
-                            name="demo_progress1",
-                            description="This task will show a few progress bars. It cannot be done manually.",
-                            only_auto=True,
-                        ),
-                        TaskModel(
-                            name="demo_progress2",
-                            description="This task will show a few progress bars. It cannot be done manually.",
-                            only_auto=True,
-                        ),
-                    ],
-                ),
-                TaskModel(
-                    name="demo_cancel",
-                    prerequisites={"demo_progress"},
-                    subtasks=[
-                        TaskModel(
-                            name="demo_cancel1",
-                            description="This task will run for a long time. It cannot be done manually.",
-                            only_auto=True,
-                        ),
-                        TaskModel(
-                            name="demo_cancel2",
-                            description="This task will run for a long time. It cannot be done manually.",
-                            only_auto=True,
-                        ),
-                    ],
-                ),
-            ],
-        )
-        return task_model, function_finder
-
-
 if __name__ == "__main__":
-    DemoScript().run()
+    args = DemoArgs.parse(sys.argv)
+    config = BaseConfig()
+    tasks = TaskModel(
+        name="demo",
+        subtasks=[
+            TaskModel(
+                name="demo_manual",
+                description="This is what a non-automated task looks like.",
+            ),
+            TaskModel(
+                name="demo_input",
+                description="This task will ask for various kinds of input.",
+                prerequisites={"demo_manual"},
+            ),
+            TaskModel(
+                name="demo_errors",
+                description="This task will always fail. Try retrying it once or twice, then press 'Done.'",
+                prerequisites={"demo_input"},
+            ),
+            TaskModel(
+                name="demo_progress",
+                prerequisites={"demo_errors"},
+                subtasks=[
+                    TaskModel(
+                        name="demo_progress1",
+                        description="This task will show a few progress bars. It cannot be done manually.",
+                        only_auto=True,
+                    ),
+                    TaskModel(
+                        name="demo_progress2",
+                        description="This task will show a few progress bars. It cannot be done manually.",
+                        only_auto=True,
+                    ),
+                ],
+            ),
+            TaskModel(
+                name="demo_cancel",
+                prerequisites={"demo_progress"},
+                subtasks=[
+                    TaskModel(
+                        name="demo_cancel1",
+                        description="This task will run for a long time. It cannot be done manually.",
+                        only_auto=True,
+                    ),
+                    TaskModel(
+                        name="demo_cancel2",
+                        description="This task will run for a long time. It cannot be done manually.",
+                        only_auto=True,
+                    ),
+                ],
+            ),
+        ],
+    )
+    dependency_provider = DependencyProvider(
+        args=args,
+        config=config,
+        messenger=None,
+        log_file=Path(__file__).parent.joinpath("demo.log"),
+        script_name="AutoChecklist Demo",
+        description=_DESCRIPTION,
+        show_statuses_by_default=True,
+        ui_theme="dark",
+    )
+    autochecklist.run(
+        args=args,
+        config=config,
+        dependency_provider=dependency_provider,
+        tasks=tasks,
+        module=sys.modules[__name__],
+    )

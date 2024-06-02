@@ -1,185 +1,142 @@
 import sys
 import traceback
 from pathlib import Path
-from typing import Generic, Tuple, TypeVar, Union
+from types import ModuleType
+from typing import Optional, Union
 
 from .base_args import BaseArgs
 from .base_config import BaseConfig
-from .messenger import (
-    ConsoleMessenger,
-    FileMessenger,
-    Messenger,
-    ProblemLevel,
-    TaskStatus,
-    TkMessenger,
-)
-from .task import FunctionFinder, TaskGraph, TaskModel
+from .messenger import Messenger, ProblemLevel, TaskStatus
+from .task import DependencyProvider, FunctionFinder, TaskGraph, TaskModel
 
-A = TypeVar("A", bound=BaseArgs)
-C = TypeVar("C", bound=BaseConfig)
+_ERROR_FILE = Path("error.log")
+_SUCCESS_MESSAGE = "All done!"
+_FAIL_MESSAGE = "Script failed."
 
 
-class Script(Generic[A, C]):
-    def parse_args(self) -> A:
-        raise NotImplementedError()
+def run(
+    args: BaseArgs,
+    config: BaseConfig,
+    dependency_provider: DependencyProvider,
+    tasks: Union[Path, TaskModel],
+    module: Optional[ModuleType],
+) -> None:
+    # If the program is being run *without* a terminal window, then redirect
+    # stderr to the given file.
+    # This ensures errors that would normally be printed to the terminal do not
+    # silently kill the program.
 
-    def create_config(self, args: A) -> C:
-        raise NotImplementedError()
-
-    def create_messenger(self, args: A, config: C) -> Messenger:
-        raise NotImplementedError()
-
-    def create_services(
-        self, args: A, config: C, messenger: Messenger
-    ) -> Tuple[Union[TaskModel, Path], FunctionFinder]:
-        raise NotImplementedError()
-
-    def shut_down(self, args: A, config: C) -> None:
+    # pythonw sets sys.stderr to None.
+    # Open the file even when not using pythonw for easier debugging.
+    with open(_ERROR_FILE, "w", encoding="utf-8") as se:
+        has_terminal = sys.stderr is not None
+        if has_terminal:
+            _run_main(
+                args=args,
+                config=config,
+                tasks=tasks,
+                module=module,
+                dependency_provider=dependency_provider,
+            )
+        else:
+            sys.stderr = se
+            _run_main(
+                args=args,
+                config=config,
+                tasks=tasks,
+                module=module,
+                dependency_provider=dependency_provider,
+            )
+    # No need to keep the file around if the program exited successfully and
+    # it's empty
+    try:
+        with open(_ERROR_FILE, "r", encoding="utf-8") as f:
+            text = f.read()
+        if len(text) == 0:
+            _ERROR_FILE.unlink(missing_ok=True)
+    except:
         pass
 
-    @property
-    def success_message(self) -> str:
-        return "All done!"
 
-    @property
-    def fail_message(self) -> str:
-        return "Script failed."
-
-    @property
-    def error_file(self) -> Path:
-        return Path("error.log")
-
-    def run(self) -> None:
-        # If the program is being run *without* a terminal window, then redirect
-        # stderr to the given file.
-        # This ensures errors that would normally be printed to the terminal do not
-        # silently kill the program.
-
-        # pythonw sets sys.stderr to None.
-        # Open the file even when not using pythonw for easier debugging.
-        with open(self.error_file, "w", encoding="utf-8") as se:
-            has_terminal = sys.stderr is not None
-            if has_terminal:
-                self._run_main()
-            else:
-                sys.stderr = se
-                self._run_main()
-        # No need to keep the file around if the program exited successfully and
-        # it's empty
-        try:
-            with open(self.error_file, "r", encoding="utf-8") as f:
-                text = f.read()
-            if len(text) == 0:
-                self.error_file.unlink(missing_ok=True)
-        except:
-            pass
-
-    def _run_main(self) -> None:
-        try:
-            args = self.parse_args()
-        except Exception as e:
-            raise RuntimeError(f"Failed to parse command-line arguments.") from e
-
-        try:
-            config = self.create_config(args)
-        except Exception as e:
-            raise RuntimeError(f"Failed to load config.") from e
-
-        try:
-            messenger = self.create_messenger(args, config)
-        except Exception as e:
-            raise RuntimeError(f"Failed to create user interface.") from e
-
-        try:
-            messenger.start(
-                after_start=lambda: self._run_worker(args, config, messenger)
+def _run_main(
+    args: BaseArgs,
+    config: BaseConfig,
+    tasks: Union[Path, TaskModel],
+    module: Optional[ModuleType],
+    dependency_provider: DependencyProvider,
+) -> None:
+    messenger = dependency_provider.messenger
+    try:
+        messenger.start(
+            after_start=lambda: _run_worker(
+                args=args,
+                config=config,
+                messenger=messenger,
+                tasks=tasks,
+                module=module,
+                dependency_provider=dependency_provider,
             )
-        except Exception as e:
-            raise RuntimeError(f"Failed to run messenger: {e}") from e
-
-    def _run_worker(self, args: A, config: C, messenger: Messenger) -> None:
-        try:
-            try:
-                messenger.log_status(TaskStatus.RUNNING, "Creating services.")
-                task_model, function_finder = self.create_services(
-                    args, config, messenger
-                )
-            except Exception as e:
-                messenger.log_problem(
-                    ProblemLevel.FATAL,
-                    f"Failed to create services: {e}",
-                    traceback.format_exc(),
-                )
-                messenger.log_status(TaskStatus.DONE, self.fail_message)
-                return
-
-            try:
-                if isinstance(task_model, Path):
-                    messenger.log_status(
-                        TaskStatus.RUNNING,
-                        f"Loading tasks from {task_model.as_posix()}.",
-                    )
-                    task_model = TaskModel.load(task_model)
-                messenger.log_status(TaskStatus.RUNNING, "Loading task graph.")
-                task_graph = TaskGraph(
-                    task_model, messenger, function_finder, args, config
-                )
-            except Exception as e:
-                messenger.log_problem(
-                    ProblemLevel.FATAL,
-                    f"Failed to load the task graph: {e}",
-                    traceback.format_exc(),
-                )
-                messenger.log_status(TaskStatus.DONE, self.fail_message)
-                return
-
-            if args.no_run:
-                messenger.log_status(
-                    TaskStatus.DONE, "No tasks were run because config.no_run = true."
-                )
-            else:
-                try:
-                    messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
-                    task_graph.run()
-                    messenger.log_status(TaskStatus.DONE, self.success_message)
-                except Exception as e:
-                    messenger.log_problem(
-                        ProblemLevel.FATAL,
-                        f"Failed to run the tasks: {e}",
-                        traceback.format_exc(),
-                    )
-                    messenger.log_status(TaskStatus.DONE, self.fail_message)
-                    return
-        except KeyboardInterrupt:
-            pass
-        finally:
-            messenger.close()
-            self.shut_down(args, config)
-
-
-class DefaultScript(Script[BaseArgs, BaseConfig]):
-    def parse_args(self) -> BaseArgs:
-        return BaseArgs.parse(sys.argv)
-
-    def create_config(self, args: BaseArgs) -> BaseConfig:
-        return BaseConfig()
-
-    def create_messenger(self, args: BaseArgs, config: BaseConfig) -> Messenger:
-        file_messenger = FileMessenger(Path("autochecklist.log"))
-        input_messenger = (
-            TkMessenger(
-                "Autochecklist", "", theme="dark", show_statuses_by_default=False
-            )
-            if args.ui == "tk"
-            else ConsoleMessenger("", show_task_status=args.verbose)
         )
-        return Messenger(file_messenger, input_messenger)
+    except Exception as e:
+        raise RuntimeError(f"Failed to run messenger: {e}") from e
 
-    def create_services(
-        self, args: BaseArgs, config: BaseConfig, messenger: Messenger
-    ) -> Tuple[Union[Path, TaskModel], FunctionFinder]:
-        function_finder = FunctionFinder(module=None, arguments=[], messenger=messenger)
-        return Path("tasks.json"), function_finder
 
-    def shut_down(self, args: BaseArgs, config: BaseConfig) -> None:
+def _run_worker(
+    args: BaseArgs,
+    config: BaseConfig,
+    messenger: Messenger,
+    tasks: Union[Path, TaskModel],
+    module: Optional[ModuleType],
+    dependency_provider: DependencyProvider,
+) -> None:
+    try:
+        try:
+            if isinstance(tasks, Path):
+                messenger.log_status(
+                    TaskStatus.RUNNING,
+                    f"Loading tasks from {tasks.as_posix()}.",
+                )
+                tasks = TaskModel.load(tasks)
+            else:
+                messenger.log_status(TaskStatus.RUNNING, "Loading tasks.")
+            function_finder = FunctionFinder(
+                module=module,
+                dependency_provider=dependency_provider,
+                messenger=messenger,
+            )
+            task_graph = TaskGraph(tasks, messenger, function_finder, args, config)
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.FATAL,
+                f"Failed to load the task graph: {e}",
+                traceback.format_exc(),
+            )
+            messenger.log_status(TaskStatus.DONE, _FAIL_MESSAGE)
+            return
+
+        if args.no_run:
+            messenger.log_status(
+                TaskStatus.DONE, "No tasks were run because no_run = true."
+            )
+        else:
+            try:
+                messenger.log_status(TaskStatus.RUNNING, "Running tasks.")
+                task_graph.run()
+                messenger.log_status(TaskStatus.DONE, _SUCCESS_MESSAGE)
+            except Exception as e:
+                messenger.log_problem(
+                    ProblemLevel.FATAL,
+                    f"Failed to run the tasks: {e} ({type(e).__name__})",
+                    traceback.format_exc(),
+                )
+                messenger.log_status(TaskStatus.DONE, _FAIL_MESSAGE)
+                return
+    except KeyboardInterrupt:
         pass
+    finally:
+        # The integration tests in test_autochecklist_run.py depend on the
+        # dependency provider being able to use the messenger (maybe a bit
+        # sketchy, but whatever). Therefore, call shut_down() before closing
+        # the messenger.
+        dependency_provider.shut_down()
+        messenger.close()
