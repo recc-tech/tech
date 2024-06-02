@@ -91,29 +91,19 @@ def _run_worker(
 ) -> None:
     try:
         try:
-            messenger.log_status(TaskStatus.RUNNING, "Creating services.")
-            function_finder = FunctionFinder(
-                module=module,
-                dependency_provider=dependency_provider,
-                messenger=messenger,
-            )
-        except Exception as e:
-            messenger.log_problem(
-                ProblemLevel.FATAL,
-                f"Failed to create services: {e}",
-                traceback.format_exc(),
-            )
-            messenger.log_status(TaskStatus.DONE, _FAIL_MESSAGE)
-            return
-
-        try:
             if isinstance(tasks, Path):
                 messenger.log_status(
                     TaskStatus.RUNNING,
                     f"Loading tasks from {tasks.as_posix()}.",
                 )
                 tasks = TaskModel.load(tasks)
-            messenger.log_status(TaskStatus.RUNNING, "Loading task graph.")
+            else:
+                messenger.log_status(TaskStatus.RUNNING, "Loading tasks.")
+            function_finder = FunctionFinder(
+                module=module,
+                dependency_provider=dependency_provider,
+                messenger=messenger,
+            )
             task_graph = TaskGraph(tasks, messenger, function_finder, args, config)
         except Exception as e:
             messenger.log_problem(
@@ -145,5 +135,4 @@ def _run_worker(
         pass
     finally:
         messenger.close()
-        # TODO: Test that this actually gets called in either case!
         dependency_provider.shut_down()
