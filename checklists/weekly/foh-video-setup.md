@@ -8,15 +8,15 @@ labels: checklist
 
 For more details, see the [ProPresenter quick start guide](https://github.com/recc-tech/tech/wiki/ProPresenter-Quick-Start-Guide).
 
-## Setup
+## During Rehearsal
 
-- [ ] Turn on the projectors and make sure they're lined up properly.
-- [ ] Download any new media from Planning Center Online to `/Users/visuals/Documents/ProPresenter Assets`.
 - Set up the standard playlist elements:
     - [ ] Walk-in slides and announcements
     - [ ] Videos (opener, bumper, announcements)
     - [ ] Songs
     - [ ] Message
+- [ ] Make sure the projectors are lined up properly.
+- [ ] Check that all the images and videos on Planning Center are in ProPresenter.
 - [ ] For each slide, make sure you use the correct look:
     - "Lyrics" for song lyrics
     - "Scripture" for Bible verses
@@ -24,21 +24,25 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
 - [ ] Make sure the walk-in slides all have their "Go to Next Timer" set and the other slides do not have a timer.
 - [ ] Look for special events in the plan on Planning Center Online (e.g., baptism, child dedication).
-- [ ] Look for special requests or notes (e.g., custom lyrics, scripture to be shown before worship):
+- Look for special requests or notes (e.g., custom lyrics, scripture to be shown before worship):
     - [ ] On Planning Center
     - [ ] By email (tech@riversedge.life)
-- [ ] Once the rehearsal is done, play each video to make sure the sound is working.
+
+### (Nice to Have)
+
+- [ ] Check that the message notes are up to date (in case some last-minute changes were made).
+- [ ] Check that all the songs are correct (in case there was a typo on Planning Center).
+- [ ] Check that all slides look good on the projector and on NDI (e.g., the text isn't too small).
+- [ ] Remove walk-in slides and MC announcements that are definitely outdated.
+
+## After Rehearsal
+
+- [ ] Play each video to make sure the sound is working.
 - [ ] Turn off the red light and the stage lights.
 - [ ] Play some music from Spotify.
 - [ ] Show the walk-in slides.
 - [ ] Turn on NDI Video Monitor and select NDI > Desktop-D9Q3BCP > vMix - Output 1.
-
-## Checks
-
-If you have time, check these things.
-
-- [ ] Check that all slides look good on the projector and on NDI (e.g., the text isn't too small).
-- [ ] Remove walk-in slides and MC announcements that are definitely outdated.
+- [ ] Go to the "Services Live" view on Planning Center.
 
 ## General Reminders
 

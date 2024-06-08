@@ -91,13 +91,6 @@
 					]
 				},
 				{
-					"name": "create_video_markers",
-					"description": "On BoxCast, create video markers. See https://github.com/recc-tech/tech/wiki/Video-Markers for the list of chapters.",
-					"prerequisites": [
-						"wait_for_BoxCast_recording"
-					]
-				},
-				{
 					"name": "captions",
 					"subtasks": [
 						{
@@ -176,6 +169,10 @@
 				{
 					"name": "turn_off_cams",
 					"description": "Turn off camera 4 (the camera on the tripod)."
+				},
+				{
+					"name": "turn_off_speakers",
+					"description": "Turn off the speakers in the MCR."
 				}
 			]
 		},
