@@ -6,9 +6,9 @@ name: Tag releases
 
 on:
   schedule:
-    # https://crontab.guru/#15_12_*_*_SUN
-    # 12:15 UTC is either 8:15 or 7:15 eastern time, depending on whether we're currently in daylight savings time
-    - cron: '15 12 * * SUN'
+    # https://crontab.guru/#15_9_*_*_SUN
+    # 9:15 UTC is either 5:15 or 4:15 eastern time, depending on whether we're currently in daylight savings time
+    - cron: '15 9 * * SUN'
   # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
   workflow_dispatch:
 
