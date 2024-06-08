@@ -3,8 +3,9 @@
 
 on:
   schedule:
-    # https://crontab.guru/#15_1_*_*_SUN
-    - cron: '15 1 * * SUN'
+    # https://crontab.guru/#15_9_*_*_SUN
+    # 9:15 UTC is either 5:15 or 4:15 eastern time, depending on whether we're currently in daylight savings time
+    - cron: '15 9 * * SUN'
   # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
   workflow_dispatch:
 
