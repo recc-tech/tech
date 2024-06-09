@@ -143,7 +143,15 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
-def download_captions(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+def download_captions(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    # TODO: Temporary (fingers crossed) hack to address
+    # https://github.com/recc-tech/tech/issues/337
+    token = messenger.allow_cancel()
+    autochecklist.sleep_attentively(
+        timeout=timedelta(minutes=3), cancellation_token=token
+    )
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
     if broadcast is None:
         raise ValueError("No broadcast found on BoxCast.")
