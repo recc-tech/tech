@@ -40,7 +40,7 @@ def download_PCO_assets(
         messenger=messenger,
         download_kids_video=config.station == "mcr",
         download_notes_docx=config.station == "mcr",
-        require_announcements=config.station == "foh",
+        require_announcements=False,
         dry_run=args.dry_run,
     )
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
