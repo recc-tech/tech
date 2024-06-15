@@ -73,7 +73,11 @@ def demo_input(messenger: Messenger) -> None:
 
 def demo_errors(messenger: Messenger) -> None:
     messenger.log_problem(ProblemLevel.WARN, "This is what a warning looks like.")
-    messenger.log_problem(ProblemLevel.ERROR, "This is what an error looks like.")
+    messenger.log_problem(
+        ProblemLevel.ERROR,
+        "This is what an error looks like."
+        " Maybe you'd like to link to [[url|https://xkcd.com/627/|a troubleshooting page]].",
+    )
     messenger.log_problem(ProblemLevel.FATAL, "This is what a fatal error looks like.")
     raise ValueError("This is what happens when a task throws an exception.")
 
@@ -165,7 +169,7 @@ if __name__ == "__main__":
         subtasks=[
             TaskModel(
                 name="demo_manual",
-                description="This is what a non-automated task looks like.",
+                description="This is what a non-automated task looks like. It can even have hyperlinks (such as [[url|https://xkcd.com/]] or [[url|https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418|HTTP 418]])!",
             ),
             TaskModel(
                 name="demo_input",
