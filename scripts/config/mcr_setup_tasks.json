@@ -27,11 +27,11 @@
 			"subtasks": [
 				{
 					"name": "check_COP_events",
-					"description": "Check that the main event and rebroadcast events have been created *and have content*. If not, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform."
+					"description": "Check that the main event and rebroadcast events on Church Online Platform have been created *and have content*. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
 				},
 				{
 					"name": "check_BoxCast_events",
-					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If the events are not set up properly, follow the instructions at https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast."
+					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
 				}
 			]
 		},
@@ -43,11 +43,11 @@
 			"subtasks": [
 				{
 					"name": "check_cameras",
-					"description": "Check the cameras. If any of the band members are in a bad position (e.g., blocking someone else), ask them to move. If the cameras are laggy or unresponsive, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-ptz-cameras-arent-working."
+					"description": "Check that the cameras and the NDI controller are working. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-ptz-cameras-arent-working|troubleshooting page]]. Also, if any of the band members are in a bad position (e.g., blocking someone else), ask them to move."
 				},
 				{
 					"name": "check_sound",
-					"description": "Check that vMix is receiving sound from the MCR sound station. If not, see https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station."
+					"description": "Check that vMix is receiving sound from the MCR sound station. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station|troubleshooting page]]."
 				}
 			]
 		},
@@ -85,7 +85,7 @@
 				},
 				{
 					"name": "update_titles",
-					"description": "In vMix, update the pre-stream title loop, the speaker's title, the host's title, and the title for anyone else that will make an announcement."
+					"description": "In vMix, update the pre-stream title loop, the speaker's title, the MC hosts' title, and the title for anyone else that will make an announcement."
 				}
 			]
 		},
@@ -116,7 +116,7 @@
 				},
 				{
 					"name": "set_up_in_annex",
-					"description": "Copy the kids video to the laptop and set up the laptop and TV in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly."
+					"description": "Set up for Sunday school in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details.]]"
 				},
 				{
 					"name": "start_recording",
@@ -139,7 +139,7 @@
 				},
 				{
 					"name": "generate_backup_slides",
-					"description": "Create backup slides for the message notes and verses. See https://github.com/recc-tech/tech/wiki/Generating-Backup-Slides.",
+					"description": "Create backup slides for the message notes and verses. [[url|https://github.com/recc-tech/tech/wiki/Generating-Backup-Slides|More details]].",
 					"prerequisites": [
 						"download_message_notes"
 					]
@@ -174,7 +174,7 @@
 		},
 		{
 			"name": "check_GitHub_checklist",
-			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: https://github.com/recc-tech/tech/issues.",
+			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: [[url|https://github.com/recc-tech/tech/issues]].",
 			"prerequisites": [
 				"check_streaming_platforms",
 				"check_live_feeds",
