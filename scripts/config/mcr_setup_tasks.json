@@ -27,11 +27,11 @@
 			"subtasks": [
 				{
 					"name": "check_COP_events",
-					"description": "Check that the main event and rebroadcast events on Church Online Platform have been created *and have content*. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
+					"description": "Check that the main event and rebroadcast events on Church Online Platform have been created [[emph|and have content]]. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
 				},
 				{
 					"name": "check_BoxCast_events",
-					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but *not* for the Kids Connection event. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
+					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but [[emph|not]] for the Kids Connection event. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
 				}
 			]
 		},
@@ -98,7 +98,7 @@
 		},
 		{
 			"name": "publish_sermon_notes",
-			"description": "Publish the sermon notes to Church Online Platform, first to the main event, then to the rebroadcast events. IMPORTANT: check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time).",
+			"description": "Publish the sermon notes to Church Online Platform, first to the main event, then to the rebroadcast events. ⚠️ [[emph|Check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time)]] ⚠️.",
 			"prerequisites": [
 				"download_assets",
 				"check_COP_events"
@@ -116,7 +116,7 @@
 				},
 				{
 					"name": "set_up_in_annex",
-					"description": "Set up for Sunday school in the Annex. IMPORTANT: bring the laptop charger to the Annex too; the laptop dies quickly. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details.]]"
+					"description": "Set up for Sunday school in the Annex. ⚠️ [[emph|Bring the laptop charger to the Annex too; the laptop dies quickly]] ⚠️. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]]."
 				},
 				{
 					"name": "start_recording",

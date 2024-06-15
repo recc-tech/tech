@@ -95,7 +95,7 @@
 					"subtasks": [
 						{
 							"name": "review_and_publish_captions",
-							"description": "***IMPORTANT*** Publish BEFORE leaving the page, otherwise your changes will be lost. ***IMPORTANT*** On BoxCast, review low-confidence cues and publish the captions, but don't download them yet.",
+							"description": "On BoxCast, review low-confidence cues and publish the captions, but don't download them yet. ⚠️ [[emph|Publish BEFORE leaving the page, otherwise your changes will be lost]] ⚠️",
 							"prerequisites": [
 								"wait_for_BoxCast_recording"
 							]

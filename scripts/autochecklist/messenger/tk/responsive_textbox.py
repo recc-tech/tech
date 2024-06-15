@@ -19,7 +19,13 @@ class UrlText:
     url: str
 
 
-TextChunk = Union[PlainText, UrlText]
+@dataclass
+class EmphText:
+    text: str
+
+
+TextChunk = Union[PlainText, UrlText, EmphText]
+
 
 class ResponsiveTextbox(Text):
     """
@@ -66,11 +72,12 @@ class ResponsiveTextbox(Text):
         )
         self.bind("<Configure>", lambda _: self.resize())
 
-        # Hyperlink style
-        self.tag_config("url", foreground=hyperlink_color, underline=True)
+        # Tag styles
+        self.tag_configure("url", foreground=hyperlink_color, underline=True)
         self.tag_bind("url", "<Enter>", lambda _: self._set_cursor_hand())
         self.tag_bind("url", "<Leave>", lambda _: self._set_cursor_normal())
         self.tag_bind("url", "<Button-1>", self._on_click_hyperlink)
+        self.tag_configure("emph", underline=True)
         self.url_by_tag: Dict[str, str] = {}
         self.next_unique_int = 0
 
@@ -82,6 +89,8 @@ class ResponsiveTextbox(Text):
             match c:
                 case PlainText(_):
                     tags = []
+                case EmphText(_):
+                    tags = ["emph"]
                 case UrlText(_, url):
                     tag = f"url:{self._get_unique_int()}"
                     self.url_by_tag[tag] = url
@@ -109,7 +118,7 @@ class ResponsiveTextbox(Text):
     def _set_cursor_normal(self) -> None:
         self.config(cursor="arrow")
 
-    def _on_click_hyperlink(self, e: Event[Text]) -> None:
+    def _on_click_hyperlink(self, _: Event[Text]) -> None:
         # Based on https://github.com/GregDMeyer/PWman/blob/master/tkHyperlinkManager.py
         tags = [t for t in self.tag_names("current") if t.startswith("url:")]
         if len(tags) == 1:
@@ -140,6 +149,10 @@ def parse(text: str, /) -> List[TextChunk]:
     >>> parse("[[url|https://example.com|example|hi|hi]]")
     [UrlText(text='example|hi|hi', url='https://example.com')]
 
+    Text can be emphasized.
+    >>> parse("This is [[emph|essential]] information.")
+    [PlainText(text='This is '), EmphText(text='essential'), PlainText(text=' information.')]
+
     ## Invalid Examples
 
     Invalid inputs should result in a warning but still produce reasonable
@@ -156,6 +169,15 @@ def parse(text: str, /) -> List[TextChunk]:
     Traceback (most recent call last):
         ...
     UserWarning: Blank display text in hyperlink "[[url|https://example.com| ]]".
+
+    Emphasized text should not be blank.
+    >>> f = lambda: parse("[[emph|  ]]")
+    >>> show_output(f)
+    [EmphText(text='  ')]
+    >>> show_warnings(f)
+    Traceback (most recent call last):
+        ...
+    UserWarning: Blank emphasized text "[[emph|  ]]".
 
     There should be a closing "]]" for every styled chunk.
     >>> f = lambda: parse("Unclosed chunk: [[url|https://example.com")
@@ -199,7 +221,7 @@ def parse(text: str, /) -> List[TextChunk]:
             current_plain_chunk += text[0]
             text = text[1:]
     assert current_plain_chunk == ""
-    chunks = [c for c in chunks if c.text.strip()]
+    chunks = [c for c in chunks if c.text]
     return _merge_plain_chunks(chunks)
 
 
@@ -243,6 +265,10 @@ def _parse_styled_chunk(text: str) -> Tuple[TextChunk, str]:
     Valid URL and display text:
     >>> _parse_styled_chunk("[[url|https://example.com|hi]]...")
     (UrlText(text='hi', url='https://example.com'), '...')
+
+    Emphasized text:
+    >>> _parse_styled_chunk("[[emph|important!]]")
+    (EmphText(text='important!'), '')
     """
     assert text.startswith("[[")
     if "]]" not in text:
@@ -259,6 +285,10 @@ def _parse_styled_chunk(text: str) -> Tuple[TextChunk, str]:
     match typ:
         case "url":
             chunk = _parse_url_chunk(chunk_text[6:-2])
+        case "emph":
+            chunk = EmphText(text=chunk_text[7:-2])
+            if not chunk.text.strip():
+                warnings.warn(f'Blank emphasized text "[[emph|{chunk.text}]]".')
         case _:
             warnings.warn(
                 f'The chunk type "{typ}" (in text "{chunk_text}") is unknown.'
