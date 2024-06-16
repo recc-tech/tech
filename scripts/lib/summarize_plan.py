@@ -93,15 +93,10 @@ def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
     return new_list
 
 
-def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str]:
+def _get_walk_in_slides(items: List[PlanItem]) -> List[str]:
     matches = [
         i for i in items if re.search("rotating announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 2:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matches)} items that look like lists of rotating announcements.",
-        )
     slide_names: List[str] = []
     for itm in matches:
         lines = itm.description.splitlines()
@@ -111,7 +106,7 @@ def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str
     return slide_names
 
 
-def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]:
+def _get_announcements(items: List[PlanItem]) -> List[str]:
     pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
         i
@@ -120,12 +115,6 @@ def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]
         and not re.search("rotating announcements", i.title, re.IGNORECASE)
         and not re.search("video announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 3:
-        titles = [i.title for i in matches]
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matches)} items that look like lists of announcements: {', '.join(titles)}.",
-        )
     slide_names: List[str] = []
     for itm in matches:
         names = _get_announcement_slide_names(itm)
@@ -203,7 +192,7 @@ def _get_message_notes(
 
 
 def _get_songs(
-    sections: List[PlanSection], messenger: Messenger, note_categories: List[str]
+    sections: List[PlanSection], note_categories: List[str]
 ) -> List[AnnotatedSong]:
     matching_items = [
         i
@@ -211,11 +200,6 @@ def _get_songs(
         for i in s.items
         if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
     ]
-    if len(matching_items) != 5:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matching_items)} items that look like songs.",
-        )
     songs: List[AnnotatedSong] = []
     for i in matching_items:
         song = i.song or Song(ccli=None, title=i.title, author=None)
@@ -232,11 +216,11 @@ def get_plan_summary(
         plan.id, include_songs=True, include_item_notes=True
     )
     items = [i for s in sections for i in s.items]
-    walk_in_slides = _get_walk_in_slides(items, messenger)
+    walk_in_slides = _get_walk_in_slides(items)
     opener_video = _get_opener_video(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
-    announcements = _get_announcements(items, messenger)
+    announcements = _get_announcements(items)
     announcements_video = _get_announcements_video(
         items, messenger, note_categories=config.plan_summary_note_categories
     )
@@ -251,9 +235,7 @@ def get_plan_summary(
         message_notes = _get_message_notes(
             msg_sec, messenger, note_categories=config.plan_summary_note_categories
         )
-    songs = _get_songs(
-        sections, messenger, note_categories=config.plan_summary_note_categories
-    )
+    songs = _get_songs(sections, note_categories=config.plan_summary_note_categories)
     all_notes = [n for s in sections for i in s.items for n in i.notes]
     visuals_notes = _filter_notes(all_notes, config.plan_summary_note_categories)
     return PlanItemsSummary(

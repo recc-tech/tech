@@ -200,15 +200,9 @@ class SummarizePlanTestCase(unittest.TestCase):
 
         self.assert_equal_summary(expected_summary, actual_summary)
         log_problem_mock.assert_has_calls(
-            [
-                call(level=ProblemLevel.WARN, message="No announcements video found."),
-                call(
-                    level=ProblemLevel.WARN,
-                    message="Found 4 items that look like songs.",
-                ),
-            ]
+            [call(level=ProblemLevel.WARN, message="No announcements video found.")]
         )
-        self.assertEqual(2, log_problem_mock.call_count)
+        self.assertEqual(1, log_problem_mock.call_count)
 
     # Interesting characteristics of this test case:
     #  * CCLI provided for most, but not all songs
