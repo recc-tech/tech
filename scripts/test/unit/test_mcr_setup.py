@@ -158,16 +158,7 @@ class McrSetupTestCase(unittest.TestCase):
             messenger=messenger,
         )
 
-        messenger.log_problem.assert_has_calls(
-            [
-                call(
-                    level=ProblemLevel.WARN,
-                    message="More than one MC host is scheduled for today. The second one's name has been written to the special announcer title.",
-                )
-            ],
-            any_order=True,
-        )
-        self.assertEqual(1, messenger.log_problem.call_count)
+        messenger.log_problem.assert_not_called()
         pre_stream_title = (
             "Radiator Springs"
             + "\n\nHow to Tip Tractors"
