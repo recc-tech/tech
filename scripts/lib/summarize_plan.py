@@ -63,7 +63,31 @@ def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
         return None
 
 
-def _filter_notes(notes: List[ItemNote], categories: List[str]) -> List[ItemNote]:
+def _remove_unnecessary_notes(sections: List[PlanSection]) -> List[PlanSection]:
+    new_sections: List[PlanSection] = []
+    for s in sections:
+        if not _is_message_section(s):
+            new_sections.append(s)
+        else:
+            new_items: List[PlanItem] = []
+            for itm in s.items:
+                new_notes = [
+                    n for n in itm.notes if not n.contents.lower() == "name slide"
+                ]
+                new_itm = PlanItem(
+                    title=itm.title,
+                    description=itm.description,
+                    song=itm.song,
+                    notes=new_notes,
+                )
+                new_items.append(new_itm)
+            new_sections.append(PlanSection(title=s.title, items=new_items))
+    return new_sections
+
+
+def _filter_notes_by_category(
+    notes: List[ItemNote], categories: List[str]
+) -> List[ItemNote]:
     return [n for n in notes if n.category in categories]
 
 
@@ -133,7 +157,9 @@ def _get_opener_video(
     return (
         None
         if itm is None
-        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(
+            itm.title, _filter_notes_by_category(itm.notes, note_categories)
+        )
     )
 
 
@@ -149,7 +175,7 @@ def _get_bumper_video(
     return (
         None
         if itm is None or name is None
-        else AnnotatedItem(name, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(name, _filter_notes_by_category(itm.notes, note_categories))
     )
 
 
@@ -163,14 +189,20 @@ def _get_announcements_video(
     return (
         None
         if itm is None
-        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(
+            itm.title, _filter_notes_by_category(itm.notes, note_categories)
+        )
     )
+
+
+def _is_message_section(s: PlanSection) -> bool:
+    return s.title.lower() == "message"
 
 
 def _get_message_section(
     sections: List[PlanSection], messenger: Messenger
 ) -> Optional[PlanSection]:
-    matching_sections = [s for s in sections if s.title.lower() == "message"]
+    matching_sections = [s for s in sections if _is_message_section(s)]
     sec = _get_one(matching_sections, messenger, "message section")
     return sec
 
@@ -182,13 +214,11 @@ def _get_message_notes(
         i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
     ]
     itm = _get_one(matches, messenger, "message notes")
-    return (
-        None
-        if itm is None
-        else AnnotatedItem(
-            itm.description.strip(), _filter_notes(itm.notes, note_categories)
-        )
-    )
+    if itm is None:
+        return None
+    else:
+        notes = _filter_notes_by_category(itm.notes, note_categories)
+        return AnnotatedItem(content=itm.description.strip(), notes=notes)
 
 
 def _get_songs(
@@ -203,7 +233,7 @@ def _get_songs(
     songs: List[AnnotatedSong] = []
     for i in matching_items:
         song = i.song or Song(ccli=None, title=i.title, author=None)
-        notes = _filter_notes(i.notes, note_categories)
+        notes = _filter_notes_by_category(i.notes, note_categories)
         songs.append(AnnotatedSong(song, notes=notes, description=i.description))
     return songs
 
@@ -215,6 +245,7 @@ def get_plan_summary(
     sections = client.find_plan_items(
         plan.id, include_songs=True, include_item_notes=True
     )
+    sections = _remove_unnecessary_notes(sections)
     items = [i for s in sections for i in s.items]
     walk_in_slides = _get_walk_in_slides(items)
     opener_video = _get_opener_video(
@@ -237,7 +268,9 @@ def get_plan_summary(
         )
     songs = _get_songs(sections, note_categories=config.plan_summary_note_categories)
     all_notes = [n for s in sections for i in s.items for n in i.notes]
-    visuals_notes = _filter_notes(all_notes, config.plan_summary_note_categories)
+    visuals_notes = _filter_notes_by_category(
+        all_notes, config.plan_summary_note_categories
+    )
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,

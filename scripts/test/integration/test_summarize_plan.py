@@ -178,7 +178,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                     Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
                     Live According To The Level Of Worth We Have Received""",
                 ),
-                notes=[ItemNote(category="Visuals", contents="Name slide")],
+                notes=[],
             ),
             has_visuals_notes=True,
         )
