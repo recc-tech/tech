@@ -3,11 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 from xml.etree import ElementTree
 
 import requests
 from config import Config
+from requests import ConnectTimeout, Response
 
 
 class VmixInputType(Enum):
@@ -51,30 +52,24 @@ class VmixClient:
         self._cfg = config
 
     def set_text(self, input: str, value: str) -> None:
-        response = requests.get(
-            url=self._cfg.vmix_base_url,
+        response = self._send(
             params={"Function": "SetText", "Input": input, "Value": value},
-            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def list_remove_all(self, input: str) -> None:
-        response = requests.get(
-            url=self._cfg.vmix_base_url,
+        response = self._send(
             params={"Function": "ListRemoveAll", "Input": input},
-            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def list_add(self, input: str, file: Path) -> None:
-        response = requests.get(
-            url=self._cfg.vmix_base_url,
+        response = self._send(
             params={
                 "Function": "ListAdd",
                 "Input": input,
                 "Value": str(file.resolve()),
             },
-            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
@@ -85,17 +80,13 @@ class VmixClient:
                 self.restart(inp.key)
 
     def restart(self, input: str) -> None:
-        response = requests.get(
-            url=self._cfg.vmix_base_url,
+        response = self._send(
             params={"Function": "Restart", "Input": input},
-            timeout=self._cfg.timeout_seconds,
         )
         response.raise_for_status()
 
     def get_current_state(self) -> VmixState:
-        response = requests.get(
-            url=self._cfg.vmix_base_url, timeout=self._cfg.timeout_seconds
-        )
+        response = self._send()
         response.raise_for_status()
         root = ElementTree.fromstring(response.text)
         inputs = root.find("./inputs")
@@ -115,3 +106,15 @@ class VmixClient:
                 for inp in inputs
             ]
         )
+
+    def _send(self, params: Optional[Dict[str, str]] = None) -> Response:
+        try:
+            return requests.get(
+                url=self._cfg.vmix_base_url,
+                params=params,
+                timeout=self._cfg.timeout_seconds,
+            )
+        except ConnectTimeout as e:
+            raise ValueError(
+                "Failed to connect to vMix. See the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#failed-to-connect-to-vmix|troubleshooting page]]."
+            ) from e
