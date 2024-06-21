@@ -9,7 +9,7 @@ from typing import Callable, List
 import autochecklist
 import summarize_plan
 from args import ReccArgs
-from autochecklist import Messenger, TaskModel
+from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
 from external_services import BoxCastApiClient, PlanningCenterClient
 from lib import ReccDependencyProvider
@@ -26,6 +26,7 @@ _CAPTIONS_PATH = Path(__file__).resolve().parent.joinpath("data", "captions.vtt"
 
 
 class TestCase(Enum):
+    RELOAD_CONFIG = "reload_config"
     RUN_GUI = "run_gui"
     CANCEL_GUI = "cancel_gui"
     REBROADCAST = "rebroadcast"
@@ -70,6 +71,46 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         ),
     ]
     latest_task = "ready"
+    if TestCase.RELOAD_CONFIG in cases:
+        t = TaskModel(
+            name="test_reload_config",
+            subtasks=[
+                TaskModel(
+                    name="ready_reload_config",
+                    description="The next task will test reloading the config.",
+                ),
+                TaskModel(
+                    name="display_old_config_value",
+                    description="Failed to display the old value.",
+                    only_auto=True,
+                    prerequisites={"ready_reload_config"},
+                ),
+                TaskModel(
+                    name="change_config",
+                    description="Change the vMix base URL in config.toml.",
+                    prerequisites={"display_old_config_value"},
+                ),
+                TaskModel(
+                    name="reload_config",
+                    description="Press 'Reload Config'.",
+                    prerequisites={"change_config"},
+                ),
+                TaskModel(
+                    name="display_new_config_value",
+                    description="Failed to display the new value.",
+                    only_auto=True,
+                    prerequisites={"reload_config"},
+                ),
+                TaskModel(
+                    name="check_reload_config",
+                    description="Check that the new value is correct, then undo the config change.",
+                    prerequisites={"display_new_config_value"},
+                ),
+            ],
+            prerequisites={latest_task},
+        )
+        tasks.append(t)
+        latest_task = t.name
     if TestCase.RUN_GUI in cases:
         t = TaskModel(
             name="test_run_GUI",
@@ -252,6 +293,14 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         tasks.append(t)
         latest_task = t.name
     return TaskModel(name="test_manually", subtasks=tasks)
+
+
+def display_old_config_value(messenger: Messenger, config: Config) -> None:
+    messenger.log_status(TaskStatus.DONE, f"Old vMix URL: {config.vmix_base_url}")
+
+
+def display_new_config_value(messenger: Messenger, config: Config) -> None:
+    messenger.log_status(TaskStatus.DONE, f"New vMix URL: {config.vmix_base_url}")
 
 
 def run_GUI(args: ManualTestArgs) -> None:
