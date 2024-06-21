@@ -384,6 +384,7 @@ class DependencyProvider:
             else TkMessenger(
                 title=script_name,
                 description=description,
+                config=self._config,
                 theme=ui_theme,
                 show_statuses_by_default=show_statuses_by_default,
             )
