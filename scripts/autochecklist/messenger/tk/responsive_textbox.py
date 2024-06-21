@@ -260,7 +260,6 @@ def parse(text: str, /) -> List[TextChunk]:
         ...
     UserWarning: The chunk type "" (in text "[[hi]]") is unknown.
     """
-    # TODO: update all previous occurrences of [[emph|...]] (hopefully the tests will catch them all...)
     chunks: List[TextChunk] = []
     current_plain_chunk = ""
     while True:
