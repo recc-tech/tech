@@ -418,7 +418,15 @@ class TkMessenger(InputMessenger):
             self._tk.quit()
 
     def _reload_config(self) -> None:
-        self._config.reload()
+        try:
+            self._config.reload()
+        except Exception as e:
+            self.log_problem(
+                task_name="RELOAD CONFIG",
+                level=ProblemLevel.ERROR,
+                message=f"Failed to reload config: {e}",
+            )
+            return
         now = datetime.now()
         self._last_reload_textbox.set_text(
             f"[[styled|rjust|Last reload: {now.strftime('%H:%M:%S')}]]"

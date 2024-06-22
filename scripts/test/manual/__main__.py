@@ -26,6 +26,7 @@ _CAPTIONS_PATH = Path(__file__).resolve().parent.joinpath("data", "captions.vtt"
 
 
 class TestCase(Enum):
+    RELOAD_CONFIG_ERROR = "reload_config_error"
     RELOAD_CONFIG = "reload_config"
     RUN_GUI = "run_gui"
     CANCEL_GUI = "cancel_gui"
@@ -71,6 +72,46 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         ),
     ]
     latest_task = "ready"
+    if TestCase.RELOAD_CONFIG_ERROR in cases:
+        t = TaskModel(
+            name="test_reload_config_error",
+            subtasks=[
+                TaskModel(
+                    name="ready_reload_config_error",
+                    description="The next task will test what happens when there's an error while reloading the config.",
+                ),
+                TaskModel(
+                    name="display_old_ui_theme",
+                    description="Failed to display old value of ui.theme.",
+                    only_auto=True,
+                    prerequisites={"ready_reload_config_error"},
+                ),
+                TaskModel(
+                    name="change_config_0",
+                    description="In config.toml, change the value of ui.theme and then make a breaking change somewhere else.",
+                    prerequisites={"display_old_ui_theme"},
+                ),
+                TaskModel(
+                    name="reload_config_error",
+                    description="Press 'Reload Config'.",
+                    prerequisites={"change_config_0"},
+                ),
+                TaskModel(
+                    name="display_new_ui_theme",
+                    description="Failed to display new value of ui.theme.",
+                    only_auto=True,
+                    prerequisites={"reload_config_error"},
+                ),
+                TaskModel(
+                    name="check_reload_config_error",
+                    description="Check that the value of ui.theme has [[styled|emph|not]] changed and then fix the config.",
+                    prerequisites={"display_new_ui_theme"},
+                ),
+            ],
+            prerequisites={"ready"},
+        )
+        tasks.append(t)
+        latest_task = t.name
     if TestCase.RELOAD_CONFIG in cases:
         t = TaskModel(
             name="test_reload_config",
@@ -80,15 +121,15 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                     description="The next task will test reloading the config.",
                 ),
                 TaskModel(
-                    name="display_old_config_value",
-                    description="Failed to display the old value.",
+                    name="display_old_vMix_URL",
+                    description="Failed to display the old vMix URL.",
                     only_auto=True,
                     prerequisites={"ready_reload_config"},
                 ),
                 TaskModel(
                     name="change_config",
                     description="Change the vMix base URL in config.toml.",
-                    prerequisites={"display_old_config_value"},
+                    prerequisites={"display_old_vMix_URL"},
                 ),
                 TaskModel(
                     name="reload_config",
@@ -96,15 +137,15 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                     prerequisites={"change_config"},
                 ),
                 TaskModel(
-                    name="display_new_config_value",
-                    description="Failed to display the new value.",
+                    name="display_new_vMix_URL",
+                    description="Failed to display the new vMix URL.",
                     only_auto=True,
                     prerequisites={"reload_config"},
                 ),
                 TaskModel(
                     name="check_reload_config",
                     description="Check that the new value is correct, then undo the config change.",
-                    prerequisites={"display_new_config_value"},
+                    prerequisites={"display_new_vMix_URL"},
                 ),
             ],
             prerequisites={latest_task},
@@ -295,11 +336,19 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     return TaskModel(name="test_manually", subtasks=tasks)
 
 
-def display_old_config_value(messenger: Messenger, config: Config) -> None:
+def display_old_ui_theme(messenger: Messenger, config: Config) -> None:
+    messenger.log_status(TaskStatus.DONE, f"Old UI theme: {config.ui_theme}")
+
+
+def display_new_ui_theme(messenger: Messenger, config: Config) -> None:
+    messenger.log_status(TaskStatus.DONE, f"New UI theme: {config.ui_theme}")
+
+
+def display_old_vMix_URL(messenger: Messenger, config: Config) -> None:
     messenger.log_status(TaskStatus.DONE, f"Old vMix URL: {config.vmix_base_url}")
 
 
-def display_new_config_value(messenger: Messenger, config: Config) -> None:
+def display_new_vMix_URL(messenger: Messenger, config: Config) -> None:
     messenger.log_status(TaskStatus.DONE, f"New vMix URL: {config.vmix_base_url}")
 
 
