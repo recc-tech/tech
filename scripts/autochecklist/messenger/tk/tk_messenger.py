@@ -10,6 +10,7 @@ import tkinter
 import typing
 from argparse import ArgumentTypeError
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from threading import Lock
@@ -19,6 +20,7 @@ from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
 import pyperclip
 
+from ...base_config import BaseConfig
 from ..input_messenger import (
     InputMessenger,
     Parameter,
@@ -45,12 +47,14 @@ class TkMessenger(InputMessenger):
         self,
         title: str,
         description: str,
+        config: BaseConfig,
         *,
         theme: Literal["dark", "light"],
         show_statuses_by_default: bool,
     ) -> None:
         self._title = title
         self._description = description
+        self._config = config
         self._show_statuses_by_default = show_statuses_by_default
         self._background = "#323232" if theme == "dark" else "#EEEEEE"
         self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
@@ -413,6 +417,21 @@ class TkMessenger(InputMessenger):
         if should_exit:
             self._tk.quit()
 
+    def _reload_config(self) -> None:
+        try:
+            self._config.reload()
+        except Exception as e:
+            self.log_problem(
+                task_name="RELOAD CONFIG",
+                level=ProblemLevel.ERROR,
+                message=f"Failed to reload config: {e}",
+            )
+            return
+        now = datetime.now()
+        self._last_reload_textbox.set_text(
+            f"[[styled|rjust|Last reload: {now.strftime('%H:%M:%S')}]]"
+        )
+
     def _create_gui(self) -> None:
         # Try to make the GUI less blurry
         try:
@@ -475,18 +494,43 @@ class TkMessenger(InputMessenger):
 
         WIDTH = 170
 
-        # -------------------- Description --------------------
+        # -------------------- Description, reload config --------------------
+
+        header_frame = Frame(self._scroll_frame)
+        header_frame.grid(sticky="NEW")
+        header_frame.columnconfigure(index=0, weight=1)
+        header_frame.columnconfigure(index=1, weight=0)
+
+        # TODO: de-emphasize this section by making the font grey?
 
         if self._description.strip():
             description_textbox = ResponsiveTextbox(
-                self._scroll_frame,
+                header_frame,
                 width=WIDTH,
                 font=_ITALIC_FONT,
                 background=self._background,
                 foreground=self._foreground,
             )
-            description_textbox.grid(sticky="NEW", pady=25)
+            description_textbox.grid(sticky="NE", row=0, column=0)
             description_textbox.set_text(self._description)
+
+        reload_config_frame = Frame(header_frame, borderwidth=2)
+        reload_config_frame.grid(sticky="NEW", row=0, column=1)
+
+        reload_config_btn = Button(
+            reload_config_frame,
+            text="Reload Config",
+            command=self._reload_config,
+        )
+        reload_config_btn.grid(sticky="NE")
+        self._last_reload_textbox = ResponsiveTextbox(
+            reload_config_frame,
+            width=20,
+            font=_ITALIC_FONT,
+            background=self._background,
+            foreground=self._foreground,
+        )
+        self._last_reload_textbox.grid(sticky="NE")
 
         # -------------------- Action items section --------------------
 

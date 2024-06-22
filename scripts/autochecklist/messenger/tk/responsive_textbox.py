@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import warnings
 from dataclasses import dataclass
+from enum import Enum
 from tkinter import Event, Misc, Text, Tk
 from tkinter.ttk import Frame, Label
 from typing import Any, Dict, List, Tuple, Union
@@ -19,12 +20,21 @@ class UrlText:
     url: str
 
 
+class TextStyle(Enum):
+    EMPH = "emph"
+    RIGHT_ALIGN = "rjust"
+
+    def __repr__(self) -> str:
+        return f"TextStyle.{self.name}"
+
+
 @dataclass
-class EmphText:
+class StyledText:
     text: str
+    styles: List[TextStyle]
 
 
-TextChunk = Union[PlainText, UrlText, EmphText]
+TextChunk = Union[PlainText, UrlText, StyledText]
 
 
 class ResponsiveTextbox(Text):
@@ -77,7 +87,8 @@ class ResponsiveTextbox(Text):
         self.tag_bind("url", "<Enter>", lambda _: self._set_cursor_hand())
         self.tag_bind("url", "<Leave>", lambda _: self._set_cursor_normal())
         self.tag_bind("url", "<Button-1>", self._on_click_hyperlink)
-        self.tag_configure("emph", underline=True)
+        self.tag_configure(TextStyle.EMPH.value, underline=True)
+        self.tag_configure(TextStyle.RIGHT_ALIGN.value, justify="right")
         self.url_by_tag: Dict[str, str] = {}
         self.next_unique_int = 0
 
@@ -89,8 +100,8 @@ class ResponsiveTextbox(Text):
             match c:
                 case PlainText(_):
                     tags = []
-                case EmphText(_):
-                    tags = ["emph"]
+                case StyledText(_, styles):
+                    tags = [s.value for s in styles]
                 case UrlText(_, url):
                     tag = f"url:{self._get_unique_int()}"
                     self.url_by_tag[tag] = url
@@ -150,8 +161,16 @@ def parse(text: str, /) -> List[TextChunk]:
     [UrlText(text='example|hi|hi', url='https://example.com')]
 
     Text can be emphasized.
-    >>> parse("This is [[emph|essential]] information.")
-    [PlainText(text='This is '), EmphText(text='essential'), PlainText(text=' information.')]
+    >>> parse("This is [[styled|emph|essential]] information.")
+    [PlainText(text='This is '), StyledText(text='essential', styles=[TextStyle.EMPH]), PlainText(text=' information.')]
+
+    Text can be right-aligned.
+    >>> parse("This text is [[styled|rjust|right-aligned!]]")
+    [PlainText(text='This text is '), StyledText(text='right-aligned!', styles=[TextStyle.RIGHT_ALIGN])]
+
+    Text can have multiple styles at once!
+    >>> parse("This one is [[styled|emph,rjust|important and also right-aligned!]]")
+    [PlainText(text='This one is '), StyledText(text='important and also right-aligned!', styles=[TextStyle.EMPH, TextStyle.RIGHT_ALIGN])]
 
     ## Invalid Examples
 
@@ -170,23 +189,59 @@ def parse(text: str, /) -> List[TextChunk]:
         ...
     UserWarning: Blank display text in hyperlink "[[url|https://example.com| ]]".
 
-    Emphasized text should not be blank.
-    >>> f = lambda: parse("[[emph|  ]]")
+    Styled text should not be blank.
+    >>> f = lambda: parse("[[styled|emph|  ]]")
     >>> show_output(f)
-    [EmphText(text='  ')]
+    [StyledText(text='  ', styles=[TextStyle.EMPH])]
     >>> show_warnings(f)
     Traceback (most recent call last):
         ...
-    UserWarning: Blank emphasized text "[[emph|  ]]".
+    UserWarning: Blank styled text "[[styled|emph|  ]]".
 
-    There should be a closing "]]" for every styled chunk.
+    A styled chunk needs a list of styles.
+    >>> f = lambda: parse("[[styled|hello there!]]")
+    >>> show_output(f)
+    [PlainText(text='hello there!')]
+    >>> show_warnings(f)
+    Traceback (most recent call last):
+        ...
+    UserWarning: No styles specified in "[[styled|hello there!]]".
+
+    A styled chunk needs a list of styles.
+    >>> f = lambda: parse("[[styled||hello there!]]")
+    >>> show_output(f)
+    [PlainText(text='hello there!')]
+    >>> show_warnings(f)
+    Traceback (most recent call last):
+        ...
+    UserWarning: No styles specified in "[[styled||hello there!]]".
+
+    The style must be valid.
+    >>> f = lambda: parse("[[styled|foo|hi]]")
+    >>> show_output(f)
+    [PlainText(text='hi')]
+    >>> show_warnings(f)
+    Traceback (most recent call last):
+        ...
+    UserWarning: Unknown style "foo".
+
+    The style must be valid.
+    >>> f = lambda: parse("[[styled|emph,bar|hi]]")
+    >>> show_output(f)
+    [StyledText(text='hi', styles=[TextStyle.EMPH])]
+    >>> show_warnings(f)
+    Traceback (most recent call last):
+        ...
+    UserWarning: Unknown style "bar".
+
+    There should be a closing "]]" for every formatted chunk.
     >>> f = lambda: parse("Unclosed chunk: [[url|https://example.com")
     >>> show_output(f)
     [PlainText(text='Unclosed chunk: [[url|https://example.com')]
     >>> show_warnings(f)
     Traceback (most recent call last):
         ...
-    UserWarning: The text "[[url|https://example.com" looks like a styled text chunk, but it is missing the closing "]]".
+    UserWarning: The text "[[url|https://example.com" looks like a formatted text chunk, but it is missing the closing "]]".
 
     The chunk type must be one of the predefined ones (e.g., "url").
     >>> f = lambda: parse("Invalid type: [[blahblah|hello]]")
@@ -215,7 +270,7 @@ def parse(text: str, /) -> List[TextChunk]:
         elif text.startswith("[["):
             chunks.append(PlainText(text=current_plain_chunk))
             current_plain_chunk = ""
-            c, text = _parse_styled_chunk(text)
+            c, text = _parse_formatted_chunk(text)
             chunks.append(c)
         else:
             current_plain_chunk += text[0]
@@ -252,28 +307,28 @@ def _merge_plain_chunks(chunks: List[TextChunk]) -> List[TextChunk]:
     return merged
 
 
-def _parse_styled_chunk(text: str) -> Tuple[TextChunk, str]:
+def _parse_formatted_chunk(text: str) -> Tuple[TextChunk, str]:
     """
-    Parse a chunk that is styled (i.e., is enclosed in "[[").
+    Parse a chunk that is formatted (i.e., is enclosed in "[[").
     Returns the chunk along with the remaining text after the chunk.
 
     ## Examples
     Valid URL:
-    >>> _parse_styled_chunk("[[url|https://example.com]] and after")
+    >>> _parse_formatted_chunk("[[url|https://example.com]] and after")
     (UrlText(text='https://example.com', url='https://example.com'), ' and after')
 
     Valid URL and display text:
-    >>> _parse_styled_chunk("[[url|https://example.com|hi]]...")
+    >>> _parse_formatted_chunk("[[url|https://example.com|hi]]...")
     (UrlText(text='hi', url='https://example.com'), '...')
 
     Emphasized text:
-    >>> _parse_styled_chunk("[[emph|important!]]")
-    (EmphText(text='important!'), '')
+    >>> _parse_formatted_chunk("[[styled|emph|important!]]")
+    (StyledText(text='important!', styles=[TextStyle.EMPH]), '')
     """
     assert text.startswith("[[")
     if "]]" not in text:
         warnings.warn(
-            f'The text "{text}" looks like a styled text chunk, but it is'
+            f'The text "{text}" looks like a formatted text chunk, but it is'
             ' missing the closing "]]".'
         )
         return (PlainText(text), "")
@@ -285,10 +340,8 @@ def _parse_styled_chunk(text: str) -> Tuple[TextChunk, str]:
     match typ:
         case "url":
             chunk = _parse_url_chunk(chunk_text[6:-2])
-        case "emph":
-            chunk = EmphText(text=chunk_text[7:-2])
-            if not chunk.text.strip():
-                warnings.warn(f'Blank emphasized text "[[emph|{chunk.text}]]".')
+        case "styled":
+            chunk = _parse_styled_chunk(chunk_text[9:-2])
         case _:
             warnings.warn(
                 f'The chunk type "{typ}" (in text "{chunk_text}") is unknown.'
@@ -318,6 +371,42 @@ def _parse_url_chunk(text: str) -> UrlText:
         warnings.warn(f'Blank display text in hyperlink "[[url|{text}]]".')
         display = url
     return UrlText(text=display, url=url)
+
+
+def _parse_styled_chunk(text: str) -> TextChunk:
+    """
+    Parse the contents of a styled chunk.
+
+    ## Examples
+    >>> _parse_styled_chunk("emph|hello there")
+    StyledText(text='hello there', styles=[TextStyle.EMPH])
+    >>> _parse_styled_chunk("emph,rjust|hello there")
+    StyledText(text='hello there', styles=[TextStyle.EMPH, TextStyle.RIGHT_ALIGN])
+    """
+    if "|" not in text:
+        warnings.warn(f'No styles specified in "[[styled|{text}]]".')
+        return PlainText(text)
+    i = text.index("|")
+    contents = text[(i + 1) :]
+    if not contents.strip():
+        warnings.warn(f'Blank styled text "[[styled|{text}]]".')
+    style_strings = [x for x in text[:i].split(",") if x]
+    if len(style_strings) == 0:
+        warnings.warn(f'No styles specified in "[[styled|{text}]]".')
+        return PlainText(text=contents)
+    styles: List[TextStyle] = []
+    unknown_styles: List[str] = []
+    for ss in style_strings:
+        try:
+            styles.append(TextStyle(ss))
+        except ValueError:
+            unknown_styles.append(ss)
+    for s in unknown_styles:
+        warnings.warn(f'Unknown style "{s}".')
+    if styles:
+        return StyledText(text=contents, styles=styles)
+    else:
+        return PlainText(text=contents)
 
 
 if __name__ == "__main__":
