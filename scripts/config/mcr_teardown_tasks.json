@@ -87,6 +87,13 @@
 							"prerequisites": [
 								"export_to_Vimeo"
 							]
+						},
+						{
+							"name": "choose_Vimeo_video_thumbnail",
+							"description": "In today's Vimeo video, set the thumbnail to be the pre-stream title loop.",
+							"prerequisites": [
+								"export_to_Vimeo"
+							]
 						}
 					]
 				},
@@ -143,6 +150,19 @@
 								"disable_automatic_captions",
 								"export_to_Vimeo"
 							]
+						}
+					]
+				},
+				{
+					"name": "handle_outdated_assets",
+					"subtasks": [
+						{
+							"name": "delete_outdated_PCO_assets",
+							"description": "On Planning Center, delete outdated assets. [[url|https://github.com/recc-tech/tech/wiki/Deleting-Outdated-Assets-on-Planning-Center-Online|More details]]."
+						},
+						{
+							"name": "archive_outdated_local_assets",
+							"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{folder.archived_assets}%."
 						}
 					]
 				}

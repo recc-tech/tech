@@ -154,22 +154,10 @@
 			]
 		},
 		{
-			"name": "manage_other_assets",
+			"name": "import_other_assets",
+			"description": "Import the other new assets into vMix.",
 			"prerequisites": [
 				"download_assets"
-			],
-			"subtasks": [
-				{
-					"name": "import_other_assets",
-					"description": "Import the other new assets into vMix.",
-					"prerequisites": [
-						"download_assets"
-					]
-				},
-				{
-					"name": "archive_old_assets",
-					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{folder.archived_assets}%."
-				}
 			]
 		},
 		{
