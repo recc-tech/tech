@@ -59,9 +59,12 @@ def summarize_plan(
     html = lib.plan_summary_to_html(summary)
     config.plan_summary_file.parent.mkdir(parents=True, exist_ok=True)
     config.plan_summary_file.write_text(str(html), encoding="utf-8")
-    messenger.log_status(
-        TaskStatus.DONE, f"Saved summary at {config.plan_summary_file.as_posix()}."
-    )
+    url = config.plan_summary_file.resolve().as_uri()
+    try:
+        fname = config.plan_summary_file.relative_to(config.home_dir).as_posix()
+    except ValueError:
+        fname = config.plan_summary_file.as_posix()
+    messenger.log_status(TaskStatus.DONE, f"Saved summary at [[url|{url}|{fname}]].")
     if not args.no_open:
         try:
             # Use Popen so this doesn't block
