@@ -357,7 +357,7 @@ _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
-_ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon.png")
+_ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
 
 
 def _indent(code: str, n: int) -> str:

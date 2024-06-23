@@ -44,6 +44,7 @@ class ReccDependencyProvider(DependencyProvider):
             description=description,
             show_statuses_by_default=show_statuses_by_default,
             ui_theme=config.ui_theme,
+            icon=Path(__file__).parent.parent.parent.joinpath("icon_512x512.png"),
         )
 
         # Optional args

@@ -355,6 +355,7 @@ class DependencyProvider:
         show_statuses_by_default: bool,
         ui_theme: Literal["light", "dark"],
         messenger: Optional[Messenger],
+        icon: Optional[Path] = None,
     ) -> None:
         self._args = args
         self._config = config
@@ -364,6 +365,7 @@ class DependencyProvider:
             description=description,
             show_statuses_by_default=show_statuses_by_default,
             ui_theme=ui_theme,
+            icon=icon,
         )
 
     def _make_messenger(
@@ -373,6 +375,7 @@ class DependencyProvider:
         description: str,
         show_statuses_by_default: bool,
         ui_theme: Literal["light", "dark"],
+        icon: Optional[Path],
     ) -> Messenger:
         file_messenger = FileMessenger(log_file=log_file)
         input_messenger = (
@@ -387,6 +390,7 @@ class DependencyProvider:
                 config=self._config,
                 theme=ui_theme,
                 show_statuses_by_default=show_statuses_by_default,
+                icon=icon,
             )
         )
         return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
