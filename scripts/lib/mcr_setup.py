@@ -88,10 +88,6 @@ def update_titles(
     vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
     vmix_client.set_text(config.vmix_host_title_key, mc_host1_name)
     if mc_host2_name:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            "More than one MC host is scheduled for today. The second one's name has been written to the special announcer title.",
-        )
         vmix_client.set_text(config.vmix_extra_presenter_title_key, mc_host2_name)
 
 

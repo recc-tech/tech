@@ -44,7 +44,7 @@ class PlanItemsSummary:
     announcements_video: Optional[AnnotatedItem]
     songs: List[AnnotatedSong]
     message_notes: Optional[AnnotatedItem]
-    has_visuals_notes: bool
+    num_visuals_notes: int
 
 
 T = TypeVar("T")
@@ -63,7 +63,31 @@ def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
         return None
 
 
-def _filter_notes(notes: List[ItemNote], categories: List[str]) -> List[ItemNote]:
+def _remove_unnecessary_notes(sections: List[PlanSection]) -> List[PlanSection]:
+    new_sections: List[PlanSection] = []
+    for s in sections:
+        if not _is_message_section(s):
+            new_sections.append(s)
+        else:
+            new_items: List[PlanItem] = []
+            for itm in s.items:
+                new_notes = [
+                    n for n in itm.notes if not n.contents.lower() == "name slide"
+                ]
+                new_itm = PlanItem(
+                    title=itm.title,
+                    description=itm.description,
+                    song=itm.song,
+                    notes=new_notes,
+                )
+                new_items.append(new_itm)
+            new_sections.append(PlanSection(title=s.title, items=new_items))
+    return new_sections
+
+
+def _filter_notes_by_category(
+    notes: List[ItemNote], categories: List[str]
+) -> List[ItemNote]:
     return [n for n in notes if n.category in categories]
 
 
@@ -93,15 +117,10 @@ def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
     return new_list
 
 
-def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str]:
+def _get_walk_in_slides(items: List[PlanItem]) -> List[str]:
     matches = [
         i for i in items if re.search("rotating announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 2:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matches)} items that look like lists of rotating announcements.",
-        )
     slide_names: List[str] = []
     for itm in matches:
         lines = itm.description.splitlines()
@@ -111,7 +130,7 @@ def _get_walk_in_slides(items: List[PlanItem], messenger: Messenger) -> List[str
     return slide_names
 
 
-def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]:
+def _get_announcements(items: List[PlanItem]) -> List[str]:
     pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
         i
@@ -120,12 +139,6 @@ def _get_announcements(items: List[PlanItem], messenger: Messenger) -> List[str]
         and not re.search("rotating announcements", i.title, re.IGNORECASE)
         and not re.search("video announcements", i.title, re.IGNORECASE)
     ]
-    if len(matches) != 3:
-        titles = [i.title for i in matches]
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matches)} items that look like lists of announcements: {', '.join(titles)}.",
-        )
     slide_names: List[str] = []
     for itm in matches:
         names = _get_announcement_slide_names(itm)
@@ -144,7 +157,9 @@ def _get_opener_video(
     return (
         None
         if itm is None
-        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(
+            itm.title, _filter_notes_by_category(itm.notes, note_categories)
+        )
     )
 
 
@@ -160,7 +175,7 @@ def _get_bumper_video(
     return (
         None
         if itm is None or name is None
-        else AnnotatedItem(name, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(name, _filter_notes_by_category(itm.notes, note_categories))
     )
 
 
@@ -174,14 +189,20 @@ def _get_announcements_video(
     return (
         None
         if itm is None
-        else AnnotatedItem(itm.title, _filter_notes(itm.notes, note_categories))
+        else AnnotatedItem(
+            itm.title, _filter_notes_by_category(itm.notes, note_categories)
+        )
     )
+
+
+def _is_message_section(s: PlanSection) -> bool:
+    return s.title.lower() == "message"
 
 
 def _get_message_section(
     sections: List[PlanSection], messenger: Messenger
 ) -> Optional[PlanSection]:
-    matching_sections = [s for s in sections if s.title.lower() == "message"]
+    matching_sections = [s for s in sections if _is_message_section(s)]
     sec = _get_one(matching_sections, messenger, "message section")
     return sec
 
@@ -193,17 +214,15 @@ def _get_message_notes(
         i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
     ]
     itm = _get_one(matches, messenger, "message notes")
-    return (
-        None
-        if itm is None
-        else AnnotatedItem(
-            itm.description.strip(), _filter_notes(itm.notes, note_categories)
-        )
-    )
+    if itm is None:
+        return None
+    else:
+        notes = _filter_notes_by_category(itm.notes, note_categories)
+        return AnnotatedItem(content=itm.description.strip(), notes=notes)
 
 
 def _get_songs(
-    sections: List[PlanSection], messenger: Messenger, note_categories: List[str]
+    sections: List[PlanSection], note_categories: List[str]
 ) -> List[AnnotatedSong]:
     matching_items = [
         i
@@ -211,17 +230,36 @@ def _get_songs(
         for i in s.items
         if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
     ]
-    if len(matching_items) != 5:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Found {len(matching_items)} items that look like songs.",
-        )
     songs: List[AnnotatedSong] = []
     for i in matching_items:
         song = i.song or Song(ccli=None, title=i.title, author=None)
-        notes = _filter_notes(i.notes, note_categories)
+        notes = _filter_notes_by_category(i.notes, note_categories)
         songs.append(AnnotatedSong(song, notes=notes, description=i.description))
     return songs
+
+
+def _has_duplicate_lines(sermon: str) -> bool:
+    lines = [ln for ln in sermon.split("\n") if ln.strip()]
+    normalized_lines = [re.sub(r"\s+", " ", ln).strip().lower() for ln in lines]
+    for i0, ln0 in enumerate(normalized_lines):
+        for i1, ln1 in enumerate(normalized_lines):
+            if i0 != i1 and ln0 == ln1:
+                return True
+    return False
+
+
+def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
+    warnings: List[ItemNote] = []
+    if _has_duplicate_lines(original_notes.content):
+        warnings.append(
+            ItemNote(
+                category="Warning",
+                contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+            )
+        )
+    return AnnotatedItem(
+        content=original_notes.content, notes=original_notes.notes + warnings
+    )
 
 
 def get_plan_summary(
@@ -231,12 +269,13 @@ def get_plan_summary(
     sections = client.find_plan_items(
         plan.id, include_songs=True, include_item_notes=True
     )
+    sections = _remove_unnecessary_notes(sections)
     items = [i for s in sections for i in s.items]
-    walk_in_slides = _get_walk_in_slides(items, messenger)
+    walk_in_slides = _get_walk_in_slides(items)
     opener_video = _get_opener_video(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
-    announcements = _get_announcements(items, messenger)
+    announcements = _get_announcements(items)
     announcements_video = _get_announcements_video(
         items, messenger, note_categories=config.plan_summary_note_categories
     )
@@ -251,11 +290,13 @@ def get_plan_summary(
         message_notes = _get_message_notes(
             msg_sec, messenger, note_categories=config.plan_summary_note_categories
         )
-    songs = _get_songs(
-        sections, messenger, note_categories=config.plan_summary_note_categories
-    )
+        if message_notes is not None:
+            message_notes = _validate_message_notes(message_notes)
+    songs = _get_songs(sections, note_categories=config.plan_summary_note_categories)
     all_notes = [n for s in sections for i in s.items for n in i.notes]
-    visuals_notes = _filter_notes(all_notes, config.plan_summary_note_categories)
+    visuals_notes = _filter_notes_by_category(
+        all_notes, config.plan_summary_note_categories
+    )
     return PlanItemsSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
@@ -265,7 +306,7 @@ def get_plan_summary(
         announcements_video=announcements_video,
         songs=songs,
         message_notes=message_notes,
-        has_visuals_notes=len(visuals_notes) > 0,
+        num_visuals_notes=len(visuals_notes),
     )
 
 
@@ -347,7 +388,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
         announcements_video=announcements_vid,
         songs=songs,
         message_notes=message_notes,
-        has_visuals_notes=data["has_visuals_notes"],
+        num_visuals_notes=data["num_visuals_notes"],
     )
 
 
@@ -373,7 +414,7 @@ def _show_notes(notes: List[ItemNote]) -> str:
         f"<span class='{_NOTES_TITLE_CLS}'>⚠️ {_escape(n.category)}</span><br>\n{_escape(n.contents)}"
         for n in notes
     ]
-    return "\n".join(notes_str)
+    return "<br>".join(notes_str)
 
 
 @dataclass
@@ -528,13 +569,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     )
     songs_table = _make_songs_table(songs=summary.songs)
     message_table = _make_message_table(summary.message_notes)
-    show_notes_warning = (
-        'alert("Heads up! There are some notes in the plan. They might call '
-        + "for adjustments to the presentations, such as changes to songs' "
-        + 'lyrics.");'
-        if summary.has_visuals_notes
-        else ""
-    )
+    is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
+    note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
+    it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
     return f"""
 <!DOCTYPE html>
 <html>
@@ -607,7 +644,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 font-family: inherit;
             }}
             .{_NOTES_WARNING_CLS} {{
-                visibility: {'visible' if summary.has_visuals_notes else 'hidden'};
+                visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
                 border: 2px solid #b57b0e;
                 color: #b57b0e;
                 background-color: #fffaa0;
@@ -625,9 +662,6 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
             }}
-            window.addEventListener("DOMContentLoaded", () => {{
-                {show_notes_warning}
-            }});
         </script>
     </head>
     <body>
@@ -638,10 +672,11 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         <div id='main-content'>
             <div class="{_NOTES_WARNING_CLS}">
                 Heads up!
-                There are some notes in the plan.
-                They might call for adjustments to the presentations,
-                such as changes to songs lyrics.
-                Check the plan in Planning Center to make sure you see them all.
+                There {is_or_are} {summary.num_visuals_notes} {note_or_notes}
+                for the visuals team in the plan.
+                {it_or_they.capitalize()} might call for adjustments to the
+                presentations, such as changes to songs lyrics.
+                If fewer notes are shown here, check Planning Center.
                 Make sure the visuals notes are visible by clicking on the
                 button at the top right-hand corner with the three vertical bars
                 and ensure the "Visuals" checkbox is checked.

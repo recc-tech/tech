@@ -5,7 +5,6 @@ from pathlib import Path
 from tkinter import Tk
 
 from lib import load_plan_summary, plan_summary_to_html
-from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -30,7 +29,6 @@ class PlanSummaryHtmlTestCase(unittest.TestCase):
         driver = WebDriver(service=service)
         try:
             driver.get(f.resolve().as_uri())
-            Alert(driver).accept()
             btn = driver.find_element(By.XPATH, "//button[contains(., 'Copy')]")
             btn.click()
         finally:
@@ -48,8 +46,10 @@ class PlanSummaryHtmlTestCase(unittest.TestCase):
             You Are Worthy Because You Are Chosen
             Matthew 22:14
             Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+            Our worth is experienced  through[TAB]acceptance  
             Live According To The Level Of Worth We Have Received"""
-        )
+        ).replace("[TAB]", "\t")
+        # inspect.cleandoc replaces tabs with spaces
         self.assertEqual(expected_text, _get_clipboard_text())
 
 

@@ -176,11 +176,19 @@ class SummarizePlanTestCase(unittest.TestCase):
                     You Are Worthy Because You Are Chosen
                     Matthew 22:14
                     Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+                    Our worth is experienced  through[TAB]acceptance  
                     Live According To The Level Of Worth We Have Received""",
-                ),
-                notes=[ItemNote(category="Visuals", contents="Name slide")],
+                )
+                # inspect.cleandoc expands tabs :(
+                .replace("[TAB]", "\t"),
+                notes=[
+                    ItemNote(
+                        category="Warning",
+                        contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+                    )
+                ],
             ),
-            has_visuals_notes=True,
+            num_visuals_notes=2,
         )
         actual_summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
         self.assert_equal_summary(expected_summary, actual_summary)
@@ -200,21 +208,16 @@ class SummarizePlanTestCase(unittest.TestCase):
 
         self.assert_equal_summary(expected_summary, actual_summary)
         log_problem_mock.assert_has_calls(
-            [
-                call(level=ProblemLevel.WARN, message="No announcements video found."),
-                call(
-                    level=ProblemLevel.WARN,
-                    message="Found 4 items that look like songs.",
-                ),
-            ]
+            [call(level=ProblemLevel.WARN, message="No announcements video found.")]
         )
-        self.assertEqual(2, log_problem_mock.call_count)
+        self.assertEqual(1, log_problem_mock.call_count)
 
     # Interesting characteristics of this test case:
     #  * CCLI provided for most, but not all songs
     #  * Plan item with no linked song
     #  * Plan item with a linked song but no CCLI number
     #  * Empty description for each song
+    #  * Duplicate line in message notes (which I added for testing)
     def test_summarize_20240414(self) -> None:
         (pco_client, messenger, log_problem_mock, config) = self._set_up()
         dt = date(year=2024, month=4, day=14)
@@ -255,6 +258,11 @@ class SummarizePlanTestCase(unittest.TestCase):
         self.assertEqual(expected.announcements, actual.announcements)
         self.assertEqual(expected.songs, actual.songs)
         self.assertEqual(expected.bumper_video, actual.bumper_video)
+        if expected.message_notes and actual.message_notes:
+            self.assertEqual(
+                expected.message_notes.content, actual.message_notes.content
+            )
+            self.assertEqual(expected.message_notes.notes, actual.message_notes.notes)
         self.assertEqual(expected.message_notes, actual.message_notes)
         # Just in case
         self.assertEqual(expected, actual)

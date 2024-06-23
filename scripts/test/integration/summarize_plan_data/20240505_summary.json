@@ -97,12 +97,7 @@
 	],
 	"message_notes": {
 		"content": "",
-		"notes": [
-			{
-				"category": "Visuals",
-				"contents": "Name slide"
-			}
-		]
+		"notes": []
 	},
-	"has_visuals_notes": true
+	"num_visuals_notes": 2
 }
