@@ -46,8 +46,10 @@ class PlanSummaryHtmlTestCase(unittest.TestCase):
             You Are Worthy Because You Are Chosen
             Matthew 22:14
             Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+            Our worth is experienced  through[TAB]acceptance  
             Live According To The Level Of Worth We Have Received"""
-        )
+        ).replace("[TAB]", "\t")
+        # inspect.cleandoc replaces tabs with spaces
         self.assertEqual(expected_text, _get_clipboard_text())
 
 

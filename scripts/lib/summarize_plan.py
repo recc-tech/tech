@@ -238,6 +238,30 @@ def _get_songs(
     return songs
 
 
+def _has_duplicate_lines(sermon: str) -> bool:
+    lines = [ln for ln in sermon.split("\n") if ln.strip()]
+    normalized_lines = [re.sub(r"\s+", " ", ln).strip().lower() for ln in lines]
+    for i0, ln0 in enumerate(normalized_lines):
+        for i1, ln1 in enumerate(normalized_lines):
+            if i0 != i1 and ln0 == ln1:
+                return True
+    return False
+
+
+def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
+    warnings: List[ItemNote] = []
+    if _has_duplicate_lines(original_notes.content):
+        warnings.append(
+            ItemNote(
+                category="Warning",
+                contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+            )
+        )
+    return AnnotatedItem(
+        content=original_notes.content, notes=original_notes.notes + warnings
+    )
+
+
 def get_plan_summary(
     client: PlanningCenterClient, messenger: Messenger, config: Config, dt: date
 ) -> PlanItemsSummary:
@@ -266,6 +290,8 @@ def get_plan_summary(
         message_notes = _get_message_notes(
             msg_sec, messenger, note_categories=config.plan_summary_note_categories
         )
+        if message_notes is not None:
+            message_notes = _validate_message_notes(message_notes)
     songs = _get_songs(sections, note_categories=config.plan_summary_note_categories)
     all_notes = [n for s in sections for i in s.items for n in i.notes]
     visuals_notes = _filter_notes_by_category(
@@ -388,7 +414,7 @@ def _show_notes(notes: List[ItemNote]) -> str:
         f"<span class='{_NOTES_TITLE_CLS}'>⚠️ {_escape(n.category)}</span><br>\n{_escape(n.contents)}"
         for n in notes
     ]
-    return "\n".join(notes_str)
+    return "<br>".join(notes_str)
 
 
 @dataclass

@@ -94,8 +94,13 @@
 		"notes": []
 	},
 	"message_notes": {
-		"content": "Worthy Of The Feast\nMatthew 22:1-14 NLT\nOur Worth Isn’t Earned It’s Given\nMatthew 22:4\nOur Worth Is Experienced Through Acceptance\nMatthew 22:10\nOur Worth Is Revealed By Our Garments\nMatthew 22:11\nYou Are Worthy Because You Are Chosen\nMatthew 22:14\nOur Worth Is Connected To Our Embrace Of The Worth Of The Feast\nLive According To The Level Of Worth We Have Received",
-		"notes": []
+		"content": "Worthy Of The Feast\nMatthew 22:1-14 NLT\nOur Worth Isn’t Earned It’s Given\nMatthew 22:4\nOur Worth Is Experienced Through Acceptance\nMatthew 22:10\nOur Worth Is Revealed By Our Garments\nMatthew 22:11\nYou Are Worthy Because You Are Chosen\nMatthew 22:14\nOur Worth Is Connected To Our Embrace Of The Worth Of The Feast\nOur worth is experienced  through\tacceptance  \nLive According To The Level Of Worth We Have Received",
+		"notes": [
+			{
+				"category": "Warning",
+				"contents": "There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional."
+			}
+		]
 	},
 	"num_visuals_notes": 2
 }
