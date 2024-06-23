@@ -5,7 +5,6 @@ from pathlib import Path
 from tkinter import Tk
 
 from lib import load_plan_summary, plan_summary_to_html
-from selenium.webdriver.common.alert import Alert
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -30,7 +29,6 @@ class PlanSummaryHtmlTestCase(unittest.TestCase):
         driver = WebDriver(service=service)
         try:
             driver.get(f.resolve().as_uri())
-            Alert(driver).accept()
             btn = driver.find_element(By.XPATH, "//button[contains(., 'Copy')]")
             btn.click()
         finally:

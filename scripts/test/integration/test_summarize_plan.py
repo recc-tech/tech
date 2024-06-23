@@ -180,7 +180,7 @@ class SummarizePlanTestCase(unittest.TestCase):
                 ),
                 notes=[],
             ),
-            has_visuals_notes=True,
+            num_visuals_notes=2,
         )
         actual_summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
         self.assert_equal_summary(expected_summary, actual_summary)

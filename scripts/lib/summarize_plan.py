@@ -44,7 +44,7 @@ class PlanItemsSummary:
     announcements_video: Optional[AnnotatedItem]
     songs: List[AnnotatedSong]
     message_notes: Optional[AnnotatedItem]
-    has_visuals_notes: bool
+    num_visuals_notes: int
 
 
 T = TypeVar("T")
@@ -280,7 +280,7 @@ def get_plan_summary(
         announcements_video=announcements_video,
         songs=songs,
         message_notes=message_notes,
-        has_visuals_notes=len(visuals_notes) > 0,
+        num_visuals_notes=len(visuals_notes),
     )
 
 
@@ -362,7 +362,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
         announcements_video=announcements_vid,
         songs=songs,
         message_notes=message_notes,
-        has_visuals_notes=data["has_visuals_notes"],
+        num_visuals_notes=data["num_visuals_notes"],
     )
 
 
@@ -543,13 +543,9 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     )
     songs_table = _make_songs_table(songs=summary.songs)
     message_table = _make_message_table(summary.message_notes)
-    show_notes_warning = (
-        'alert("Heads up! There are some notes in the plan. They might call '
-        + "for adjustments to the presentations, such as changes to songs' "
-        + 'lyrics.");'
-        if summary.has_visuals_notes
-        else ""
-    )
+    is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
+    note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
+    it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
     return f"""
 <!DOCTYPE html>
 <html>
@@ -622,7 +618,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 font-family: inherit;
             }}
             .{_NOTES_WARNING_CLS} {{
-                visibility: {'visible' if summary.has_visuals_notes else 'hidden'};
+                visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
                 border: 2px solid #b57b0e;
                 color: #b57b0e;
                 background-color: #fffaa0;
@@ -640,9 +636,6 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
             }}
-            window.addEventListener("DOMContentLoaded", () => {{
-                {show_notes_warning}
-            }});
         </script>
     </head>
     <body>
@@ -653,10 +646,11 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         <div id='main-content'>
             <div class="{_NOTES_WARNING_CLS}">
                 Heads up!
-                There are some notes in the plan.
-                They might call for adjustments to the presentations,
-                such as changes to songs lyrics.
-                Check the plan in Planning Center to make sure you see them all.
+                There {is_or_are} {summary.num_visuals_notes} {note_or_notes}
+                for the visuals team in the plan.
+                {it_or_they.capitalize()} might call for adjustments to the
+                presentations, such as changes to songs lyrics.
+                If fewer notes are shown here, check Planning Center.
                 Make sure the visuals notes are visible by clicking on the
                 button at the top right-hand corner with the three vertical bars
                 and ensure the "Visuals" checkbox is checked.
