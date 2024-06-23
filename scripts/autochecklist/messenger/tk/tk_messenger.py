@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from threading import Lock
-from tkinter import Canvas, IntVar, Menu, Misc, Tk, Toplevel, messagebox
+from tkinter import Canvas, IntVar, Menu, Misc, PhotoImage, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
@@ -51,11 +51,13 @@ class TkMessenger(InputMessenger):
         *,
         theme: Literal["dark", "light"],
         show_statuses_by_default: bool,
+        icon: Optional[Path] = None,
     ) -> None:
         self._title = title
         self._description = description
         self._config = config
         self._show_statuses_by_default = show_statuses_by_default
+        self._icon = icon
         self._background = "#323232" if theme == "dark" else "#EEEEEE"
         self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
         self._light_foreground = "#888888"
@@ -445,6 +447,9 @@ class TkMessenger(InputMessenger):
 
         self._tk = Tk()
         self._tk.title(self._title)
+        if self._icon is not None:
+            icon_img = PhotoImage(file=self._icon.resolve().as_posix())
+            self._tk.iconphoto(True, icon_img)
         screen_height = self._tk.winfo_screenheight()
         # Apparently tk.winfo_screenwidth() doesn't work very well on
         # multi-monitor setups
