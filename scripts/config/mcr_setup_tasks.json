@@ -52,9 +52,16 @@
 			]
 		},
 		{
-			"name": "create_vMix_preset",
+			"name": "save_new_vMix_preset",
+			"description": "Create a new vMix preset for this week. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
 			"prerequisites": [
 				"turn_everything_on"
+			]
+		},
+		{
+			"name": "create_vMix_preset",
+			"prerequisites": [
+				"save_new_vMix_preset"
 			],
 			"subtasks": [
 				{
@@ -91,7 +98,7 @@
 		},
 		{
 			"name": "save_vMix_preset",
-			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
+			"description": "Save the vMix preset.",
 			"prerequisites": [
 				"create_vMix_preset"
 			]
@@ -155,7 +162,7 @@
 		},
 		{
 			"name": "import_other_assets",
-			"description": "Import the other new assets into vMix.",
+			"description": "Import the other new assets from %{folder.assets_by_type}% into vMix.",
 			"prerequisites": [
 				"download_assets"
 			]
