@@ -58,6 +58,7 @@ class TkMessenger(InputMessenger):
         self._show_statuses_by_default = show_statuses_by_default
         self._background = "#323232" if theme == "dark" else "#EEEEEE"
         self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
+        self._light_foreground = "#888888"
 
         self._start_event = threading.Event()
         self._end_event = threading.Event()
@@ -501,15 +502,13 @@ class TkMessenger(InputMessenger):
         header_frame.columnconfigure(index=0, weight=1)
         header_frame.columnconfigure(index=1, weight=0)
 
-        # TODO: de-emphasize this section by making the font grey?
-
         if self._description.strip():
             description_textbox = ResponsiveTextbox(
                 header_frame,
                 width=WIDTH,
                 font=_ITALIC_FONT,
                 background=self._background,
-                foreground=self._foreground,
+                foreground=self._light_foreground,
             )
             description_textbox.grid(sticky="NE", row=0, column=0)
             description_textbox.set_text(self._description)
@@ -528,7 +527,7 @@ class TkMessenger(InputMessenger):
             width=20,
             font=_ITALIC_FONT,
             background=self._background,
-            foreground=self._foreground,
+            foreground=self._light_foreground,
         )
         self._last_reload_textbox.grid(sticky="NE")
 

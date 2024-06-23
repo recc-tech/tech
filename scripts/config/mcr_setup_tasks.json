@@ -27,11 +27,11 @@
 			"subtasks": [
 				{
 					"name": "check_COP_events",
-					"description": "Check that the main event and rebroadcast events on Church Online Platform have been created [[styled|emph|and have content]]. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
+					"description": "Check that all events on Church Online Platform are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
 				},
 				{
 					"name": "check_BoxCast_events",
-					"description": "Check that the Kids Connection event and main event are set up on BoxCast. Also check that the YouTube and Facebook destinations are there for the main event but [[styled|emph|not]] for the Kids Connection event. If not, set up the events. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
+					"description": "Check that both events on BoxCast are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
 				}
 			]
 		},
@@ -52,9 +52,16 @@
 			]
 		},
 		{
-			"name": "create_vMix_preset",
+			"name": "save_new_vMix_preset",
+			"description": "Create a new vMix preset for this week. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
 			"prerequisites": [
 				"turn_everything_on"
+			]
+		},
+		{
+			"name": "create_vMix_preset",
+			"prerequisites": [
+				"save_new_vMix_preset"
 			],
 			"subtasks": [
 				{
@@ -63,21 +70,21 @@
 				},
 				{
 					"name": "import_Kids_Connection_video",
-					"description": "In vMix, replace last week's kids video with this week's video in the Kids Connection list input.",
+					"description": "Import this week's Kids Connection video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
 					"prerequisites": [
 						"download_assets"
 					]
 				},
 				{
 					"name": "import_announcements_video",
-					"description": "In vMix, replace last week's announcements video with this week's video in the Announcements list input.",
+					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
 					"prerequisites": [
 						"download_assets"
 					]
 				},
 				{
 					"name": "restart_videos",
-					"description": "Restart all the videos and loops.",
+					"description": "Restart all the videos and loops. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#restarting-a-video|More details]].",
 					"prerequisites": [
 						"import_Kids_Connection_video",
 						"import_announcements_video"
@@ -85,20 +92,20 @@
 				},
 				{
 					"name": "update_titles",
-					"description": "In vMix, update the pre-stream title loop, the speaker's title, the MC hosts' title, and the title for anyone else that will make an announcement."
+					"description": "In vMix, update [[styled|emph|all]] the titles. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#editing-titles|More details]]."
 				}
 			]
 		},
 		{
 			"name": "save_vMix_preset",
-			"description": "Save the vMix preset as a new file. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
+			"description": "Save the vMix preset.",
 			"prerequisites": [
 				"create_vMix_preset"
 			]
 		},
 		{
 			"name": "publish_sermon_notes",
-			"description": "Publish the sermon notes to Church Online Platform, first to the main event, then to the rebroadcast events. ⚠️ [[styled|emph|Check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time)]] ⚠️.",
+			"description": "Publish the sermon notes to Church Online Platform. ⚠️ [[styled|emph|Check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time)]] ⚠️. [[url|https://github.com/recc-tech/tech/wiki/Publishing-Sermon-Notes-to-Church-Online-Platform|More details]].",
 			"prerequisites": [
 				"download_assets",
 				"check_COP_events"
@@ -112,7 +119,7 @@
 			"subtasks": [
 				{
 					"name": "start_stream",
-					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the Kids Connection playlist, and start the stream. Check in Church Online Platform's Host Tools that the stream is working."
+					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the kids 5 minute countdown loop, and start the stream by pressing the STM button. Check in Church Online Platform's Host Tools that the stream is working."
 				},
 				{
 					"name": "set_up_in_annex",
@@ -120,7 +127,7 @@
 				},
 				{
 					"name": "start_recording",
-					"description": "After the Kids Connection broadcast, start recording the stream.",
+					"description": "After the Kids Connection broadcast, start recording the stream by pressing the REC button.",
 					"prerequisites": [
 						"start_stream"
 					]
@@ -135,7 +142,7 @@
 			"subtasks": [
 				{
 					"name": "download_message_notes",
-					"description": "Copy the message notes from Planning Center Online (the ones that say which slides to make) and save them in %{slides.message_notes}%."
+					"description": "Copy the message notes from Planning Center Online (the ones in the order that say which slides to make) and save them in %{slides.message_notes}%."
 				},
 				{
 					"name": "generate_backup_slides",
@@ -154,22 +161,10 @@
 			]
 		},
 		{
-			"name": "manage_other_assets",
+			"name": "import_other_assets",
+			"description": "Import the other new assets from %{folder.assets_by_type}% into vMix.",
 			"prerequisites": [
 				"download_assets"
-			],
-			"subtasks": [
-				{
-					"name": "import_other_assets",
-					"description": "Import the other new assets into vMix.",
-					"prerequisites": [
-						"download_assets"
-					]
-				},
-				{
-					"name": "archive_old_assets",
-					"description": "If you have time, clear out outdated files. For each outdated file, close the input in vMix and move the file to %{folder.archived_assets}%."
-				}
 			]
 		},
 		{
