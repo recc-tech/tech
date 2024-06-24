@@ -70,6 +70,7 @@ class TkMessenger(InputMessenger):
 
         self._start_event = threading.Event()
         self._end_event = threading.Event()
+        self._is_script_done = False
         self._mutex = Lock()
         self._waiting_events: Set[threading.Event] = set()
         self._queue: Queue[_GuiTask] = Queue()
@@ -123,6 +124,7 @@ class TkMessenger(InputMessenger):
         if self.is_closed:
             return
         else:
+            self._is_script_done = True
             self._tk.after_idle(show_goodbye_message)
             self._end_event.wait()
 
@@ -130,8 +132,9 @@ class TkMessenger(InputMessenger):
         """
         Called when the user presses the "x" button to close the window.
         """
-        should_exit = self.input_bool(
-            title="Confirm exit", prompt="Are you sure you want to exit?"
+        should_exit = self._is_script_done or self.input_bool(
+            title="Confirm exit",
+            prompt="Are you sure you want to exit? The script is not done yet.",
         )
         if should_exit:
             self._tk.quit()
@@ -421,6 +424,7 @@ class TkMessenger(InputMessenger):
         """
         Add a command related to a specific task (e.g., to cancel that task).
         """
+
         def do_add_command() -> None:
             self._task_statuses_grid.upsert_command(task_name, command_name, callback)
 
@@ -429,6 +433,7 @@ class TkMessenger(InputMessenger):
 
     def remove_command(self, task_name: str, command_name: str) -> None:
         """Remove a previously-added task-specific command."""
+
         def do_remove_command() -> None:
             self._task_statuses_grid.remove_command(task_name, command_name)
 
