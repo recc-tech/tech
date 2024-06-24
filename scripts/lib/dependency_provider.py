@@ -45,6 +45,7 @@ class ReccDependencyProvider(DependencyProvider):
             show_statuses_by_default=show_statuses_by_default,
             ui_theme=config.ui_theme,
             icon=Path(__file__).parent.parent.parent.joinpath("icon_512x512.png"),
+            auto_close_messenger=args.auto_close,
         )
 
         # Optional args

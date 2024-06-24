@@ -55,6 +55,7 @@ class TkMessenger(InputMessenger):
         theme: Literal["dark", "light"],
         show_statuses_by_default: bool,
         icon: Optional[Path] = None,
+        auto_close: bool = False,
     ) -> None:
         """
         Initialize a `TkMessenger` object, but do not show the GUI yet.
@@ -64,6 +65,7 @@ class TkMessenger(InputMessenger):
         self._config = config
         self._show_statuses_by_default = show_statuses_by_default
         self._icon = icon
+        self._auto_close = auto_close
         self._background = "#323232" if theme == "dark" else "#EEEEEE"
         self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
         self._light_foreground = "#888888"
@@ -71,6 +73,7 @@ class TkMessenger(InputMessenger):
         self._start_event = threading.Event()
         self._end_event = threading.Event()
         self._is_script_done = False
+        self._num_problems = 0
         self._mutex = Lock()
         self._waiting_events: Set[threading.Event] = set()
         self._queue: Queue[_GuiTask] = Queue()
@@ -121,8 +124,13 @@ class TkMessenger(InputMessenger):
                 "All done :D Close this window to exit."
             )
 
+        with self._mutex:
+            error_count = self._num_problems
+
         if self.is_closed:
             return
+        if self._auto_close and error_count == 0:
+            self._tk.quit()
         else:
             self._is_script_done = True
             self._tk.after_idle(show_goodbye_message)
@@ -158,6 +166,8 @@ class TkMessenger(InputMessenger):
         """Report that a problem has occurred."""
         if self.is_closed:
             raise KeyboardInterrupt()
+        with self._mutex:
+            self._num_problems += 1
 
         def do_log_problem() -> None:
             self._problems_frame.grid()
