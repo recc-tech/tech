@@ -536,7 +536,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
     sermon_notes = message.content if message else ""
     has_sermon_notes = bool(sermon_notes.strip())
     sermon_notes = (
-        f"<details><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
+        f"<details open><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
         if sermon_notes
         else "<span class='missing'>No Notes Available</span>"
     )
