@@ -18,11 +18,13 @@ class ReccArgs(BaseArgs):
         )
         t = self.start_time
         root = Path(__file__).resolve().parent.parent.parent
+        self.auto_close: bool = args.auto_close
         self._data = {
             "startup_ymd": t.strftime("%Y-%m-%d"),
             "startup_mdy": f"{t.strftime('%B')} {t.day}, {t.year}",
             "startup_timestamp": t.strftime("%Y%m%d-%H%M%S"),
             "repo_root": str(root),
+            "auto_close": str(self.auto_close),
         }
 
     @classmethod
@@ -37,6 +39,11 @@ class ReccArgs(BaseArgs):
             "--date",
             type=lambda x: datetime.strptime(x, "%Y-%m-%d").date(),
             help="Pretend the script is running on a different date.",
+        )
+        common_args.add_argument(
+            "--auto-close",
+            action="store_true",
+            help="Automatically close the GUI if the script finishes with no warnings or errors.",
         )
         super().set_up_parser(parser)
 
