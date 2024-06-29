@@ -3,6 +3,8 @@ digraph G {
     "args" -> {"autochecklist"};
     "autochecklist" [shape="rect"];
     "autochecklist" -> {};
+    "captions" [shape="rect"];
+    "captions" -> {};
     "config" [shape="rect"];
     "config" -> {"args", "autochecklist"};
     "dependoc" [shape="rect"];
