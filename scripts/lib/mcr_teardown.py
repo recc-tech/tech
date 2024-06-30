@@ -6,8 +6,7 @@ from typing import Dict
 
 import args.parsing_helpers as parse
 import autochecklist
-import lib
-import webvtt
+import captions
 from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
 from config import Config, McrTeardownConfig
@@ -171,9 +170,9 @@ def copy_captions_to_final(config: McrTeardownConfig):
 
 
 def remove_worship_captions(config: McrTeardownConfig):
-    original_vtt = webvtt.read(config.final_captions_file)
-    final_vtt = lib.remove_worship_captions(original_vtt)
-    final_vtt.save(config.final_captions_file)
+    original_vtt = list(captions.load(config.final_captions_file))
+    final_vtt = captions.remove_worship_captions(original_vtt)
+    captions.save(final_vtt, config.final_captions_file)
 
 
 def upload_captions_to_BoxCast(

@@ -14,7 +14,6 @@ from .assets import (
     DownloadSkipped,
     DownloadSucceeded,
 )
-from .captions import remove_worship_captions
 from .dependency_provider import ReccDependencyProvider
 from .slides import (
     BibleVerse,

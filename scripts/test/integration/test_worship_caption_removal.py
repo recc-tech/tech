@@ -4,8 +4,7 @@ import unittest
 from pathlib import Path
 from typing import Dict
 
-import webvtt
-from lib import remove_worship_captions
+import captions
 
 PAST_CAPTIONS_DIR = Path(__file__).parent.joinpath("captions_data")
 STATS_FILE = Path(__file__).parent.joinpath(
@@ -33,14 +32,18 @@ class WorshipCaptionRemovalTestCase(unittest.TestCase):
                     self.skipTest(
                         "This date is on or after 2023-12-03, so its caption removal was likely done automatically."
                     )
-                original_captions = webvtt.read(subdir.joinpath("original.vtt"))
-                expected_final_captions = webvtt.read(subdir.joinpath("final.vtt"))
+                original_captions = list(captions.load(subdir.joinpath("original.vtt")))
+                expected_final_captions = list(
+                    captions.load(subdir.joinpath("final.vtt"))
+                )
                 num_cues_to_remove = len(original_captions) - len(
                     expected_final_captions
                 )
-                actual_final_captions = remove_worship_captions(original_captions)
-                actual_caption_ids = [c.identifier for c in actual_final_captions]
-                expected_caption_ids = [c.identifier for c in expected_final_captions]
+                actual_final_captions = captions.remove_worship_captions(
+                    original_captions
+                )
+                actual_caption_ids = [c.id for c in actual_final_captions]
+                expected_caption_ids = [c.id for c in expected_final_captions]
                 num_missing_cues = len(
                     [c for c in expected_caption_ids if c not in actual_caption_ids]
                 )
