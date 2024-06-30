@@ -7,4 +7,3 @@ pyperclip==1.8.2
 PyVimeo==1.1.0
 selenium==4.9.1
 tomli>=2.0
-webvtt-py>=0.4
