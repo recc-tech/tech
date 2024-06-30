@@ -5,13 +5,14 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Mapping, Optional
 
+import captions
 import dateutil.parser
 import dateutil.tz
 import requests
-import webvtt
 from autochecklist import Messenger, ProblemLevel
+from captions import Cue
 from config import Config
 from requests.auth import HTTPBasicAuth
 
@@ -22,13 +23,6 @@ from .credentials import Credential, CredentialStore, InputPolicy
 class Broadcast:
     id: str
     start_time: datetime
-
-
-@dataclass
-class Cue:
-    start_time: float
-    end_time: float
-    text: str
 
 
 class BoxCastApiClient:
@@ -76,13 +70,15 @@ class BoxCastApiClient:
             json_cues = json_captions[0]["cues"]
             cues = [
                 Cue(
-                    start_time=c["start_time"],
-                    end_time=c["end_time"],
+                    id=str(i),
+                    start=timedelta(seconds=c["start_time"]),
+                    end=timedelta(seconds=c["end_time"]),
                     text=c["text"],
+                    confidence=float(c["confidence"]),
                 )
-                for c in json_cues
+                for i, c in enumerate(json_cues, start=1)
             ]
-            _save_captions(cues, path)
+            captions.save(cues, path)
 
     def _get_captions_id(self, broadcast_id: str) -> str:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
@@ -97,13 +93,13 @@ class BoxCastApiClient:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"
         cues = [
             {
-                "start_time": c.start_time,
-                "end_time": c.end_time,
+                "start_time": c.start.total_seconds(),
+                "end_time": c.end.total_seconds(),
                 "text": c.text,
                 # BoxCast seems to default to 1 when uploading via UI
-                "confidence": 1,
+                "confidence": c.confidence if c.confidence is not None else 1,
             }
-            for c in _load_captions(p=path)
+            for c in captions.load(path)
         ]
         payload = {"cues": cues}
         self._send_and_check("PUT", url, json=payload)
@@ -249,33 +245,3 @@ class BoxCastApiClient:
             )
         data = response.json()
         return data["access_token"]
-
-
-def _save_captions(cues: List[Cue], p: Path) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        f.write("WEBVTT\n\n")
-        for i, c in enumerate(cues, start=1):
-            start_td = timedelta(seconds=c.start_time)
-            end_td = timedelta(seconds=c.end_time)
-            f.write(f"{i}\n")
-            f.write(f"{_format_timedelta(start_td)} --> {_format_timedelta(end_td)}\n")
-            f.write(f"{c.text}\n\n")
-
-
-def _load_captions(p: Path) -> List[Cue]:
-    vtt = webvtt.read(p)
-    vtt.captions
-    return [
-        Cue(start_time=c.start_in_seconds, end_time=c.end_in_seconds, text=c.text)
-        for c in vtt.captions
-    ]
-
-
-def _format_timedelta(td: timedelta) -> str:
-    tot_seconds = int(td.total_seconds())
-    seconds = tot_seconds % 60
-    minutes = (tot_seconds // 60) % 60
-    hours = tot_seconds // (60 * 60)
-    millis = td.microseconds // 1_000
-    return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{millis:03d}"
