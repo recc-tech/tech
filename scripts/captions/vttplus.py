@@ -34,13 +34,11 @@ def serialize(cues: Iterable[Cue]) -> Iterator[str]:
     <BLANKLINE>
 
     >>> txt = serialize([
-    ...   Cue(id="1", start=timedelta(seconds=0), end=timedelta(minutes=1, seconds=1, milliseconds=42), text="Hello there!", confidence=1.0),
+    ...   Cue(id="1", start=timedelta(seconds=0), end=timedelta(minutes=1, seconds=1, milliseconds=42), text="Hello there!", confidence=None),
     ...   Cue(id="2", start=timedelta(minutes=1, seconds=30, milliseconds=99), end=timedelta(hours=1, minutes=59, seconds=59, milliseconds=432), text="General Kenobi!", confidence=0.432)
     ... ])
     >>> print("".join(txt))
     WEBVTT
-    <BLANKLINE>
-    NOTE confidence=1.0
     <BLANKLINE>
     1
     00:00:00.000 --> 00:01:01.042
@@ -57,13 +55,14 @@ def serialize(cues: Iterable[Cue]) -> Iterator[str]:
     # TODO: Add some validation (e.g., end time must be after start time for each cue, cue text can't contain newlines, etc.)?
     yield "WEBVTT\n\n"
     for c in cues:
-        yield f"NOTE confidence={c.confidence}\n\n"
+        if c.confidence is not None:
+            yield f"NOTE confidence={c.confidence}\n\n"
         yield f"{c.id}\n"
         yield f"{_format_timedelta(c.start)} --> {_format_timedelta(c.end)}\n"
         yield f"{c.text}\n\n"
 
 
-def parse(vtt: str, default_confidence: float = 1.0) -> Iterator[Cue]:
+def parse(vtt: str) -> Iterator[Cue]:
     r"""
     Parse a string in WebVTT format to a list of cues.
 
@@ -110,10 +109,10 @@ def parse(vtt: str, default_confidence: float = 1.0) -> Iterator[Cue]:
     ... Second cue (no confidence)
     ...
     ... '''
-    >>> for c in parse(vtt, default_confidence=99.5):
+    >>> for c in parse(vtt):
     ...     print(c)
-    Cue(id='42', start=datetime.timedelta(0), end=datetime.timedelta(seconds=1), text='First cue (no confidence)', confidence=99.5)
-    Cue(id='43', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Second cue (no confidence)', confidence=99.5)
+    Cue(id='42', start=datetime.timedelta(0), end=datetime.timedelta(seconds=1), text='First cue (no confidence)', confidence=None)
+    Cue(id='43', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Second cue (no confidence)', confidence=None)
 
     Likewise, it may be the case that *some* (but not all) cues have a
     confidence value.
@@ -139,9 +138,9 @@ def parse(vtt: str, default_confidence: float = 1.0) -> Iterator[Cue]:
     ... Cue 2
     ...
     ... '''
-    >>> for c in parse(vtt, default_confidence=1.0):
+    >>> for c in parse(vtt):
     ...     print(c)
-    Cue(id='99', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Cue 1', confidence=1.0)
+    Cue(id='99', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Cue 1', confidence=None)
     Cue(id='100', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='Cue 2', confidence=0.42)
 
     """
@@ -163,23 +162,19 @@ def parse(vtt: str, default_confidence: float = 1.0) -> Iterator[Cue]:
         else:
             lines = blk.split("\n")
             if len(lines) != 3:
+                cue_id = f" (cue ID: {lines[0].strip()})" if len(lines) > 0 else ""
                 raise ValueError(
-                    f"Wrong number of lines in a cue. Expected exactly 3, but found {len(lines)}"
+                    f"Wrong number of lines in a cue{cue_id}. Expected exactly 3, but found {len(lines)}"
                 )
-            conf = (
-                current_confidence
-                if current_confidence is not None
-                else default_confidence
-            )
-            current_confidence = None
             start, end = _parse_time_range(lines[1])
             yield Cue(
                 id=lines[0].strip(),
                 start=start,
                 end=end,
                 text=lines[2].strip(),
-                confidence=conf,
+                confidence=current_confidence,
             )
+            current_confidence = None
 
 
 def _format_timedelta(td: timedelta) -> str:
