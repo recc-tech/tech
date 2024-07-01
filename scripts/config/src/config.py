@@ -387,6 +387,7 @@ class Config(BaseConfig):
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")
+            self.auto_edited_captions_file = reader.get_file("captions.auto_edited")
             self.final_captions_file = reader.get_file("captions.final")
 
             # BoxCast

@@ -28,8 +28,9 @@ summarize_plan            = "%{folder.logs}%/%{args.startup_timestamp}% summariz
 manual_test               = "%{folder.logs}%/%{args.startup_timestamp}% manual_test.log"
 
 [captions]
-original = "%{folder.captions}%/original.vtt"
-final = "%{folder.captions}%/final.vtt"
+original    = "%{folder.captions}%/original.vtt"
+auto_edited = "%{folder.captions}%/auto_edited.vtt"
+final       = "%{folder.captions}%/final.vtt"
 
 [boxcast]
 base_url = "https://rest.boxcast.com"

@@ -1,4 +1,3 @@
-import shutil
 import stat
 import traceback
 from datetime import date, datetime, timedelta
@@ -134,6 +133,35 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
         )
 
 
+def automatically_edit_captions(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+
+    # TODO: Temporary (fingers crossed) hack to address
+    # https://github.com/recc-tech/tech/issues/337
+    token = messenger.allow_cancel()
+    autochecklist.sleep_attentively(
+        timeout=timedelta(minutes=3), cancellation_token=token
+    )
+
+    client.download_captions(
+        broadcast_id=broadcast.id, path=config.original_captions_file
+    )
+    # Prevent user from mistakenly editing the wrong file
+    config.original_captions_file.chmod(stat.S_IREAD)
+    original_cues = list(captions.load(config.original_captions_file))
+    filtered_cues = captions.remove_worship_captions(original_cues)
+    captions.save(filtered_cues, config.auto_edited_captions_file)
+    # Prevent user from mistakenly editing the wrong file
+    config.auto_edited_captions_file.chmod(stat.S_IREAD)
+    client.upload_captions(
+        broadcast_id=broadcast.id, path=config.auto_edited_captions_file
+    )
+
+
 def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messenger):
     cancellation_token = messenger.allow_cancel()
     (_, texttrack_uri) = vimeo_client.get_video_data(cancellation_token)
@@ -142,53 +170,25 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
-def download_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+def upload_captions_to_Vimeo(
+    messenger: Messenger,
+    boxcast_client: BoxCastApiClient,
+    vimeo_client: ReccVimeoClient,
+    config: McrTeardownConfig,
 ) -> None:
+    broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+
     # TODO: Temporary (fingers crossed) hack to address
     # https://github.com/recc-tech/tech/issues/337
     token = messenger.allow_cancel()
     autochecklist.sleep_attentively(
         timeout=timedelta(minutes=3), cancellation_token=token
     )
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.download_captions(
-            broadcast_id=broadcast.id,
-            path=config.original_captions_file,
-        )
 
-
-def copy_captions_to_final(config: McrTeardownConfig):
-    if not config.original_captions_file.exists():
-        raise ValueError(f"File '{config.original_captions_file}' does not exist.")
-    # Copy the file first so that the new file isn't read-only
-    shutil.copy(src=config.original_captions_file, dst=config.final_captions_file)
-    config.original_captions_file.chmod(stat.S_IREAD)
-
-
-def remove_worship_captions(config: McrTeardownConfig):
-    original_vtt = list(captions.load(config.final_captions_file))
-    final_vtt = captions.remove_worship_captions(original_vtt)
-    captions.save(final_vtt, config.final_captions_file)
-
-
-def upload_captions_to_BoxCast(
-    client: BoxCastApiClient, config: McrTeardownConfig
-) -> None:
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.upload_captions(
-            broadcast_id=broadcast.id, path=config.final_captions_file
-        )
-
-
-def upload_captions_to_Vimeo(
-    messenger: Messenger, vimeo_client: ReccVimeoClient, config: McrTeardownConfig
-):
+    boxcast_client.download_captions(
+        broadcast_id=broadcast.id, path=config.final_captions_file
+    )
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
     vimeo_client.upload_captions_to_vimeo(config.final_captions_file, texttrack_uri)

@@ -10,7 +10,7 @@ digraph G {
     "dependoc" [shape="rect"];
     "dependoc" -> {};
     "external_services" [shape="rect"];
-    "external_services" -> {"autochecklist", "config"};
+    "external_services" -> {"autochecklist", "captions", "config"};
     "lib" [shape="rect"];
     "lib" -> {"args", "autochecklist", "captions", "config", "external_services"};
 }

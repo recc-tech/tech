@@ -13,6 +13,7 @@ from .cue import Cue
 
 
 def save(cues: Iterable[Cue], p: Path) -> None:
+    p.parent.mkdir(exist_ok=True, parents=True)
     with open(p, "w", encoding="utf-8") as f:
         f.writelines(serialize(cues))
 
