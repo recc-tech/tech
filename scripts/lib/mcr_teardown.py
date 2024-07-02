@@ -136,27 +136,27 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
 def automatically_edit_captions(
     client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
 ) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
     if broadcast is None:
         raise ValueError("No broadcast found on BoxCast.")
 
-    # TODO: Temporary (fingers crossed) hack to address
-    # https://github.com/recc-tech/tech/issues/337
-    token = messenger.allow_cancel()
-    autochecklist.sleep_attentively(
-        timeout=timedelta(minutes=3), cancellation_token=token
-    )
-
+    messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
     client.download_captions(
         broadcast_id=broadcast.id, path=config.original_captions_file
     )
+
+    messenger.log_status(TaskStatus.RUNNING, "Editing the captions.")
     # Prevent user from mistakenly editing the wrong file
     config.original_captions_file.chmod(stat.S_IREAD)
     original_cues = list(captions.load(config.original_captions_file))
     filtered_cues = captions.remove_worship_captions(original_cues)
+    # TODO: Also perform capitalization check (using the old caption_substitutions.csv in lib, which should maybe be moved to config)
     captions.save(filtered_cues, config.auto_edited_captions_file)
     # Prevent user from mistakenly editing the wrong file
     config.auto_edited_captions_file.chmod(stat.S_IREAD)
+
+    messenger.log_status(TaskStatus.RUNNING, "Re-uploading the edited captions.")
     client.upload_captions(
         broadcast_id=broadcast.id, path=config.auto_edited_captions_file
     )
@@ -176,19 +176,27 @@ def upload_captions_to_Vimeo(
     vimeo_client: ReccVimeoClient,
     config: McrTeardownConfig,
 ) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())
     if broadcast is None:
         raise ValueError("No broadcast found on BoxCast.")
 
     # TODO: Temporary (fingers crossed) hack to address
     # https://github.com/recc-tech/tech/issues/337
+    messenger.log_status(
+        TaskStatus.RUNNING,
+        "Waiting a few minutes so BoxCast has time to publish the captions.",
+    )
     token = messenger.allow_cancel()
     autochecklist.sleep_attentively(
         timeout=timedelta(minutes=3), cancellation_token=token
     )
 
+    messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
     boxcast_client.download_captions(
         broadcast_id=broadcast.id, path=config.final_captions_file
     )
+
+    messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
     vimeo_client.upload_captions_to_vimeo(config.final_captions_file, texttrack_uri)
