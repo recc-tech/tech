@@ -69,7 +69,13 @@ class BoxCastApiClient:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
         json_captions = self._send_and_check("GET", url)
         if len(json_captions) == 0:
-            raise ValueError("No captions found.")
+            raise ValueError(
+                "No captions found. You may need to publish the captions first."
+            )
+        elif len(json_captions) > 1:
+            raise ValueError(
+                "Multiple captions found. Are some captions currently being published?"
+            )
         else:
             json_cues = json_captions[0]["cues"]
             cues = [
