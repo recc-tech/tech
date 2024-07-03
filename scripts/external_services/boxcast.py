@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, Mapping, Optional
 
+import autochecklist
 import captions
 import dateutil.parser
 import dateutil.tz
@@ -14,9 +15,12 @@ import requests
 from autochecklist import Messenger, ProblemLevel
 from captions import Cue
 from config import Config
+from requests import Response
 from requests.auth import HTTPBasicAuth
 
 from .credentials import Credential, CredentialStore, InputPolicy
+
+HttpResponseHandler = Callable[[Response], None]
 
 
 @dataclass
@@ -102,7 +106,19 @@ class BoxCastApiClient:
             for c in captions.load(path)
         ]
         payload = {"cues": cues}
-        self._send_and_check("PUT", url, json=payload)
+        handlers = {409: self._handle_http409_during_captions_upload}
+        self._send_and_check("PUT", url, json=payload, handlers=handlers)
+
+    def _handle_http409_during_captions_upload(self, response: Response) -> None:
+        self._messenger.log_debug(
+            f"Received HTTP 409 during captions upload."
+            f"\nBody: {response.json()}"
+            f"\nHeaders: {response.headers}"
+        )
+        autochecklist.sleep_attentively(
+            timeout=self._config.upload_captions_retry_delay,
+            cancellation_token=self._messenger.allow_cancel(),
+        )
 
     def schedule_rebroadcast(
         self, broadcast_id: str, name: str, start: datetime
@@ -152,8 +168,10 @@ class BoxCastApiClient:
         params: Optional[Mapping[str, str]] = None,
         json: Optional[Mapping[str, object]] = None,
         headers: Optional[Dict[str, str]] = None,
+        handlers: Optional[Dict[int, HttpResponseHandler]] = None,
     ) -> Any:
         headers = headers or {}
+        handlers = handlers or {}
         self._messenger.log_debug(
             f"Attempting to send HTTP request {method} {url} with"
             + f" params {params}, data {json}, and headers {headers}"
@@ -170,7 +188,9 @@ class BoxCastApiClient:
                 headers=headers,
                 timeout=self._config.timeout_seconds,
             )
-            if response.status_code // 100 == 2:
+            if response.status_code in handlers:
+                handlers[response.status_code](response)
+            elif response.status_code // 100 == 2:
                 return response.json()
             elif response.status_code == 401:
                 self._messenger.log_problem(

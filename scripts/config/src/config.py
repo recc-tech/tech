@@ -394,6 +394,9 @@ class Config(BaseConfig):
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
+            self.upload_captions_retry_delay = timedelta(
+                seconds=reader.get_float("boxcast.upload_captions_retry_delay")
+            )
 
             # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")

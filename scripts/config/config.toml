@@ -36,6 +36,8 @@ final       = "%{folder.captions}%/final.vtt"
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
+# In seconds
+upload_captions_retry_delay = 15
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
