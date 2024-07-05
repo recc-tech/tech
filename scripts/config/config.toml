@@ -38,6 +38,10 @@ auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
 # In seconds
 upload_captions_retry_delay = 15
+# In seconds
+generate_captions_retry_delay = 60
+# In minutes
+max_captions_wait_time = 30
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"

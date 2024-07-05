@@ -397,6 +397,12 @@ class Config(BaseConfig):
             self.upload_captions_retry_delay = timedelta(
                 seconds=reader.get_float("boxcast.upload_captions_retry_delay")
             )
+            self.generate_captions_retry_delay = timedelta(
+                seconds=reader.get_float("boxcast.generate_captions_retry_delay")
+            )
+            self.max_captions_wait_time = timedelta(
+                minutes=reader.get_float("boxcast.max_captions_wait_time")
+            )
 
             # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")

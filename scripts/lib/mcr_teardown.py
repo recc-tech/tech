@@ -9,7 +9,12 @@ import captions
 from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
 from config import Config, McrTeardownConfig
-from external_services import BoxCastApiClient, PlanningCenterClient, ReccVimeoClient
+from external_services import (
+    BoxCastApiClient,
+    NoCaptionsError,
+    PlanningCenterClient,
+    ReccVimeoClient,
+)
 
 
 def get_service_info(
@@ -131,6 +136,38 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
             vimeo_user_id=config.vimeo_user_id,
             title=config.vimeo_video_title,
         )
+
+
+def generate_captions(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    cancellation_token = messenger.allow_cancel()
+
+    messenger.log_status(TaskStatus.RUNNING, "Looking for captions on BoxCast")
+    start = datetime.now()
+    while (datetime.now() - start) < config.max_captions_wait_time:
+        try:
+            cues = client.get_captions(broadcast_id=broadcast.id)
+            if len(cues) > 0:
+                messenger.log_status(TaskStatus.DONE, "Found some captions on BoxCast.")
+                return
+        except NoCaptionsError:
+            pass
+        t = config.generate_captions_retry_delay
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"No captions found yet. Retrying in {t.total_seconds()} seconds.",
+        )
+        autochecklist.sleep_attentively(
+            timeout=t, cancellation_token=cancellation_token
+        )
+    raise ValueError(
+        "The captions still do not appear to be ready. Check the progress on BoxCast."
+    )
 
 
 def automatically_edit_captions(

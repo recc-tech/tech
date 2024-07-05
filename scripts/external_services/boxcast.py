@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional
 
 import autochecklist
 import captions
@@ -27,6 +27,10 @@ HttpResponseHandler = Callable[[Response], None]
 class Broadcast:
     id: str
     start_time: datetime
+
+
+class NoCaptionsError(Exception):
+    pass
 
 
 class BoxCastApiClient:
@@ -65,11 +69,11 @@ class BoxCastApiClient:
                 start_time=dateutil.parser.isoparse(broadcast_json["starts_at"]),
             )
 
-    def download_captions(self, broadcast_id: str, path: Path) -> None:
+    def get_captions(self, broadcast_id: str) -> List[Cue]:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
         json_captions = self._send_and_check("GET", url)
         if len(json_captions) == 0:
-            raise ValueError(
+            raise NoCaptionsError(
                 "No captions found. You may need to publish the captions first."
             )
         elif len(json_captions) > 1:
@@ -88,7 +92,11 @@ class BoxCastApiClient:
                 )
                 for i, c in enumerate(json_cues, start=1)
             ]
-            captions.save(cues, path)
+            return cues
+
+    def download_captions(self, broadcast_id: str, path: Path) -> None:
+        cues = self.get_captions(broadcast_id=broadcast_id)
+        captions.save(cues, path)
 
     def _get_captions_id(self, broadcast_id: str) -> str:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"

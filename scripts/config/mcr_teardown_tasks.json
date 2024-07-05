@@ -101,10 +101,17 @@
 					"name": "captions",
 					"subtasks": [
 						{
+							"name": "generate_captions",
+							"description": "Wait for the captions on BoxCast to be available (but do not edit them yet!).",
+							"prerequisites": [
+								"wait_for_BoxCast_recording"
+							]
+						},
+						{
 							"name": "automatically_edit_captions",
 							"description": "The automatic caption editing failed. (You will still have a chance to edit the captions manually in a later task, so skip this one if the issue persists.)",
 							"prerequisites": [
-								"wait_for_BoxCast_recording"
+								"generate_captions"
 							],
 							"only_auto": true
 						},
