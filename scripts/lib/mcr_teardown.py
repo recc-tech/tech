@@ -218,21 +218,37 @@ def upload_captions_to_Vimeo(
     if broadcast is None:
         raise ValueError("No broadcast found on BoxCast.")
 
-    # TODO: Temporary (fingers crossed) hack to address
-    # https://github.com/recc-tech/tech/issues/337
-    messenger.log_status(
-        TaskStatus.RUNNING,
-        "Waiting a few minutes so BoxCast has time to publish the captions.",
-    )
-    token = messenger.allow_cancel()
-    autochecklist.sleep_attentively(
-        timeout=timedelta(minutes=3), cancellation_token=token
-    )
-
     messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
     boxcast_client.download_captions(
         broadcast_id=broadcast.id, path=config.final_captions_file
     )
+
+    # Sanity check: there should be no more low-confidence cues left.
+    # If there are, maybe we downloaded the old captions; i.e., not the
+    # manually-reviewed ones.
+    # This may be due to the bug in github.com/recc-tech/tech/issues/337.
+    # Or maybe the user just left one or two low-confidence cues, in which case
+    # there's no problem.
+    messenger.log_status(
+        TaskStatus.RUNNING, "Checking for remaining low-confidence cues."
+    )
+    cues = captions.load(config.final_captions_file)
+    num_low_confidence = len([c for c in cues if c.confidence != 1.0])
+    if num_low_confidence == 0:
+        messenger.log_status(TaskStatus.RUNNING, "No low-confidence cues found.")
+    else:
+        msg = (
+            f"There still seem to be {num_low_confidence} low-confidence cues in the published captions."
+            " Are these the right captions?"
+        )
+        messenger.log_problem(ProblemLevel.WARN, msg)
+        is_ok = messenger.input_bool(prompt=msg, title="Confirm captions")
+        if not is_ok:
+            raise ValueError(
+                "The script seems to have downloaded the wrong captions."
+                + " Retry this task once the manually-reviewed captions are published."
+                + " If this still does not work, then perform this task manually instead."
+            )
 
     messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
