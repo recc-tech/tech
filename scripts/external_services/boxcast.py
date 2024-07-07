@@ -5,9 +5,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
-import autochecklist
 import captions
 import dateutil.parser
 import dateutil.tz
@@ -15,12 +14,9 @@ import requests
 from autochecklist import Messenger, ProblemLevel
 from captions import Cue
 from config import Config
-from requests import Response
 from requests.auth import HTTPBasicAuth
 
 from .credentials import Credential, CredentialStore, InputPolicy
-
-HttpResponseHandler = Callable[[Response], None]
 
 
 @dataclass
@@ -108,6 +104,14 @@ class BoxCastApiClient:
 
     def upload_captions(self, broadcast_id: str, path: Path) -> None:
         captions_id = self._get_captions_id(broadcast_id=broadcast_id)
+        self._upload_captions(
+            broadcast_id=broadcast_id, captions_id=captions_id, path=path
+        )
+        self._wait_for_captions_publish(
+            broadcast_id=broadcast_id, captions_id=captions_id
+        )
+
+    def _upload_captions(self, broadcast_id: str, captions_id: str, path: Path) -> None:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"
         cues = [
             {
@@ -120,18 +124,25 @@ class BoxCastApiClient:
             for c in captions.load(path)
         ]
         payload = {"cues": cues}
-        handlers = {409: self._handle_http409_during_captions_upload}
-        self._send_and_check("PUT", url, json=payload, handlers=handlers)
+        self._send_and_check("PUT", url, json=payload)
 
-    def _handle_http409_during_captions_upload(self, response: Response) -> None:
-        self._messenger.log_debug(
-            f"Received HTTP 409 during captions upload."
-            f"\nBody: {response.json()}"
-            f"\nHeaders: {response.headers}"
-        )
-        autochecklist.sleep_attentively(
-            timeout=self._config.upload_captions_retry_delay,
-            cancellation_token=self._messenger.allow_cancel(),
+    def _wait_for_captions_publish(
+        self,
+        broadcast_id: str,
+        captions_id: str,
+        timeout: timedelta = timedelta(minutes=2),
+    ) -> None:
+        start = datetime.now()
+        while (datetime.now() - start) < timeout:
+            url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"
+            json_captions = self._send_and_check("GET", url)
+            status = json_captions["publish_status"]
+            if status == "published":
+                return
+        self._messenger.log_problem(
+            ProblemLevel.WARN,
+            f"The captions have still not been published after {timeout.total_seconds()} seconds."
+            " Please check their status on BoxCast.",
         )
 
     def schedule_rebroadcast(
@@ -182,10 +193,8 @@ class BoxCastApiClient:
         params: Optional[Mapping[str, str]] = None,
         json: Optional[Mapping[str, object]] = None,
         headers: Optional[Dict[str, str]] = None,
-        handlers: Optional[Dict[int, HttpResponseHandler]] = None,
     ) -> Any:
         headers = headers or {}
-        handlers = handlers or {}
         self._messenger.log_debug(
             f"Attempting to send HTTP request {method} {url} with"
             + f" params {params}, data {json}, and headers {headers}"
@@ -202,9 +211,7 @@ class BoxCastApiClient:
                 headers=headers,
                 timeout=self._config.timeout_seconds,
             )
-            if response.status_code in handlers:
-                handlers[response.status_code](response)
-            elif response.status_code // 100 == 2:
+            if response.status_code // 100 == 2:
                 return response.json()
             elif response.status_code == 401:
                 self._messenger.log_problem(
