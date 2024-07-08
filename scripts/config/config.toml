@@ -32,6 +32,59 @@ original    = "%{folder.captions}%/original.vtt"
 auto_edited = "%{folder.captions}%/auto_edited.vtt"
 final       = "%{folder.captions}%/final.vtt"
 
+	[captions.substitutions]
+	# Each phrase on the left will be replaced by the corresponding phrase on
+	# the right in the captions.
+
+	# River's Edge-specific
+	"River's edge" = "River's Edge"
+	"river's edge" = "River's Edge"
+	"mosaic" = "Mosaic"
+
+	# Days of the week
+	"monday" = "Monday"
+	"tuesday" = "Tuesday"
+	"wednesday" = "Wednesday"
+	"thursday" = "Thursday"
+	"friday" = "Friday"
+	"saturday" = "Saturday"
+	"sunday" = "Sunday"
+
+	# Months of the year
+	"january" = "January"
+	"february" = "February"
+	"march" = "March"
+	"april" = "April"
+	# "May" omitted because "may" is a valid common noun
+	"june" = "June"
+	"july" = "July"
+	"august" = "August"
+	"september" = "September"
+	"october" = "October"
+	"november" = "November"
+	"december" = "December"
+
+	# Miscellaneous
+	"jesus" = "Jesus"
+	"holy spirit" = "Holy Spirit"
+	"Holy spirit" = "Holy Spirit"
+	"holy Spirit" = "Holy Spirit"
+	"christian" = "Christian"
+	"christ" = "Christ"
+	"bible" = "Bible"
+	"messiah" = "Messiah"
+	"gentile" = "Gentile"
+	"judas" = "Judas"
+	"moses" = "Moses"
+	"roman" = "Roman"
+	"peter" = "Peter"
+	"thomas" = "Thomas"
+	"philistine" = "Philistine"
+	"easter" = "Easter"
+	"moab" = "Moab"
+	"galilee" = "Galilee"
+	"joseph" = "Joseph"
+
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"

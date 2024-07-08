@@ -232,6 +232,25 @@ class ConfigReader(AbstractContextManager[object]):
             )
         return value
 
+    def get_dict(self, key: str) -> Dict[str, object]:
+        d: Dict[str, object] = {}
+        for k, v in self._data.items():
+            if k.startswith(f"{key}."):
+                self._is_read_by_key[k] = True
+                d[k] = v
+        return d
+
+    def get_str_dict(self, key: str) -> Dict[str, str]:
+        obj_dict = self.get_dict(key)
+        d: Dict[str, str] = {}
+        for k, v in obj_dict.items():
+            if not isinstance(v, str):
+                raise ValueError(
+                    f"Expected configuration value {k} to be a string, but found type {type(v)}."
+                )
+            d[k] = v
+        return d
+
     def get_str(self, key: str) -> str:
         return self._get_typed(key, str, "a string")
 
@@ -389,6 +408,7 @@ class Config(BaseConfig):
             self.original_captions_file = reader.get_file("captions.original")
             self.auto_edited_captions_file = reader.get_file("captions.auto_edited")
             self.final_captions_file = reader.get_file("captions.final")
+            self.caption_substitutions = reader.get_str_dict("captions.substitutions")
 
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")

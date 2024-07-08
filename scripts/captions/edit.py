@@ -2,9 +2,10 @@
 Functions for editing captions (e.g., filtering out worship captions).
 """
 
+import re
 import statistics
 from enum import Enum, auto
-from typing import List, Set
+from typing import Dict, List, Set
 
 from .cue import Cue
 
@@ -55,3 +56,68 @@ def _indices_to_remove_by_time_diff(cues: List[Cue]) -> Set[int]:
         for i in range(1, len(cues) - 1)
         if time_diff[i] > MAX_TIME_DIFF and time_diff[i - 1] > MAX_TIME_DIFF
     }
+
+
+def apply_substitutions(cues: List[Cue], substitutions: Dict[str, str]) -> List[Cue]:
+    """
+    Edit the given captions using a simple search-and-replace approach.
+
+    ## Examples
+
+    >>> from datetime import timedelta
+    >>> t0, t1, t2, t3, t4 = timedelta(seconds=0), timedelta(seconds=1), timedelta(seconds=2), timedelta(seconds=3), timedelta(seconds=4)
+    >>> cues = [
+    ...     Cue(id="1", start=t0, end=t1, text="Welcome to river's", confidence=1.0),
+    ...     Cue(id="2", start=t1, end=t2, text="edge!", confidence=0.0),
+    ...     Cue(id="3", start=t2, end=t3, text="jesus is alive!", confidence=0.5),
+    ...     Cue(id="4", start=t3, end=t4, text="river's edge.", confidence=1.0),
+    ... ]
+    >>> for c in apply_substitutions(cues, {"jesus": "Jesus", "river's edge": "River's Edge"}):
+    ...     print(c)
+    Cue(id='1', start=datetime.timedelta(0), end=datetime.timedelta(seconds=1), text="Welcome to River's", confidence=1.0)
+    Cue(id='2', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Edge!', confidence=0.0)
+    Cue(id='3', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='Jesus is alive!', confidence=0.5)
+    Cue(id='4', start=datetime.timedelta(seconds=3), end=datetime.timedelta(seconds=4), text="River's Edge.", confidence=1.0)
+
+    This function doesn't mutate the input list.
+
+    >>> for c in cues:
+    ...     print(c)
+    Cue(id='1', start=datetime.timedelta(0), end=datetime.timedelta(seconds=1), text="Welcome to river's", confidence=1.0)
+    Cue(id='2', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='edge!', confidence=0.0)
+    Cue(id='3', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='jesus is alive!', confidence=0.5)
+    Cue(id='4', start=datetime.timedelta(seconds=3), end=datetime.timedelta(seconds=4), text="river's edge.", confidence=1.0)
+    """
+    # Don't mutate the input
+    cues = list(cues)
+    for old, new in substitutions.items():
+        old_words = _split_words(old)
+        new_words = _split_words(new)
+        if len(old_words) != len(new_words):
+            raise ValueError(f"'{old}' has a different number of words than '{new}'.")
+        for i in range(len(cues)):
+            j = i + 1
+            while j <= len(cues) and 1 + _count_words(cues[i + 1 : j]) < len(old_words):
+                j += 1
+            j = min(len(cues), j)
+            if _count_words(cues[i:j]) < len(old_words):
+                break
+            pattern = r"\s+".join([re.escape(w) for w in old_words])
+            repl = " ".join(new_words)
+            string = " ".join([c.text for c in cues[i:j]])
+            updated_text = re.sub(pattern=pattern, repl=repl, string=string)
+            updated_words = _split_words(updated_text)
+            for k in range(i, j):
+                n = len(_split_words(cues[k].text))
+                cues[k] = cues[k].with_text(" ".join(updated_words[:n]))
+                updated_words = updated_words[n:]
+    return cues
+
+
+def _split_words(phrase: str) -> List[str]:
+    return [x.strip() for x in re.split(r"\s+", phrase) if x.strip()]
+
+
+def _count_words(cues: List[Cue]) -> int:
+    lines = [c.text for c in cues]
+    return len(_split_words(" ".join(lines)))

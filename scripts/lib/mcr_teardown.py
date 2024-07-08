@@ -188,8 +188,10 @@ def automatically_edit_captions(
     config.original_captions_file.chmod(stat.S_IREAD)
     original_cues = list(captions.load(config.original_captions_file))
     filtered_cues = captions.remove_worship_captions(original_cues)
-    # TODO: Also perform capitalization check (using the old caption_substitutions.csv in lib, which should maybe be moved to config)
-    captions.save(filtered_cues, config.auto_edited_captions_file)
+    edited_captions = captions.apply_substitutions(
+        filtered_cues, config.caption_substitutions
+    )
+    captions.save(edited_captions, config.auto_edited_captions_file)
     # Prevent user from mistakenly editing the wrong file
     config.auto_edited_captions_file.chmod(stat.S_IREAD)
 
