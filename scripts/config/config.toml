@@ -66,24 +66,33 @@ final       = "%{folder.captions}%/final.vtt"
 
 	# Miscellaneous
 	"jesus" = "Jesus"
+	"mary" = "Mary"
+	"joseph" = "Joseph"
 	"holy spirit" = "Holy Spirit"
 	"Holy spirit" = "Holy Spirit"
 	"holy Spirit" = "Holy Spirit"
+	"christians" = "Christians"
 	"christian" = "Christian"
+	"christmases" = "Christmases"
+	"christmas" = "Christmas"
 	"christ" = "Christ"
 	"bible" = "Bible"
 	"messiah" = "Messiah"
+	"gentiles" = "Gentiles"
 	"gentile" = "Gentile"
 	"judas" = "Judas"
 	"moses" = "Moses"
-	"roman" = "Roman"
 	"peter" = "Peter"
+	"roman" = "Roman"
+	"romans" = "Romans"
 	"thomas" = "Thomas"
+	"philistines" = "Philistines"
 	"philistine" = "Philistine"
 	"easter" = "Easter"
+	"moabites" = "Moabites"
+	"moabite" = "Moabite"
 	"moab" = "Moab"
 	"galilee" = "Galilee"
-	"joseph" = "Joseph"
 
 [boxcast]
 base_url = "https://rest.boxcast.com"
@@ -135,7 +144,7 @@ extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
 [api]
 # After this many seconds, a request is assumed to have failed
-timeout_seconds = 15.0
+timeout_seconds = 30.0
 
 [plan_summary]
 # Where to save the summary

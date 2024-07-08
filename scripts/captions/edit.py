@@ -59,25 +59,27 @@ def _indices_to_remove_by_time_diff(cues: List[Cue]) -> Set[int]:
 
 
 def apply_substitutions(cues: List[Cue], substitutions: Dict[str, str]) -> List[Cue]:
-    """
+    r"""
     Edit the given captions using a simple search-and-replace approach.
 
     ## Examples
 
     >>> from datetime import timedelta
-    >>> t0, t1, t2, t3, t4 = timedelta(seconds=0), timedelta(seconds=1), timedelta(seconds=2), timedelta(seconds=3), timedelta(seconds=4)
+    >>> t0, t1, t2, t3, t4, t5 = (timedelta(seconds=n) for n in range(6))
     >>> cues = [
     ...     Cue(id="1", start=t0, end=t1, text="Welcome to river's", confidence=1.0),
     ...     Cue(id="2", start=t1, end=t2, text="edge!", confidence=0.0),
     ...     Cue(id="3", start=t2, end=t3, text="jesus is alive!", confidence=0.5),
     ...     Cue(id="4", start=t3, end=t4, text="river's edge.", confidence=1.0),
+    ...     Cue(id="5", start=t4, end=t5, text='"mary\'s" should change, but not "primary".', confidence=1.0),
     ... ]
-    >>> for c in apply_substitutions(cues, {"jesus": "Jesus", "river's edge": "River's Edge"}):
+    >>> for c in apply_substitutions(cues, {"jesus": "Jesus", "river's edge": "River's Edge", "mary": "Mary"}):
     ...     print(c)
     Cue(id='1', start=datetime.timedelta(0), end=datetime.timedelta(seconds=1), text="Welcome to River's", confidence=1.0)
     Cue(id='2', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Edge!', confidence=0.0)
     Cue(id='3', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='Jesus is alive!', confidence=0.5)
     Cue(id='4', start=datetime.timedelta(seconds=3), end=datetime.timedelta(seconds=4), text="River's Edge.", confidence=1.0)
+    Cue(id='5', start=datetime.timedelta(seconds=4), end=datetime.timedelta(seconds=5), text='"Mary\'s" should change, but not "primary".', confidence=1.0)
 
     This function doesn't mutate the input list.
 
@@ -87,6 +89,7 @@ def apply_substitutions(cues: List[Cue], substitutions: Dict[str, str]) -> List[
     Cue(id='2', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='edge!', confidence=0.0)
     Cue(id='3', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='jesus is alive!', confidence=0.5)
     Cue(id='4', start=datetime.timedelta(seconds=3), end=datetime.timedelta(seconds=4), text="river's edge.", confidence=1.0)
+    Cue(id='5', start=datetime.timedelta(seconds=4), end=datetime.timedelta(seconds=5), text='"mary\'s" should change, but not "primary".', confidence=1.0)
     """
     # Don't mutate the input
     cues = list(cues)
@@ -102,7 +105,7 @@ def apply_substitutions(cues: List[Cue], substitutions: Dict[str, str]) -> List[
             j = min(len(cues), j)
             if _count_words(cues[i:j]) < len(old_words):
                 break
-            pattern = r"\s+".join([re.escape(w) for w in old_words])
+            pattern = r"\s+".join([f"\\b{re.escape(w)}\\b" for w in old_words])
             repl = " ".join(new_words)
             string = " ".join([c.text for c in cues[i:j]])
             updated_text = re.sub(pattern=pattern, repl=repl, string=string)

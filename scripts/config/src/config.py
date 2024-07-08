@@ -237,7 +237,7 @@ class ConfigReader(AbstractContextManager[object]):
         for k, v in self._data.items():
             if k.startswith(f"{key}."):
                 self._is_read_by_key[k] = True
-                d[k] = v
+                d[k.removeprefix(f"{key}.")] = v
         return d
 
     def get_str_dict(self, key: str) -> Dict[str, str]:
