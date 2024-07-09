@@ -93,34 +93,22 @@ def apply_substitutions(cues: List[Cue], substitutions: Dict[str, str]) -> List[
     """
     # Don't mutate the input
     cues = list(cues)
+    text = " ".join(c.text for c in cues)
     for old, new in substitutions.items():
         old_words = _split_words(old)
         new_words = _split_words(new)
         if len(old_words) != len(new_words):
             raise ValueError(f"'{old}' has a different number of words than '{new}'.")
-        for i in range(len(cues)):
-            j = i + 1
-            while j <= len(cues) and 1 + _count_words(cues[i + 1 : j]) < len(old_words):
-                j += 1
-            j = min(len(cues), j)
-            if _count_words(cues[i:j]) < len(old_words):
-                break
-            pattern = r"\s+".join([f"\\b{re.escape(w)}\\b" for w in old_words])
-            repl = " ".join(new_words)
-            string = " ".join([c.text for c in cues[i:j]])
-            updated_text = re.sub(pattern=pattern, repl=repl, string=string)
-            updated_words = _split_words(updated_text)
-            for k in range(i, j):
-                n = len(_split_words(cues[k].text))
-                cues[k] = cues[k].with_text(" ".join(updated_words[:n]))
-                updated_words = updated_words[n:]
+        pattern = r"\s+".join([f"\\b{re.escape(w)}\\b" for w in old_words])
+        repl = " ".join(new_words)
+        text = re.sub(pattern=pattern, repl=repl, string=text)
+    updated_words = _split_words(text)
+    for k in range(len(cues)):
+        n = len(_split_words(cues[k].text))
+        cues[k] = cues[k].with_text(" ".join(updated_words[:n]))
+        updated_words = updated_words[n:]
     return cues
 
 
 def _split_words(phrase: str) -> List[str]:
     return [x.strip() for x in re.split(r"\s+", phrase) if x.strip()]
-
-
-def _count_words(cues: List[Cue]) -> int:
-    lines = [c.text for c in cues]
-    return len(_split_words(" ".join(lines)))
