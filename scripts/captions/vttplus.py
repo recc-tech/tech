@@ -53,7 +53,6 @@ def serialize(cues: Iterable[Cue]) -> Iterator[str]:
     <BLANKLINE>
     <BLANKLINE>
     """
-    # TODO: Add some validation (e.g., end time must be after start time for each cue, cue text can't contain newlines, etc.)?
     yield "WEBVTT\n\n"
     for c in cues:
         if c.confidence is not None:
@@ -66,6 +65,8 @@ def serialize(cues: Iterable[Cue]) -> Iterator[str]:
 def parse(vtt: str) -> Iterator[Cue]:
     r"""
     Parse a string in WebVTT format to a list of cues.
+
+    ## Examples
 
     >>> list(parse("WEBVTT\n\n"))
     []
@@ -144,11 +145,33 @@ def parse(vtt: str) -> Iterator[Cue]:
     Cue(id='99', start=datetime.timedelta(seconds=1), end=datetime.timedelta(seconds=2), text='Cue 1', confidence=None)
     Cue(id='100', start=datetime.timedelta(seconds=2), end=datetime.timedelta(seconds=3), text='Cue 2', confidence=0.42)
 
+    ## Invalid Examples
+
+    The file must start with "WEBVTT".
+
+    >>> vtt = '''1
+    ... 00:00:00.000 --> 00:00:01.000
+    ... This is the first cue!
+    ... '''
+    >>> list(parse(vtt))
+    Traceback (most recent call last):
+        ...
+    ValueError: Missing WEBVTT at the beginning of the file.
+
+    Each block should have three lines.
+
+    >>> vtt = '''WEBVTT
+    ...
+    ... 1
+    ... 00:00:00.000 --> 00:00:01.000'''
+    >>> list(parse(vtt))
+    Traceback (most recent call last):
+        ...
+    ValueError: Wrong number of lines in cue 1. Expected exactly 3, but found 2.
     """
-    # TODO: Test what happens when there's early EOF
     blocks = [blk.strip() for blk in vtt.split("\n\n") if blk.strip()]
     if blocks[0] != "WEBVTT":
-        raise ValueError("Missing WEBVTT at beginning of file.")
+        raise ValueError("Missing WEBVTT at the beginning of the file.")
     current_confidence: Optional[float] = None
     for blk in blocks[1:]:
         if blk.startswith("NOTE confidence="):
@@ -163,9 +186,9 @@ def parse(vtt: str) -> Iterator[Cue]:
         else:
             lines = blk.split("\n")
             if len(lines) != 3:
-                cue_id = f" (cue ID: {lines[0].strip()})" if len(lines) > 0 else ""
+                cue_id = f" {lines[0].strip()}" if len(lines) > 0 else ""
                 raise ValueError(
-                    f"Wrong number of lines in a cue{cue_id}. Expected exactly 3, but found {len(lines)}"
+                    f"Wrong number of lines in cue{cue_id}. Expected exactly 3, but found {len(lines)}."
                 )
             start, end = _parse_time_range(lines[1])
             yield Cue(
