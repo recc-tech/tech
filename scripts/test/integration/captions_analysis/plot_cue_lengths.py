@@ -33,7 +33,9 @@ def main():
         for i in range(len(original_vtt))
     }
 
-    fig, (ax0, ax1) = plt.subplots(nrows=2, ncols=1)
+    fig, (ax0, ax1) = plt.subplots(
+        nrows=2, ncols=1
+    )  # pyright: ignore[reportGeneralTypeIssues]
 
     ax0.bar(
         list(range(len(original_vtt))),
