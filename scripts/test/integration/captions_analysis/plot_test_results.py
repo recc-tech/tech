@@ -11,7 +11,9 @@ def main():
         stats = json.load(f)
     weeks = sorted(stats["missing"].keys())
 
-    fig, (ax0, ax1) = plt.subplots(nrows=2, ncols=1)
+    fig, (ax0, ax1) = plt.subplots(
+        nrows=2, ncols=1
+    )  # pyright: ignore[reportGeneralTypeIssues]
 
     # Missing
     missing = [stats["missing"][w] for w in weeks]
