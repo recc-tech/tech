@@ -469,4 +469,5 @@ def _extract_max_prefix(
 
 
 def _get_font_bbox(text: str, font: FreeTypeFont, stroke_width: int) -> Bbox:
-    return Bbox(*font.getbbox(text, stroke_width=stroke_width))
+    left, top, right, bottom = font.getbbox(text, stroke_width=stroke_width)
+    return Bbox(left=int(left), top=int(top), right=int(right), bottom=int(bottom))
