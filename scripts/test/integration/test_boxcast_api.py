@@ -256,7 +256,9 @@ def _set_up_dependencies(
             messenger=messenger, request_input=InputPolicy.NEVER
         )
     args = [] if today is None else ["", "--date", today.strftime("%Y-%m-%d")]
-    config = Config(ReccArgs.parse(args), allow_multiple_only_for_testing=True)
+    config = Config(
+        ReccArgs.parse(args), allow_multiple_only_for_testing=True, create_dirs=True
+    )
     client = BoxCastApiClient(
         messenger=messenger,
         credential_store=credential_store,

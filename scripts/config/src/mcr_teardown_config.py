@@ -19,10 +19,11 @@ class McrTeardownConfig(Config):
             profile=profile,
             strict=strict,
             allow_multiple_only_for_testing=allow_multiple_only_for_testing,
+            create_dirs=False,
         )
 
-    def reload(self) -> None:
-        super().reload()
+    def reload(self, create_dirs: bool = False) -> None:
+        super().reload(create_dirs=create_dirs)
         self.vimeo_video_title = self.vimeo_video_title_template.fill(
             {
                 "MESSAGE_SERIES": self._args.message_series,

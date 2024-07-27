@@ -342,6 +342,7 @@ class Config(BaseConfig):
         profile: Optional[str] = None,
         strict: bool = False,
         allow_multiple_only_for_testing: bool = False,
+        create_dirs: bool = False,
     ) -> None:
         if Config.__instantiated and not allow_multiple_only_for_testing:
             raise ValueError("Attempt to instantiate multiple Config objects.")
@@ -357,9 +358,9 @@ class Config(BaseConfig):
                 profile = get_default_profile()
                 activate_profile(profile)
         self._profile = profile
-        self.reload()
+        self.reload(create_dirs=create_dirs)
 
-    def reload(self) -> None:
+    def reload(self, create_dirs: bool = False) -> None:
         profile = self._profile
         data = _read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
@@ -378,6 +379,8 @@ class Config(BaseConfig):
             )
 
             # Folder structure
+            # (Some folders should already exist in production, but create them
+            # so that the tests pass even after cleaning up the repo)
             self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
@@ -388,6 +391,15 @@ class Config(BaseConfig):
             self.log_dir = reader.get_directory("folder.logs")
             self.captions_dir = reader.get_directory("folder.captions")
             self.archived_assets_dir = reader.get_directory("folder.archived_assets")
+            if create_dirs:
+                self.home_dir.mkdir(exist_ok=True, parents=True)
+                self.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+                self.assets_by_type_dir.mkdir(exist_ok=True, parents=True)
+                self.images_dir.mkdir(exist_ok=True, parents=True)
+                self.videos_dir.mkdir(exist_ok=True, parents=True)
+                self.log_dir.mkdir(exist_ok=True, parents=True)
+                self.captions_dir.mkdir(exist_ok=True, parents=True)
+                self.archived_assets_dir.mkdir(exist_ok=True, parents=True)
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")

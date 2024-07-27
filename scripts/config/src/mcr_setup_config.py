@@ -20,6 +20,7 @@ class McrSetupConfig(Config):
             profile=profile,
             strict=strict,
             allow_multiple_only_for_testing=allow_multiple_only_for_testing,
+            create_dirs=False,
         )
 
     @property
