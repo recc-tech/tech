@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import traceback
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, List, Mapping, Optional
+from urllib.parse import urlparse
 
 import captions
 import dateutil.parser
@@ -14,6 +16,7 @@ import requests
 from autochecklist import Messenger, ProblemLevel
 from captions import Cue
 from config import Config
+from requests import Response
 from requests.auth import HTTPBasicAuth
 
 from .credentials import Credential, CredentialStore, InputPolicy
@@ -211,6 +214,22 @@ class BoxCastApiClient:
                 headers=headers,
                 timeout=self._config.timeout_seconds,
             )
+            if self._config.boxcast_verbose_logging:
+                try:
+                    self._log_request(
+                        response=response,
+                        method=method,
+                        url=url,
+                        params=params,
+                        body=json,
+                        headers=headers,
+                    )
+                except Exception as e:
+                    self._messenger.log_problem(
+                        ProblemLevel.WARN,
+                        f"Failed to log request to {method} {url}: {e}.",
+                        stacktrace=traceback.format_exc(),
+                    )
             if response.status_code // 100 == 2:
                 return response.json()
             elif response.status_code == 401:
@@ -226,6 +245,37 @@ class BoxCastApiClient:
                 self._messenger.log_debug(f"{msg} Response body: {response.json()}\n")
                 raise ValueError(msg)
         raise ValueError(f"Request to {url} failed ({self.MAX_ATTEMPTS} attempts).")
+
+    def _log_request(
+        self,
+        method: str,
+        url: str,
+        headers: Dict[str, str],
+        response: Response,
+        params: Optional[Mapping[str, str]] = None,
+        body: Optional[Mapping[str, object]] = None,
+    ) -> None:
+        # Just in case
+        headers = headers | {"Authorization": "[CENSORED]"}
+        t = datetime.now().strftime("%Y%m%d%H%M%S")
+        url_path = urlparse(url).path.removeprefix("/")
+        p = self._config.log_dir.joinpath(
+            f"{t}_boxcast_{method.lower()}_{url_path.replace('/', '_')}.jsonc"
+        )
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(f"// {method} {url}\n")
+            f.write(f"// REQUEST PARAMS:\n")
+            if params is not None:
+                for k, v in params.items():
+                    f.write(f"//   * {k} = {v}\n")
+            f.write(f"// REQUEST HEADERS:\n")
+            for k, v in headers.items():
+                f.write(f"//   * {k}: {v}\n")
+            f.write(f"// RESPONSE STATUS: {response.status_code}\n")
+            f.write(f"// RESPONSE HEADERS:\n")
+            for k, v in response.headers.items():
+                f.write(f"//   * {k}: {v}\n")
+            json.dump({"request": body, "response": response.json()}, f, indent=2)
 
     def _get_current_oauth_token(self, old_token: Optional[str]) -> str:
         with self._mutex:

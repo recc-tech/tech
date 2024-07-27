@@ -403,6 +403,9 @@ class Config(BaseConfig):
             self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
             self.manual_test_log = reader.get_file("logging.manual_test")
+            self.boxcast_verbose_logging = reader.get_bool(
+                "logging.boxcast_verbose_logging"
+            )
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")
