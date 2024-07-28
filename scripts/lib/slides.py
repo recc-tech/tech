@@ -230,9 +230,6 @@ def _convert_text_to_filename(text: str) -> str:
         return filename[0:MAX_FILENAME_LEN]
 
 
-FONT_MANAGER = FontManager()
-
-
 @dataclass(frozen=True)
 class SlideBlueprint:
     body_text: str
@@ -264,6 +261,7 @@ class SlideGenerator:
     def __init__(self, messenger: Messenger, config: Config):
         self._messenger = messenger
         self._config = config
+        self._font_manager = FontManager()
 
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
@@ -419,7 +417,7 @@ class SlideGenerator:
 
     def make_font(self, font: Font, size: int) -> FreeTypeFont:
         properties = FontProperties(family=font.family, style=font.style)
-        path = FONT_MANAGER.findfont(properties)
+        path = self._font_manager.findfont(properties)
         return ImageFont.truetype(path, size=size)
 
 
