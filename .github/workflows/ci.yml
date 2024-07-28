@@ -23,12 +23,21 @@ jobs:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    # To be able to run Selenium tests
-    - name: Install Firefox
-      uses: browser-actions/setup-firefox@v1
+    - uses: actions/checkout@v4
       with:
-        firefox-version: latest
+        fetch-depth: 0
+    - name: Look for TODO comments
+      shell: bash
+      run: |
+        # Ignore this file, otherwise the workflow would fail when introducing
+        # this check in the first place!
+        # TODO: Un-ignore this file.
+        files=":!../.github/workflows/ci.yml"
+        pattern='^+.*TODO'
+        if git --no-pager diff "origin/main..HEAD" -- "${files}" | grep '${pattern}'; then
+          echo "There are one or more TODO comments left on this branch!" >&2
+          exit 142
+        fi
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -46,6 +55,11 @@ jobs:
         isort . --check --verbose
     - name: Check that dependency graph is up to date
       run: python -m dependoc check
+    # To be able to run Selenium tests
+    - name: Install Firefox
+      uses: browser-actions/setup-firefox@v1
+      with:
+        firefox-version: latest
     - name: Run tests
       shell: bash
       run: |
@@ -53,6 +67,5 @@ jobs:
         python -m unittest discover --top-level-directory . --start-directory ./test/unit --failfast --verbose 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
         # Skip the tests that require credentials or Selenium
         rm ./test/integration/test_boxcast_api.py
-        rm ./test/integration/test_plan_summary_html.py
         rm ./test/integration/test_planning_center.py
         python -m unittest discover --top-level-directory . --start-directory ./test/integration --failfast --verbose 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')

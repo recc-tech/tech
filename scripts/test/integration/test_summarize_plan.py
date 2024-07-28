@@ -1,8 +1,10 @@
 import inspect
 import json
+import os
 import unittest
 from datetime import date
 from pathlib import Path
+from tkinter import Tk
 from typing import Dict, Tuple
 from unittest.mock import Mock, call, create_autospec
 
@@ -22,9 +24,14 @@ from lib import (
     PlanItemsSummary,
     get_plan_summary,
     load_plan_summary,
+    plan_summary_to_html,
 )
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.webdriver import WebDriver
 
 _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
+_TEMP_DIR = Path(__file__).parent.joinpath("summarize_plan_temp")
 _PLANS_URL = (
     "https://api.planningcenteronline.com/services/v2/service_types/882857/plans"
 )
@@ -70,7 +77,9 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
-class SummarizePlanTestCase(unittest.TestCase):
+class GetPlanSummaryTestCase(unittest.TestCase):
+    """Test `get_plan_summary()`."""
+
     def setUp(self) -> None:
         self.maxDiff = None
 
@@ -285,3 +294,55 @@ class SummarizePlanTestCase(unittest.TestCase):
             get_canned_response
         )
         return (pco_client, messenger, messenger.log_problem, config)
+
+
+class PlanSummaryToHtmlTestCase(unittest.TestCase):
+    """Test `plan_summary_to_html()`."""
+
+    def setUp(self) -> None:
+        self.maxDiff = None
+
+    def test_copy_message_notes(self) -> None:
+        """
+        Test that the message notes can be copied from the HTML summary.
+        """
+        summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
+        summary_html = plan_summary_to_html(summary)
+        f = _TEMP_DIR.joinpath("summary.html")
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(summary_html, encoding="utf-8")
+
+        # NOTE: Copying doesn't work in headless mode for some reason
+        service = Service(log_path=os.devnull)
+        driver = WebDriver(service=service)
+        try:
+            driver.get(f.resolve().as_uri())
+            btn = driver.find_element(By.XPATH, "//button[contains(., 'Copy')]")
+            btn.click()
+        finally:
+            driver.quit()
+
+        expected_text = inspect.cleandoc(
+            """Worthy Of The Feast
+            Matthew 22:1-14 NLT
+            Our Worth Isn’t Earned It’s Given
+            Matthew 22:4
+            Our Worth Is Experienced Through Acceptance
+            Matthew 22:10
+            Our Worth Is Revealed By Our Garments
+            Matthew 22:11
+            You Are Worthy Because You Are Chosen
+            Matthew 22:14
+            Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
+            Our worth is experienced  through[TAB]acceptance  
+            Live According To The Level Of Worth We Have Received"""
+        ).replace("[TAB]", "\t")
+        # inspect.cleandoc replaces tabs with spaces
+        self.assertEqual(expected_text, _get_clipboard_text())
+
+
+def _get_clipboard_text() -> str:
+    root = Tk()
+    x = root.clipboard_get()
+    root.quit()
+    return x

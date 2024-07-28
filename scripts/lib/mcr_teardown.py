@@ -1,4 +1,3 @@
-import shutil
 import stat
 import traceback
 from datetime import date, datetime, timedelta
@@ -6,12 +5,16 @@ from typing import Dict
 
 import args.parsing_helpers as parse
 import autochecklist
-import lib
-import webvtt
+import captions
 from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
 from config import Config, McrTeardownConfig
-from external_services import BoxCastApiClient, PlanningCenterClient, ReccVimeoClient
+from external_services import (
+    BoxCastApiClient,
+    NoCaptionsError,
+    PlanningCenterClient,
+    ReccVimeoClient,
+)
 
 
 def get_service_info(
@@ -135,6 +138,74 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
         )
 
 
+def generate_captions(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+    cancellation_token = messenger.allow_cancel()
+
+    messenger.log_status(TaskStatus.RUNNING, "Looking for captions on BoxCast")
+    start = datetime.now()
+    while (datetime.now() - start) < config.max_captions_wait_time:
+        try:
+            cues = client.get_captions(broadcast_id=broadcast.id)
+            n = len(cues)
+            if n > 0:
+                raise ValueError(
+                    "Some captions were found, but check that they're all ready on BoxCast."
+                )
+                messenger.log_status(TaskStatus.DONE, f"Found {n} captions on BoxCast.")
+        except NoCaptionsError:
+            pass
+        t = config.generate_captions_retry_delay
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"No captions found yet. Retrying in {t.total_seconds()} seconds.",
+        )
+        autochecklist.sleep_attentively(
+            timeout=t, cancellation_token=cancellation_token
+        )
+    num_minutes = config.max_captions_wait_time.total_seconds() / 60
+    raise ValueError(
+        f"The captions still do not appear to be ready after {num_minutes} minutes."
+        " Check the progress on BoxCast."
+    )
+
+
+def automatically_edit_captions(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
+    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+
+    messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
+    client.download_captions(
+        broadcast_id=broadcast.id, path=config.original_captions_file
+    )
+
+    messenger.log_status(TaskStatus.RUNNING, "Editing the captions.")
+    # Prevent user from mistakenly editing the wrong file
+    config.original_captions_file.chmod(stat.S_IREAD)
+    original_cues = list(captions.load(config.original_captions_file))
+    filtered_cues = captions.remove_worship_captions(original_cues)
+    edited_captions = captions.apply_substitutions(
+        filtered_cues, config.caption_substitutions
+    )
+    captions.save(edited_captions, config.auto_edited_captions_file)
+    # Prevent user from mistakenly editing the wrong file
+    config.auto_edited_captions_file.chmod(stat.S_IREAD)
+
+    messenger.log_status(TaskStatus.RUNNING, "Re-uploading the edited captions.")
+    client.upload_captions(
+        broadcast_id=broadcast.id, path=config.auto_edited_captions_file
+    )
+
+
 def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messenger):
     cancellation_token = messenger.allow_cancel()
     (_, texttrack_uri) = vimeo_client.get_video_data(cancellation_token)
@@ -143,53 +214,49 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
     )
 
 
-def download_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
-) -> None:
-    # TODO: Temporary (fingers crossed) hack to address
-    # https://github.com/recc-tech/tech/issues/337
-    token = messenger.allow_cancel()
-    autochecklist.sleep_attentively(
-        timeout=timedelta(minutes=3), cancellation_token=token
-    )
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.download_captions(
-            broadcast_id=broadcast.id,
-            path=config.original_captions_file,
-        )
-
-
-def copy_captions_to_final(config: McrTeardownConfig):
-    if not config.original_captions_file.exists():
-        raise ValueError(f"File '{config.original_captions_file}' does not exist.")
-    # Copy the file first so that the new file isn't read-only
-    shutil.copy(src=config.original_captions_file, dst=config.final_captions_file)
-    config.original_captions_file.chmod(stat.S_IREAD)
-
-
-def remove_worship_captions(config: McrTeardownConfig):
-    original_vtt = webvtt.read(config.final_captions_file)
-    final_vtt = lib.remove_worship_captions(original_vtt)
-    final_vtt.save(config.final_captions_file)
-
-
-def upload_captions_to_BoxCast(
-    client: BoxCastApiClient, config: McrTeardownConfig
-) -> None:
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.upload_captions(
-            broadcast_id=broadcast.id, path=config.final_captions_file
-        )
-
-
 def upload_captions_to_Vimeo(
-    messenger: Messenger, vimeo_client: ReccVimeoClient, config: McrTeardownConfig
-):
+    messenger: Messenger,
+    boxcast_client: BoxCastApiClient,
+    vimeo_client: ReccVimeoClient,
+    config: McrTeardownConfig,
+) -> None:
+    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
+    broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())
+    if broadcast is None:
+        raise ValueError("No broadcast found on BoxCast.")
+
+    messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
+    boxcast_client.download_captions(
+        broadcast_id=broadcast.id, path=config.final_captions_file
+    )
+
+    # Sanity check: there should be no more low-confidence cues left.
+    # If there are, maybe we downloaded the old captions; i.e., not the
+    # manually-reviewed ones.
+    # This may be due to the bug in github.com/recc-tech/tech/issues/337.
+    # Or maybe the user just left one or two low-confidence cues, in which case
+    # there's no problem.
+    messenger.log_status(
+        TaskStatus.RUNNING, "Checking for remaining low-confidence cues."
+    )
+    cues = captions.load(config.final_captions_file)
+    num_low_confidence = len([c for c in cues if c.confidence != 1.0])
+    if num_low_confidence == 0:
+        messenger.log_status(TaskStatus.RUNNING, "No low-confidence cues found.")
+    else:
+        msg = (
+            f"There still seem to be {num_low_confidence} low-confidence cues in the published captions."
+            " Are these the right captions?"
+        )
+        messenger.log_problem(ProblemLevel.WARN, msg)
+        is_ok = messenger.input_bool(prompt=msg, title="Confirm captions")
+        if not is_ok:
+            raise ValueError(
+                "The script seems to have downloaded the wrong captions."
+                + " Retry this task once the manually-reviewed captions are published."
+                + " If this still does not work, then perform this task manually instead."
+            )
+
+    messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
     vimeo_client.upload_captions_to_vimeo(config.final_captions_file, texttrack_uri)

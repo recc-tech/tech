@@ -19,8 +19,6 @@ from tkinter import Canvas, IntVar, Menu, Misc, PhotoImage, Tk, Toplevel, messag
 from tkinter.ttk import Button, Entry, Frame, Label, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
-import pyperclip
-
 from ...base_config import BaseConfig
 from ..input_messenger import (
     InputMessenger,
@@ -789,7 +787,8 @@ class TkMessenger(InputMessenger):
 
         def try_copy(text: str) -> None:
             try:
-                pyperclip.copy(text)
+                self._tk.clipboard_clear()
+                self._tk.clipboard_append(text)
             except Exception as e:
                 messagebox.showwarning(
                     title="Failed to copy",

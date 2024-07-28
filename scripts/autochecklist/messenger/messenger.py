@@ -129,6 +129,9 @@ class Messenger:
     ) -> Dict[str, object]:
         return self._input_messenger.input_multiple(params, prompt, title)
 
+    def input_bool(self, prompt: str, title: str = "") -> bool:
+        return self._input_messenger.input_bool(prompt=prompt, title=title)
+
     def wait(
         self,
         prompt: str,

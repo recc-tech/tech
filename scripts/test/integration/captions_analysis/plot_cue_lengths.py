@@ -2,18 +2,18 @@ import statistics
 import sys
 from pathlib import Path
 
+import captions
 import matplotlib.pyplot as plt
-import webvtt
 
 PAST_CAPTIONS_DIR = Path(__file__).resolve().parent.parent.joinpath("captions_data")
 
 
 def main():
     dir = PAST_CAPTIONS_DIR.joinpath(sys.argv[1])
-    original_vtt = webvtt.read(dir.joinpath("original.vtt"))
-    original_ids = [c.identifier for c in original_vtt]
-    final_vtt = webvtt.read(dir.joinpath("final.vtt"))
-    final_ids = [c.identifier for c in final_vtt]
+    original_vtt = list(captions.load(dir.joinpath("original.vtt")))
+    original_ids = [c.id for c in original_vtt]
+    final_vtt = list(captions.load(dir.joinpath("final.vtt")))
+    final_ids = [c.id for c in final_vtt]
     was_removed_manually = {i: i not in final_ids for i in original_ids}
 
     cue_lengths = [len(c.text) for c in original_vtt]
@@ -28,7 +28,7 @@ def main():
     avg_cue_len = statistics.mean(cue_lengths)
     limit = 0.35 * statistics.mean([x for x in cue_lengths if x > avg_cue_len])
     was_removed_automatically = {
-        original_vtt[i].identifier: i in indices_with_running_avg
+        original_vtt[i].id: i in indices_with_running_avg
         and running_avg_lens[i] < limit
         for i in range(len(original_vtt))
     }

@@ -24,7 +24,9 @@ def _check(start: Path, exclude: Iterable[Path], out_dir: Path, name: str) -> No
         print("There is no existing dependency graph.")
         sys.exit(1)
     if dot_file.read_text(encoding="utf-8") != dot:
-        print("There are changes to the dependency graph!")
+        print(
+            "There are changes to the dependency graph! Run python -m dependoc generate to update it."
+        )
         sys.exit(1)
     print("The dependency graph is up to date.")
     sys.exit(0)

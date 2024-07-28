@@ -12,6 +12,7 @@ __pycache__/
 /scripts/test/integration/autochecklist_data/*.log
 /scripts/test/integration/boxcast_test_home/
 /scripts/test/integration/captions_analysis/worship_caption_removal_stats.json
+/scripts/test/integration/captions_temp/
 /scripts/test/integration/boxcast_temp/
 /scripts/test/integration/planning_center_temp/
 /scripts/test/integration/repo_copy/

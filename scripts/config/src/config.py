@@ -232,6 +232,25 @@ class ConfigReader(AbstractContextManager[object]):
             )
         return value
 
+    def get_dict(self, key: str) -> Dict[str, object]:
+        d: Dict[str, object] = {}
+        for k, v in self._data.items():
+            if k.startswith(f"{key}."):
+                self._is_read_by_key[k] = True
+                d[k.removeprefix(f"{key}.")] = v
+        return d
+
+    def get_str_dict(self, key: str) -> Dict[str, str]:
+        obj_dict = self.get_dict(key)
+        d: Dict[str, str] = {}
+        for k, v in obj_dict.items():
+            if not isinstance(v, str):
+                raise ValueError(
+                    f"Expected configuration value {k} to be a string, but found type {type(v)}."
+                )
+            d[k] = v
+        return d
+
     def get_str(self, key: str) -> str:
         return self._get_typed(key, str, "a string")
 
@@ -323,6 +342,7 @@ class Config(BaseConfig):
         profile: Optional[str] = None,
         strict: bool = False,
         allow_multiple_only_for_testing: bool = False,
+        create_dirs: bool = False,
     ) -> None:
         if Config.__instantiated and not allow_multiple_only_for_testing:
             raise ValueError("Attempt to instantiate multiple Config objects.")
@@ -338,9 +358,9 @@ class Config(BaseConfig):
                 profile = get_default_profile()
                 activate_profile(profile)
         self._profile = profile
-        self.reload()
+        self.reload(create_dirs=create_dirs)
 
-    def reload(self) -> None:
+    def reload(self, create_dirs: bool = False) -> None:
         profile = self._profile
         data = _read_global_config()
         # IMPORTANT: read the local file second so that it overrides values
@@ -359,6 +379,8 @@ class Config(BaseConfig):
             )
 
             # Folder structure
+            # (Some folders should already exist in production, but create them
+            # so that the tests pass even after cleaning up the repo)
             self.home_dir = reader.get_directory("folder.home")
             self.assets_by_service_dir = reader.get_directory(
                 "folder.assets_by_service"
@@ -369,6 +391,15 @@ class Config(BaseConfig):
             self.log_dir = reader.get_directory("folder.logs")
             self.captions_dir = reader.get_directory("folder.captions")
             self.archived_assets_dir = reader.get_directory("folder.archived_assets")
+            if create_dirs:
+                self.home_dir.mkdir(exist_ok=True, parents=True)
+                self.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+                self.assets_by_type_dir.mkdir(exist_ok=True, parents=True)
+                self.images_dir.mkdir(exist_ok=True, parents=True)
+                self.videos_dir.mkdir(exist_ok=True, parents=True)
+                self.log_dir.mkdir(exist_ok=True, parents=True)
+                self.captions_dir.mkdir(exist_ok=True, parents=True)
+                self.archived_assets_dir.mkdir(exist_ok=True, parents=True)
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")
@@ -384,15 +415,29 @@ class Config(BaseConfig):
             self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
             self.manual_test_log = reader.get_file("logging.manual_test")
+            self.boxcast_verbose_logging = reader.get_bool(
+                "logging.boxcast_verbose_logging"
+            )
 
             # Captions
             self.original_captions_file = reader.get_file("captions.original")
+            self.auto_edited_captions_file = reader.get_file("captions.auto_edited")
             self.final_captions_file = reader.get_file("captions.final")
+            self.caption_substitutions = reader.get_str_dict("captions.substitutions")
 
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
+            self.upload_captions_retry_delay = timedelta(
+                seconds=reader.get_float("boxcast.upload_captions_retry_delay")
+            )
+            self.generate_captions_retry_delay = timedelta(
+                seconds=reader.get_float("boxcast.generate_captions_retry_delay")
+            )
+            self.max_captions_wait_time = timedelta(
+                minutes=reader.get_float("boxcast.max_captions_wait_time")
+            )
 
             # Planning Center
             self.pco_base_url = reader.get_str("planning_center.base_url")

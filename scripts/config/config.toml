@@ -26,15 +26,85 @@ mcr_setup_webdriver       = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setu
 mcr_teardown              = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
 summarize_plan            = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"
 manual_test               = "%{folder.logs}%/%{args.startup_timestamp}% manual_test.log"
+boxcast_verbose_logging = true
 
 [captions]
-original = "%{folder.captions}%/original.vtt"
-final = "%{folder.captions}%/final.vtt"
+original    = "%{folder.captions}%/original.vtt"
+auto_edited = "%{folder.captions}%/auto_edited.vtt"
+final       = "%{folder.captions}%/final.vtt"
+
+	[captions.substitutions]
+	# Each phrase on the left will be replaced by the corresponding phrase on
+	# the right in the captions.
+
+	# River's Edge-specific
+	"River's edge" = "River's Edge"
+	"river's edge" = "River's Edge"
+	"mosaic" = "Mosaic"
+
+	# Days of the week
+	"monday" = "Monday"
+	"tuesday" = "Tuesday"
+	"wednesday" = "Wednesday"
+	"thursday" = "Thursday"
+	"friday" = "Friday"
+	"saturday" = "Saturday"
+	"sunday" = "Sunday"
+
+	# Months of the year
+	"january" = "January"
+	"february" = "February"
+	"march" = "March"
+	"april" = "April"
+	# "May" omitted because "may" is a valid common noun
+	"june" = "June"
+	"july" = "July"
+	"august" = "August"
+	"september" = "September"
+	"october" = "October"
+	"november" = "November"
+	"december" = "December"
+
+	# Miscellaneous
+	"jesus" = "Jesus"
+	"mary" = "Mary"
+	"joseph" = "Joseph"
+	"holy spirit" = "Holy Spirit"
+	"Holy spirit" = "Holy Spirit"
+	"holy Spirit" = "Holy Spirit"
+	"christians" = "Christians"
+	"christian" = "Christian"
+	"christmases" = "Christmases"
+	"christmas" = "Christmas"
+	"christ" = "Christ"
+	"bible" = "Bible"
+	"messiah" = "Messiah"
+	"gentiles" = "Gentiles"
+	"gentile" = "Gentile"
+	"judas" = "Judas"
+	"moses" = "Moses"
+	"peter" = "Peter"
+	"roman" = "Roman"
+	"romans" = "Romans"
+	"thomas" = "Thomas"
+	"philistines" = "Philistines"
+	"philistine" = "Philistine"
+	"easter" = "Easter"
+	"moabites" = "Moabites"
+	"moabite" = "Moabite"
+	"moab" = "Moab"
+	"galilee" = "Galilee"
 
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
+# In seconds
+upload_captions_retry_delay = 15
+# In seconds
+generate_captions_retry_delay = 60
+# In minutes
+max_captions_wait_time = 30
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
@@ -75,7 +145,7 @@ extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
 [api]
 # After this many seconds, a request is assumed to have failed
-timeout_seconds = 15.0
+timeout_seconds = 30.0
 
 [plan_summary]
 # Where to save the summary

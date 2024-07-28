@@ -3,12 +3,14 @@ digraph G {
     "args" -> {"autochecklist"};
     "autochecklist" [shape="rect"];
     "autochecklist" -> {};
+    "captions" [shape="rect"];
+    "captions" -> {};
     "config" [shape="rect"];
     "config" -> {"args", "autochecklist"};
     "dependoc" [shape="rect"];
     "dependoc" -> {};
     "external_services" [shape="rect"];
-    "external_services" -> {"autochecklist", "config"};
+    "external_services" -> {"autochecklist", "captions", "config"};
     "lib" [shape="rect"];
-    "lib" -> {"args", "autochecklist", "config", "external_services"};
+    "lib" -> {"args", "autochecklist", "captions", "config", "external_services"};
 }
