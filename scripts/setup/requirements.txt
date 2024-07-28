@@ -1,9 +1,9 @@
-aiohttp>=3.9
-python-dateutil==2.8.2
-keyring==23.13.1
-matplotlib>=3.8
-pillow>=10.3
-PyVimeo==1.1.0
+aiohttp==3.9
+python-dateutil==2.8
+keyring==23.13
+matplotlib==3.9
+pillow==10.4
+PyVimeo==1.1
 requests==2.32
-selenium==4.9.1
-tomli>=2.0
+selenium==4.9
+tomli==2.0
