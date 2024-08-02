@@ -202,7 +202,9 @@ def automatically_edit_captions(
 
     messenger.log_status(TaskStatus.RUNNING, "Re-uploading the edited captions.")
     client.upload_captions(
-        broadcast_id=broadcast.id, path=config.auto_edited_captions_file
+        broadcast_id=broadcast.id,
+        path=config.auto_edited_captions_file,
+        cancellation_token=messenger.allow_cancel(),
     )
 
 

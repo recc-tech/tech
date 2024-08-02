@@ -376,8 +376,12 @@ def download_captions(client: BoxCastApiClient) -> None:
     client.download_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
 
 
-def upload_captions(client: BoxCastApiClient) -> None:
-    client.upload_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
+def upload_captions(client: BoxCastApiClient, messenger: Messenger) -> None:
+    client.upload_captions(
+        broadcast_id=_BROADCAST_ID,
+        path=_CAPTIONS_PATH,
+        cancellation_token=messenger.allow_cancel(),
+    )
 
 
 def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
