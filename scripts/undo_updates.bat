@@ -5,3 +5,4 @@
 CD /D %~dp0
 
 python undo_updates.py
+wait_for_start.bat

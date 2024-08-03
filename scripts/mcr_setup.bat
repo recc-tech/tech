@@ -6,3 +6,4 @@ CD /D %~dp0
 
 :: Start the command without a terminal window
 start pythonw mcr_setup.py
+wait_for_start.bat
