@@ -667,10 +667,24 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-notes").innerText;
-                navigator.clipboard.writeText(messageNotes);
-                const check = document.getElementById("copy-confirm");
-                check.style.visibility = "visible";
+                // Select and retrieve text content; ensure browser compatibility (looking at you Safari >:[)
+                const messageNotesElement = document.getElementById("message-notes");
+                const messageNotes = messageNotesElement.innerText || messageNotesElement.textContent;
+
+                // Attempt to copy text to clipboard; make copy-confirm more dynamic
+                navigator.clipboard.writeText(messageNotes)
+                    .then(() => {{
+                        const confirmElement = document.getElementById('copy-confirm');
+                        if (confirmElement) {{
+                            confirmElement.style.visibility = 'visible';
+                            setTimeout(() => {{
+                                confirmElement.style.visibility = 'hidden';
+                        }}, 2000);
+                    }}
+                }})
+                    .catch(err => {{
+                    console.error('Failed to copy text: ', err);
+                }});
             }}
         </script>
     </head>
