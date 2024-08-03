@@ -73,15 +73,21 @@ class BoxCastApiClient:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
         json_captions = self._send_and_check("GET", url)
         if len(json_captions) == 0:
-            raise NoCaptionsError(
-                "No captions found. You may need to publish the captions first."
-            )
+            raise NoCaptionsError("No captions found.")
         elif len(json_captions) > 1:
             raise ValueError(
                 "Multiple captions found. Are some captions currently being published?"
             )
         else:
-            json_cues = json_captions[0]["cues"]
+            json_captions = json_captions[0]
+            if json_captions["status"] != "completed":
+                raise NoCaptionsError("The captions are not ready yet.")
+            if (
+                "cues" not in json_captions
+                or json_captions["cues"] is None
+                or len(json_captions["cues"]) == 0
+            ):
+                raise NoCaptionsError("The cues are missing.")
             cues = [
                 Cue(
                     id=str(i),
@@ -90,7 +96,7 @@ class BoxCastApiClient:
                     text=c["text"],
                     confidence=float(c["confidence"]),
                 )
-                for i, c in enumerate(json_cues, start=1)
+                for i, c in enumerate(json_captions["cues"], start=1)
             ]
             return cues
 

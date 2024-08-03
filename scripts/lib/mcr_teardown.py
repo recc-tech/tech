@@ -153,12 +153,8 @@ def generate_captions(
     while (datetime.now() - start) < config.max_captions_wait_time:
         try:
             cues = client.get_captions(broadcast_id=broadcast.id)
-            n = len(cues)
-            if n > 0:
-                raise ValueError(
-                    "Some captions were found, but check that they're all ready on BoxCast."
-                )
-                messenger.log_status(TaskStatus.DONE, f"Found {n} captions on BoxCast.")
+            messenger.log_status(TaskStatus.DONE, f"Found {len(cues)} cues.")
+            return
         except NoCaptionsError:
             pass
         t = config.generate_captions_retry_delay
