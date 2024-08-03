@@ -487,18 +487,19 @@ def _make_videos_table(
     announcements: Optional[AnnotatedItem],
 ) -> HtmlTable:
     missing = "<span class='missing'>None found</span>"
-    opener_name = opener.content if opener is not None else missing
+
+    # Escape content only if it is not missing; escape only used when opener, bumper or announcements is not None
+    opener_name = _escape(opener.content) if opener is not None else missing
     opener_notes = _show_notes(opener.notes) if opener is not None else ""
-    bumper_name = bumper.content if bumper is not None else missing
+    bumper_name = _escape(bumper.content) if bumper is not None else missing
     bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-    announcements_name = announcements.content if announcements is not None else missing
-    announcements_notes = (
-        _show_notes(announcements.notes) if announcements is not None else ""
-    )
+    announcements_name = _escape(announcements.content) if announcements is not None else missing
+    announcements_notes = _show_notes(announcements.notes) if announcements is not None else ""
+
     rows = [
-        ["Opener", _escape(opener_name), opener_notes],
-        ["Bumper", _escape(bumper_name), bumper_notes],
-        ["Announcements", _escape(announcements_name), announcements_notes],
+        ["Opener", opener_name, opener_notes],
+        ["Bumper", bumper_name, bumper_notes],
+        ["Announcements", announcements_name, announcements_notes],
     ]
     return HtmlTable(
         cls="videos-table",
