@@ -640,9 +640,18 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             }}
             #copy-btn {{
                 font-size: large;
+                padding: 5px 10px;
+                margin-bottom: 10px;
+                cursor: pointer;
+            }}
+            #copy-confirm {{
+                color: green;
+                margin-left: 10px;
+                font-weight: bold;
             }}
             #message-notes {{
                 font-family: inherit;
+                white-space: pre-wrap; /* Ensures newlines + spaces are preserved */
             }}
             .{_NOTES_WARNING_CLS} {{
                 visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
