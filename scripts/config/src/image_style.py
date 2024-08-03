@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Literal, Set, Tuple
 
 from PIL import ImageColor
@@ -40,8 +41,10 @@ class Bbox:
 
 @dataclass(frozen=True)
 class Font:
+    # TODO: Remove these two?
     family: List[str]
     style: FontStyle
+    path: Path
     max_size: int
     min_size: int
 

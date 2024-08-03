@@ -502,6 +502,9 @@ class Config(BaseConfig):
             self.img_width = reader.get_positive_int("slides.image_width")
             self.img_height = reader.get_positive_int("slides.image_height")
             self.font_family = reader.get_str_list("slides.font_family")
+            self.normal_font_path = reader.get_file("slides.normal_font_path")
+            self.oblique_font_path = reader.get_file("slides.oblique_font_path")
+            self.italic_font_path = reader.get_file("slides.italic_font_path")
 
             fsm = "slides.fullscreen_message"
             self.fullscreen_message_style = NoFooterSlideStyle(
@@ -517,7 +520,16 @@ class Config(BaseConfig):
                     ),
                     font=Font(
                         family=self.font_family,
-                        style=reader.get_enum(f"{fsm}.body.font.style", _STYLES),
+                        style=(s := reader.get_enum(f"{fsm}.body.font.style", _STYLES)),
+                        path=(
+                            self.normal_font_path
+                            if s == "normal"
+                            else (
+                                self.oblique_font_path
+                                if s == "oblique"
+                                else self.italic_font_path
+                            )
+                        ),
                         min_size=reader.get_positive_int(f"{fsm}.body.font.min_size"),
                         max_size=reader.get_positive_int(f"{fsm}.body.font.max_size"),
                     ),
@@ -546,7 +558,16 @@ class Config(BaseConfig):
                     ),
                     font=Font(
                         family=self.font_family,
-                        style=reader.get_enum(f"{fss}.body.font.style", _STYLES),
+                        style=(s := reader.get_enum(f"{fss}.body.font.style", _STYLES)),
+                        path=(
+                            self.normal_font_path
+                            if s == "normal"
+                            else (
+                                self.oblique_font_path
+                                if s == "oblique"
+                                else self.italic_font_path
+                            )
+                        ),
                         min_size=reader.get_positive_int(f"{fss}.body.font.min_size"),
                         max_size=reader.get_positive_int(f"{fss}.body.font.max_size"),
                     ),
@@ -567,7 +588,18 @@ class Config(BaseConfig):
                     ),
                     font=Font(
                         family=self.font_family,
-                        style=reader.get_enum(f"{fss}.footer.font.style", _STYLES),
+                        style=(
+                            s := reader.get_enum(f"{fss}.footer.font.style", _STYLES)
+                        ),
+                        path=(
+                            self.normal_font_path
+                            if s == "normal"
+                            else (
+                                self.oblique_font_path
+                                if s == "oblique"
+                                else self.italic_font_path
+                            )
+                        ),
                         min_size=reader.get_positive_int(f"{fss}.footer.font.min_size"),
                         max_size=reader.get_positive_int(f"{fss}.footer.font.max_size"),
                     ),
@@ -594,7 +626,16 @@ class Config(BaseConfig):
                 ),
                 font=Font(
                     family=self.font_family,
-                    style=reader.get_enum(f"{ltm}.body.font.style", _STYLES),
+                    style=(s := reader.get_enum(f"{ltm}.body.font.style", _STYLES)),
+                    path=(
+                        self.normal_font_path
+                        if s == "normal"
+                        else (
+                            self.oblique_font_path
+                            if s == "oblique"
+                            else self.italic_font_path
+                        )
+                    ),
                     min_size=reader.get_positive_int(f"{ltm}.body.font.min_size"),
                     max_size=reader.get_positive_int(f"{ltm}.body.font.max_size"),
                 ),
@@ -632,7 +673,16 @@ class Config(BaseConfig):
                 ),
                 font=Font(
                     family=self.font_family,
-                    style=reader.get_enum(f"{lts}.body.font.style", _STYLES),
+                    style=(s := reader.get_enum(f"{lts}.body.font.style", _STYLES)),
+                    path=(
+                        self.normal_font_path
+                        if s == "normal"
+                        else (
+                            self.oblique_font_path
+                            if s == "oblique"
+                            else self.italic_font_path
+                        )
+                    ),
                     min_size=reader.get_positive_int(f"{lts}.body.font.min_size"),
                     max_size=reader.get_positive_int(f"{lts}.body.font.max_size"),
                 ),
@@ -651,7 +701,16 @@ class Config(BaseConfig):
                 ),
                 font=Font(
                     family=self.font_family,
-                    style=reader.get_enum(f"{lts}.footer.font.style", _STYLES),
+                    style=(s := reader.get_enum(f"{lts}.footer.font.style", _STYLES)),
+                    path=(
+                        self.normal_font_path
+                        if s == "normal"
+                        else (
+                            self.oblique_font_path
+                            if s == "oblique"
+                            else self.italic_font_path
+                        )
+                    ),
                     min_size=reader.get_positive_int(f"{lts}.footer.font.min_size"),
                     max_size=reader.get_positive_int(f"{lts}.footer.font.max_size"),
                 ),
