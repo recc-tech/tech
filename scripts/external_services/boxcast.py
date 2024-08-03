@@ -136,7 +136,7 @@ class BoxCastApiClient:
             }
             for c in captions.load(path)
         ]
-        payload = {"cues": cues}
+        payload = {"cues": cues, "publish_status": "publishing"}
         self._send_and_check("PUT", url, json=payload)
 
     def _wait_for_captions_publish(
