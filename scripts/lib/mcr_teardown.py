@@ -8,6 +8,7 @@ import autochecklist
 import captions
 from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
+from captions import Cue
 from config import Config, McrTeardownConfig
 from external_services import (
     BoxCastApiClient,
@@ -139,7 +140,7 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
 
 
 def generate_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+    client: BoxCastApiClient, config: Config, messenger: Messenger
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
@@ -152,12 +153,8 @@ def generate_captions(
     while (datetime.now() - start) < config.max_captions_wait_time:
         try:
             cues = client.get_captions(broadcast_id=broadcast.id)
-            n = len(cues)
-            if n > 0:
-                raise ValueError(
-                    "Some captions were found, but check that they're all ready on BoxCast."
-                )
-                messenger.log_status(TaskStatus.DONE, f"Found {n} captions on BoxCast.")
+            messenger.log_status(TaskStatus.DONE, f"Found {len(cues)} cues.")
+            return
         except NoCaptionsError:
             pass
         t = config.generate_captions_retry_delay
@@ -175,8 +172,11 @@ def generate_captions(
     )
 
 
+_MARKER_CUE_TEXT = "[REMOVE THIS CUE]"
+
+
 def automatically_edit_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+    client: BoxCastApiClient, config: Config, messenger: Messenger
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
@@ -189,21 +189,33 @@ def automatically_edit_captions(
     )
 
     messenger.log_status(TaskStatus.RUNNING, "Editing the captions.")
-    # Prevent user from mistakenly editing the wrong file
-    config.original_captions_file.chmod(stat.S_IREAD)
     original_cues = list(captions.load(config.original_captions_file))
     filtered_cues = captions.remove_worship_captions(original_cues)
     edited_captions = captions.apply_substitutions(
         filtered_cues, config.caption_substitutions
     )
-    captions.save(edited_captions, config.auto_edited_captions_file)
-    # Prevent user from mistakenly editing the wrong file
-    config.auto_edited_captions_file.chmod(stat.S_IREAD)
+    # This marker makes it easy to tell if the script somehow downloaded the
+    # wrong captions later on.
+    marker_cue = Cue(
+        id="0",
+        start=timedelta(0),
+        end=timedelta(milliseconds=500),
+        text=_MARKER_CUE_TEXT,
+        confidence=0.0,
+    )
+    with_marker = [marker_cue] + edited_captions
+    captions.save(with_marker, config.auto_edited_captions_file)
 
     messenger.log_status(TaskStatus.RUNNING, "Re-uploading the edited captions.")
     client.upload_captions(
-        broadcast_id=broadcast.id, path=config.auto_edited_captions_file
+        broadcast_id=broadcast.id,
+        path=config.auto_edited_captions_file,
+        cancellation_token=messenger.allow_cancel(),
     )
+
+    # Prevent user from mistakenly editing the wrong file
+    config.original_captions_file.chmod(stat.S_IREAD)
+    config.auto_edited_captions_file.chmod(stat.S_IREAD)
 
 
 def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messenger):
@@ -218,7 +230,7 @@ def upload_captions_to_Vimeo(
     messenger: Messenger,
     boxcast_client: BoxCastApiClient,
     vimeo_client: ReccVimeoClient,
-    config: McrTeardownConfig,
+    config: Config,
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())
@@ -229,33 +241,17 @@ def upload_captions_to_Vimeo(
     boxcast_client.download_captions(
         broadcast_id=broadcast.id, path=config.final_captions_file
     )
+    cues = list(captions.load(config.final_captions_file))
 
-    # Sanity check: there should be no more low-confidence cues left.
-    # If there are, maybe we downloaded the old captions; i.e., not the
-    # manually-reviewed ones.
-    # This may be due to the bug in github.com/recc-tech/tech/issues/337.
-    # Or maybe the user just left one or two low-confidence cues, in which case
-    # there's no problem.
-    messenger.log_status(
-        TaskStatus.RUNNING, "Checking for remaining low-confidence cues."
-    )
-    cues = captions.load(config.final_captions_file)
-    num_low_confidence = len([c for c in cues if c.confidence != 1.0])
-    if num_low_confidence == 0:
-        messenger.log_status(TaskStatus.RUNNING, "No low-confidence cues found.")
-    else:
-        msg = (
-            f"There still seem to be {num_low_confidence} low-confidence cues in the published captions."
-            " Are these the right captions?"
+    # Make sure the marker is gone. If not, the script probably downloaded the
+    # wrong captions.
+    if cues[0].text == _MARKER_CUE_TEXT:
+        raise ValueError(
+            f'The caption "{_MARKER_CUE_TEXT}" is still there.'
+            " Please remove it and publish the captions again."
+            " If you already removed it, something went wrong with the script."
+            " Please wait a minute or two and try again."
         )
-        messenger.log_problem(ProblemLevel.WARN, msg)
-        is_ok = messenger.input_bool(prompt=msg, title="Confirm captions")
-        if not is_ok:
-            raise ValueError(
-                "The script seems to have downloaded the wrong captions."
-                + " Retry this task once the manually-reviewed captions are published."
-                + " If this still does not work, then perform this task manually instead."
-            )
 
     messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())

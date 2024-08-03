@@ -9,11 +9,12 @@ from threading import Lock
 from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import urlparse
 
+import autochecklist
 import captions
 import dateutil.parser
 import dateutil.tz
 import requests
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import CancellationToken, Messenger, ProblemLevel
 from captions import Cue
 from config import Config
 from requests import Response
@@ -72,15 +73,21 @@ class BoxCastApiClient:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions"
         json_captions = self._send_and_check("GET", url)
         if len(json_captions) == 0:
-            raise NoCaptionsError(
-                "No captions found. You may need to publish the captions first."
-            )
+            raise NoCaptionsError("No captions found.")
         elif len(json_captions) > 1:
             raise ValueError(
                 "Multiple captions found. Are some captions currently being published?"
             )
         else:
-            json_cues = json_captions[0]["cues"]
+            json_captions = json_captions[0]
+            if json_captions["status"] != "completed":
+                raise NoCaptionsError("The captions are not ready yet.")
+            if (
+                "cues" not in json_captions
+                or json_captions["cues"] is None
+                or len(json_captions["cues"]) == 0
+            ):
+                raise NoCaptionsError("The cues are missing.")
             cues = [
                 Cue(
                     id=str(i),
@@ -89,7 +96,7 @@ class BoxCastApiClient:
                     text=c["text"],
                     confidence=float(c["confidence"]),
                 )
-                for i, c in enumerate(json_cues, start=1)
+                for i, c in enumerate(json_captions["cues"], start=1)
             ]
             return cues
 
@@ -105,14 +112,23 @@ class BoxCastApiClient:
         else:
             return json_captions[0]["id"]
 
-    def upload_captions(self, broadcast_id: str, path: Path) -> None:
+    def upload_captions(
+        self,
+        broadcast_id: str,
+        path: Path,
+        cancellation_token: Optional[CancellationToken],
+        wait: bool = True,
+    ) -> None:
         captions_id = self._get_captions_id(broadcast_id=broadcast_id)
         self._upload_captions(
             broadcast_id=broadcast_id, captions_id=captions_id, path=path
         )
-        self._wait_for_captions_publish(
-            broadcast_id=broadcast_id, captions_id=captions_id
-        )
+        if wait:
+            self._wait_for_captions_publish(
+                broadcast_id=broadcast_id,
+                captions_id=captions_id,
+                cancellation_token=cancellation_token,
+            )
 
     def _upload_captions(self, broadcast_id: str, captions_id: str, path: Path) -> None:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"
@@ -126,13 +142,14 @@ class BoxCastApiClient:
             }
             for c in captions.load(path)
         ]
-        payload = {"cues": cues}
+        payload = {"cues": cues, "publish_status": "publishing"}
         self._send_and_check("PUT", url, json=payload)
 
     def _wait_for_captions_publish(
         self,
         broadcast_id: str,
         captions_id: str,
+        cancellation_token: Optional[CancellationToken],
         timeout: timedelta = timedelta(minutes=2),
     ) -> None:
         start = datetime.now()
@@ -142,6 +159,11 @@ class BoxCastApiClient:
             status = json_captions["publish_status"]
             if status == "published":
                 return
+            else:
+                autochecklist.sleep_attentively(
+                    self._config.upload_captions_retry_delay,
+                    cancellation_token=cancellation_token,
+                )
         self._messenger.log_problem(
             ProblemLevel.WARN,
             f"The captions have still not been published after {timeout.total_seconds()} seconds."
@@ -257,7 +279,7 @@ class BoxCastApiClient:
     ) -> None:
         # Just in case
         headers = headers | {"Authorization": "[CENSORED]"}
-        t = datetime.now().strftime("%Y%m%d%H%M%S")
+        t = datetime.now().strftime("%Y%m%d-%H%M%S")
         url_path = urlparse(url).path.removeprefix("/")
         p = self._config.log_dir.joinpath(
             f"{t}_boxcast_{method.lower()}_{url_path.replace('/', '_')}.jsonc"
