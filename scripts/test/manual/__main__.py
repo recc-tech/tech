@@ -16,7 +16,7 @@ from summarize_plan import SummarizePlanArgs
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
 _REBROADCAST_TITLE = f"Test Rebroadcast {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-_VIMEO_TITLE = f"Test Video {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+_VIMEO_TITLE = f"Test Video {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (BoxCast ID {_BROADCAST_ID})"
 _REBROADCAST_START = datetime.combine(
     date=datetime.now().date() + timedelta(days=1),
     time=time(hour=13, minute=3, second=14),
@@ -102,7 +102,10 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                 ),
                 TaskModel(
                     name="check_reload_config_error",
-                    description="Check that the value of ui.theme has [[styled|emph|not]] changed and then fix the config.",
+                    description=(
+                        "Check that the value of ui.theme has [[styled|emph|not]] changed and then undo all config changes."
+                        " The value of ui.theme should be displayed in the task status section."
+                    ),
                     prerequisites={"display_new_ui_theme"},
                 ),
             ],
@@ -116,7 +119,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
             subtasks=[
                 TaskModel(
                     name="ready_reload_config",
-                    description="The next task will test reloading the config.",
+                    description="The next task will test successfully reloading the config.",
                 ),
                 TaskModel(
                     name="display_old_vMix_URL",
@@ -223,26 +226,17 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         latest_task = t.name
     if TestCase.CAPTIONS in cases:
         t = TaskModel(
-            name="test_update_captions",
+            name="test_captions_workflow",
             subtasks=[
                 TaskModel(
-                    name="ready_update_captions",
-                    description="The next task should download captions and reupload them to BoxCast.",
+                    name="ready_captions_workflow",
+                    description="The next task will walk you through the captions workflow using the 2024-07-28 broadcast.",
                 ),
                 TaskModel(
                     name="follow_captions_workflow",
-                    description="Go through the full captions workflow, like on Sunday.",
+                    description="Go through the full captions workflow.",
                     prerequisites={"ready_update_captions"},
                     only_auto=True,
-                ),
-                TaskModel(
-                    name="check_captions",
-                    description=(
-                        "Check that the captions are correct on BoxCast and Vimeo."
-                        " The captions should be on the latest Vimeo video."
-                        " Then delete the new captions from Vimeo and re-enable the old ones."
-                    ),
-                    prerequisites={"follow_captions_workflow"},
                 ),
             ],
             prerequisites={latest_task},
@@ -367,14 +361,14 @@ def follow_captions_workflow() -> None:
     # Run in a separate process because having multiple GUIs open in the same
     # Python process is not supported (and not normally needed anyway)
     cmd = ["coverage", "run", "--append"] if args.coverage else ["python"]
-    subprocess.run(cmd + ["-m", "test.manual.captions_workflow"])
+    subprocess.run(cmd + ["-m", "test.manual.captions_workflow_20240728"])
 
 
 def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
     client.export_to_vimeo(
         broadcast_id=_BROADCAST_ID,
         vimeo_user_id=config.vimeo_user_id,
-        title=f"{_VIMEO_TITLE} (BoxCast ID {_BROADCAST_ID})",
+        title=_VIMEO_TITLE,
     )
 
 

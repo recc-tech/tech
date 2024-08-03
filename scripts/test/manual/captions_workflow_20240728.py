@@ -74,6 +74,23 @@ def _find_task_called(name: str, model: TaskModel) -> Optional[TaskModel]:
 def main():
     # Use the real captions flow for the most realistic test possible
     captions_task = _get_captions_task()
+    final_task = TaskModel(
+        name="check_captions",
+        description=(
+            "Check that the captions are correct on BoxCast and Vimeo."
+            " The captions should be on the latest Vimeo video."
+            " Then delete the new captions from Vimeo and re-enable the old ones."
+        ),
+        prerequisites={captions_task.subtasks[-1].name},
+    )
+    captions_task = TaskModel(
+        name=captions_task.name,
+        description=captions_task.description,
+        prerequisites=set[str](),
+        subtasks=captions_task.subtasks + [final_task],
+        only_auto=captions_task.only_auto,
+    )
+
     args = ReccArgs.parse(sys.argv)
     args.start_time = datetime.combine(
         date(year=2024, month=7, day=28),
