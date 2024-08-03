@@ -140,7 +140,7 @@ def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None
 
 
 def generate_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+    client: BoxCastApiClient, config: Config, messenger: Messenger
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
@@ -180,7 +180,7 @@ _MARKER_CUE_TEXT = "[REMOVE THIS CUE]"
 
 
 def automatically_edit_captions(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+    client: BoxCastApiClient, config: Config, messenger: Messenger
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
@@ -234,7 +234,7 @@ def upload_captions_to_Vimeo(
     messenger: Messenger,
     boxcast_client: BoxCastApiClient,
     vimeo_client: ReccVimeoClient,
-    config: McrTeardownConfig,
+    config: Config,
 ) -> None:
     messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
     broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())

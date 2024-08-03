@@ -111,16 +111,18 @@ class BoxCastApiClient:
         broadcast_id: str,
         path: Path,
         cancellation_token: Optional[CancellationToken],
+        wait: bool = True,
     ) -> None:
         captions_id = self._get_captions_id(broadcast_id=broadcast_id)
         self._upload_captions(
             broadcast_id=broadcast_id, captions_id=captions_id, path=path
         )
-        self._wait_for_captions_publish(
-            broadcast_id=broadcast_id,
-            captions_id=captions_id,
-            cancellation_token=cancellation_token,
-        )
+        if wait:
+            self._wait_for_captions_publish(
+                broadcast_id=broadcast_id,
+                captions_id=captions_id,
+                cancellation_token=cancellation_token,
+            )
 
     def _upload_captions(self, broadcast_id: str, captions_id: str, path: Path) -> None:
         url = f"{self._config.boxcast_base_url}/account/broadcasts/{broadcast_id}/captions/{captions_id}"

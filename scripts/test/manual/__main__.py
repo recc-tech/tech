@@ -3,7 +3,6 @@ import sys
 from argparse import ArgumentParser, Namespace
 from datetime import datetime, time, timedelta
 from enum import Enum
-from pathlib import Path
 from typing import Callable, List
 
 import autochecklist
@@ -22,7 +21,6 @@ _REBROADCAST_START = datetime.combine(
     date=datetime.now().date() + timedelta(days=1),
     time=time(hour=13, minute=3, second=14),
 )
-_CAPTIONS_PATH = Path(__file__).resolve().parent.joinpath("data", "captions.vtt")
 
 
 class TestCase(Enum):
@@ -232,26 +230,19 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                     description="The next task should download captions and reupload them to BoxCast.",
                 ),
                 TaskModel(
-                    name="download_captions",
-                    description="Download captions",
-                    only_auto=True,
+                    name="follow_captions_workflow",
+                    description="Go through the full captions workflow, like on Sunday.",
                     prerequisites={"ready_update_captions"},
-                ),
-                TaskModel(
-                    name="tweak_captions",
-                    description=f"Tweak the captions in {_CAPTIONS_PATH.as_posix()} so that you'll be able to recognize the difference when re-uploaded.",
-                    prerequisites={"download_captions"},
-                ),
-                TaskModel(
-                    name="upload_captions",
-                    description="Upload captions",
                     only_auto=True,
-                    prerequisites={"tweak_captions"},
                 ),
                 TaskModel(
                     name="check_captions",
-                    description=f"Check that the captions were uploaded properly (https://dashboard.boxcast.com/broadcasts/{_BROADCAST_ID}?tab=captions).",
-                    prerequisites={"upload_captions"},
+                    description=(
+                        "Check that the captions are correct on BoxCast and Vimeo."
+                        " The captions should be on the latest Vimeo video."
+                        " Then delete the new captions from Vimeo and re-enable the old ones."
+                    ),
+                    prerequisites={"follow_captions_workflow"},
                 ),
             ],
             prerequisites={latest_task},
@@ -372,16 +363,11 @@ def schedule_rebroadcast(client: BoxCastApiClient) -> None:
     )
 
 
-def download_captions(client: BoxCastApiClient) -> None:
-    client.download_captions(broadcast_id=_BROADCAST_ID, path=_CAPTIONS_PATH)
-
-
-def upload_captions(client: BoxCastApiClient, messenger: Messenger) -> None:
-    client.upload_captions(
-        broadcast_id=_BROADCAST_ID,
-        path=_CAPTIONS_PATH,
-        cancellation_token=messenger.allow_cancel(),
-    )
+def follow_captions_workflow() -> None:
+    # Run in a separate process because having multiple GUIs open in the same
+    # Python process is not supported (and not normally needed anyway)
+    cmd = ["coverage", "run", "--append"] if args.coverage else ["python"]
+    subprocess.run(cmd + ["-m", "test.manual.captions_workflow"])
 
 
 def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
