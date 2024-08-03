@@ -271,7 +271,7 @@ class BoxCastApiClient:
     ) -> None:
         # Just in case
         headers = headers | {"Authorization": "[CENSORED]"}
-        t = datetime.now().strftime("%Y%m%d%H%M%S")
+        t = datetime.now().strftime("%Y%m%d-%H%M%S")
         url_path = urlparse(url).path.removeprefix("/")
         p = self._config.log_dir.joinpath(
             f"{t}_boxcast_{method.lower()}_{url_path.replace('/', '_')}.jsonc"
