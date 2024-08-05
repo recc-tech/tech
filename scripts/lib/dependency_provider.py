@@ -126,10 +126,7 @@ class ReccDependencyProvider(DependencyProvider):
 
     def _get_bible_verse_finder(self) -> BibleVerseFinder:
         if self._bible_verse_finder is None:
-            self._bible_verse_finder = BibleVerseFinder(
-                messenger=self.messenger,
-                driver=self._get_web_driver(),
-            )
+            self._bible_verse_finder = BibleVerseFinder()
         return self._bible_verse_finder
 
     def _get_slide_blueprint_reader(self) -> SlideBlueprintReader:

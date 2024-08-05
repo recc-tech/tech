@@ -3,7 +3,6 @@ from pathlib import Path
 from unittest.mock import Mock, create_autospec
 
 from autochecklist import Messenger, ProblemLevel
-from external_services import ReccWebDriver
 from lib.slides import BibleVerseFinder, SlideBlueprintReader
 
 
@@ -18,23 +17,11 @@ class SlideBlueprintReaderTestCase(unittest.TestCase):
         RAW_NOTES_DIR.joinpath("2023-09-10.txt"),
     }
 
-    @classmethod
-    def setUpClass(cls):
-        cls.log_problem_mock = Mock()
-        cls.messenger = create_autospec(Messenger)
-        cls.messenger.log_problem = cls.log_problem_mock
-        # Create the driver once and reuse it for all tests because
-        #  (1) creating a new WebDriver is slow
-        #  (2) having a bunch of Firefox windows open is massively memory-intensive
-        cls._driver = ReccWebDriver(
-            messenger=cls.messenger, headless=True, log_file=None
-        )
-        # Likewise, creating a finder is slow so create one once and for all
-        cls.finder = BibleVerseFinder(driver=cls._driver, messenger=cls.messenger)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        cls._driver.quit()
+    def setUp(self) -> None:
+        self.log_problem_mock = Mock()
+        self.messenger = create_autospec(Messenger)
+        self.messenger.log_problem = self.log_problem_mock
+        self.finder = BibleVerseFinder()
 
     def tearDown(self) -> None:
         # Prevent errors logged by one test from carrying over to other tests
