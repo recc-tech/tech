@@ -11,7 +11,6 @@ from external_services import (
     InputPolicy,
     PlanningCenterClient,
     ReccVimeoClient,
-    ReccWebDriver,
     VmixClient,
 )
 
@@ -59,7 +58,6 @@ class ReccDependencyProvider(DependencyProvider):
         self._credential_store: Optional[CredentialStore] = None
         self._planning_center_client: Optional[PlanningCenterClient] = None
         self._vmix_client: Optional[VmixClient] = None
-        self._web_driver: Optional[ReccWebDriver] = None
         self._bible_verse_finder: Optional[BibleVerseFinder] = None
         self._slide_blueprint_reader: Optional[SlideBlueprintReader] = None
         self._slide_generator: Optional[SlideGenerator] = None
@@ -75,7 +73,6 @@ class ReccDependencyProvider(DependencyProvider):
             CredentialStore: self._get_credential_store,
             PlanningCenterClient: self._get_planning_center_client,
             VmixClient: self._get_vmix_client,
-            ReccWebDriver: self._get_web_driver,
             BibleVerseFinder: self._get_bible_verse_finder,
             SlideBlueprintReader: self._get_slide_blueprint_reader,
             SlideGenerator: self._get_slide_generator,
@@ -87,10 +84,6 @@ class ReccDependencyProvider(DependencyProvider):
             if issubclass(t, typ):
                 return f()
         raise ValueError(f"Unknown argument type {typ.__name__}")
-
-    def shut_down(self) -> None:
-        if self._web_driver is not None:
-            self._web_driver.quit()
 
     def _get_credential_store(self) -> CredentialStore:
         if self._credential_store is None:
@@ -114,15 +107,6 @@ class ReccDependencyProvider(DependencyProvider):
         if self._vmix_client is None:
             self._vmix_client = VmixClient(config=self._config)
         return self._vmix_client
-
-    def _get_web_driver(self) -> ReccWebDriver:
-        if self._web_driver is None:
-            self._web_driver = ReccWebDriver(
-                messenger=self.messenger,
-                headless=self._headless,
-                log_file=self._webdriver_log,
-            )
-        return self._web_driver
 
     def _get_bible_verse_finder(self) -> BibleVerseFinder:
         if self._bible_verse_finder is None:
