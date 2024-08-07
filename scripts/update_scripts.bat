@@ -8,4 +8,4 @@ git stash --include-untracked
 git switch main
 git pull
 
-pip install --upgrade -r ./setup/requirements.txt
+pip install --upgrade --upgrade-strategy eager -r ./setup/requirements.txt
