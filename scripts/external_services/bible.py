@@ -345,8 +345,7 @@ def _get_url(verse: BibleVerse) -> str:
     return f"https://www.biblegateway.com/passage/?search={search}&version={verse.translation}&interface=print"
 
 
-# TODO: Get more precise types
-def _get_verse_text(e: lx._Element) -> str: # pyright: ignore[reportPrivateUsage]
+def _get_verse_text(e: lx._Element) -> str:  # pyright: ignore[reportPrivateUsage]
     text = e.text or ""
     for ee in e:
         if not _should_skip(ee):
@@ -355,7 +354,7 @@ def _get_verse_text(e: lx._Element) -> str: # pyright: ignore[reportPrivateUsage
     return text
 
 
-def _should_skip(e: lx._Element) -> bool: # pyright: ignore[reportPrivateUsage]
+def _should_skip(e: lx._Element) -> bool:  # pyright: ignore[reportPrivateUsage]
     cls = e.get("class") or ""
     return (
         "versenum" in cls
