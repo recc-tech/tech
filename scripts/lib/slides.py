@@ -22,6 +22,7 @@ from config import (
     Textbox,
 )
 from external_services import BibleVerse, BibleVerseFinder
+from matplotlib.font_manager import FontManager, FontProperties
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
 
@@ -253,6 +254,7 @@ class SlideGenerator:
     def __init__(self, messenger: Messenger, config: Config):
         self._messenger = messenger
         self._config = config
+        self._font_manager = FontManager()
 
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
@@ -407,7 +409,9 @@ class SlideGenerator:
         )
 
     def make_font(self, font: Font, size: int) -> FreeTypeFont:
-        return ImageFont.truetype(font.path, size=size)
+        properties = FontProperties(family=font.family, style=font.style)
+        path = self._font_manager.findfont(properties)
+        return ImageFont.truetype(path, size=size)
 
 
 def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
