@@ -57,7 +57,7 @@ jobs:
       shell: bash
       run: |
         mv ./test/ ../test/
-        pyright_version="$(grep --extended-regexp '^pyright(<|=|>)' ./setup/requirements-dev.txt)"
+        pyright_version="$(grep --extended-regexp '^pyright\b' ./setup/requirements-dev.txt)"
         pip install "${pyright_version}" 2> ./stderr.txt
         e="$(cat ./stderr.txt)"
         if [[ "$e" != "" ]]; then
