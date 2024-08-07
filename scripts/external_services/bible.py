@@ -336,6 +336,8 @@ class BibleVerseFinder:
 
         root = lx.HTML(response.text)
         paragraphs = root.xpath("//div[contains(@class, 'passage-text')]//p")
+        if len(paragraphs) == 0:
+            raise ValueError(f"Failed to find the text for the verse '{verse}'.")
         text = "\n".join(_get_verse_text(p) for p in paragraphs)
         return _normalize(text)
 
@@ -346,7 +348,7 @@ def _get_url(verse: BibleVerse) -> str:
 
 
 def _get_verse_text(e: lx._Element) -> str:  # pyright: ignore[reportPrivateUsage]
-    text = e.text or ""
+    text = "\n" if e.tag == "br" else (e.text or "")
     for ee in e:
         if not _should_skip(ee):
             text += _get_verse_text(ee)

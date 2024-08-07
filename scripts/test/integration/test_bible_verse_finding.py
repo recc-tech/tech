@@ -58,12 +58,34 @@ class BibleVerseFindingTest(unittest.TestCase):
             "Don’t love money; be satisfied with what you have. For God has said, “I will never fail you. I will never abandon you.”",
         )
 
+    def test_isaiah_40_3_niv(self):
+        # Multi-line paragraph with different lines in different <span>s
+        # separated by <br>
+        self.assertEqual(
+            self.finder.find(BibleVerse("Isaiah", 40, 3, "NIV")),
+            "A voice of one calling: \u201cIn the wilderness prepare the way for the Lord; make straight in the desert a highway for our God.",
+        )
+
     def test_exodus_14_14_invalid_translation(self):
         with self.assertRaises(ValueError) as cm:
             self.finder.find(BibleVerse("Exodus", 14, 14, "INVALID"))
-        self.assertEqual(str(cm.exception), "Invalid translation 'INVALID'.")
+        self.assertEqual(
+            str(cm.exception),
+            "Failed to find the text for the verse 'Exodus 14:14 (INVALID)'.",
+        )
 
     def test_invalid_chapter(self):
         with self.assertRaises(ValueError) as cm:
             self.finder.find(BibleVerse("Psalm", 151, 1, "NLT"))
-        self.assertEqual(str(cm.exception), "Invalid chapter.")
+        self.assertEqual(
+            str(cm.exception),
+            "Failed to find the text for the verse 'Psalm 151:1 (NLT)'.",
+        )
+
+    def test_invalid_verse_num(self):
+        with self.assertRaises(ValueError) as cm:
+            self.finder.find(BibleVerse("Exodus", 14, 32, "NLT"))
+        self.assertEqual(
+            str(cm.exception),
+            "Failed to find the text for the verse 'Exodus 14:32 (NLT)'.",
+        )
