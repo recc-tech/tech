@@ -88,7 +88,9 @@ class BoxCastTestCase(unittest.TestCase):
         modified_captions = [new_first_cue] + expected_captions[1:]
         captions.save(modified_captions, _ACTUAL_CAPTIONS_20240505)
         client.upload_captions(
-            broadcast_id=_BROADCAST_20240505_ID, path=_ACTUAL_CAPTIONS_20240505
+            broadcast_id=_BROADCAST_20240505_ID,
+            path=_ACTUAL_CAPTIONS_20240505,
+            cancellation_token=None,
         )
         log_problem_mock.assert_not_called()
 
@@ -105,7 +107,9 @@ class BoxCastTestCase(unittest.TestCase):
         modified_captions = [new_first_cue] + expected_captions[1:]
         captions.save(modified_captions, _ACTUAL_CAPTIONS_20240505)
         client.upload_captions(
-            broadcast_id=_BROADCAST_20240505_ID, path=_ACTUAL_CAPTIONS_20240505
+            broadcast_id=_BROADCAST_20240505_ID,
+            path=_ACTUAL_CAPTIONS_20240505,
+            cancellation_token=None,
         )
         log_problem_mock.assert_not_called()
 

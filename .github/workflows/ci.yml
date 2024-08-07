@@ -29,12 +29,8 @@ jobs:
     - name: Look for TODO comments
       shell: bash
       run: |
-        # Ignore this file, otherwise the workflow would fail when introducing
-        # this check in the first place!
-        # TODO: Un-ignore this file.
-        files=":!../.github/workflows/ci.yml"
         pattern='^+.*TODO'
-        if git --no-pager diff "origin/main..HEAD" -- "${files}" | grep '${pattern}'; then
+        if git --no-pager diff "origin/main..HEAD" | grep "${pattern}"; then
           echo "There are one or more TODO comments left on this branch!" >&2
           exit 142
         fi
