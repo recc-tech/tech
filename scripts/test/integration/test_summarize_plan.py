@@ -6,10 +6,10 @@ from datetime import date
 from pathlib import Path
 from tkinter import Tk
 from typing import Dict, Tuple
-from unittest.mock import Mock, call, create_autospec
+from unittest.mock import Mock, create_autospec
 
 from args import ReccArgs
-from autochecklist import Messenger, ProblemLevel
+from autochecklist import Messenger
 from config import Config
 from external_services import (
     CredentialStore,
@@ -216,10 +216,7 @@ class GetPlanSummaryTestCase(unittest.TestCase):
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_has_calls(
-            [call(level=ProblemLevel.WARN, message="No announcements video found.")]
-        )
-        self.assertEqual(1, log_problem_mock.call_count)
+        log_problem_mock.assert_not_called()
 
     # Interesting characteristics of this test case:
     #  * CCLI provided for most, but not all songs
