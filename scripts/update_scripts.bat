@@ -9,4 +9,4 @@ git switch main
 git pull
 
 python -m pip install --upgrade pip
-python -m pip install --upgrade -r ./setup/requirements.txt
+python -m pip install --upgrade --upgrade-strategy eager -r ./setup/requirements.txt

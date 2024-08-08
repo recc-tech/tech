@@ -10,6 +10,7 @@ from .messenger import Messenger, ProblemLevel, TaskStatus
 from .task import DependencyProvider, FunctionFinder, TaskGraph, TaskModel
 
 _ERROR_FILE = Path("error.log")
+_STARTUP_FILE = Path("startup.txt")
 _SUCCESS_MESSAGE = "All done!"
 _FAIL_MESSAGE = "Script failed."
 
@@ -90,6 +91,11 @@ def _run_worker(
     dependency_provider: DependencyProvider,
 ) -> None:
     try:
+        try:
+            _STARTUP_FILE.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"Failed to delete {_STARTUP_FILE}.", file=sys.stderr)
+
         try:
             if isinstance(tasks, Path):
                 messenger.log_status(

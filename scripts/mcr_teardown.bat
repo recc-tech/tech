@@ -12,3 +12,4 @@ CD /D %~dp0
 
 :: Start the command without a terminal window
 start pythonw mcr_teardown.py
+wait_for_start.bat

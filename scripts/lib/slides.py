@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import json
 import re
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
-from autochecklist import CancellationToken, Messenger, ProblemLevel
+from autochecklist import Messenger, ProblemLevel
 from config import (
     Bbox,
     Config,
@@ -38,9 +39,7 @@ class SlideBlueprintReader:
         self._messenger = messenger
         self._bible_verse_finder = bible_verse_finder
 
-    def load_message_notes(
-        self, file: Path, cancellation_token: Optional[CancellationToken] = None
-    ) -> List[SlideBlueprint]:
+    def load_message_notes(self, file: Path) -> List[SlideBlueprint]:
         with open(file, mode="r", encoding="utf-8") as f:
             text = f.read()
 
@@ -72,10 +71,7 @@ class SlideBlueprintReader:
                 if remaining_line:
                     text = f"{remaining_line}\n{text}"
                 blueprint_by_verse = {
-                    v: self._convert_bible_verse_to_blueprint(
-                        v, cancellation_token=cancellation_token
-                    )
-                    for v in verses
+                    v: self._convert_bible_verse_to_blueprint(v) for v in verses
                 }
                 blueprints += blueprint_by_verse.values()
                 # Remove redundant text (e.g., verse text following verse
@@ -155,26 +151,23 @@ class SlideBlueprintReader:
         verses = [v for v in text.split("\n\n") if v]
         return verses
 
-    def _convert_bible_verse_to_blueprint(
-        self, verse: BibleVerse, cancellation_token: Optional[CancellationToken] = None
-    ) -> SlideBlueprint:
-        verse_text = self._bible_verse_finder.find(
-            verse, cancellation_token=cancellation_token
-        )
-        if verse_text is None:
+    def _convert_bible_verse_to_blueprint(self, verse: BibleVerse) -> SlideBlueprint:
+        try:
+            verse_text = self._bible_verse_finder.find(verse)
+            return SlideBlueprint(
+                body_text=verse_text,
+                footer_text=str(verse),
+                name=f"{verse.book} {verse.chapter} {verse.verse} {verse.translation}",
+            )
+        except Exception:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
                 f"'{verse}' looks like a reference to a Bible verse, but the text could not be found.",
+                stacktrace=traceback.format_exc(),
             )
             return SlideBlueprint(
                 body_text=str(verse),
                 footer_text="",
-                name=f"{verse.book} {verse.chapter} {verse.verse} {verse.translation}",
-            )
-        else:
-            return SlideBlueprint(
-                body_text=verse_text,
-                footer_text=str(verse),
                 name=f"{verse.book} {verse.chapter} {verse.verse} {verse.translation}",
             )
 
@@ -230,9 +223,6 @@ def _convert_text_to_filename(text: str) -> str:
         return filename[0:MAX_FILENAME_LEN]
 
 
-FONT_MANAGER = FontManager()
-
-
 @dataclass(frozen=True)
 class SlideBlueprint:
     body_text: str
@@ -264,6 +254,7 @@ class SlideGenerator:
     def __init__(self, messenger: Messenger, config: Config):
         self._messenger = messenger
         self._config = config
+        self._font_manager = FontManager()
 
     def generate_fullscreen_slides(
         self, blueprints: List[SlideBlueprint]
@@ -419,7 +410,7 @@ class SlideGenerator:
 
     def make_font(self, font: Font, size: int) -> FreeTypeFont:
         properties = FontProperties(family=font.family, style=font.style)
-        path = FONT_MANAGER.findfont(properties)
+        path = self._font_manager.findfont(properties)
         return ImageFont.truetype(path, size=size)
 
 
