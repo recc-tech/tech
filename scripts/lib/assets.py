@@ -295,7 +295,9 @@ class AssetManager:
         announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
         if len(announcements) == 0 and require_announcements:
             raise ValueError(f"No announcements video found.")
-        elif len(announcements) != 1:
+        # It's no problem if the announcements video is missing; it doesn't
+        # seem like they make one every week anymore
+        elif len(announcements) > 1:
             messenger.log_problem(
                 ProblemLevel.WARN,
                 f"Found {len(announcements)} attachments that look like the announcements video.",
