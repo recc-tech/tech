@@ -19,6 +19,7 @@ _DEMO_FILE = Path(__file__).parent.joinpath(
 
 
 class SummarizePlanArgs(ReccArgs):
+    NAME = "summarize_plan"
     DESCRIPTION = "This script will generate a summary of the plan for today's service."
 
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
