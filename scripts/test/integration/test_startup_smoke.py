@@ -1,3 +1,5 @@
+import platform
+import subprocess
 import unittest
 from pathlib import Path
 from test.mock import MockInputMessenger
@@ -29,6 +31,8 @@ from .startup_smoke_test_data import (
 T = TypeVar("T")
 
 _LOG_FILE = Path(__file__).parent.joinpath("startup_smoke_test_data", "test.log")
+_SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent
+_HELP_DIR = Path(__file__).parent.joinpath("help_messages")
 
 
 class MockDependencyProvider(ReccDependencyProvider):
@@ -55,7 +59,7 @@ class MockDependencyProvider(ReccDependencyProvider):
             return super().get(typ)
 
 
-class StartupSmokeTestCase(unittest.TestCase):
+class PyStartupSmokeTestCase(unittest.TestCase):
     """
     Smoke tests to ensure all scripts can at least start without errors or
     warnings.
@@ -205,3 +209,76 @@ class StartupSmokeTestCase(unittest.TestCase):
             ),
             dep.input_messenger.statuses[-1],
         )
+
+
+class CommandStartupTestCase(unittest.TestCase):
+    """
+    Smoke tests to ensure that the .command scripts work as expected.
+    For example, this should catch startup errors due to incorrect file paths.
+    """
+
+    def setUp(self) -> None:
+        p = platform.system()
+        match p:
+            case "Darwin" | "Linux":
+                pass
+            case "Windows":
+                self.skipTest("Wrong platform.")
+            case _:
+                self.fail(f"Unrecognized platform '{p}'.")
+
+    def test_download_pco_assets_positive(self) -> None:
+        script_path = _SCRIPTS_DIR.joinpath("download_pco_assets.command").resolve()
+        help_path = _HELP_DIR.joinpath("download_pco_assets.txt").resolve()
+        result = subprocess.run(
+            [script_path.as_posix(), "--help"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, help_path.read_text())
+
+    def test_download_pco_assets_negative(self) -> None:
+        cmd_path = _SCRIPTS_DIR.joinpath("download_pco_assets.command").resolve()
+        py_path = _SCRIPTS_DIR.joinpath("download_pco_assets.py").resolve()
+        bak_path = _SCRIPTS_DIR.joinpath("download_pco_assets.py.bak").resolve()
+        py_path.rename(bak_path)
+        try:
+            result = subprocess.run(
+                [cmd_path.as_posix(), "--help"],
+                capture_output=True,
+                encoding="utf-8",
+            )
+            self.assertNotEqual(result.stderr, "")
+            self.assertEqual(result.stdout, "")
+        finally:
+            bak_path.rename(py_path)
+
+    def test_summarize_plan_positive(self) -> None:
+        script_path = _SCRIPTS_DIR.joinpath("summarize_plan.command")
+        help_path = _HELP_DIR.joinpath("summarize_plan.txt")
+        result = subprocess.run(
+            [script_path.resolve().as_posix(), "--help"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, help_path.read_text())
+
+    def test_summarize_plan_negative(self) -> None:
+        cmd_path = _SCRIPTS_DIR.joinpath("summarize_plan.command").resolve()
+        py_path = _SCRIPTS_DIR.joinpath("summarize_plan.py").resolve()
+        bak_path = _SCRIPTS_DIR.joinpath("summarize_plan.py.bak").resolve()
+        py_path.rename(bak_path)
+        try:
+            result = subprocess.run(
+                [cmd_path.as_posix(), "--help"],
+                capture_output=True,
+                encoding="utf-8",
+            )
+            self.assertNotEqual(result.stderr, "")
+            self.assertEqual(result.stdout, "")
+        finally:
+            bak_path.rename(py_path)

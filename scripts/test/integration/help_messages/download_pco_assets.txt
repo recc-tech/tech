@@ -1,0 +1,33 @@
+usage: download_pco_assets [-h] [--dry-run] [--home-dir HOME_DIR]
+                           [--date DATE] [--auto-close] [--ui {console,tk}]
+                           [--verbose] [--no-run] [--auto AUTO]
+
+This script will download the assets from today's plan in Planning Center
+Online.
+
+options:
+  -h, --help           show this help message and exit
+  --dry-run            Detect available assets without actually downloading
+                       any. (default: False)
+
+RECC common arguments:
+  --home-dir HOME_DIR  The home directory. (default: None)
+  --date DATE          Pretend the script is running on a different date.
+                       (default: None)
+  --auto-close         Automatically close the GUI if the script finishes with
+                       no warnings or errors. (default: False)
+
+Common arguments:
+  --ui {console,tk}    User interface to use. (default: tk)
+  --verbose            This flag is only applicable when the console UI is
+                       used. It makes the script show updates on the status of
+                       each task. Otherwise, the script will only show
+                       messages for warnings or errors. (default: False)
+  --no-run             If this flag is provided, the task graph will be loaded
+                       but the tasks will not be run. This may be useful for
+                       checking that the JSON task file and command-line
+                       arguments are valid. (default: False)
+  --auto AUTO          Specify which tasks to automate. You can also provide
+                       'none' to automate none of the tasks. By default, all
+                       tasks that can be automated are automated. (default:
+                       None)
