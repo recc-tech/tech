@@ -50,9 +50,12 @@ class PlanItemsSummary:
 T = TypeVar("T")
 
 
-def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
+def _get_one(
+    items: List[T], messenger: Messenger, name: str, missing_ok: bool = False
+) -> Optional[T]:
     if len(items) == 0:
-        messenger.log_problem(ProblemLevel.WARN, f"No {name} found.")
+        if not missing_ok:
+            messenger.log_problem(ProblemLevel.WARN, f"No {name} found.")
         return None
     elif len(items) == 1:
         return items[0]
@@ -185,7 +188,7 @@ def _get_announcements_video(
     matches = [
         i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
     ]
-    itm = _get_one(matches, messenger, "announcements video")
+    itm = _get_one(matches, messenger, "announcements video", missing_ok=True)
     return (
         None
         if itm is None

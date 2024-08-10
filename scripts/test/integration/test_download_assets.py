@@ -371,11 +371,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
             require_announcements=False,
         )
         self.assertEqual({}, plan)
-        messenger.log_problem.assert_called_with(
-            level=ProblemLevel.WARN,
-            message="Found 0 attachments that look like the announcements video.",
-        )
-        self.assertEqual(1, messenger.log_problem.call_count)
+        messenger.log_problem.assert_not_called()
 
     def test_plan_missing_announcements_required(self) -> None:
         config = self._FOH_CONFIG
