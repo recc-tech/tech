@@ -133,7 +133,7 @@ video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
 user_id = "viac_bvteonscuog48b2lnilu"
 
 [vmix]
-base_url = "http://192.168.0.107:8088/api"
+base_url = "http://192.168.0.146:8088/api"
 preset_path = "%{folder.home}%/vMix Presets/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
 kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
