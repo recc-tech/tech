@@ -30,7 +30,6 @@ class GenerateSlidesArgs(ReccArgs):
             if args.demo
             else set(args.style or {_LOWER_THIRD_STYLE})
         )
-        self.show_browser: bool = args.show_browser
         self.demo: bool = args.demo
 
     @classmethod
@@ -41,11 +40,6 @@ class GenerateSlidesArgs(ReccArgs):
             action="append",
             choices=[_FULLSCREEN_STYLE, _LOWER_THIRD_STYLE],
             help="Style of the slides.",
-        )
-        parser.add_argument(
-            "--show-browser",
-            action="store_true",
-            help='If this flag is provided, then browser windows opened by the script will be shown. Otherwise, the Selenium web driver will run in "headless" mode, where no browser window is visible.',
         )
         parser.add_argument(
             "--demo",
@@ -261,7 +255,5 @@ if __name__ == "__main__":
         script_name="Generate Slides",
         description=GenerateSlidesArgs.DESCRIPTION,
         show_statuses_by_default=True,
-        headless=not args.show_browser,
-        webdriver_log=config.generate_slides_webdriver_log,
     )
     main(args, config, dependency_provider)

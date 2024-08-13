@@ -12,7 +12,7 @@ import generate_slides
 import mcr_setup
 import mcr_teardown
 import summarize_plan
-from args import McrSetupArgs, McrTeardownArgs, ReccArgs
+from args import McrTeardownArgs, ReccArgs
 from autochecklist import FileMessenger, Messenger, ProblemLevel, TaskStatus
 from check_credentials import CheckCredentialsArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
@@ -20,6 +20,7 @@ from download_pco_assets import DownloadAssetsArgs
 from external_services import CredentialStore
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 from lib import ReccDependencyProvider
+from mcr_setup import McrSetupArgs
 from summarize_plan import SummarizePlanArgs
 
 from .startup_smoke_test_data import (

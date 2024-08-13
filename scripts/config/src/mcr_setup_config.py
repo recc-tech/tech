@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from args import McrSetupArgs
+from args import ReccArgs
 
 from .config import Config
 
@@ -9,7 +9,7 @@ from .config import Config
 class McrSetupConfig(Config):
     def __init__(
         self,
-        args: McrSetupArgs,
+        args: ReccArgs,
         profile: Optional[str] = None,
         strict: bool = False,
         allow_multiple_only_for_testing: bool = False,

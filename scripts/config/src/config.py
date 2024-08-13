@@ -405,13 +405,7 @@ class Config(BaseConfig):
             self.check_credentials_log = reader.get_file("logging.check_credentials")
             self.download_assets_log = reader.get_file("logging.download_pco_assets")
             self.generate_slides_log = reader.get_file("logging.generate_slides")
-            self.generate_slides_webdriver_log = reader.get_file(
-                "logging.generate_slides_webdriver"
-            )
             self.mcr_setup_log = reader.get_file("logging.mcr_setup")
-            self.mcr_setup_webdriver_log = reader.get_file(
-                "logging.mcr_setup_webdriver"
-            )
             self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
             self.manual_test_log = reader.get_file("logging.manual_test")

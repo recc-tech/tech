@@ -3,11 +3,11 @@ from datetime import date
 from typing import List
 from unittest.mock import call, create_autospec
 
-from args import McrSetupArgs
 from autochecklist import Messenger, ProblemLevel
 from config import McrSetupConfig
 from external_services import Plan, PlanningCenterClient, PresenterSet, VmixClient
 from lib import mcr_setup
+from mcr_setup import McrSetupArgs
 
 
 class McrSetupTestCase(unittest.TestCase):

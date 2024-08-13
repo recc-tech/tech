@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Optional
 
 import config
-from args import McrSetupArgs, ReccArgs
-from config import Config, McrSetupConfig, McrTeardownArgs, McrTeardownConfig
+from args import McrTeardownArgs, ReccArgs
+from config import Config, McrSetupConfig, McrTeardownConfig
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 
 
@@ -57,7 +57,7 @@ def test_load_one_config(profile: Optional[str]) -> None:
         raise RuntimeError("Failed to load configuration for generating slides.") from e
     try:
         McrSetupConfig(
-            McrSetupArgs.parse([]),
+            ReccArgs.parse([]),
             profile=profile,
             strict=True,
             allow_multiple_only_for_testing=True,
