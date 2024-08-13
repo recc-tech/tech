@@ -18,8 +18,9 @@ archived_assets = "%{folder.assets_by_type}%/Archive"
 
 [logging]
 check_credentials   = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
-generate_slides     = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
 download_pco_assets = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
+generate_slides     = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
+launch_apps         = "%{folder.logs}%/%{args.startup_timestamp}% launch_apps.log"
 mcr_setup           = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup.log"
 mcr_teardown        = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
 summarize_plan      = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"

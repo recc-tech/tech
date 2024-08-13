@@ -9,6 +9,7 @@ from unittest.mock import create_autospec
 import check_credentials
 import download_pco_assets
 import generate_slides
+import launch_apps
 import mcr_setup
 import mcr_teardown
 import summarize_plan
@@ -19,6 +20,7 @@ from config import Config, McrSetupConfig, McrTeardownConfig
 from download_pco_assets import DownloadAssetsArgs
 from external_services import CredentialStore
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
+from launch_apps import LaunchAppsArgs
 from lib import ReccDependencyProvider
 from mcr_setup import McrSetupArgs
 from summarize_plan import SummarizePlanArgs
@@ -166,6 +168,22 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             dep.input_messenger.statuses[-1],
         )
 
+    def test_launch_apps(self) -> None:
+        # TODO: Add more apps here as necessary
+        args = LaunchAppsArgs.parse(["", "pco", "--no-run"])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
     def test_mcr_setup(self) -> None:
         args = McrSetupArgs.parse(["", "--no-run"])
         config = McrSetupConfig(args, allow_multiple_only_for_testing=True)
@@ -212,6 +230,7 @@ class PyStartupSmokeTestCase(unittest.TestCase):
         )
 
 
+# TODO: Add a test for the new script
 class CommandStartupTestCase(unittest.TestCase):
     """
     Smoke tests to ensure that the .command scripts work as expected.

@@ -210,7 +210,11 @@ class McrSetupTestCase(unittest.TestCase):
     ) -> PlanningCenterClient:
         pco_client = create_autospec(PlanningCenterClient)
         pco_client.find_plan_by_date.return_value = Plan(
-            id="123456", title=title, series_title=series, date=date
+            id="123456",
+            title=title,
+            series_title=series,
+            date=date,
+            web_page_url="https://example.com",
         )
         pco_client.find_presenters.return_value = PresenterSet(
             speaker_names=speakers,

@@ -90,6 +90,7 @@ class GetPlanSummaryTestCase(unittest.TestCase):
                 series_title="WORTHY",
                 title="Worthy Of The Feast",
                 date=date(year=2024, month=4, day=14),
+                web_page_url="https://services.planningcenteronline.com/plans/71699950",
             ),
             walk_in_slides=[
                 "River’s Edge",
