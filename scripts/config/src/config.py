@@ -479,6 +479,7 @@ class Config(BaseConfig):
             self.vmix_extra_presenter_title_key = reader.get_str(
                 "vmix.extra_presenter_title_key"
             )
+            self.vmix_preset_dir = reader.get_directory("vmix.preset_dir")
             self.vmix_preset_file = reader.get_file("vmix.preset_path")
 
             # API

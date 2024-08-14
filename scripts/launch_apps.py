@@ -1,6 +1,8 @@
+import os
 import sys
 from argparse import ArgumentParser, Namespace
 from enum import Enum
+from pathlib import Path
 from typing import Callable, List
 
 import autochecklist
@@ -17,6 +19,7 @@ class App(Enum):
     FOH_SETUP_CHECKLIST = "foh_setup_checklist"
     MCR_SETUP_CHECKLIST = "mcr_setup_checklist"
     MCR_TEARDOWN_CHECKLIST = "mcr_teardown_checklist"
+    VMIX = "vmix"
 
 
 class LaunchAppsArgs(ReccArgs):
@@ -59,6 +62,11 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
                     name="open_MCR_teardown_checklist",
                     description="Open the MCR teardown checklist on GitHub.",
                 )
+            case App.VMIX:
+                t = TaskModel(
+                    name="open_vMix",
+                    description="Open last week's preset in vMix.",
+                )
         tasks.append(t)
     autochecklist.run(
         args=args,
@@ -67,6 +75,9 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
         tasks=TaskModel(name="launch_apps", subtasks=tasks),
         module=sys.modules[__name__],
     )
+
+
+# TODO: Get rid of the "unused function" warnings!
 
 
 def launch_PCO(pco_client: PlanningCenterClient) -> None:
@@ -93,6 +104,15 @@ def open_MCR_teardown_checklist(config: Config) -> None:
         IssueType.MCR_TEARDOWN, dt=config.start_time.date(), config=config
     )
     external_services.launch_firefox(issue.html_url)
+
+
+def open_vMix(config: Config) -> None:
+    preset = _get_latest_file(config.vmix_preset_dir)
+    external_services.launch_vmix(preset)
+
+
+def _get_latest_file(dir: Path) -> Path:
+    return max(dir.glob("*.vmix"), key=os.path.getmtime)
 
 
 if __name__ == "__main__":

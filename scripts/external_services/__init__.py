@@ -8,7 +8,7 @@ from .bible import BibleVerse, BibleVerseFinder
 from .boxcast import BoxCastApiClient, Broadcast, NoCaptionsError
 from .credentials import Credential, CredentialStore, InputPolicy
 from .github import Issue, IssueType, find_github_issue
-from .local_apps import launch_firefox
+from .local_apps import launch_firefox, launch_vmix
 from .planning_center import (
     Attachment,
     FileType,
