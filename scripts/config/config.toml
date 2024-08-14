@@ -94,6 +94,10 @@ final       = "%{folder.captions}%/final.vtt"
 	"moab" = "Moab"
 	"galilee" = "Galilee"
 
+[github]
+base_url = "https://api.github.com"
+api_repo_url = "%{github.base_url}%/repos/recc-tech/tech"
+
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"

@@ -420,6 +420,9 @@ class Config(BaseConfig):
             self.final_captions_file = reader.get_file("captions.final")
             self.caption_substitutions = reader.get_str_dict("captions.substitutions")
 
+            # GitHub
+            self.github_api_repo_url = reader.get_str("github.api_repo_url")
+
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")

@@ -8,12 +8,15 @@ import external_services
 from args import ReccArgs
 from autochecklist import TaskModel
 from config import Config
-from external_services import PlanningCenterClient
+from external_services import IssueType, PlanningCenterClient
 from lib import ReccDependencyProvider
 
 
 class App(Enum):
     PLANNING_CENTER = "pco"
+    FOH_SETUP_CHECKLIST = "foh_setup_checklist"
+    MCR_SETUP_CHECKLIST = "mcr_setup_checklist"
+    MCR_TEARDOWN_CHECKLIST = "mcr_teardown_checklist"
 
 
 class LaunchAppsArgs(ReccArgs):
@@ -38,8 +41,23 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
         match app:
             case App.PLANNING_CENTER:
                 t = TaskModel(
-                    name="launch_pco",
+                    name="launch_PCO",
                     description="Open Planning Center Online.",
+                )
+            case App.FOH_SETUP_CHECKLIST:
+                t = TaskModel(
+                    name="open_FOH_setup_checklist",
+                    description="Open the FOH setup checklist on GitHub.",
+                )
+            case App.MCR_SETUP_CHECKLIST:
+                t = TaskModel(
+                    name="open_MCR_setup_checklist",
+                    description="Open the MCR setup checklist on GitHub.",
+                )
+            case App.MCR_TEARDOWN_CHECKLIST:
+                t = TaskModel(
+                    name="open_MCR_teardown_checklist",
+                    description="Open the MCR teardown checklist on GitHub.",
                 )
         tasks.append(t)
     autochecklist.run(
@@ -51,9 +69,30 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
     )
 
 
-def launch_pco(pco_client: PlanningCenterClient) -> None:
+def launch_PCO(pco_client: PlanningCenterClient) -> None:
     plan = pco_client.find_plan_by_date(dt=config.start_time.date())
     external_services.launch_firefox(plan.web_page_url)
+
+
+def open_FOH_setup_checklist(config: Config) -> None:
+    issue = external_services.find_github_issue(
+        IssueType.FOH_SETUP, dt=config.start_time.date(), config=config
+    )
+    external_services.launch_firefox(issue.html_url)
+
+
+def open_MCR_setup_checklist(config: Config) -> None:
+    issue = external_services.find_github_issue(
+        IssueType.MCR_SETUP, dt=config.start_time.date(), config=config
+    )
+    external_services.launch_firefox(issue.html_url)
+
+
+def open_MCR_teardown_checklist(config: Config) -> None:
+    issue = external_services.find_github_issue(
+        IssueType.MCR_TEARDOWN, dt=config.start_time.date(), config=config
+    )
+    external_services.launch_firefox(issue.html_url)
 
 
 if __name__ == "__main__":

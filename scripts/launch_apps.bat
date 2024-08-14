@@ -5,5 +5,5 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw launch_apps.py
+start pythonw launch_apps.py pco
 wait_for_start.bat
