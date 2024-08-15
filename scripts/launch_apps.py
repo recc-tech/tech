@@ -74,6 +74,7 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
         dependency_provider=dep,
         tasks=TaskModel(name="launch_apps", subtasks=tasks),
         module=sys.modules[__name__],
+        allow_unused_functions=True,
     )
 
 
