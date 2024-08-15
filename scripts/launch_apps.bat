@@ -5,5 +5,5 @@
 CD /D %~dp0
 
 :: Start the command without a terminal window
-start pythonw launch_apps.py pco vmix
+start pythonw launch_apps.py pco vmix mcr_setup_checklist
 wait_for_start.bat
