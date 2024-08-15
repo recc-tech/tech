@@ -168,9 +168,32 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             dep.input_messenger.statuses[-1],
         )
 
-    def test_launch_apps(self) -> None:
-        # TODO: Add more apps here as necessary
-        args = LaunchAppsArgs.parse(["", "pco", "--no-run"])
+    def test_launch_apps_foh(self) -> None:
+        args = LaunchAppsArgs.parse(["", "pco", "foh_setup_checklist", "--no-run"])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
+    def test_launch_apps_mcr(self) -> None:
+        args = LaunchAppsArgs.parse(
+            [
+                "",
+                "pco",
+                "mcr_setup_checklist",
+                "mcr_teardown_checklist",
+                "vmix",
+                "--no-run",
+            ]
+        )
         config = Config(args, allow_multiple_only_for_testing=True)
         dep = MockDependencyProvider(args=args, config=config)
         launch_apps.main(args, config, dep)
@@ -230,7 +253,6 @@ class PyStartupSmokeTestCase(unittest.TestCase):
         )
 
 
-# TODO: Add a test for the new script
 class CommandStartupTestCase(unittest.TestCase):
     """
     Smoke tests to ensure that the .command scripts work as expected.

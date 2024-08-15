@@ -78,9 +78,6 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
     )
 
 
-# TODO: Get rid of the "unused function" warnings!
-
-
 def launch_PCO(pco_client: PlanningCenterClient) -> None:
     plan = pco_client.find_plan_by_date(dt=config.start_time.date())
     external_services.launch_firefox(plan.web_page_url)
