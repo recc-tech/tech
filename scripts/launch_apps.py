@@ -86,23 +86,17 @@ def launch_PCO(pco_client: PlanningCenterClient) -> None:
 
 
 def open_FOH_setup_checklist(config: Config) -> None:
-    issue = external_services.find_github_issue(
-        IssueType.FOH_SETUP, dt=config.start_time.date(), config=config
-    )
+    issue = external_services.find_latest_github_issue(IssueType.FOH_SETUP, config)
     external_services.launch_firefox(issue.html_url)
 
 
 def open_MCR_setup_checklist(config: Config) -> None:
-    issue = external_services.find_github_issue(
-        IssueType.MCR_SETUP, dt=config.start_time.date(), config=config
-    )
+    issue = external_services.find_latest_github_issue(IssueType.MCR_SETUP, config)
     external_services.launch_firefox(issue.html_url)
 
 
 def open_MCR_teardown_checklist(config: Config) -> None:
-    issue = external_services.find_github_issue(
-        IssueType.MCR_TEARDOWN, dt=config.start_time.date(), config=config
-    )
+    issue = external_services.find_latest_github_issue(IssueType.MCR_TEARDOWN, config)
     external_services.launch_firefox(issue.html_url)
 
 

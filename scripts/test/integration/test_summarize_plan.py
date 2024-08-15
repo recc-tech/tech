@@ -312,13 +312,10 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
 
         # NOTE: Copying doesn't work in headless mode for some reason
         service = Service(log_path=os.devnull)
-        driver = WebDriver(service=service)
-        try:
+        with WebDriver(service=service) as driver:
             driver.get(f.resolve().as_uri())
             btn = driver.find_element(By.XPATH, "//button[contains(., 'Copy')]")
             btn.click()
-        finally:
-            driver.quit()
 
         expected_text = inspect.cleandoc(
             """Worthy Of The Feast
