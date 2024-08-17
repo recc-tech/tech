@@ -423,6 +423,9 @@ class Config(BaseConfig):
             # GitHub
             self.github_api_repo_url = reader.get_str("github.api_repo_url")
 
+            # Church Online Platform
+            self.cop_host_url = reader.get_str("cop.host_url")
+
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")

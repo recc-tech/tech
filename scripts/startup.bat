@@ -5,5 +5,5 @@
 CD /D %~dp0
 
 ./update_scripts.bat
-./launch_apps.bat
+./launch_apps.bat --auto-close
 ./mcr_setup.bat

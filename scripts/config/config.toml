@@ -98,6 +98,9 @@ final       = "%{folder.captions}%/final.vtt"
 base_url = "https://api.github.com"
 api_repo_url = "%{github.base_url}%/repos/recc-tech/tech"
 
+[cop]
+host_url = "https://riversedgemtl.online.church/"
+
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"

@@ -168,6 +168,22 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             dep.input_messenger.statuses[-1],
         )
 
+    def test_launch_apps_all(self) -> None:
+        apps = list(launch_apps.App)
+        args = LaunchAppsArgs.parse(["", "--no-run"] + [a.value for a in apps])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
     def test_launch_apps_foh(self) -> None:
         args = LaunchAppsArgs.parse(["", "pco", "foh_setup_checklist", "--no-run"])
         config = Config(args, allow_multiple_only_for_testing=True)
@@ -188,6 +204,7 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             [
                 "",
                 "pco",
+                "cop",
                 "mcr_setup_checklist",
                 "mcr_teardown_checklist",
                 "vmix",
