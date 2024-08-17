@@ -383,6 +383,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
             series_title=data["plan"]["series_title"],
             title=data["plan"]["title"],
             date=datetime.strptime(data["plan"]["date"], "%Y-%m-%d").date(),
+            web_page_url=data["plan"]["web_page_url"],
         ),
         walk_in_slides=data["walk_in_slides"],
         announcements=data["announcements"],

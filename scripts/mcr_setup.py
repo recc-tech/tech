@@ -3,9 +3,14 @@ from pathlib import Path
 
 import autochecklist
 import lib.mcr_setup as mcr_setup
-from args import McrSetupArgs
+from args import ReccArgs
 from config import McrSetupConfig
 from lib import ReccDependencyProvider
+
+
+class McrSetupArgs(ReccArgs):
+    NAME = "mcr_setup"
+    DESCRIPTION = "This script will guide you through the steps to setting up the MCR visuals station for a Sunday gathering."
 
 
 def main(
@@ -30,7 +35,5 @@ if __name__ == "__main__":
         script_name="MCR Setup",
         description=McrSetupArgs.DESCRIPTION,
         show_statuses_by_default=False,
-        headless=not args.show_browser,
-        webdriver_log=config.mcr_setup_webdriver_log,
     )
     main(args, config, dependency_provider)

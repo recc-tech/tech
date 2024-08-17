@@ -58,6 +58,7 @@ class Plan:
     title: str
     series_title: str
     date: date
+    web_page_url: str
 
 
 class FileType(Enum):
@@ -136,6 +137,7 @@ class PlanningCenterClient:
             title=plan["attributes"]["title"],
             series_title=plan["attributes"]["series_title"],
             date=dt,
+            web_page_url=plan["attributes"]["planning_center_url"],
         )
 
     def find_plan_items(

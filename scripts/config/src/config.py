@@ -405,13 +405,8 @@ class Config(BaseConfig):
             self.check_credentials_log = reader.get_file("logging.check_credentials")
             self.download_assets_log = reader.get_file("logging.download_pco_assets")
             self.generate_slides_log = reader.get_file("logging.generate_slides")
-            self.generate_slides_webdriver_log = reader.get_file(
-                "logging.generate_slides_webdriver"
-            )
+            self.launch_apps_log = reader.get_file("logging.launch_apps")
             self.mcr_setup_log = reader.get_file("logging.mcr_setup")
-            self.mcr_setup_webdriver_log = reader.get_file(
-                "logging.mcr_setup_webdriver"
-            )
             self.mcr_teardown_log = reader.get_file("logging.mcr_teardown")
             self.summarize_plan_log = reader.get_file("logging.summarize_plan")
             self.manual_test_log = reader.get_file("logging.manual_test")
@@ -425,9 +420,18 @@ class Config(BaseConfig):
             self.final_captions_file = reader.get_file("captions.final")
             self.caption_substitutions = reader.get_str_dict("captions.substitutions")
 
+            # GitHub
+            self.github_api_repo_url = reader.get_str("github.api_repo_url")
+
+            # Church Online Platform
+            self.cop_host_url = reader.get_str("cop.host_url")
+
             # BoxCast
             self.boxcast_base_url = reader.get_str("boxcast.base_url")
             self.boxcast_auth_base_url = reader.get_str("boxcast.auth_base_url")
+            self.boxcast_broadcasts_html_url = reader.get_str(
+                "boxcast.broadcasts_html_url"
+            )
             self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
             self.upload_captions_retry_delay = timedelta(
                 seconds=reader.get_float("boxcast.upload_captions_retry_delay")
@@ -481,6 +485,7 @@ class Config(BaseConfig):
             self.vmix_extra_presenter_title_key = reader.get_str(
                 "vmix.extra_presenter_title_key"
             )
+            self.vmix_preset_dir = reader.get_directory("vmix.preset_dir")
             self.vmix_preset_file = reader.get_file("vmix.preset_path")
 
             # API

@@ -1,4 +1,3 @@
-import subprocess
 import sys
 import traceback
 from argparse import ArgumentParser, Namespace
@@ -6,6 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 import autochecklist
+import external_services
 import lib
 from args import ReccArgs
 from autochecklist import Messenger, ProblemLevel, TaskModel, TaskStatus
@@ -68,8 +68,7 @@ def summarize_plan(
     messenger.log_status(TaskStatus.DONE, f"Saved summary at [[url|{url}|{fname}]].")
     if not args.no_open:
         try:
-            # Use Popen so this doesn't block
-            subprocess.Popen(["firefox", config.plan_summary_file.as_posix()])
+            external_services.launch_firefox(config.plan_summary_file.as_posix())
         except Exception as e:
             messenger.log_problem(
                 ProblemLevel.WARN,

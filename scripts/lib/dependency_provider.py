@@ -30,8 +30,6 @@ class ReccDependencyProvider(DependencyProvider):
         show_statuses_by_default: bool,
         messenger: Optional[Messenger] = None,
         lazy_login: bool = False,
-        headless: bool = True,
-        webdriver_log: Optional[Path] = None,
         credentials_input_policy: Optional[InputPolicy] = None,
     ) -> None:
         super().__init__(
@@ -49,8 +47,6 @@ class ReccDependencyProvider(DependencyProvider):
 
         # Optional args
         self._lazy_login = lazy_login
-        self._headless = headless
-        self._webdriver_log = webdriver_log
         self._credentials_input_policy = credentials_input_policy
 
         # Services
