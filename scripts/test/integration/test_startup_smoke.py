@@ -204,10 +204,11 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             [
                 "",
                 "pco",
+                "boxcast",
                 "cop",
+                "vmix",
                 "mcr_setup_checklist",
                 "mcr_teardown_checklist",
-                "vmix",
                 "--no-run",
             ]
         )

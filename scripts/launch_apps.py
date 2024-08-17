@@ -16,6 +16,7 @@ from lib import ReccDependencyProvider
 
 class App(Enum):
     PLANNING_CENTER = "pco"
+    BOXCAST = "boxcast"
     CHURCH_ONLINE_PLATFORM = "cop"
     FOH_SETUP_CHECKLIST = "foh_setup_checklist"
     MCR_SETUP_CHECKLIST = "mcr_setup_checklist"
@@ -48,10 +49,12 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
                     name="launch_PCO",
                     description="Open Planning Center Online.",
                 )
+            case App.BOXCAST:
+                t = TaskModel(name="launch_BoxCast", description="Open BoxCast.")
             case App.CHURCH_ONLINE_PLATFORM:
                 t = TaskModel(
                     name="launch_COP",
-                    description="Visit Church Online Platform.",
+                    description="Open Church Online Platform.",
                 )
             case App.FOH_SETUP_CHECKLIST:
                 t = TaskModel(
@@ -87,6 +90,10 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
 def launch_PCO(pco_client: PlanningCenterClient) -> None:
     plan = pco_client.find_plan_by_date(dt=config.start_time.date())
     external_services.launch_firefox(plan.web_page_url)
+
+
+def launch_BoxCast(config: Config) -> None:
+    external_services.launch_firefox(config.boxcast_broadcasts_html_url)
 
 
 def launch_COP(config: Config) -> None:
