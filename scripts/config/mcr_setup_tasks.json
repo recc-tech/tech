@@ -76,18 +76,10 @@
 					]
 				},
 				{
-					"name": "import_announcements_video",
-					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
-					"prerequisites": [
-						"download_assets"
-					]
-				},
-				{
 					"name": "restart_videos",
 					"description": "Restart all the videos and loops. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#restarting-a-video|More details]].",
 					"prerequisites": [
-						"import_Kids_Connection_video",
-						"import_announcements_video"
+						"import_Kids_Connection_video"
 					]
 				},
 				{
