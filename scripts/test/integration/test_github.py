@@ -18,9 +18,7 @@ class GitHubTestCase(unittest.TestCase):
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
-        expected_title = (
-            f"FOH Video Setup (Sunday, {sunday.strftime('%B')} {sunday.day}th)"
-        )
+        expected_title = f"FOH Video Setup (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
             type=IssueType.FOH_SETUP, config=_get_config()
         )
@@ -31,9 +29,7 @@ class GitHubTestCase(unittest.TestCase):
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
-        expected_title = (
-            f"MCR Video Setup (Sunday, {sunday.strftime('%B')} {sunday.day}th)"
-        )
+        expected_title = f"MCR Video Setup (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
             type=IssueType.MCR_SETUP, config=_get_config()
         )
@@ -44,9 +40,7 @@ class GitHubTestCase(unittest.TestCase):
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
-        expected_title = (
-            f"MCR Video Teardown (Sunday, {sunday.strftime('%B')} {sunday.day}th)"
-        )
+        expected_title = f"MCR Video Teardown (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
             type=IssueType.MCR_TEARDOWN, config=_get_config()
         )
@@ -106,3 +100,22 @@ def _get_latest_sunday() -> date:
     while t.isoweekday() != SUNDAY:
         t -= timedelta(days=1)
     return t
+
+
+def _day_with_suffix(day: int) -> str:
+    if day // 10 == 1:
+        # 10th, 11th, 12th, 13th, 14th, 15th, 16th, 17th, 18th, 19th
+        return f"{day}th"
+    elif day % 10 == 1:
+        # 1st, 21st, 31st
+        return f"{day}st"
+    elif day % 10 == 2:
+        # 2nd, 22nd
+        return f"{day}nd"
+    elif day % 10 == 3:
+        # 3rd, 23rd
+        return f"{day}rd"
+    else:
+        #        4th,  5th,  6th,  7th,  8th,  9th
+        # 20th, 24th, 25th, 26th, 27th, 28th, 29th, 30th
+        return f"{day}th"
