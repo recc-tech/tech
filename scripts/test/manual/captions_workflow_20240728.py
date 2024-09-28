@@ -1,5 +1,4 @@
 import sys
-import typing
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
@@ -109,9 +108,7 @@ def main():
         show_statuses_by_default=True,
     )
 
-    boxcast_client = typing.cast(
-        BoxCastApiClient, dependency_provider.get(BoxCastApiClient)
-    )
+    boxcast_client = dependency_provider.get(BoxCastApiClient)
     print("Resetting the captions to how they originally were...")
     boxcast_client.upload_captions(
         broadcast_id=_BROADCAST_ID, path=_ORIGINAL_CAPTIONS, cancellation_token=None
