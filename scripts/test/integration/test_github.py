@@ -87,7 +87,7 @@ class GitHubTestCase(unittest.TestCase):
             if len(visible_elems) != 1:
                 raise ValueError(f"Found {len(visible_elems)} visible h1 elements.")
             h1 = visible_elems[0]
-            self.assertEqual(expected_title, h1.get_attribute("innerText"))
+            self.assertEqual(expected_title, h1.get_attribute("textContent"))
 
 
 def _get_config() -> Config:

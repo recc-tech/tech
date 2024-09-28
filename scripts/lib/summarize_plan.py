@@ -7,7 +7,7 @@ import typing
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional, Set, Type, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
 from config import Config
@@ -241,23 +241,32 @@ def _get_songs(
     return songs
 
 
-def _has_duplicate_lines(sermon: str) -> bool:
-    lines = [ln for ln in sermon.split("\n") if ln.strip()]
-    normalized_lines = [re.sub(r"\s+", " ", ln).strip().lower() for ln in lines]
-    for i0, ln0 in enumerate(normalized_lines):
-        for i1, ln1 in enumerate(normalized_lines):
-            if i0 != i1 and ln0 == ln1:
-                return True
-    return False
+def _find_duplicate_lines(sermon: str) -> Set[str]:
+    lines: Set[str] = set()
+    duplicate_lines: Set[str] = set()
+    for line in sermon.split("\n"):
+        normalized_line = re.sub(r"\s+", " ", line).strip().lower()
+        if not normalized_line:
+            continue
+        if normalized_line in lines:
+            duplicate_lines.add(normalized_line)
+        else:
+            lines.add(normalized_line)
+    return duplicate_lines
 
 
 def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
     warnings: List[ItemNote] = []
-    if _has_duplicate_lines(original_notes.content):
+    duplicate_lines = _find_duplicate_lines(original_notes.content)
+    if duplicate_lines:
+        lines_str = ", ".join([f'"{x}"' for x in duplicate_lines])
         warnings.append(
             ItemNote(
                 category="Warning",
-                contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+                contents=(
+                    f"There are duplicate lines in the sermon notes ({lines_str})."
+                    " Check with Pastor Lorenzo that this is intentional."
+                ),
             )
         )
     return AnnotatedItem(
@@ -661,7 +670,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-notes").innerText;
+                const messageNotes = document.getElementById("message-notes").textContent;
                 navigator.clipboard.writeText(messageNotes);
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";

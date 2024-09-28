@@ -85,6 +85,8 @@ def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig)
     today = config.start_time.date()
     plan = client.find_plan_by_date(today)
     message_notes = client.find_message_notes(plan.id)
+    if not message_notes:
+        raise ValueError("No message notes have been posted to the plan yet.")
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
     with open(config.message_notes_file, "w", encoding="utf-8") as f:
         f.write(message_notes)

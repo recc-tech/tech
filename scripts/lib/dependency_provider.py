@@ -1,5 +1,6 @@
+import typing
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional, Type, TypeVar
 
 from args import ReccArgs
 from autochecklist import DependencyProvider, Messenger
@@ -16,6 +17,8 @@ from external_services import (
 
 from .assets import AssetManager
 from .slides import SlideBlueprintReader, SlideGenerator
+
+T = TypeVar("T")
 
 
 class ReccDependencyProvider(DependencyProvider):
@@ -61,7 +64,7 @@ class ReccDependencyProvider(DependencyProvider):
         self._vimeo_client: Optional[ReccVimeoClient] = None
         self._boxcast_client: Optional[BoxCastApiClient] = None
 
-    def get(self, typ: Type[object]) -> object:
+    def get(self, typ: Type[T]) -> T:
         method_by_type = {
             type(self._args): lambda: self._args,
             type(self._config): lambda: self._config,
@@ -78,7 +81,7 @@ class ReccDependencyProvider(DependencyProvider):
         }
         for t, f in method_by_type.items():
             if issubclass(t, typ):
-                return f()
+                return typing.cast(T, f())
         raise ValueError(f"Unknown argument type {typ.__name__}")
 
     def _get_credential_store(self) -> CredentialStore:

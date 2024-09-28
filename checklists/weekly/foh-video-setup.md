@@ -15,7 +15,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - [ ] Videos (opener, bumper, announcements)
     - [ ] Songs
     - [ ] Message
-- [ ] Make sure the projectors are lined up properly.
+- [ ] Make sure the projectors are lined up well and in focus.
 - [ ] Check that all the images and videos on Planning Center are in ProPresenter.
 - [ ] For each slide, make sure you use the correct look:
     - "Lyrics" for song lyrics
