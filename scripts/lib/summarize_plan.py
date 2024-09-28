@@ -661,7 +661,7 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-notes").innerText;
+                const messageNotes = document.getElementById("message-notes").textContent;
                 navigator.clipboard.writeText(messageNotes);
                 const check = document.getElementById("copy-confirm");
                 check.style.visibility = "visible";
