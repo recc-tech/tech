@@ -194,7 +194,7 @@ class GetPlanSummaryTestCase(unittest.TestCase):
                 notes=[
                     ItemNote(
                         category="Warning",
-                        contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+                        contents='There are duplicate lines in the sermon notes ("our worth is experienced through acceptance"). Check with Pastor Lorenzo that this is intentional.',
                     )
                 ],
             ),
