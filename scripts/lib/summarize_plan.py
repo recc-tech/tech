@@ -288,16 +288,8 @@ def get_plan_summary(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
     announcements = _get_announcements(items)
-    announcements_ignore_list = {
-        "announcement",
-        "continue to worship",
-        "piano playing in the background",
-        "pray for people",
-        "welcome",
-        "welcome everyone",
-    }
     announcements = [
-        a for a in announcements if a.lower() not in announcements_ignore_list
+        a for a in announcements if a.lower() not in config.announcements_to_ignore
     ]
     announcements_video = _get_announcements_video(
         items, messenger, note_categories=config.plan_summary_note_categories
