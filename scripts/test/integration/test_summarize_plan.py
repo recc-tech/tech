@@ -103,10 +103,6 @@ class GetPlanSummaryTestCase(unittest.TestCase):
             ],
             opener_video=AnnotatedItem(content="Welcome Opener Video", notes=[]),
             announcements=[
-                "PIANO playing In the Background",
-                "WELCOME",
-                "PRAY For People",
-                "CONTINUE To Worship",
                 "GIVING TALK",
                 "Prayer Ministry",
                 "After Party",
@@ -207,13 +203,15 @@ class GetPlanSummaryTestCase(unittest.TestCase):
     # doesn't hurt to keep it around.
     def test_summarize_20240225(self) -> None:
         (pco_client, messenger, log_problem_mock, config) = self._set_up()
-        dt = date(year=2024, month=2, day=25)
 
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240225_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client, messenger=messenger, config=config, dt=dt
+            client=pco_client,
+            messenger=messenger,
+            config=config,
+            dt=date(2024, 2, 25),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
@@ -227,13 +225,15 @@ class GetPlanSummaryTestCase(unittest.TestCase):
     #  * Duplicate line in message notes (which I added for testing)
     def test_summarize_20240414(self) -> None:
         (pco_client, messenger, log_problem_mock, config) = self._set_up()
-        dt = date(year=2024, month=4, day=14)
 
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240414_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client, messenger=messenger, config=config, dt=dt
+            client=pco_client,
+            messenger=messenger,
+            config=config,
+            dt=date(2024, 4, 14),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
@@ -243,13 +243,15 @@ class GetPlanSummaryTestCase(unittest.TestCase):
     #  * CCLI number in the description of each song
     def test_summarize_20240505(self) -> None:
         (pco_client, messenger, log_problem_mock, config) = self._set_up()
-        dt = date(year=2024, month=5, day=5)
 
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240505_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client, messenger=messenger, config=config, dt=dt
+            client=pco_client,
+            messenger=messenger,
+            config=config,
+            dt=date(2024, 5, 5),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
