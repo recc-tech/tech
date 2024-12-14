@@ -3,11 +3,11 @@ from datetime import date
 from typing import List
 from unittest.mock import call, create_autospec
 
-from args import McrSetupArgs
 from autochecklist import Messenger, ProblemLevel
 from config import McrSetupConfig
 from external_services import Plan, PlanningCenterClient, PresenterSet, VmixClient
 from lib import mcr_setup
+from mcr_setup import McrSetupArgs
 
 
 class McrSetupTestCase(unittest.TestCase):
@@ -210,7 +210,11 @@ class McrSetupTestCase(unittest.TestCase):
     ) -> PlanningCenterClient:
         pco_client = create_autospec(PlanningCenterClient)
         pco_client.find_plan_by_date.return_value = Plan(
-            id="123456", title=title, series_title=series, date=date
+            id="123456",
+            title=title,
+            series_title=series,
+            date=date,
+            web_page_url="https://example.com",
         )
         pco_client.find_presenters.return_value = PresenterSet(
             speaker_names=speakers,

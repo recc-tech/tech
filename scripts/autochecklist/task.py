@@ -355,6 +355,7 @@ class DependencyProvider:
         show_statuses_by_default: bool,
         ui_theme: Literal["light", "dark"],
         messenger: Optional[Messenger],
+        auto_close_messenger: bool,
         icon: Optional[Path] = None,
     ) -> None:
         self._args = args
@@ -366,6 +367,7 @@ class DependencyProvider:
             show_statuses_by_default=show_statuses_by_default,
             ui_theme=ui_theme,
             icon=icon,
+            auto_close=auto_close_messenger,
         )
 
     def _make_messenger(
@@ -376,6 +378,7 @@ class DependencyProvider:
         show_statuses_by_default: bool,
         ui_theme: Literal["light", "dark"],
         icon: Optional[Path],
+        auto_close: bool,
     ) -> Messenger:
         file_messenger = FileMessenger(log_file=log_file)
         input_messenger = (
@@ -391,6 +394,7 @@ class DependencyProvider:
                 theme=ui_theme,
                 show_statuses_by_default=show_statuses_by_default,
                 icon=icon,
+                auto_close=auto_close,
             )
         )
         return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
@@ -415,10 +419,12 @@ class FunctionFinder:
         module: Optional[ModuleType],
         dependency_provider: DependencyProvider,
         messenger: Messenger,
+        allow_unused_functions: bool,
     ) -> None:
         self._module = module
         self._dependency_provider = dependency_provider
         self._messenger = messenger
+        self._allow_unused_functions = allow_unused_functions
 
     def find_functions(
         self, names: List[str]
@@ -437,7 +443,7 @@ class FunctionFinder:
         # Allow function called "main," in case the script has the task
         # implementations all in the same file
         unused_function_names -= {"main"}
-        if len(unused_function_names) > 0:
+        if len(unused_function_names) > 0 and not self._allow_unused_functions:
             self._messenger.log_problem(
                 ProblemLevel.WARN,
                 f"The following functions are not used by any task: {', '.join(unused_function_names)}",

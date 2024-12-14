@@ -5,8 +5,10 @@ Code for connecting to external services (BoxCast, Vimeo, etc.)
 # pyright: reportUnusedImport=false
 
 from .bible import BibleVerse, BibleVerseFinder
-from .boxcast import BoxCastApiClient, Broadcast
+from .boxcast import BoxCastApiClient, Broadcast, NoCaptionsError
 from .credentials import Credential, CredentialStore, InputPolicy
+from .github import Issue, IssueType, find_latest_github_issue
+from .local_apps import launch_firefox, launch_vmix
 from .planning_center import (
     Attachment,
     FileType,
@@ -20,4 +22,3 @@ from .planning_center import (
 )
 from .vimeo import ReccVimeoClient
 from .vmix import VmixClient, VmixInput, VmixInputType, VmixState
-from .web_driver import ReccWebDriver

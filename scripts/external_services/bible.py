@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 import re
-import traceback
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from urllib.parse import quote_plus
 
-from autochecklist import CancellationToken, Messenger, ProblemLevel
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-
-from .web_driver import ReccWebDriver
+import lxml.etree as lx
+import requests
 
 # region Create list of Bible book names and aliases
 
@@ -330,82 +326,45 @@ class BibleVerse:
 
 
 class BibleVerseFinder:
-    def __init__(self, driver: ReccWebDriver, messenger: Messenger):
-        self._driver = driver
-        self._messenger = messenger
-        self._set_cookies()
-
-    def find(
-        self, verse: BibleVerse, cancellation_token: Optional[CancellationToken] = None
-    ) -> Optional[str]:
-        try:
-            self._get_page(verse)
-            by = By.XPATH
-            xpath = "//div[@class='passage-text']//p"
-            paragraphs = self._driver.find_elements(by, xpath)
-            if not paragraphs:
-                raise NoSuchElementException(
-                    f"No elements found for the given criteria (by = {by}, value = '{xpath}')."
-                )
-            text = "\n".join([p.get_attribute("innerText") for p in paragraphs])
-            return self._normalize(text)
-        except Exception:
-            self._messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to fetch text for Bible verse {verse}.",
-                stacktrace=traceback.format_exc(),
+    def find(self, verse: BibleVerse) -> str:
+        url = _get_url(verse)
+        response = requests.get(url)
+        if response.status_code // 100 != 2:
+            raise ValueError(
+                f"Request to {url} failed with status code {response.status_code}."
             )
-            return None
 
-    def _get_page(self, verse: BibleVerse, use_print_interface: bool = True):
-        search = quote_plus(f"{verse.book} {verse.chapter}:{verse.verse}")
-        url = f"https://www.biblegateway.com/passage/?search={search}&version={verse.translation}"
-        if use_print_interface:
-            url += "&interface=print"
-        self._driver.get(url)
+        root = lx.HTML(response.text)
+        paragraphs = root.xpath("//div[contains(@class, 'passage-text')]//p")
+        if len(paragraphs) == 0:
+            raise ValueError(f"Failed to find the text for the verse '{verse}'.")
+        text = "\n".join(_get_verse_text(p) for p in paragraphs)
+        return _normalize(text)
 
-    def _set_cookies(self) -> None:
-        # Need to be on BibleGateway website before cookies can be set
-        self._driver.get(
-            "https://www.biblegateway.com/passage/?search=john+3%3A16&version=NLT&interface=print"
-        )
-        self._driver.add_cookie({"name": "BGP_pslookup_showxrefs", "value": "no"})
-        self._driver.add_cookie({"name": "BGP_pslookup_showfootnotes", "value": "no"})
-        self._driver.add_cookie({"name": "BGP_pslookup_showversenums", "value": "no"})
-        self._driver.add_cookie({"name": "BGP_pslookup_showheadings", "value": "no"})
-        self._driver.add_cookie({"name": "BGP_pslookup_showwoj", "value": "no"})
 
-    def _set_page_options(self, cancellation_token: Optional[CancellationToken]):
-        self._get_page(BibleVerse("Genesis", 1, 1, "NLT"), use_print_interface=False)
+def _get_url(verse: BibleVerse) -> str:
+    search = quote_plus(f"{verse.book} {verse.chapter}:{verse.verse}")
+    return f"https://www.biblegateway.com/passage/?search={search}&version={verse.translation}&interface=print"
 
-        page_options_btn = self._driver.wait_for_single_element(
-            By.XPATH,
-            "//*[name()='svg']/*[name()='title'][contains(., 'Page Options')]/..",
-            cancellation_token=cancellation_token,
-        )
-        page_options_btn.click()
 
-        for title in ["Cross-references", "Footnotes", "Verse Numbers", "Headings"]:
-            checkbox = self._driver.wait_for_single_element(
-                By.XPATH,
-                f"//*[name()='svg']/*[name()='title'][contains(., '{title}')]/..",
-                cancellation_token=cancellation_token,
-            )
-            checkbox_name = checkbox.get_attribute("name")
-            if checkbox_name == "checked":
-                self._messenger.log_debug(
-                    f"Checkbox for option '{title}' was checked. Disabling it now."
-                )
-                checkbox.click()
-            elif checkbox_name == "square":
-                self._messenger.log_debug(
-                    f"Checkbox for option '{title}' was already unchecked."
-                )
-            else:
-                self._messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"While setting page options on BibleGateway, could not determine whether option '{title}' is enabled or disabled. Some verses might contain extra unwanted text, such as footnote numbers or cross-references.",
-                )
+def _get_verse_text(e: lx._Element) -> str:  # pyright: ignore[reportPrivateUsage]
+    text = "\n" if e.tag == "br" else (e.text or "")
+    for ee in e:
+        if not _should_skip(ee):
+            text += _get_verse_text(ee)
+        text += ee.tail or ""
+    return text
 
-    def _normalize(self, text: str) -> str:
-        return re.sub(r"\s+", " ", text)
+
+def _should_skip(e: lx._Element) -> bool:  # pyright: ignore[reportPrivateUsage]
+    cls = e.get("class") or ""
+    return (
+        "versenum" in cls
+        or "chapternum" in cls
+        or "footnote" in cls
+        or "crossreference" in cls
+    )
+
+
+def _normalize(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()

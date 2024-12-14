@@ -134,7 +134,8 @@ class ResponsiveTextbox(Text):
         tags = [t for t in self.tag_names("current") if t.startswith("url:")]
         if len(tags) == 1:
             url = self.url_by_tag[tags[0]]
-            subprocess.run(["firefox", url])
+            # Use Popen so this doesn't block
+            subprocess.Popen(["firefox", url])
         elif len(tags) == 0:
             warnings.warn("No tags found for the clicked hyperlink.")
         else:

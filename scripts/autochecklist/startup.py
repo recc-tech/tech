@@ -10,6 +10,7 @@ from .messenger import Messenger, ProblemLevel, TaskStatus
 from .task import DependencyProvider, FunctionFinder, TaskGraph, TaskModel
 
 _ERROR_FILE = Path("error.log")
+_STARTUP_FILE = Path("startup.txt")
 _SUCCESS_MESSAGE = "All done!"
 _FAIL_MESSAGE = "Script failed."
 
@@ -20,6 +21,7 @@ def run(
     dependency_provider: DependencyProvider,
     tasks: Union[Path, TaskModel],
     module: Optional[ModuleType],
+    allow_unused_functions: bool = False,
 ) -> None:
     # If the program is being run *without* a terminal window, then redirect
     # stderr to the given file.
@@ -37,6 +39,7 @@ def run(
                 tasks=tasks,
                 module=module,
                 dependency_provider=dependency_provider,
+                allow_unused_functions=allow_unused_functions,
             )
         else:
             sys.stderr = se
@@ -46,6 +49,7 @@ def run(
                 tasks=tasks,
                 module=module,
                 dependency_provider=dependency_provider,
+                allow_unused_functions=allow_unused_functions,
             )
     # No need to keep the file around if the program exited successfully and
     # it's empty
@@ -64,6 +68,7 @@ def _run_main(
     tasks: Union[Path, TaskModel],
     module: Optional[ModuleType],
     dependency_provider: DependencyProvider,
+    allow_unused_functions: bool,
 ) -> None:
     messenger = dependency_provider.messenger
     try:
@@ -75,6 +80,7 @@ def _run_main(
                 tasks=tasks,
                 module=module,
                 dependency_provider=dependency_provider,
+                allow_unused_functions=allow_unused_functions,
             )
         )
     except Exception as e:
@@ -88,8 +94,14 @@ def _run_worker(
     tasks: Union[Path, TaskModel],
     module: Optional[ModuleType],
     dependency_provider: DependencyProvider,
+    allow_unused_functions: bool,
 ) -> None:
     try:
+        try:
+            _STARTUP_FILE.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"Failed to delete {_STARTUP_FILE}.", file=sys.stderr)
+
         try:
             if isinstance(tasks, Path):
                 messenger.log_status(
@@ -103,8 +115,15 @@ def _run_worker(
                 module=module,
                 dependency_provider=dependency_provider,
                 messenger=messenger,
+                allow_unused_functions=allow_unused_functions,
             )
-            task_graph = TaskGraph(tasks, messenger, function_finder, args, config)
+            task_graph = TaskGraph(
+                tasks,
+                messenger,
+                function_finder,
+                args,
+                config,
+            )
         except Exception as e:
             messenger.log_problem(
                 ProblemLevel.FATAL,

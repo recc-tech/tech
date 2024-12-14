@@ -17,24 +17,101 @@ captions = "%{folder.home}%/Captions/%{args.startup_ymd}%"
 archived_assets = "%{folder.assets_by_type}%/Archive"
 
 [logging]
-check_credentials         = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
-generate_slides           = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
-generate_slides_webdriver = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides_webdriver.log"
-download_pco_assets       = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
-mcr_setup                 = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup.log"
-mcr_setup_webdriver       = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup_webdriver.log"
-mcr_teardown              = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
-summarize_plan            = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"
-manual_test               = "%{folder.logs}%/%{args.startup_timestamp}% manual_test.log"
+check_credentials   = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
+download_pco_assets = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
+generate_slides     = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
+launch_apps         = "%{folder.logs}%/%{args.startup_timestamp}% launch_apps.log"
+mcr_setup           = "%{folder.logs}%/%{args.startup_timestamp}% mcr_setup.log"
+mcr_teardown        = "%{folder.logs}%/%{args.startup_timestamp}% mcr_teardown.log"
+summarize_plan      = "%{folder.logs}%/%{args.startup_timestamp}% summarize_plan.log"
+manual_test         = "%{folder.logs}%/%{args.startup_timestamp}% manual_test.log"
+boxcast_verbose_logging = false
 
 [captions]
-original = "%{folder.captions}%/original.vtt"
-final = "%{folder.captions}%/final.vtt"
+original    = "%{folder.captions}%/original.vtt"
+auto_edited = "%{folder.captions}%/auto_edited.vtt"
+final       = "%{folder.captions}%/final.vtt"
+
+	[captions.substitutions]
+	# Each phrase on the left will be replaced by the corresponding phrase on
+	# the right in the captions.
+
+	# River's Edge-specific
+	"River's edge" = "River's Edge"
+	"river's edge" = "River's Edge"
+	"mosaic" = "Mosaic"
+
+	# Days of the week
+	"monday" = "Monday"
+	"tuesday" = "Tuesday"
+	"wednesday" = "Wednesday"
+	"thursday" = "Thursday"
+	"friday" = "Friday"
+	"saturday" = "Saturday"
+	"sunday" = "Sunday"
+
+	# Months of the year
+	"january" = "January"
+	"february" = "February"
+	"march" = "March"
+	"april" = "April"
+	# "May" omitted because "may" is a valid common noun
+	"june" = "June"
+	"july" = "July"
+	"august" = "August"
+	"september" = "September"
+	"october" = "October"
+	"november" = "November"
+	"december" = "December"
+
+	# Miscellaneous
+	"jesus" = "Jesus"
+	"mary" = "Mary"
+	"joseph" = "Joseph"
+	"holy spirit" = "Holy Spirit"
+	"Holy spirit" = "Holy Spirit"
+	"holy Spirit" = "Holy Spirit"
+	"christians" = "Christians"
+	"christian" = "Christian"
+	"christmases" = "Christmases"
+	"christmas" = "Christmas"
+	"christ" = "Christ"
+	"bible" = "Bible"
+	"messiah" = "Messiah"
+	"gentiles" = "Gentiles"
+	"gentile" = "Gentile"
+	"judas" = "Judas"
+	"moses" = "Moses"
+	"peter" = "Peter"
+	"roman" = "Roman"
+	"romans" = "Romans"
+	"thomas" = "Thomas"
+	"philistines" = "Philistines"
+	"philistine" = "Philistine"
+	"easter" = "Easter"
+	"moabites" = "Moabites"
+	"moabite" = "Moabite"
+	"moab" = "Moab"
+	"galilee" = "Galilee"
+
+[github]
+base_url = "https://api.github.com"
+api_repo_url = "%{github.base_url}%/repos/recc-tech/tech"
+
+[cop]
+host_url = "https://riversedgemtl.online.church/"
 
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
+broadcasts_html_url = "https://dashboard.boxcast.com/broadcasts"
 rebroadcast_title = "Sunday Gathering Rebroadcast: %{args.startup_mdy}%"
+# In seconds
+upload_captions_retry_delay = 15
+# In seconds
+generate_captions_retry_delay = 60
+# In minutes
+max_captions_wait_time = 30
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
@@ -63,11 +140,11 @@ video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
 user_id = "viac_bvteonscuog48b2lnilu"
 
 [vmix]
-base_url = "http://192.168.0.107:8088/api"
-preset_path = "%{folder.home}%/vMix Presets/%{args.startup_ymd}% Live.vmix"
+base_url = "http://192.168.0.178:8088/api"
+preset_dir = "%{folder.home}%/vMix Presets"
+preset_path = "%{vmix.preset_dir}%/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
 kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
-announcements_list_key = "e1546910-ee02-4ce5-8733-3d20f2dcce3b"
 pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
 speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
 host_title_key = "407171aa-af67-4d25-8ab5-1659176fc79d"
@@ -75,7 +152,7 @@ extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
 [api]
 # After this many seconds, a request is assumed to have failed
-timeout_seconds = 15.0
+timeout_seconds = 30.0
 
 [plan_summary]
 # Where to save the summary

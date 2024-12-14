@@ -1,7 +1,7 @@
 ---
 title: FOH Video Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
-labels: checklist
+labels: checklist, foh_setup_checklist
 ---
 
 # FOH Setup Checklist
@@ -15,7 +15,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - [ ] Videos (opener, bumper, announcements)
     - [ ] Songs
     - [ ] Message
-- [ ] Make sure the projectors are lined up properly.
+- [ ] Make sure the projectors are lined up well and in focus.
 - [ ] Check that all the images and videos on Planning Center are in ProPresenter.
 - [ ] For each slide, make sure you use the correct look:
     - "Lyrics" for song lyrics
@@ -23,6 +23,8 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - "Message" for the sermon notes
     - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
 - [ ] Make sure the walk-in slides all have their "Go to Next Timer" set and the other slides do not have a timer.
+    - For slides with a QR code, set the "Go to Next Timer" to 8 seconds.
+    - Otherwise, set the "Go to Next Timer" to 5 seconds.
 - [ ] Look for special events in the plan on Planning Center Online (e.g., baptism, child dedication).
 - Look for special requests or notes (e.g., custom lyrics, scripture to be shown before worship):
     - [ ] On Planning Center

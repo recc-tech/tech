@@ -223,7 +223,10 @@ if __name__ == "__main__":
         script_name="AutoChecklist Demo",
         description=_DESCRIPTION,
         show_statuses_by_default=True,
-        ui_theme="dark",
+        ui_theme=args.ui_theme,
+        # No point in passing True here, since this script will always have
+        # some warnings and errors if you run the whole thing
+        auto_close_messenger=False,
     )
     autochecklist.run(
         args=args,

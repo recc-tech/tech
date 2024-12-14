@@ -12,3 +12,4 @@ CD /D %~dp0
 
 :: Start the command without a terminal window
 start pythonw check_credentials.py
+wait_for_start.bat

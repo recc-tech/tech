@@ -7,15 +7,16 @@ __pycache__/
 .coverage
 
 /scripts/error.log
+/scripts/startup.txt
 /scripts/config/active_profile.txt
 /scripts/test/integration/actual_message_blueprints/
 /scripts/test/integration/autochecklist_data/*.log
 /scripts/test/integration/boxcast_test_home/
 /scripts/test/integration/captions_analysis/worship_caption_removal_stats.json
+/scripts/test/integration/captions_temp/
 /scripts/test/integration/boxcast_temp/
 /scripts/test/integration/planning_center_temp/
 /scripts/test/integration/repo_copy/
 /scripts/test/integration/startup_smoke_test_data/test.log
 /scripts/test/integration/summarize_plan_temp/
 /scripts/test/manual/home/
-/scripts/test/manual/data/

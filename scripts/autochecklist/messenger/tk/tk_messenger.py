@@ -5,6 +5,7 @@ from __future__ import annotations
 import ctypes
 import platform
 import subprocess
+import sys
 import threading
 import tkinter
 import typing
@@ -17,8 +18,6 @@ from threading import Lock
 from tkinter import Canvas, IntVar, Menu, Misc, PhotoImage, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
-
-import pyperclip
 
 from ...base_config import BaseConfig
 from ..input_messenger import (
@@ -41,6 +40,8 @@ _H2_FONT = "Calibri 18 bold"
 
 
 class TkMessenger(InputMessenger):
+    """Tkinter-based user interface."""
+
     _QUEUE_EVENT = "<<TaskQueued>>"
 
     def __init__(
@@ -52,23 +53,34 @@ class TkMessenger(InputMessenger):
         theme: Literal["dark", "light"],
         show_statuses_by_default: bool,
         icon: Optional[Path] = None,
+        auto_close: bool = False,
     ) -> None:
+        """
+        Initialize a `TkMessenger` object, but do not show the GUI yet.
+        """
         self._title = title
         self._description = description
         self._config = config
         self._show_statuses_by_default = show_statuses_by_default
         self._icon = icon
+        self._auto_close = auto_close
         self._background = "#323232" if theme == "dark" else "#EEEEEE"
         self._foreground = "#FFFFFF" if theme == "dark" else "#000000"
         self._light_foreground = "#888888"
 
         self._start_event = threading.Event()
         self._end_event = threading.Event()
+        self._is_script_done = False
+        self._num_problems = 0
         self._mutex = Lock()
         self._waiting_events: Set[threading.Event] = set()
         self._queue: Queue[_GuiTask] = Queue()
 
     def run_main_loop(self) -> None:
+        """
+        Show the GUI and run the main loop.
+        This should be called from the main thread.
+        """
         try:
             self._create_gui()
             self._tk.after(0, lambda: self._start_event.set())
@@ -87,30 +99,56 @@ class TkMessenger(InputMessenger):
             if task.update_scrollregion:
                 self._handle_update_scrollregion()
         except Exception as e:
-            print(f"Exception in custom event handler: {e}")
+            print(f"Exception in custom event handler: {e}", file=sys.stderr)
 
     def wait_for_start(self) -> None:
+        """Wait until the GUI has appeared and the main loop has started."""
         self._start_event.wait()
 
     @property
     def is_closed(self) -> bool:
+        """Whether the GUI has been closed."""
         return self._end_event.is_set()
 
     def close(self) -> None:
+        """
+        This should be called *by the script* once it is done (i.e., all tasks
+        have been completed).
+        The window will not necessarily be closed immediately.
+        """
+
         def show_goodbye_message() -> None:
             self._action_items_section.set_message(
                 "All done :D Close this window to exit."
             )
 
+        with self._mutex:
+            error_count = self._num_problems
+
         if self.is_closed:
             return
+        if self._auto_close and error_count == 0:
+            self._tk.quit()
         else:
+            self._is_script_done = True
             self._tk.after_idle(show_goodbye_message)
             self._end_event.wait()
+
+    def _handle_exit(self):
+        """
+        Called when the user presses the "x" button to close the window.
+        """
+        should_exit = self._is_script_done or self.input_bool(
+            title="Confirm exit",
+            prompt="Are you sure you want to exit? The script is not done yet.",
+        )
+        if should_exit:
+            self._tk.quit()
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
     ) -> None:
+        """Report the progress of a task."""
         if self.is_closed:
             raise KeyboardInterrupt()
 
@@ -123,8 +161,11 @@ class TkMessenger(InputMessenger):
         self._tk.event_generate(self._QUEUE_EVENT)
 
     def log_problem(self, task_name: str, level: ProblemLevel, message: str) -> None:
+        """Report that a problem has occurred."""
         if self.is_closed:
             raise KeyboardInterrupt()
+        with self._mutex:
+            self._num_problems += 1
 
         def do_log_problem() -> None:
             self._problems_frame.grid()
@@ -141,6 +182,7 @@ class TkMessenger(InputMessenger):
         prompt: str = "",
         title: str = "",
     ) -> T:
+        """Request a single input from the user."""
         param = Parameter(display_name, parser, password, description=prompt)
         results = self.input_multiple({"param": param}, prompt="", title=title)
         return typing.cast(T, results["param"])
@@ -148,6 +190,8 @@ class TkMessenger(InputMessenger):
     def input_multiple(
         self, params: Dict[str, Parameter], prompt: str = "", title: str = ""
     ) -> Dict[str, object]:
+        """Request multiple inputs from the user at once."""
+
         def handle_submit() -> None:
             submit_event.set()
 
@@ -257,6 +301,7 @@ class TkMessenger(InputMessenger):
         return output_by_key, error_by_key
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
+        """Ask the user a yes/no question."""
         # This may be called from the main thread, so use IntVar and
         # wait_variable() rather than threading.Event() and event.wait().
         choice = False
@@ -314,6 +359,10 @@ class TkMessenger(InputMessenger):
         prompt: str,
         allowed_responses: Set[UserResponse],
     ) -> UserResponse:
+        """
+        Wait for the user to confirm that they have completed a task manually,
+        to request that the task automation be re-run, etc.
+        """
         if self.is_closed:
             raise KeyboardInterrupt()
 
@@ -380,6 +429,10 @@ class TkMessenger(InputMessenger):
     def add_command(
         self, task_name: str, command_name: str, callback: Callable[[], None]
     ) -> None:
+        """
+        Add a command related to a specific task (e.g., to cancel that task).
+        """
+
         def do_add_command() -> None:
             self._task_statuses_grid.upsert_command(task_name, command_name, callback)
 
@@ -387,6 +440,8 @@ class TkMessenger(InputMessenger):
         self._tk.event_generate(self._QUEUE_EVENT)
 
     def remove_command(self, task_name: str, command_name: str) -> None:
+        """Remove a previously-added task-specific command."""
+
         def do_remove_command() -> None:
             self._task_statuses_grid.remove_command(task_name, command_name)
 
@@ -413,14 +468,10 @@ class TkMessenger(InputMessenger):
         region = canvas.bbox("all")
         canvas.config(scrollregion=region)
 
-    def _confirm_exit(self):
-        should_exit = self.input_bool(
-            title="Confirm exit", prompt="Are you sure you want to exit?"
-        )
-        if should_exit:
-            self._tk.quit()
-
     def _reload_config(self) -> None:
+        """
+        Called when the user presses the "Reload Config" button.
+        """
         try:
             self._config.reload()
         except Exception as e:
@@ -436,6 +487,7 @@ class TkMessenger(InputMessenger):
         )
 
     def _create_gui(self) -> None:
+        """Build the `Tk` object to be used for the GUI."""
         # Try to make the GUI less blurry
         try:
             windll = ctypes.windll  # pyright: ignore[reportAttributeAccessIssue]
@@ -470,7 +522,7 @@ class TkMessenger(InputMessenger):
 
         # -------------------- Behaviour --------------------
 
-        self._tk.protocol("WM_DELETE_WINDOW", self._confirm_exit)
+        self._tk.protocol("WM_DELETE_WINDOW", self._handle_exit)
         self._right_click_menu = self._create_right_click_menu()
         self._progress_bar_group = ProgressBarGroup(
             self._tk,
@@ -647,6 +699,9 @@ class TkMessenger(InputMessenger):
     def _create_input_dialog(
         self, title: str, prompt: str, params: Dict[str, Parameter]
     ) -> Tuple[Toplevel, Dict[str, Entry], Dict[str, ResponsiveTextbox], Button]:
+        """
+        Create the popup window to be used for taking input.
+        """
         entry_by_name: Dict[str, Entry] = {}
         error_message_by_name: Dict[str, ResponsiveTextbox] = {}
         w = Toplevel(self._tk, padx=10, pady=10, background=self._background)
@@ -717,15 +772,23 @@ class TkMessenger(InputMessenger):
             raise
 
     def _create_right_click_menu(self) -> Menu:
+        """
+        Create the right-click context menu, but do not show it yet.
+        """
         menu = Menu(None, tearoff=0)
         menu.add_command(label="Copy")
         menu.add_command(label="Open in Notepad++")
         return menu
 
     def _show_right_click_menu(self, event: tkinter.Event[Misc]):
+        """
+        Show the right-click context menu.
+        """
+
         def try_copy(text: str) -> None:
             try:
-                pyperclip.copy(text)
+                self._tk.clipboard_clear()
+                self._tk.clipboard_append(text)
             except Exception as e:
                 messagebox.showwarning(
                     title="Failed to copy",

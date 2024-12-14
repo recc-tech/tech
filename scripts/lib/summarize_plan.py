@@ -7,7 +7,7 @@ import typing
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional, Set, Type, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
 from config import Config
@@ -50,9 +50,12 @@ class PlanItemsSummary:
 T = TypeVar("T")
 
 
-def _get_one(items: List[T], messenger: Messenger, name: str) -> Optional[T]:
+def _get_one(
+    items: List[T], messenger: Messenger, name: str, missing_ok: bool = False
+) -> Optional[T]:
     if len(items) == 0:
-        messenger.log_problem(ProblemLevel.WARN, f"No {name} found.")
+        if not missing_ok:
+            messenger.log_problem(ProblemLevel.WARN, f"No {name} found.")
         return None
     elif len(items) == 1:
         return items[0]
@@ -185,7 +188,7 @@ def _get_announcements_video(
     matches = [
         i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
     ]
-    itm = _get_one(matches, messenger, "announcements video")
+    itm = _get_one(matches, messenger, "announcements video", missing_ok=True)
     return (
         None
         if itm is None
@@ -238,23 +241,32 @@ def _get_songs(
     return songs
 
 
-def _has_duplicate_lines(sermon: str) -> bool:
-    lines = [ln for ln in sermon.split("\n") if ln.strip()]
-    normalized_lines = [re.sub(r"\s+", " ", ln).strip().lower() for ln in lines]
-    for i0, ln0 in enumerate(normalized_lines):
-        for i1, ln1 in enumerate(normalized_lines):
-            if i0 != i1 and ln0 == ln1:
-                return True
-    return False
+def _find_duplicate_lines(sermon: str) -> Set[str]:
+    lines: Set[str] = set()
+    duplicate_lines: Set[str] = set()
+    for line in sermon.split("\n"):
+        normalized_line = re.sub(r"\s+", " ", line).strip().lower()
+        if not normalized_line:
+            continue
+        if normalized_line in lines:
+            duplicate_lines.add(normalized_line)
+        else:
+            lines.add(normalized_line)
+    return duplicate_lines
 
 
 def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
     warnings: List[ItemNote] = []
-    if _has_duplicate_lines(original_notes.content):
+    duplicate_lines = _find_duplicate_lines(original_notes.content)
+    if duplicate_lines:
+        lines_str = ", ".join([f'"{x}"' for x in duplicate_lines])
         warnings.append(
             ItemNote(
                 category="Warning",
-                contents="There are duplicate lines in the sermon notes. Check with Pastor Lorenzo that this is intentional.",
+                contents=(
+                    f"There are duplicate lines in the sermon notes ({lines_str})."
+                    " Check with Pastor Lorenzo that this is intentional."
+                ),
             )
         )
     return AnnotatedItem(
@@ -380,6 +392,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
             series_title=data["plan"]["series_title"],
             title=data["plan"]["title"],
             date=datetime.strptime(data["plan"]["date"], "%Y-%m-%d").date(),
+            web_page_url=data["plan"]["web_page_url"],
         ),
         walk_in_slides=data["walk_in_slides"],
         announcements=data["announcements"],
@@ -493,8 +506,12 @@ def _make_videos_table(
     opener_notes = _show_notes(opener.notes) if opener is not None else ""
     bumper_name = _escape(bumper.content) if bumper is not None else missing
     bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-    announcements_name = _escape(announcements.content) if announcements is not None else missing
-    announcements_notes = _show_notes(announcements.notes) if announcements is not None else ""
+    announcements_name = (
+        _escape(announcements.content) if announcements is not None else missing
+    )
+    announcements_notes = (
+        _show_notes(announcements.notes) if announcements is not None else ""
+    )
 
     rows = [
         ["Opener", opener_name, opener_notes],
@@ -667,9 +684,8 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                // Select and retrieve text content; ensure browser compatibility (looking at you Safari >:[)
                 const messageNotesElement = document.getElementById("message-notes");
-                const messageNotes = messageNotesElement.innerText || messageNotesElement.textContent;
+                const messageNotes = messageNotesElement.textContent;
 
                 // Attempt to copy text to clipboard; make copy-confirm more dynamic
                 navigator.clipboard.writeText(messageNotes)
@@ -678,13 +694,13 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                         if (confirmElement) {{
                             confirmElement.style.visibility = 'visible';
                             setTimeout(() => {{
-                                confirmElement.style.visibility = 'hidden';
-                        }}, 2000);
-                    }}
-                }})
+                                    confirmElement.style.visibility = 'hidden';
+                            }}, 2000);
+                        }}
+                    }})
                     .catch(err => {{
-                    console.error('Failed to copy text: ', err);
-                }});
+                        console.error('Failed to copy text: ', err);
+                    }});
             }}
         </script>
     </head>

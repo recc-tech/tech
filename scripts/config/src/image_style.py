@@ -56,7 +56,11 @@ class Colour:
     @staticmethod
     def parse(colour: str) -> Colour:
         colour = colour.lower()
-        colour = ImageColor.colormap.get(colour, colour)
+        match ImageColor.colormap.get(colour, colour):
+            case (r, g, b):
+                return Colour(r=r, g=g, b=b, a=255)
+            case c:
+                colour = c
         if re.fullmatch(r"#[0-9a-f]{6}", colour):
             return Colour(
                 r=int(colour[1:3], 16),

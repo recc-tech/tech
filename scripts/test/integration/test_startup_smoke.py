@@ -1,3 +1,5 @@
+import platform
+import subprocess
 import unittest
 from pathlib import Path
 from test.mock import MockInputMessenger
@@ -7,17 +9,20 @@ from unittest.mock import create_autospec
 import check_credentials
 import download_pco_assets
 import generate_slides
+import launch_apps
 import mcr_setup
 import mcr_teardown
 import summarize_plan
-from args import McrSetupArgs, McrTeardownArgs, ReccArgs
+from args import McrTeardownArgs, ReccArgs
 from autochecklist import FileMessenger, Messenger, ProblemLevel, TaskStatus
 from check_credentials import CheckCredentialsArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
 from download_pco_assets import DownloadAssetsArgs
 from external_services import CredentialStore
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
+from launch_apps import LaunchAppsArgs
 from lib import ReccDependencyProvider
+from mcr_setup import McrSetupArgs
 from summarize_plan import SummarizePlanArgs
 
 from .startup_smoke_test_data import (
@@ -29,6 +34,8 @@ from .startup_smoke_test_data import (
 T = TypeVar("T")
 
 _LOG_FILE = Path(__file__).parent.joinpath("startup_smoke_test_data", "test.log")
+_SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent
+_HELP_DIR = Path(__file__).parent.joinpath("help_messages")
 
 
 class MockDependencyProvider(ReccDependencyProvider):
@@ -55,7 +62,7 @@ class MockDependencyProvider(ReccDependencyProvider):
             return super().get(typ)
 
 
-class StartupSmokeTestCase(unittest.TestCase):
+class PyStartupSmokeTestCase(unittest.TestCase):
     """
     Smoke tests to ensure all scripts can at least start without errors or
     warnings.
@@ -161,6 +168,63 @@ class StartupSmokeTestCase(unittest.TestCase):
             dep.input_messenger.statuses[-1],
         )
 
+    def test_launch_apps_all(self) -> None:
+        apps = list(launch_apps.App)
+        args = LaunchAppsArgs.parse(["", "--no-run"] + [a.value for a in apps])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
+    def test_launch_apps_foh(self) -> None:
+        args = LaunchAppsArgs.parse(["", "pco", "foh_setup_checklist", "--no-run"])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
+    def test_launch_apps_mcr(self) -> None:
+        args = LaunchAppsArgs.parse(
+            [
+                "",
+                "pco",
+                "boxcast",
+                "cop",
+                "vmix",
+                "mcr_setup_checklist",
+                "mcr_teardown_checklist",
+                "--no-run",
+            ]
+        )
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        launch_apps.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
     def test_mcr_setup(self) -> None:
         args = McrSetupArgs.parse(["", "--no-run"])
         config = McrSetupConfig(args, allow_multiple_only_for_testing=True)
@@ -205,3 +269,66 @@ class StartupSmokeTestCase(unittest.TestCase):
             ),
             dep.input_messenger.statuses[-1],
         )
+
+
+class CommandStartupTestCase(unittest.TestCase):
+    """
+    Smoke tests to ensure that the .command scripts work as expected.
+    For example, this should catch startup errors due to incorrect file paths.
+    """
+
+    def setUp(self) -> None:
+        p = platform.system()
+        match p:
+            case "Darwin" | "Linux":
+                pass
+            case "Windows":
+                self.skipTest("Wrong platform.")
+            case _:
+                self.fail(f"Unrecognized platform '{p}'.")
+
+    def test_download_pco_assets_positive(self) -> None:
+        self._test_positive("download_pco_assets")
+
+    def test_download_pco_assets_negative(self) -> None:
+        self._test_negative("download_pco_assets")
+
+    def test_launch_apps_positive(self) -> None:
+        self._test_positive("launch_apps")
+
+    def test_launch_apps_negative(self) -> None:
+        self._test_negative("launch_apps")
+
+    def test_summarize_plan_positive(self) -> None:
+        self._test_positive("summarize_plan")
+
+    def test_summarize_plan_negative(self) -> None:
+        self._test_negative("summarize_plan")
+
+    def _test_positive(self, name: str) -> None:
+        script_path = _SCRIPTS_DIR.joinpath(f"{name}.command")
+        help_path = _HELP_DIR.joinpath(f"{name}.txt")
+        result = subprocess.run(
+            [script_path.resolve().as_posix(), "--help"],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, help_path.read_text())
+
+    def _test_negative(self, name: str) -> None:
+        cmd_path = _SCRIPTS_DIR.joinpath(f"{name}.command").resolve()
+        py_path = _SCRIPTS_DIR.joinpath(f"{name}.py").resolve()
+        bak_path = _SCRIPTS_DIR.joinpath(f"{name}.py.bak").resolve()
+        py_path.rename(bak_path)
+        try:
+            result = subprocess.run(
+                [cmd_path.as_posix(), "--help"],
+                capture_output=True,
+                encoding="utf-8",
+            )
+            self.assertNotEqual(result.stderr, "")
+            self.assertEqual(result.stdout, "")
+        finally:
+            bak_path.rename(py_path)

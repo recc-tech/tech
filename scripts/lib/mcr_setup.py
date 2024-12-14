@@ -31,16 +31,6 @@ def import_Kids_Connection_video(
     client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
 
 
-def import_announcements_video(
-    client: VmixClient, config: McrSetupConfig, manager: AssetManager
-) -> None:
-    announcements_video_path = manager.locate_announcements_video()
-    if announcements_video_path is None:
-        raise ValueError("The path to the announcements video is not known.")
-    client.list_remove_all(config.vmix_announcements_list_key)
-    client.list_add(config.vmix_announcements_list_key, announcements_video_path)
-
-
 def restart_videos(client: VmixClient) -> None:
     client.restart_all()
 
@@ -95,6 +85,8 @@ def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig)
     today = config.start_time.date()
     plan = client.find_plan_by_date(today)
     message_notes = client.find_message_notes(plan.id)
+    if not message_notes:
+        raise ValueError("No message notes have been posted to the plan yet.")
     config.message_notes_file.parent.mkdir(exist_ok=True, parents=True)
     with open(config.message_notes_file, "w", encoding="utf-8") as f:
         f.write(message_notes)
@@ -110,10 +102,7 @@ def generate_backup_slides(
         TaskStatus.RUNNING,
         f"Reading input from {config.message_notes_file.as_posix()}.",
     )
-    token = messenger.allow_cancel()
-    blueprints = reader.load_message_notes(
-        config.message_notes_file, cancellation_token=token
-    )
+    blueprints = reader.load_message_notes(config.message_notes_file)
 
     messenger.log_status(
         TaskStatus.RUNNING,
