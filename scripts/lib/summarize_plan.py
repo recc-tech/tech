@@ -89,7 +89,7 @@ def _remove_unnecessary_notes(sections: List[PlanSection]) -> List[PlanSection]:
 
 
 def _filter_notes_by_category(
-    notes: List[ItemNote], categories: List[str]
+    notes: List[ItemNote], categories: Set[str]
 ) -> List[ItemNote]:
     return [n for n in notes if n.category in categories]
 
@@ -150,7 +150,7 @@ def _get_announcements(items: List[PlanItem]) -> List[str]:
 
 
 def _get_opener_video(
-    sections: List[PlanSection], messenger: Messenger, note_categories: List[str]
+    sections: List[PlanSection], messenger: Messenger, note_categories: Set[str]
 ) -> Optional[AnnotatedItem]:
     matching_sections = [
         s for s in sections if re.search("opener video", s.title, re.IGNORECASE)
@@ -167,7 +167,7 @@ def _get_opener_video(
 
 
 def _get_bumper_video(
-    sec: PlanSection, messenger: Messenger, note_categories: List[str]
+    sec: PlanSection, messenger: Messenger, note_categories: Set[str]
 ) -> Optional[AnnotatedItem]:
     matches = [i for i in sec.items if re.search("bumper", i.title, re.IGNORECASE)]
     itm = _get_one(matches, messenger, "bumper video")
@@ -183,7 +183,7 @@ def _get_bumper_video(
 
 
 def _get_announcements_video(
-    items: List[PlanItem], messenger: Messenger, note_categories: List[str]
+    items: List[PlanItem], messenger: Messenger, note_categories: Set[str]
 ) -> Optional[AnnotatedItem]:
     matches = [
         i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
@@ -211,7 +211,7 @@ def _get_message_section(
 
 
 def _get_message_notes(
-    sec: PlanSection, messenger: Messenger, note_categories: List[str]
+    sec: PlanSection, messenger: Messenger, note_categories: Set[str]
 ) -> Optional[AnnotatedItem]:
     matches = [
         i for i in sec.items if re.search("message title:", i.title, re.IGNORECASE)
@@ -225,7 +225,7 @@ def _get_message_notes(
 
 
 def _get_songs(
-    sections: List[PlanSection], note_categories: List[str]
+    sections: List[PlanSection], note_categories: Set[str]
 ) -> List[AnnotatedSong]:
     matching_items = [
         i
