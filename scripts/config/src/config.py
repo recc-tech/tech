@@ -494,9 +494,10 @@ class Config(BaseConfig):
             self.plan_summary_note_categories = set(
                 reader.get_str_list("plan_summary.note_categories")
             )
-            self.announcements_to_ignore = set(
-                reader.get_str_list("plan_summary.announcements_to_ignore")
-            )
+            self.announcements_to_ignore = {
+                a.lower()
+                for a in reader.get_str_list("plan_summary.announcements_to_ignore")
+            }
 
             # Slides
             self.message_notes_filename = reader.get_str(
