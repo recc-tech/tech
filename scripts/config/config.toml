@@ -160,6 +160,17 @@ file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.html"
 # Categories of notes that will be shown (e.g., visuals is relevant, vocals is
 # probably not)
 note_categories = ["Visuals"]
+# Lines in the announcement-related sections of the plan to ignore
+# (case-insensitive)
+announcements_to_ignore = [
+	"Announcement",
+	"Announcements",
+	"CONTINUE To Worship",
+	"PIANO playing In the Background",
+	"PRAY For People",
+	"WELCOME",
+	"Welcome Everyone",
+]
 
 [slides]
 message_notes_filename = "message-notes.txt"
