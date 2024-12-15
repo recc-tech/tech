@@ -503,18 +503,23 @@ def _make_videos_table(
     announcements: Optional[AnnotatedItem],
 ) -> HtmlTable:
     missing = "<span class='missing'>None found</span>"
-    opener_name = opener.content if opener is not None else missing
+
+    # Escape content only if it is not missing; escape only used when opener, bumper or announcements is not None
+    opener_name = _escape(opener.content) if opener is not None else missing
     opener_notes = _show_notes(opener.notes) if opener is not None else ""
-    bumper_name = bumper.content if bumper is not None else missing
+    bumper_name = _escape(bumper.content) if bumper is not None else missing
     bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-    announcements_name = announcements.content if announcements is not None else missing
+    announcements_name = (
+        _escape(announcements.content) if announcements is not None else missing
+    )
     announcements_notes = (
         _show_notes(announcements.notes) if announcements is not None else ""
     )
+
     rows = [
-        ["Opener", _escape(opener_name), opener_notes],
-        ["Bumper", _escape(bumper_name), bumper_notes],
-        ["Announcements", _escape(announcements_name), announcements_notes],
+        ["Opener", opener_name, opener_notes],
+        ["Bumper", bumper_name, bumper_notes],
+        ["Announcements", announcements_name, announcements_notes],
     ]
     return HtmlTable(
         cls="videos-table",
@@ -552,7 +557,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
     sermon_notes = message.content if message else ""
     has_sermon_notes = bool(sermon_notes.strip())
     sermon_notes = (
-        f"<details><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
+        f"<details open><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
         if sermon_notes
         else "<span class='missing'>No Notes Available</span>"
     )
@@ -655,9 +660,18 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             }}
             #copy-btn {{
                 font-size: large;
+                padding: 5px 10px;
+                margin-bottom: 10px;
+                cursor: pointer;
+            }}
+            #copy-confirm {{
+                color: green;
+                margin-left: 10px;
+                font-weight: bold;
             }}
             #message-notes {{
                 font-family: inherit;
+                white-space: pre-wrap; /* Ensures newlines + spaces are preserved */
             }}
             .{_NOTES_WARNING_CLS} {{
                 visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
@@ -673,10 +687,23 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
         </style>
         <script>
             function copyMessageNotes() {{
-                const messageNotes = document.getElementById("message-notes").textContent;
-                navigator.clipboard.writeText(messageNotes);
-                const check = document.getElementById("copy-confirm");
-                check.style.visibility = "visible";
+                const messageNotesElement = document.getElementById("message-notes");
+                const messageNotes = messageNotesElement.textContent;
+
+                // Attempt to copy text to clipboard; make copy-confirm more dynamic
+                navigator.clipboard.writeText(messageNotes)
+                    .then(() => {{
+                        const confirmElement = document.getElementById('copy-confirm');
+                        if (confirmElement) {{
+                            confirmElement.style.visibility = 'visible';
+                            setTimeout(() => {{
+                                    confirmElement.style.visibility = 'hidden';
+                            }}, 2000);
+                        }}
+                    }})
+                    .catch(err => {{
+                        console.error('Failed to copy text: ', err);
+                    }});
             }}
         </script>
     </head>
