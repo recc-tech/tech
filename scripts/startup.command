@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ "$(date +'%A')" != "Sunday" ]]; then
+	echo "Exiting because it is not Sunday."
+	exit 0
+fi
+
 # Go to the scripts directory
 cd "$(dirname "$0")"
 
