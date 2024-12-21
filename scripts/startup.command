@@ -1,7 +1,8 @@
 #!/bin/bash
 
-if [[ "$(date +'%A')" != "Sunday" ]]; then
-	echo "Exiting because it is not Sunday."
+day_of_week="$(date +'%A')"
+if [[ "$day_of_week" != "Sunday" ]]; then
+	echo "Exiting because it is $day_of_week, not Sunday."
 	exit 0
 fi
 
