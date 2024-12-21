@@ -2,7 +2,6 @@ import os
 import sys
 from argparse import ArgumentParser, Namespace
 from enum import Enum
-from pathlib import Path
 from typing import Callable, List
 
 import autochecklist
@@ -116,12 +115,14 @@ def open_MCR_teardown_checklist(config: Config) -> None:
 
 
 def open_vMix(config: Config) -> None:
-    preset = _get_latest_file(config.vmix_preset_dir)
-    external_services.launch_vmix(preset)
-
-
-def _get_latest_file(dir: Path) -> Path:
-    return max(dir.glob("*.vmix"), key=os.path.getmtime)
+    latest_preset = max(
+        config.vmix_preset_dir.glob("*.vmix"),
+        key=os.path.getmtime,
+        default=None,
+    )
+    if latest_preset is None:
+        raise ValueError("No vMix presets found to open.")
+    external_services.launch_vmix(latest_preset)
 
 
 if __name__ == "__main__":
