@@ -33,6 +33,10 @@ class NoCaptionsError(Exception):
     pass
 
 
+class BroadcastInPastError(Exception):
+    pass
+
+
 class BoxCastApiClient:
     MAX_ATTEMPTS = 3
 
@@ -178,7 +182,7 @@ class BoxCastApiClient:
             time=datetime.now().time(),
         )
         if start <= current_dt:
-            raise ValueError("Rebroadcast start time is in the past.")
+            raise BroadcastInPastError()
         url = f"{self._config.boxcast_base_url}/account/broadcasts"
         start_utc = start.astimezone(dateutil.tz.tzutc())
         starts_at = start_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
