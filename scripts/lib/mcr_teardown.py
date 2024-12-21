@@ -12,6 +12,7 @@ from captions import Cue
 from config import Config, McrTeardownConfig
 from external_services import (
     BoxCastApiClient,
+    BroadcastInPastError,
     NoCaptionsError,
     PlanningCenterClient,
     ReccVimeoClient,
@@ -91,39 +92,68 @@ def wait_for_BoxCast_recording(
             )
 
 
-def create_rebroadcast_1pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
+def create_rebroadcast_1pm(
+    client: BoxCastApiClient,
+    config: McrTeardownConfig,
+    messenger: Messenger,
+) -> None:
+    _create_rebroadcast(
+        start=config.start_time.replace(hour=13, minute=0, second=0),
+        client=client,
+        config=config,
+        messenger=messenger,
+    )
+
+
+def create_rebroadcast_5pm(
+    client: BoxCastApiClient,
+    config: McrTeardownConfig,
+    messenger: Messenger,
+) -> None:
+    _create_rebroadcast(
+        start=config.start_time.replace(hour=17, minute=0, second=0),
+        client=client,
+        config=config,
+        messenger=messenger,
+    )
+
+
+def create_rebroadcast_7pm(
+    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
+) -> None:
+    _create_rebroadcast(
+        start=config.start_time.replace(hour=19, minute=0, second=0),
+        client=client,
+        config=config,
+        messenger=messenger,
+    )
+
+
+def _create_rebroadcast(
+    start: datetime,
+    client: BoxCastApiClient,
+    config: McrTeardownConfig,
+    messenger: Messenger,
+) -> None:
     broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
     if broadcast is None:
         raise ValueError("No broadcast found on BoxCast.")
-    else:
+
+    try:
         client.schedule_rebroadcast(
             broadcast_id=broadcast.id,
             name=config.rebroadcast_title,
-            start=config.start_time.replace(hour=13, minute=0, second=0),
+            start=start,
         )
-
-
-def create_rebroadcast_5pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.schedule_rebroadcast(
-            broadcast_id=broadcast.id,
-            name=config.rebroadcast_title,
-            start=config.start_time.replace(hour=17, minute=0, second=0),
+    except BroadcastInPastError:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"The target rebroadcast start time of {start.strftime('%H:%M:%S')} is in the past.",
+            stacktrace=traceback.format_exc(),
         )
-
-
-def create_rebroadcast_7pm(client: BoxCastApiClient, config: McrTeardownConfig) -> None:
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-    else:
-        client.schedule_rebroadcast(
-            broadcast_id=broadcast.id,
-            name=config.rebroadcast_title,
-            start=config.start_time.replace(hour=19, minute=0, second=0),
+        messenger.log_status(
+            TaskStatus.SKIPPED,
+            "Skipped creating broadcast because the target start time has passed.",
         )
 
 
