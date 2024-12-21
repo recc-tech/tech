@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List
@@ -20,6 +21,8 @@ class IssueType(Enum):
 
 def find_latest_github_issue(type: IssueType, config: Config) -> Issue:
     url = f"{config.github_api_repo_url}/issues"
+    api_token = os.environ.get("RECC_GITHUB_TOKEN")
+    headers = {"Authorization": f"Bearer {api_token}"} if api_token is not None else {}
     # Include closed issues and search by date for testing purposes
     response = requests.get(
         url=url,
@@ -31,6 +34,7 @@ def find_latest_github_issue(type: IssueType, config: Config) -> Issue:
             "direction": "desc",
         },
         timeout=config.timeout_seconds,
+        headers=headers,
     )
     if response.status_code // 100 != 2:
         raise ValueError(

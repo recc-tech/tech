@@ -93,6 +93,8 @@ jobs:
         firefox-version: latest
     - name: Run tests
       shell: bash
+      env:
+        RECC_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Use grep to check that at least one test was run
         python -m unittest discover --top-level-directory . --start-directory ./test/unit --failfast --verbose 2>&1 | tee >(grep --quiet 'Ran [1-9][0-9]* tests')
