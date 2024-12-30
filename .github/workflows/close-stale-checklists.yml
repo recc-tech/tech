@@ -1,0 +1,24 @@
+name: "Close stale weekly checklists"
+
+on:
+  schedule:
+    # https://crontab.guru/#15_9_*_*_MON
+    # 9:15 UTC is either 5:15 or 4:15 eastern time, depending on whether we're currently in daylight savings time
+    - cron: '15 9 * * MON'
+  # Let people trigger the workflow manually (e.g., for testing or for gatherings that are not on a Sunday)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 0
+          days-before-close: 0
+          any-of-labels: mcr_setup_checklist,foh_setup_checklist,mcr_teardown_checklist
+          close-issue-message: "Closing this checklist because it is stale."
+          close-issue-reason: completed
