@@ -140,7 +140,7 @@ video_title = "%{args.startup_ymd}% | !{MESSAGE_SERIES}! | !{MESSAGE_TITLE}!"
 user_id = "viac_bvteonscuog48b2lnilu"
 
 [vmix]
-base_url = "http://192.168.0.188:8088/api"
+base_url = "http://localhost:8088/api"
 preset_dir = "%{folder.home}%/vMix Presets"
 preset_path = "%{vmix.preset_dir}%/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
