@@ -34,7 +34,8 @@ class NoCaptionsError(Exception):
 
 
 class BroadcastInPastError(Exception):
-    pass
+    def __str__(self):
+        return "Rebroadcast start time is in the past."
 
 
 class BoxCastApiClient:
