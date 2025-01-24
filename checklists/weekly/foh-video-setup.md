@@ -50,5 +50,4 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 - Control the lights:
     - Lower MASTER LEVEL to 0 when a video is played and raise it back to 10 afterwards.
-    - Lower CROSSFADERS Y to about 5 when the speaker reads scripture and raise it back to 10 afterwards.
-- If the speaker goes over time, flash the red light a few times and then leave it on.
+    - If the speaker goes over time, flash the red light a few times and then leave it on.
