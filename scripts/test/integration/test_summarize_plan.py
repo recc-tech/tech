@@ -94,7 +94,6 @@ class GetPlanSummaryTestCase(unittest.TestCase):
             ),
             walk_in_slides=[
                 "River’s Edge",
-                "Faith - Love - Hope",
                 "Worthy Series Title Slide",
                 "Give Generously",
                 "The After Party",

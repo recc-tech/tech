@@ -284,6 +284,9 @@ def get_plan_summary(
     sections = _remove_unnecessary_notes(sections)
     items = [i for s in sections for i in s.items]
     walk_in_slides = _get_walk_in_slides(items)
+    walk_in_slides = [
+        s for s in walk_in_slides if s.lower() not in config.announcements_to_ignore
+    ]
     opener_video = _get_opener_video(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
