@@ -12,7 +12,7 @@ labels: checklist, mcr_setup_checklist
 - [ ] Sound is working and cameras are responsive.
 - [ ] Titles are up to date in vMix.
 - [ ] All videos and loops have been restarted.
-- [ ] The tech for the kids is set up in the Annex (*including the laptop charger!*).
+- [ ] The tech for the kids is set up in the Annex.
 
 ## Nice-To-Have
 
