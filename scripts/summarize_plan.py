@@ -28,6 +28,7 @@ class SummarizePlanArgs(ReccArgs):
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         self.no_open: bool = args.no_open
         self.demo: bool = args.demo
+        self.port: int = args.port
         super().__init__(args, error)
 
     @classmethod
@@ -41,6 +42,12 @@ class SummarizePlanArgs(ReccArgs):
             "--demo",
             action="store_true",
             help="Show a summary of a previous service to show the appearance, rather than pulling up-to-date data from Planning Center.",
+        )
+        parser.add_argument(
+            "--port",
+            type=int,
+            default=8080,
+            help="Which port to use for the web server that checks for updates.",
         )
         return super().set_up_parser(parser)
 
@@ -129,13 +136,11 @@ def listen_for_updates(
     global_config = config
 
     # TODO: Change the closing message to clarify that this will stop the server?
-    # TODO: Allow changing port
-    port = 8080
     messenger.log_status(
-        TaskStatus.RUNNING, f"Listening for changes on http://localhost:{port}."
+        TaskStatus.RUNNING, f"Listening for changes on http://localhost:{args.port}."
     )
     global_server_started = True
-    bottle.run(host="localhost", port=port, debug=True)
+    bottle.run(host="localhost", port=args.port, debug=True)
 
 
 @bottle.get("/check-updates")

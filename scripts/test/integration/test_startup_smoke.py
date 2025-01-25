@@ -278,6 +278,7 @@ class CommandStartupTestCase(unittest.TestCase):
     """
 
     def setUp(self) -> None:
+        self.maxDiff = None
         p = platform.system()
         match p:
             case "Darwin" | "Linux":

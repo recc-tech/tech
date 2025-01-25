@@ -1,6 +1,6 @@
-usage: summarize_plan [-h] [--no-open] [--demo] [--home-dir HOME_DIR]
-                      [--date DATE] [--auto-close] [--ui {console,tk}]
-                      [--verbose] [--no-run] [--auto AUTO]
+usage: summarize_plan [-h] [--no-open] [--demo] [--port PORT]
+                      [--home-dir HOME_DIR] [--date DATE] [--auto-close]
+                      [--ui {console,tk}] [--verbose] [--no-run] [--auto AUTO]
 
 This script will generate a summary of the plan for today's service.
 
@@ -11,6 +11,8 @@ options:
   --demo               Show a summary of a previous service to show the
                        appearance, rather than pulling up-to-date data from
                        Planning Center. (default: False)
+  --port PORT          Which port to use for the web server that checks for
+                       updates. (default: 8080)
 
 RECC common arguments:
   --home-dir HOME_DIR  The home directory. (default: None)
