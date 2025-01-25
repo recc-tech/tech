@@ -222,6 +222,7 @@ if __name__ == "__main__":
         log_file=Path(__file__).parent.joinpath("demo.log"),
         script_name="AutoChecklist Demo",
         description=_DESCRIPTION,
+        confirm_exit_message="Are you sure you want to exit? The script is not done yet.",
         show_statuses_by_default=True,
         ui_theme=args.ui_theme,
         # No point in passing True here, since this script will always have

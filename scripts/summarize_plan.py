@@ -135,7 +135,6 @@ def listen_for_updates(
     global_args = args
     global_config = config
 
-    # TODO: Change the closing message to clarify that this will stop the server?
     messenger.log_status(
         TaskStatus.RUNNING, f"Listening for changes on http://localhost:{args.port}."
     )
@@ -205,5 +204,9 @@ if __name__ == "__main__":
         script_name="Summarize Plan",
         description=SummarizePlanArgs.DESCRIPTION,
         show_statuses_by_default=True,
+        confirm_exit_message=(
+            "Are you sure you want to exit?"
+            " The plan summary will no longer be updated automatically."
+        ),
     )
     main(_args, _cfg, dependency_provider)
