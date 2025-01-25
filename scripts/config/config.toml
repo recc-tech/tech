@@ -156,7 +156,8 @@ timeout_seconds = 30.0
 
 [plan_summary]
 # Where to save the summary
-file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.html"
+html_file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.html"
+json_file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.json"
 # Categories of notes that will be shown (e.g., visuals is relevant, vocals is
 # probably not)
 note_categories = ["Visuals"]

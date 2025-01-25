@@ -375,7 +375,7 @@ def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
 def summarize_plan_20240414(client: PlanningCenterClient, messenger: Messenger) -> None:
     args = SummarizePlanArgs.parse(["", "--date", "2024-04-14"])
     cfg = Config(args=args, allow_multiple_only_for_testing=True)
-    summarize_plan.summarize_plan(
+    summarize_plan.generate_initial_summary(
         pco_client=client,
         args=args,
         config=cfg,
@@ -386,7 +386,8 @@ def summarize_plan_20240414(client: PlanningCenterClient, messenger: Messenger) 
 def summarize_plan_20240505(client: PlanningCenterClient, messenger: Messenger) -> None:
     args = SummarizePlanArgs.parse(["", "--date", "2024-05-05"])
     cfg = Config(args=args, allow_multiple_only_for_testing=True)
-    summarize_plan.summarize_plan(
+    # TODO: Re-run these two tests
+    summarize_plan.generate_initial_summary(
         pco_client=client,
         args=args,
         config=cfg,
