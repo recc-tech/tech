@@ -5,7 +5,7 @@ import json
 import re
 import typing
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import List, Optional, Set, Type, TypeVar
 
@@ -328,89 +328,6 @@ def get_plan_summary(
     )
 
 
-def _cast(t: Type[T], x: object) -> T:
-    if not isinstance(x, t):
-        raise TypeError(
-            f"Expected object of type {t}, but found object of type {type(x).__name__}."
-        )
-    return x
-
-
-def _parse_note(note: object) -> ItemNote:
-    note = typing.cast(dict[object, object], _cast(dict, note))
-    return ItemNote(
-        category=_cast(str, note["category"]),
-        contents=_cast(str, note["contents"]),
-    )
-
-
-def _parse_annotated_item(data: object) -> Optional[AnnotatedItem]:
-    if data is None:
-        return None
-    data = typing.cast(dict[object, object], _cast(dict, data))
-    content = _cast(str, data["content"])
-    raw_notes = typing.cast(list[object], _cast(list, data["notes"]))
-    notes = [_parse_note(n) for n in raw_notes]
-    return AnnotatedItem(content=content, notes=notes)
-
-
-def _parse_song(song: object) -> Song:
-    song = typing.cast(dict[object, object], _cast(dict, song))
-    ccli = song["ccli"]
-    if ccli is not None:
-        ccli = _cast(str, song["ccli"])
-    title = _cast(str, song["title"])
-    author = song["author"]
-    if author is not None:
-        author = _cast(str, author)
-    return Song(ccli=ccli, title=title, author=author)
-
-
-def _parse_annotated_song(song: object) -> AnnotatedSong:
-    song = typing.cast(dict[object, object], _cast(dict, song))
-    raw_notes = typing.cast(list[object], _cast(list, song["notes"]))
-    return AnnotatedSong(
-        song=_parse_song(song["song"]),
-        notes=[_parse_note(n) for n in raw_notes],
-        description=str(song["description"]),
-    )
-
-
-def load_plan_summary(path: Path) -> PlanItemsSummary:
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    opener_vid = (
-        _parse_annotated_item(data["opener_video"]) if "opener_video" in data else None
-    )
-    bumper_vid = (
-        _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
-    )
-    announcements_vid = (
-        _parse_annotated_item(data["announcements_video"])
-        if "announcements_video" in data
-        else None
-    )
-    songs = [_parse_annotated_song(s) for s in data["songs"]]
-    message_notes = _parse_annotated_item(data["message_notes"])
-    return PlanItemsSummary(
-        plan=Plan(
-            id=data["plan"]["id"],
-            series_title=data["plan"]["series_title"],
-            title=data["plan"]["title"],
-            date=datetime.strptime(data["plan"]["date"], "%Y-%m-%d").date(),
-            web_page_url=data["plan"]["web_page_url"],
-        ),
-        walk_in_slides=data["walk_in_slides"],
-        announcements=data["announcements"],
-        opener_video=opener_vid,
-        bumper_video=bumper_vid,
-        announcements_video=announcements_vid,
-        songs=songs,
-        message_notes=message_notes,
-        num_visuals_notes=data["num_visuals_notes"],
-    )
-
-
 _SUPERHEADER_CLS = "superheader"
 _HEADER_CLS = "header-row"
 _EVEN_ROW_CLS = "even-row"
@@ -578,6 +495,9 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
 
 
 def plan_summary_to_html(summary: PlanItemsSummary) -> str:
+    """
+    Convert the plan summary to an HTML string.
+    """
     title = (
         _escape(f"{summary.plan.series_title}: {summary.plan.title}")
         if summary.plan.series_title
@@ -741,3 +661,145 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
     </body>
 </html>
 """.lstrip()
+
+
+def plan_summary_to_json(summary: PlanItemsSummary) -> str:
+    """
+    Convert the plan summary to a JSON string.
+    This is the inverse of `load_plan_summary`.
+    """
+    json_summary = {
+        "plan": _plan_to_json(summary.plan),
+        "walk_in_slides": summary.walk_in_slides,
+        "opener_video": _annotated_item_to_json(summary.opener_video),
+        "announcements": summary.announcements,
+        "announcements_video": _annotated_item_to_json(summary.announcements_video),
+        "songs": [_annotated_song_to_json(s) for s in summary.songs],
+        "bumper_video": _annotated_item_to_json(summary.bumper_video),
+        "message_notes": _annotated_item_to_json(summary.message_notes),
+        "num_visuals_notes": summary.num_visuals_notes,
+    }
+    return json.dumps(json_summary, indent="\t")
+
+
+def load_plan_summary(path: Path) -> PlanItemsSummary:
+    """
+    Load a plan summary from a JSON file.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    opener_vid = (
+        _parse_annotated_item(data["opener_video"]) if "opener_video" in data else None
+    )
+    bumper_vid = (
+        _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
+    )
+    announcements_vid = (
+        _parse_annotated_item(data["announcements_video"])
+        if "announcements_video" in data
+        else None
+    )
+    songs = [_parse_annotated_song(s) for s in data["songs"]]
+    message_notes = _parse_annotated_item(data["message_notes"])
+    return PlanItemsSummary(
+        plan=_parse_plan(data["plan"]),
+        walk_in_slides=data["walk_in_slides"],
+        announcements=data["announcements"],
+        opener_video=opener_vid,
+        bumper_video=bumper_vid,
+        announcements_video=announcements_vid,
+        songs=songs,
+        message_notes=message_notes,
+        num_visuals_notes=data["num_visuals_notes"],
+    )
+
+
+def _cast(t: Type[T], x: object) -> T:
+    if not isinstance(x, t):
+        raise TypeError(
+            f"Expected object of type {t}, but found object of type {type(x).__name__}."
+        )
+    return x
+
+
+def _plan_to_json(plan: Plan) -> object:
+    return {
+        "id": plan.id,
+        "series_title": plan.series_title,
+        "title": plan.title,
+        "date": datetime.strftime(datetime.combine(plan.date, time()), "%Y-%m-%d"),
+        "web_page_url": plan.web_page_url,
+    }
+
+
+def _parse_plan(plan: object) -> Plan:
+    plan = typing.cast(dict[object, object], _cast(dict, plan))
+    return Plan(
+        id=_cast(str, plan["id"]),
+        series_title=_cast(str, plan["series_title"]),
+        title=_cast(str, plan["title"]),
+        date=datetime.strptime(_cast(str, plan["date"]), "%Y-%m-%d").date(),
+        web_page_url=_cast(str, plan["web_page_url"]),
+    )
+
+
+def _note_to_json(note: ItemNote) -> object:
+    return {"category": note.category, "contents": note.contents}
+
+
+def _parse_note(note: object) -> ItemNote:
+    note = typing.cast(dict[object, object], _cast(dict, note))
+    return ItemNote(
+        category=_cast(str, note["category"]),
+        contents=_cast(str, note["contents"]),
+    )
+
+
+def _annotated_item_to_json(item: Optional[AnnotatedItem]) -> object:
+    if item is None:
+        return None
+    return {"content": item.content, "notes": [_note_to_json(n) for n in item.notes]}
+
+
+def _parse_annotated_item(data: object) -> Optional[AnnotatedItem]:
+    if data is None:
+        return None
+    data = typing.cast(dict[object, object], _cast(dict, data))
+    content = _cast(str, data["content"])
+    raw_notes = typing.cast(list[object], _cast(list, data["notes"]))
+    notes = [_parse_note(n) for n in raw_notes]
+    return AnnotatedItem(content=content, notes=notes)
+
+
+def _song_to_json(song: Song) -> object:
+    return {"ccli": song.ccli, "title": song.title, "author": song.author}
+
+
+def _parse_song(song: object) -> Song:
+    song = typing.cast(dict[object, object], _cast(dict, song))
+    ccli = song["ccli"]
+    if ccli is not None:
+        ccli = _cast(str, song["ccli"])
+    title = _cast(str, song["title"])
+    author = song["author"]
+    if author is not None:
+        author = _cast(str, author)
+    return Song(ccli=ccli, title=title, author=author)
+
+
+def _annotated_song_to_json(song: AnnotatedSong) -> object:
+    return {
+        "song": _song_to_json(song.song),
+        "description": song.description,
+        "notes": [_note_to_json(n) for n in song.notes],
+    }
+
+
+def _parse_annotated_song(song: object) -> AnnotatedSong:
+    song = typing.cast(dict[object, object], _cast(dict, song))
+    raw_notes = typing.cast(list[object], _cast(list, song["notes"]))
+    return AnnotatedSong(
+        song=_parse_song(song["song"]),
+        notes=[_parse_note(n) for n in raw_notes],
+        description=str(song["description"]),
+    )
