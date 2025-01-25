@@ -33,11 +33,7 @@
 						},
 						{
 							"name": "update_kids_laptop",
-							"description": "Bring back the Kids Connection laptop and charger from the Annex and check for updates."
-						},
-						{
-							"name": "update_teleprompter_laptop",
-							"description": "Bring back the teleprompter laptop and check for updates."
+							"description": "Bring back the Kids Connection laptop from the Annex and check for updates."
 						}
 					]
 				},

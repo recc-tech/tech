@@ -18,7 +18,7 @@ labels: checklist, mcr_teardown_checklist
 - Outdated assets have been handled:
     - [ ] Outdated files were deleted from Planning Center.
     - [ ] Outdated files were removed from vMix and archived locally.
-- [ ] The visuals computer, sound computer, teleprompter laptop, and kids laptop have all been updated.
+- [ ] The visuals computer, sound computer, and kids laptop have all been updated.
 - [ ] Everything is turned off (all computers, both monitors, the NDI controller, the speakers, and the cameras).
 
 Once everything is done, close this issue and shut down (or update and shut down) this computer.

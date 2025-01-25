@@ -13,6 +13,7 @@ from dateutil.tz import tzutc
 from external_services import (
     BoxCastApiClient,
     Broadcast,
+    BroadcastInPastError,
     Credential,
     CredentialStore,
     InputPolicy,
@@ -213,7 +214,7 @@ class BoxCastTestCase(unittest.TestCase):
         send_mock = Mock()
         client._send_and_check = send_mock  # pyright: ignore[reportPrivateUsage]
         client._get_new_oauth_token = _fake_tok  # pyright: ignore[reportPrivateUsage]
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(BroadcastInPastError) as cm:
             client.schedule_rebroadcast(
                 broadcast_id="test_id",
                 name="Test Broadcast",
