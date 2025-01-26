@@ -1,6 +1,6 @@
 import os
 import unittest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import external_services
 from args import ReccArgs
@@ -95,11 +95,19 @@ def _get_config() -> Config:
 
 
 def _get_latest_sunday() -> date:
-    t = datetime.now().date()
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    day = today
     SUNDAY = 7
-    while t.isoweekday() != SUNDAY:
-        t -= timedelta(days=1)
-    return t
+    while day.isoweekday() != SUNDAY:
+        day -= timedelta(days=1)
+    # The issues are only created at around 9:15 UTC on Sundays (see the GitHub
+    # Actions workflow).
+    # If these tests are run on a Sunday before 9:15, the latest issues will be
+    # from last week, not today.
+    if day == today and now.hour < 9:
+        day -= timedelta(days=7)
+    return day
 
 
 def _day_with_suffix(day: int) -> str:
