@@ -494,7 +494,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
     )
 
 
-def plan_summary_to_html(summary: PlanItemsSummary) -> str:
+def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     """
     Convert the plan summary to an HTML string.
     """
@@ -540,6 +540,19 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             header {{
                 background-color: var(--highlight-color);
                 color: white;
+                padding: 1em 1em 0 1em;
+            }}
+            header h2 {{
+                margin-bottom: 0em;
+            }}
+            #status-bar {{
+                background-color: var(--highlight-color);
+                color: white;
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                position: sticky;
+                top: 0;
                 padding: 1em;
             }}
             #main-content {{
@@ -596,6 +609,12 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
                 font-family: inherit;
                 white-space: pre-wrap; /* Ensures newlines + spaces are preserved */
             }}
+            .summary-outdated {{
+                color: gold;
+            }}
+            .summary-update-error {{
+                color: gold;
+            }}
             .{_NOTES_WARNING_CLS} {{
                 visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
                 border: 2px solid #b57b0e;
@@ -609,6 +628,50 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
 {_indent(message_table.to_css(),3)}
         </style>
         <script>
+            const MILLISECONDS_PER_MINUTE = 60 * 1000;
+            const INTERVAL_ID = setInterval(checkForUpdates, MILLISECONDS_PER_MINUTE);
+            const BACKEND_URL = "http://localhost:{port}/check-updates";
+
+            document.addEventListener("DOMContentLoaded", () => {{
+                checkForUpdates();
+            }});
+
+            async function checkForUpdates() {{
+                const STATUS_ELEM = document.getElementById("summary-status");
+                STATUS_ELEM.textContent = "Checking for updates...";
+                STATUS_ELEM.className = "";
+                try {{
+                    const response = await fetch(BACKEND_URL);
+                    if (response.ok) {{
+                        const body = await response.json();
+                        if (body.changes) {{
+                            const message = "There are changes to the plan! Reload the page to see the newest summary."
+                            STATUS_ELEM.innerHTML = `⚠️ ${{message}} ⚠️`;
+                            STATUS_ELEM.className = "summary-outdated";
+                            clearInterval(INTERVAL_ID);
+                            alert(message);
+                        }} else {{
+                            STATUS_ELEM.textContent = "The summary is up to date.";
+                            STATUS_ELEM.className = "summary-up-to-date";
+                        }}
+                    }} else {{
+                        STATUS_ELEM.innerHTML = "⚠️ Failed to check for updates. ⚠️";
+                        STATUS_ELEM.className = "summary-update-error";
+                    }}
+                }} catch (e) {{
+                    console.error(e);
+                    STATUS_ELEM.innerHTML = "⚠️ Failed to check for updates. ⚠️";
+                    STATUS_ELEM.className = "summary-update-error";
+                }}
+                setLastUpdateTime();
+            }}
+
+            function setLastUpdateTime() {{
+                const elem = document.getElementById("last-update-time");
+                const options = {{ "hour": "numeric", "minute": "2-digit" }}
+                elem.textContent = new Date().toLocaleTimeString("en-CA", options);
+            }}
+
             function copyMessageNotes() {{
                 const messageNotesElement = document.getElementById("message-notes");
                 const messageNotes = messageNotesElement.textContent;
@@ -635,6 +698,10 @@ def plan_summary_to_html(summary: PlanItemsSummary) -> str:
             <h1>{title}</h1>
             <h2>{subtitle}</h2>
         </header>
+        <div id="status-bar">
+            <span id="summary-status"></span>
+            <span><b>Last update:</b> <span id="last-update-time">-</span></span>
+        </div>
         <div id='main-content'>
             <div class="{_NOTES_WARNING_CLS}">
                 Heads up!

@@ -142,6 +142,11 @@ def listen_for_updates(
     bottle.run(host="localhost", port=args.port, debug=True)
 
 
+@bottle.hook("after_request")
+def _enable_cors() -> None:  # pyright: ignore[reportUnusedFunction]
+    bottle.response.headers["Access-Control-Allow-Origin"] = "*"
+
+
 @bottle.get("/check-updates")
 def _check_for_updates():  # pyright: ignore[reportUnusedFunction]
     prev_summary = lib.load_plan_summary(global_config.plan_summary_json_file)
@@ -185,7 +190,7 @@ def _generate_and_save_summary(
         )
 
     config.plan_summary_html_file.parent.mkdir(parents=True, exist_ok=True)
-    html = lib.plan_summary_to_html(summary)
+    html = lib.plan_summary_to_html(summary, port=args.port)
     config.plan_summary_html_file.write_text(str(html), encoding="utf-8")
     json = lib.plan_summary_to_json(summary)
     config.plan_summary_json_file.write_text(json, encoding="utf-8")

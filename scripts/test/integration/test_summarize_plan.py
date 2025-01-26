@@ -196,7 +196,7 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
         Test that the message notes can be copied from the HTML summary.
         """
         summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
-        summary_html = plan_summary_to_html(summary)
+        summary_html = plan_summary_to_html(summary, port=8080)
         f = _TEMP_DIR.joinpath("summary.html")
         f.write_text(summary_html, encoding="utf-8")
 
