@@ -48,6 +48,7 @@ class TkMessenger(InputMessenger):
         self,
         title: str,
         description: str,
+        confirm_exit_message: str,
         config: BaseConfig,
         *,
         theme: Literal["dark", "light"],
@@ -60,6 +61,7 @@ class TkMessenger(InputMessenger):
         """
         self._title = title
         self._description = description
+        self._confirm_exit_message = confirm_exit_message
         self._config = config
         self._show_statuses_by_default = show_statuses_by_default
         self._icon = icon
@@ -140,7 +142,7 @@ class TkMessenger(InputMessenger):
         """
         should_exit = self._is_script_done or self.input_bool(
             title="Confirm exit",
-            prompt="Are you sure you want to exit? The script is not done yet.",
+            prompt=self._confirm_exit_message,
         )
         if should_exit:
             self._tk.quit()

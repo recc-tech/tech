@@ -490,7 +490,8 @@ class Config(BaseConfig):
             self.timeout = timedelta(seconds=self.timeout_seconds)
 
             # Plan Summaries
-            self.plan_summary_file = reader.get_file("plan_summary.file")
+            self.plan_summary_html_file = reader.get_file("plan_summary.html_file")
+            self.plan_summary_json_file = reader.get_file("plan_summary.json_file")
             self.plan_summary_note_categories = set(
                 reader.get_str_list("plan_summary.note_categories")
             )

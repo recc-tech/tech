@@ -34,6 +34,7 @@ class ReccDependencyProvider(DependencyProvider):
         messenger: Optional[Messenger] = None,
         lazy_login: bool = False,
         credentials_input_policy: Optional[InputPolicy] = None,
+        confirm_exit_message: str = "Are you sure you want to exit? The script is not done yet.",
     ) -> None:
         super().__init__(
             args=args,
@@ -42,6 +43,7 @@ class ReccDependencyProvider(DependencyProvider):
             log_file=log_file,
             script_name=script_name,
             description=description,
+            confirm_exit_message=confirm_exit_message,
             show_statuses_by_default=show_statuses_by_default,
             ui_theme=config.ui_theme,
             icon=Path(__file__).parent.parent.parent.joinpath("icon_512x512.png"),
