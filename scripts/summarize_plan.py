@@ -195,7 +195,6 @@ def _generate_and_save_summary(
     json = lib.plan_summary_to_json(summary)
     config.plan_summary_json_file.write_text(json, encoding="utf-8")
 
-    # TODO: Generate and save a diff so that the user can see what changed?
     return summary != prev_summary
 
 
