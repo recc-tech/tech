@@ -9,4 +9,5 @@ fi
 # Go to the scripts directory
 cd "$(dirname "$0")"
 
+./update_scripts.command
 python3 launch_apps.py pco_live --auto-close &
