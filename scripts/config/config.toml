@@ -116,6 +116,7 @@ max_captions_wait_time = 30
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2"
+live_view_url = "https://services.planningcenteronline.com/live/!{SERVICE_ID}!"
 # For help finding the service type for today's plan, see
 # https://github.com/recc-tech/tech/wiki/Finding-the-Service-Type-for-a-Plan.
 # Don't forget to enclose the service type ID in double quotes!
