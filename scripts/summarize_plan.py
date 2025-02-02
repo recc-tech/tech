@@ -135,6 +135,10 @@ def listen_for_updates(
     global_args = args
     global_config = config
 
+    # The Bottle app logs requests to the terminal by default, which crashes
+    # the app if it's running without a terminal
+    sys.stdout = sys.stderr = os.devnull
+
     messenger.log_status(
         TaskStatus.RUNNING, f"Listening for changes on http://localhost:{args.port}."
     )
