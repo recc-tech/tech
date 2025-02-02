@@ -448,6 +448,7 @@ class Config(BaseConfig):
             self.pco_services_base_url = reader.get_str(
                 "planning_center.services_base_url"
             )
+            self.live_view_url = reader.get_template("planning_center.live_view_url")
             self.pco_service_type_id = reader.get_str("planning_center.service_type_id")
             self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
             self.sermon_notes_regex = reader.get_str(
