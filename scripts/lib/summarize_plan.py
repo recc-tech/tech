@@ -516,6 +516,9 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
+    HEADER_OK = "#1a7ee5"  # Same as the website
+    HEADER_ERROR = "darkorange"
+    HEADER_CHANGE = "tomato"
     return f"""
 <!DOCTYPE html>
 <html>
@@ -528,8 +531,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 /* Same as Planning Center */
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: var(--background-color);
-                /* Same as the website */
-                --highlight-color: #1a7ee5;
+                --header-color: {HEADER_OK};
                 --dim-highlight-color: #8ea0b7;
                 --background-color: #fafafa;
                 --dark-background-color: rgb(235, 235, 235);
@@ -538,7 +540,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 margin: 0;
             }}
             header {{
-                background-color: var(--highlight-color);
+                background-color: var(--header-color);
                 color: white;
                 padding: 1em 1em 0 1em;
             }}
@@ -546,7 +548,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 margin-bottom: 0em;
             }}
             #status-bar {{
-                background-color: var(--highlight-color);
+                background-color: var(--header-color);
                 color: white;
                 display: flex;
                 flex-direction: row;
@@ -647,21 +649,21 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                         if (body.changes) {{
                             const message = "There are changes to the plan! Reload the page to see the newest summary."
                             STATUS_ELEM.innerHTML = `⚠️ ${{message}} ⚠️`;
-                            STATUS_ELEM.className = "summary-outdated";
+                            document.documentElement.style.setProperty("--header-color", "{HEADER_CHANGE}");
                             clearInterval(INTERVAL_ID);
                             alert(message);
                         }} else {{
                             STATUS_ELEM.textContent = "The summary is up to date.";
-                            STATUS_ELEM.className = "summary-up-to-date";
+                            document.documentElement.style.setProperty("--header-color", "{HEADER_OK}");
                         }}
                     }} else {{
                         STATUS_ELEM.innerHTML = "⚠️ Failed to check for updates. ⚠️";
-                        STATUS_ELEM.className = "summary-update-error";
+                        document.documentElement.style.setProperty("--header-color", "{HEADER_ERROR}");
                     }}
                 }} catch (e) {{
                     console.error(e);
                     STATUS_ELEM.innerHTML = "⚠️ Failed to check for updates. ⚠️";
-                    STATUS_ELEM.className = "summary-update-error";
+                    document.documentElement.style.setProperty("--header-color", "{HEADER_ERROR}");
                 }}
                 setLastUpdateTime();
             }}
