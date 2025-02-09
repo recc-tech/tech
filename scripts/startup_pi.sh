@@ -8,6 +8,7 @@ fi
 
 # Go to the scripts directory
 cd "$(dirname "$0")"
+source .venv/bin/activate
 
 ./update_scripts.command
 python3 launch_apps.py pco_live --auto-close &
