@@ -99,7 +99,10 @@ def launch_PCO(pco_client: PlanningCenterClient, config: Config) -> None:
 
 def launch_PCO_live(pco_client: PlanningCenterClient, config: Config) -> None:
     plan = pco_client.find_plan_by_date(dt=config.start_time.date())
-    external_services.launch_firefox(config.live_view_url.fill({"SERVICE_ID": plan.id}))
+    external_services.launch_firefox(
+        config.live_view_url.fill({"SERVICE_ID": plan.id}),
+        fullscreen=True,
+    )
 
 
 def launch_BoxCast(config: Config) -> None:
