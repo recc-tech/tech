@@ -12,9 +12,6 @@ def download_assets(
     results = manager.download_pco_assets(
         client=client,
         messenger=messenger,
-        download_kids_video=True,
-        download_notes_docx=True,
-        require_announcements=False,
         dry_run=False,
     )
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])

@@ -12,13 +12,71 @@ from config import Config
 from external_services import Attachment, FileType, PlanningCenterClient
 
 
-class AssetCategory(Enum):
-    ANNOUNCEMENTS = auto()
-    KIDS_VIDEO = auto()
-    SERMON_NOTES = auto()
-    IMAGE = auto()
-    VIDEO = auto()
-    UNKNOWN = auto()
+class SkipCondition(Enum):
+    """Conditions under which an asset download should be skipped"""
+
+    NEVER = auto()
+    """Never skip."""
+    IF_FILENAME_EXISTS = auto()
+    """Skip this file if a file with the same name already exists."""
+    ALWAYS = auto()
+    """Always skip."""
+
+
+class Action(Enum):
+    OK = auto()
+    """Don't do anything because there's no problem."""
+    WARN = auto()
+    """Emit a warning."""
+    ERROR = auto()
+    """Raise an error."""
+
+
+# TODO: Need to somehow add back week number check for kids videos
+
+
+@dataclass(frozen=True)
+class AssetCategory:
+    """
+    Download settings for a category of assets (e.g., announcements, images)
+    """
+
+    name: str
+    """User-friendly category name"""
+    skip: SkipCondition
+    """When to skip downloading"""
+    file_type: FileType
+    """Expected file type for assets in this category"""
+    filename_regex: str
+    """
+    Regular expression for the filename.
+    The regex will be used in case-insensitive mode.
+    """
+    target_dir: Path
+    """Directory to download the assets into"""
+    append_date: bool
+    """If `True`, then today's date will be appended to the filename."""
+    deduplicate: bool
+    """
+    If `True`, then the asset will be deleted after download if it is found to
+    match any other files.
+    If `True` and there are multiple files on Planning Center which are
+    identical to one another, only one will be kept.
+    If `False`, then the asset will not be deleted after download.
+    """
+    overwrite_existing: bool
+    """
+    If `True`, then existing files with the same name will be overwritten.
+    """
+    if_missing: Action
+    """What to do in case no assets fall into this category."""
+    if_many: Action
+    """What to do in case multiple assets fall into this category"""
+
+    def matches(self, a: Attachment) -> bool:
+        return a.file_type == self.file_type and bool(
+            re.search(self.filename_regex, a.filename, re.IGNORECASE)
+        )
 
 
 @dataclass
@@ -69,6 +127,87 @@ class AssetManager:
 
     def __init__(self, config: Config) -> None:
         self._config = config
+        # TODO: Move this stuff to the config files? Ideally, make it so that
+        #       one profile can "extend" another; that way, the foh_dev and
+        #       mcr_dev profiles will be as similar as possible to their
+        #       production counterparts (which is good for testing).
+        self._CATEGORIES = [
+            AssetCategory(
+                name="livestream announcements video",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.station == "mcr"
+                    else SkipCondition.ALWAYS
+                ),
+                file_type=FileType.VIDEO,
+                filename_regex=config.announcements_video_regex,
+                target_dir=config.assets_by_service_dir,
+                append_date=True,
+                deduplicate=False,
+                overwrite_existing=True,
+                if_missing=Action.ERROR,
+                if_many=Action.WARN,
+            ),
+            AssetCategory(
+                name="kids video",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.station == "mcr"
+                    else SkipCondition.ALWAYS
+                ),
+                file_type=FileType.VIDEO,
+                filename_regex=config.kids_video_regex,
+                target_dir=config.assets_by_service_dir,
+                append_date=False,
+                deduplicate=False,
+                overwrite_existing=True,
+                if_missing=Action.ERROR,
+                if_many=Action.WARN,
+            ),
+            AssetCategory(
+                name="sermon notes",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.station == "mcr"
+                    else SkipCondition.ALWAYS
+                ),
+                file_type=FileType.DOCX,
+                filename_regex=config.sermon_notes_regex,
+                target_dir=config.assets_by_service_dir,
+                append_date=False,
+                deduplicate=False,
+                overwrite_existing=True,
+                if_missing=Action.WARN,
+                if_many=Action.WARN,
+            ),
+            AssetCategory(
+                name="images",
+                skip=SkipCondition.NEVER,
+                file_type=FileType.IMAGE,
+                filename_regex=".*",
+                target_dir=config.images_dir,
+                append_date=False,
+                deduplicate=True,
+                overwrite_existing=False,
+                if_missing=Action.OK,
+                if_many=Action.OK,
+            ),
+            AssetCategory(
+                name="videos",
+                skip=SkipCondition.IF_FILENAME_EXISTS,
+                file_type=FileType.VIDEO,
+                filename_regex=".*",
+                target_dir=config.videos_dir,
+                append_date=False,
+                deduplicate=True,
+                overwrite_existing=True,
+                if_missing=Action.OK,
+                if_many=Action.OK,
+            ),
+        ]
+        kids_vid_category = [c for c in self._CATEGORIES if c.name == "kids video"]
+        assert len(kids_vid_category) == 1
+        self._KIDS_VID_CATEGORY = kids_vid_category[0]
 
     def locate_kids_video(self) -> Optional[Path]:
         def is_kids_video(p: Path) -> bool:
@@ -107,9 +246,6 @@ class AssetManager:
         client: PlanningCenterClient,
         messenger: Messenger,
         *,
-        download_kids_video: bool,
-        download_notes_docx: bool,
-        require_announcements: bool,
         dry_run: bool,
     ) -> Dict[Attachment, DownloadResult]:
         cancellation_token = messenger.allow_cancel()
@@ -119,9 +255,6 @@ class AssetManager:
         download_plan = self._plan_downloads(
             attachments=attachments,
             messenger=messenger,
-            download_kids_video=download_kids_video,
-            download_notes_docx=download_notes_docx,
-            require_announcements=require_announcements,
         )
         downloads = {
             a: d for (a, d) in download_plan.items() if isinstance(d, Download)
@@ -194,41 +327,16 @@ class AssetManager:
 
         return ret
 
-    def _classify(self, attachment: Attachment) -> AssetCategory:
-        is_announcement = attachment.file_type == FileType.VIDEO and bool(
-            re.search(
-                self._config.announcements_video_regex,
-                attachment.filename,
-                re.IGNORECASE,
-            )
-        )
-        if is_announcement:
-            return AssetCategory.ANNOUNCEMENTS
-        is_kids_video = attachment.file_type == FileType.VIDEO and bool(
-            re.search(self._config.kids_video_regex, attachment.filename, re.IGNORECASE)
-        )
-        if is_kids_video:
-            return AssetCategory.KIDS_VIDEO
-        is_sermon_notes = attachment.file_type == FileType.DOCX and bool(
-            re.search(
-                self._config.sermon_notes_regex, attachment.filename, re.IGNORECASE
-            )
-        )
-        if is_sermon_notes:
-            return AssetCategory.SERMON_NOTES
-        if attachment.file_type == FileType.IMAGE:
-            return AssetCategory.IMAGE
-        if attachment.file_type == FileType.VIDEO:
-            return AssetCategory.VIDEO
-        return AssetCategory.UNKNOWN
+    def _classify(self, attachment: Attachment) -> Optional[AssetCategory]:
+        for c in self._CATEGORIES:
+            if c.matches(attachment):
+                return c
+        return None
 
     def _plan_downloads(
         self,
         attachments: Set[Attachment],
         messenger: Messenger,
-        download_kids_video: bool,
-        download_notes_docx: bool,
-        require_announcements: bool,
     ) -> Dict[Attachment, Union[Download, DownloadSkipped]]:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
@@ -244,110 +352,72 @@ class AssetManager:
                 [a for (a, c) in category_by_attachment.items() if c == cat],
                 key=lambda a: a.id,
             )
-            for cat in AssetCategory
+            for cat in self._CATEGORIES
         }
-        assets_by_service_dir = self._config.assets_by_service_dir
         downloads: Dict[Attachment, Union[Download, DownloadSkipped]] = {}
 
-        sermon_notes = attachments_by_category[AssetCategory.SERMON_NOTES]
-        if download_notes_docx:
-            if len(sermon_notes) != 1:
-                messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"Found {len(sermon_notes)} attachments that look like sermon notes.",
+        for c in self._CATEGORIES:
+            n = len(attachments_by_category[c])
+            # Don't report a problem if the current station doesn't require
+            # assets of this category anyway.
+            if n == 0 and c.skip != SkipCondition.ALWAYS:
+                _handle_missing(c, messenger)
+            # Do give a warning for too many assets even if the current station
+            # doesn't require these assets; it may be a sign that assets which
+            # should be downloaded are being mis-classified.
+            elif n > 1:
+                _handle_many(n, c, messenger)
+            for a in attachments_by_category[c]:
+                s = _skip(a, c)
+                if s is not None:
+                    downloads[a] = s
+                    continue
+                filename = (
+                    _append_date(a.filename, today) if c.append_date else a.filename
                 )
-            for sn in sermon_notes:
                 p = _find_available_path(
-                    assets_by_service_dir,
-                    sn.filename,
+                    dest_dir=c.target_dir,
+                    name=filename,
                     planned=_get_planned_paths(downloads),
-                    overwrite=True,
+                    overwrite=c.overwrite_existing,
                 )
-                downloads[sn] = Download(p, is_required=False, deduplicate=False)
-        else:
-            for sn in sermon_notes:
-                downloads[sn] = DownloadSkipped(reason="sermon notes")
-
-        kids_videos = attachments_by_category[AssetCategory.KIDS_VIDEO]
-        # Give this warning in every case because it might mean videos that
-        # should be downloaded (e.g., opener, bumper) are being misclassified
-        if len(kids_videos) > 1:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Found {len(kids_videos)} attachments that look like the Kids Connection video.",
-            )
-        if download_kids_video:
-            if len(kids_videos) == 0:
-                raise ValueError("No Kids Connection video found.")
-            for v in kids_videos:
-                _check_kids_video_week_num(v, today, messenger)
-                p = _find_available_path(
-                    assets_by_service_dir,
-                    v.filename,
-                    planned=_get_planned_paths(downloads),
-                    overwrite=True,
+                downloads[a] = Download(
+                    p,
+                    is_required=c.if_missing == Action.ERROR,
+                    deduplicate=c.deduplicate,
                 )
-                downloads[v] = Download(p, is_required=True, deduplicate=False)
-        else:
-            for v in kids_videos:
-                downloads[v] = DownloadSkipped(reason="kids video")
-
-        announcements = attachments_by_category[AssetCategory.ANNOUNCEMENTS]
-        if len(announcements) == 0 and require_announcements:
-            raise ValueError(f"No announcements video found.")
-        # It's no problem if the announcements video is missing; it doesn't
-        # seem like they make one every week anymore
-        elif len(announcements) > 1:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Found {len(announcements)} attachments that look like the announcements video.",
-            )
-        for a in announcements:
-            # Make it clear in the name which date the announcements are for,
-            # to avoid confusion with the previous week's video
-            stem = Path(a.filename).stem
-            ext = Path(a.filename).suffix
-            fname = f"{stem} {today.strftime('%Y-%m-%d')}{ext}"
-            p = _find_available_path(
-                assets_by_service_dir,
-                fname,
-                planned=_get_planned_paths(downloads),
-                overwrite=True,
-            )
-            downloads[a] = Download(
-                p, is_required=require_announcements, deduplicate=False
-            )
-
-        for img in attachments_by_category[AssetCategory.IMAGE]:
-            p = _find_available_path(
-                dest_dir=self._config.images_dir,
-                name=img.filename,
-                planned=_get_planned_paths(downloads),
-                overwrite=False,
-            )
-            downloads[img] = Download(p, is_required=False, deduplicate=True)
-
-        for vid in attachments_by_category[AssetCategory.VIDEO]:
-            p = self._config.videos_dir.joinpath(vid.filename)
-            # Assume the existing video is already correct
-            if p.exists():
-                downloads[vid] = DownloadSkipped(
-                    reason=f"{p.resolve().as_posix()} already exists"
-                )
-            else:
-                p = _find_available_path(
-                    self._config.videos_dir,
-                    vid.filename,
-                    planned=_get_planned_paths(downloads),
-                    overwrite=True,
-                )
-                downloads[vid] = Download(p, is_required=False, deduplicate=True)
 
         for a in attachments:
             if a not in downloads:
                 downloads[a] = DownloadSkipped(reason="unknown attachment")
 
+        for a in attachments_by_category[self._KIDS_VID_CATEGORY]:
+            _check_kids_video_week_num(a, today, messenger)
+
         return downloads
+
+
+def _skip(a: Attachment, c: AssetCategory) -> Optional[DownloadSkipped]:
+    match c.skip:
+        case SkipCondition.ALWAYS:
+            return DownloadSkipped(
+                reason=f'assets in category "{c.name}" are not downloaded at this station'
+            )
+        case SkipCondition.NEVER:
+            return None
+        case SkipCondition.IF_FILENAME_EXISTS:
+            p = c.target_dir.joinpath(a.filename)
+            return (
+                DownloadSkipped(reason=f"{p.as_posix()} already exists")
+                if p.exists()
+                else None
+            )
+
+
+def _append_date(filename: str, dt: date) -> str:
+    stem = Path(filename).stem
+    ext = Path(filename).suffix
+    return f"{stem} {dt.strftime('%Y-%m-%d')}{ext}"
 
 
 def _get_planned_paths(
@@ -427,3 +497,27 @@ def _get_week_num(day: date) -> int:
         if d.month != day.month:
             return i
     return 5
+
+
+def _handle_missing(c: AssetCategory, messenger: Messenger) -> None:
+    match c.if_missing:
+        case Action.OK:
+            pass
+        case Action.WARN:
+            messenger.log_problem(
+                ProblemLevel.WARN, f'No attachments found for category "{c.name}".'
+            )
+        case Action.ERROR:
+            raise ValueError(f'No attachments found for category "{c.name}".')
+
+
+def _handle_many(n: int, c: AssetCategory, messenger: Messenger) -> None:
+    match c.if_many:
+        case Action.OK:
+            pass
+        case Action.WARN:
+            messenger.log_problem(
+                ProblemLevel.WARN, f'Found {n} attachments for category "{c.name}".'
+            )
+        case Action.ERROR:
+            raise ValueError(f'Found {n} attachments for category "{c.name}".')
