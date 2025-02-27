@@ -69,7 +69,7 @@
 					"description": "Download the Kids Connection Video, announcements video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
 				},
 				{
-					"name": "import_announcements_video",
+					"name": "import_livestream_announcements_video",
 					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
 					"prerequisites": [
 						"download_assets"
