@@ -37,6 +37,26 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             self._classify(attachment),
         )
 
+    def test_classify_announcements_2(self) -> None:
+        a = Attachment(
+            id="192242875",
+            filename="Livestream Video Announcements.mp4",
+            num_bytes=108487639,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual("livestream announcements video", self._classify(a))
+
+    def test_classify_announcements_3(self) -> None:
+        a = Attachment(
+            id="193920912",
+            filename="Livestreaming Announcements video.mp4",
+            num_bytes=91076145,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual("livestream announcements video", self._classify(a))
+
     def test_classify_kids_video_0(self) -> None:
         kids_video = Attachment(
             id="163865496",
