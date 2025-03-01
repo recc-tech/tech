@@ -32,9 +32,6 @@ class Action(Enum):
     """Raise an error."""
 
 
-# TODO: Need to somehow add back week number check for kids videos
-
-
 @dataclass(frozen=True)
 class AssetCategory:
     """
@@ -127,10 +124,6 @@ class AssetManager:
 
     def __init__(self, config: Config) -> None:
         self._config = config
-        # TODO: Move this stuff to the config files? Ideally, make it so that
-        #       one profile can "extend" another; that way, the foh_dev and
-        #       mcr_dev profiles will be as similar as possible to their
-        #       production counterparts (which is good for testing).
         self._CATEGORIES = [
             AssetCategory(
                 name="livestream announcements video",
