@@ -20,6 +20,9 @@ class DownloadAssetsArgs(ReccArgs):
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
+        # TODO: Make this script *not* require any assets and just download
+        # whatever's there? This would allow user to run this script in case
+        # the kids video or announcements are missing in the MCR.
         parser.add_argument(
             "--dry-run",
             action="store_true",

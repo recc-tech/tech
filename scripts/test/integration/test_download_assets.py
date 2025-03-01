@@ -763,7 +763,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
 
     # Full download test
 
-    def test_download(self) -> None:
+    def test_full_download_mcr(self) -> None:
         config = self._MCR_CONFIG
         manager = AssetManager(config)
         pco_client = create_autospec(PlanningCenterClient)
@@ -885,7 +885,119 @@ class DownloadAssetsTestCase(unittest.TestCase):
         self.assertEqual(expected_files, actual_files)
         messenger.log_problem.assert_not_called()
 
-    # TODO: Test a full download at the FOH station?
+    def test_full_download_foh(self) -> None:
+        config = self._FOH_CONFIG
+        manager = AssetManager(config)
+        pco_client = create_autospec(PlanningCenterClient)
+        pco_client.download_attachments = _fake_download
+        pco_client.find_attachments.return_value = {
+            _KIDS_VID,
+            _BUMPER_VID,
+            _OPENER_VID,
+            _SERIES_TITLE_IMG,
+            _ANNOUNCEMENT_VID,
+            _SERMON_NOTES_DOCX,
+            _HOST_SCRIPT_DOCX,
+        }
+        messenger = create_autospec(Messenger)
+        results = manager.download_pco_assets(
+            client=pco_client,
+            messenger=messenger,
+            dry_run=False,
+        )
+        expected_results = {
+            _BUMPER_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("Worthy Sermon Bumper.mp4")
+            ),
+            _OPENER_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("Welcome Opener Video.mp4")
+            ),
+            _SERIES_TITLE_IMG: DownloadSucceeded(
+                config.images_dir.joinpath("WORTHY Title Slide.PNG")
+            ),
+            _KIDS_VID: DownloadSkipped(
+                reason='assets in category "kids video" are not downloaded at this station'
+            ),
+            _ANNOUNCEMENT_VID: DownloadSkipped(
+                reason='assets in category "livestream announcements video" are not downloaded at this station'
+            ),
+            _SERMON_NOTES_DOCX: DownloadSkipped(
+                reason='assets in category "sermon notes" are not downloaded at this station'
+            ),
+            _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
+        }
+        self.assertEqual(expected_results, results)
+        expected_files = {
+            d.destination
+            for d in expected_results.values()
+            if isinstance(d, DownloadSucceeded)
+        }
+        actual_files = {
+            p.resolve()
+            for d in {
+                config.images_dir,
+                config.videos_dir,
+                config.assets_by_service_dir,
+            }
+            for p in d.iterdir()
+        }
+        self.assertEqual(expected_files, actual_files)
+        messenger.log_problem.assert_not_called()
+
+        # Check that deduplication works properly
+        pco_client.find_attachments.return_value = {
+            _KIDS_VID,
+            _SERMON_NOTES_DOCX,
+            _SERIES_TITLE_IMG_COPY_NEW_NAME,
+            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT,
+            _ANNOUNCEMENT_VID,
+            _OPENER_VID_COPY_NEW_NAME,
+            _BAPTISM_VID,
+        }
+        results = manager.download_pco_assets(
+            client=pco_client,
+            messenger=messenger,
+            dry_run=False,
+        )
+        expected_results = {
+            _SERIES_TITLE_IMG_COPY_NEW_NAME: DownloadDeduplicated(
+                original=config.images_dir.joinpath("WORTHY Title Slide.PNG")
+            ),
+            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: DownloadSucceeded(
+                config.images_dir.joinpath("WORTHY Title Slide (1).PNG")
+            ),
+            _KIDS_VID: DownloadSkipped(
+                reason='assets in category "kids video" are not downloaded at this station'
+            ),
+            _ANNOUNCEMENT_VID: DownloadSkipped(
+                reason='assets in category "livestream announcements video" are not downloaded at this station'
+            ),
+            _SERMON_NOTES_DOCX: DownloadSkipped(
+                reason='assets in category "sermon notes" are not downloaded at this station'
+            ),
+            _OPENER_VID_COPY_NEW_NAME: DownloadDeduplicated(
+                original=config.videos_dir.joinpath("Welcome Opener Video.mp4")
+            ),
+            _BAPTISM_VID: DownloadSucceeded(
+                config.videos_dir.joinpath("BaptismHD.mp4")
+            ),
+        }
+        self.assertEqual(expected_results, results)
+        expected_files = expected_files | {
+            config.images_dir.joinpath("WORTHY Title Slide (1).PNG"),
+            config.videos_dir.joinpath("BaptismHD.mp4"),
+        }
+        actual_files = {
+            p.resolve()
+            for d in {
+                config.images_dir,
+                config.videos_dir,
+                config.assets_by_service_dir,
+            }
+            for p in d.iterdir()
+        }
+        self.assertEqual(expected_files, actual_files)
+        messenger.log_problem.assert_not_called()
 
 
 async def _fake_download(

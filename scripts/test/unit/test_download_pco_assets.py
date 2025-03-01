@@ -11,7 +11,6 @@ from lib.assets import AssetManager, Attachment
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
     def test_classify_announcements_0(self) -> None:
-        # TODO: Add more recent tests for this
         attachment = Attachment(
             id="168445080",
             filename="Announcement Video.mov",
