@@ -695,6 +695,30 @@ class Config(BaseConfig):
     def start_time(self) -> datetime:
         return self._args.start_time
 
+    @property
+    def download_announcements_vid(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def download_kids_vid(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def download_sermon_notes(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def if_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error"
+
+    @property
+    def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error"
+
+    @property
+    def if_sermon_notes_missing(self) -> Literal["ok", "warn", "error"]:
+        return "warn"
+
     def fill_placeholders(self, text: str) -> str:
         return self._reader.fill_placeholders(text)
 

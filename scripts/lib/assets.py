@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import filecmp
 import re
@@ -5,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, Optional, Set, Union
+from typing import Dict, Literal, Optional, Set, Union
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import Config
@@ -30,6 +32,16 @@ class Action(Enum):
     """Emit a warning."""
     ERROR = auto()
     """Raise an error."""
+
+    @staticmethod
+    def parse(s: Literal["ok", "warn", "error"]) -> Action:
+        match s:
+            case "ok":
+                return Action.OK
+            case "warn":
+                return Action.WARN
+            case "error":
+                return Action.ERROR
 
 
 @dataclass(frozen=True)
@@ -129,7 +141,7 @@ class AssetManager:
                 name="livestream announcements video",
                 skip=(
                     SkipCondition.NEVER
-                    if config.station == "mcr"
+                    if config.download_announcements_vid
                     else SkipCondition.ALWAYS
                 ),
                 file_type=FileType.VIDEO,
@@ -138,14 +150,14 @@ class AssetManager:
                 append_date=True,
                 deduplicate=False,
                 overwrite_existing=True,
-                if_missing=Action.ERROR,
+                if_missing=Action.parse(config.if_announcements_vid_missing),
                 if_many=Action.WARN,
             ),
             AssetCategory(
                 name="kids video",
                 skip=(
                     SkipCondition.NEVER
-                    if config.station == "mcr"
+                    if config.download_kids_vid
                     else SkipCondition.ALWAYS
                 ),
                 file_type=FileType.VIDEO,
@@ -154,14 +166,14 @@ class AssetManager:
                 append_date=False,
                 deduplicate=False,
                 overwrite_existing=True,
-                if_missing=Action.ERROR,
+                if_missing=Action.parse(config.if_kids_vid_missing),
                 if_many=Action.WARN,
             ),
             AssetCategory(
                 name="sermon notes",
                 skip=(
                     SkipCondition.NEVER
-                    if config.station == "mcr"
+                    if config.download_sermon_notes
                     else SkipCondition.ALWAYS
                 ),
                 file_type=FileType.DOCX,
@@ -170,7 +182,7 @@ class AssetManager:
                 append_date=False,
                 deduplicate=False,
                 overwrite_existing=True,
-                if_missing=Action.WARN,
+                if_missing=Action.parse(config.if_sermon_notes_missing),
                 if_many=Action.WARN,
             ),
             AssetCategory(
