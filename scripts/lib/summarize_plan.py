@@ -41,7 +41,6 @@ class PlanItemsSummary:
     announcements: List[str]
     opener_video: Optional[AnnotatedItem]
     bumper_video: Optional[AnnotatedItem]
-    announcements_video: Optional[AnnotatedItem]
     songs: List[AnnotatedSong]
     message_notes: Optional[AnnotatedItem]
     num_visuals_notes: int
@@ -182,22 +181,6 @@ def _get_bumper_video(
     )
 
 
-def _get_announcements_video(
-    items: List[PlanItem], messenger: Messenger, note_categories: Set[str]
-) -> Optional[AnnotatedItem]:
-    matches = [
-        i for i in items if re.search("video announcements", i.title, re.IGNORECASE)
-    ]
-    itm = _get_one(matches, messenger, "announcements video", missing_ok=True)
-    return (
-        None
-        if itm is None
-        else AnnotatedItem(
-            itm.title, _filter_notes_by_category(itm.notes, note_categories)
-        )
-    )
-
-
 def _is_message_section(s: PlanSection) -> bool:
     return s.title.lower() == "message"
 
@@ -294,9 +277,6 @@ def get_plan_summary(
     announcements = [
         a for a in announcements if a.lower() not in config.announcements_to_ignore
     ]
-    announcements_video = _get_announcements_video(
-        items, messenger, note_categories=config.plan_summary_note_categories
-    )
     msg_sec = _get_message_section(sections, messenger)
     if msg_sec is None:
         bumper_video = None
@@ -321,7 +301,6 @@ def get_plan_summary(
         announcements=announcements,
         opener_video=opener_video,
         bumper_video=bumper_video,
-        announcements_video=announcements_video,
         songs=songs,
         message_notes=message_notes,
         num_visuals_notes=len(visuals_notes),
@@ -418,9 +397,7 @@ def _make_announcements_list(slides: List[str]) -> str:
 
 
 def _make_videos_table(
-    opener: Optional[AnnotatedItem],
-    bumper: Optional[AnnotatedItem],
-    announcements: Optional[AnnotatedItem],
+    opener: Optional[AnnotatedItem], bumper: Optional[AnnotatedItem]
 ) -> HtmlTable:
     missing = "<span class='missing'>None found</span>"
 
@@ -429,17 +406,10 @@ def _make_videos_table(
     opener_notes = _show_notes(opener.notes) if opener is not None else ""
     bumper_name = _escape(bumper.content) if bumper is not None else missing
     bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-    announcements_name = (
-        _escape(announcements.content) if announcements is not None else missing
-    )
-    announcements_notes = (
-        _show_notes(announcements.notes) if announcements is not None else ""
-    )
 
     rows = [
         ["Opener", opener_name, opener_notes],
         ["Bumper", bumper_name, bumper_notes],
-        ["Announcements", announcements_name, announcements_notes],
     ]
     return HtmlTable(
         cls="videos-table",
@@ -509,7 +479,6 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     videos_table = _make_videos_table(
         opener=summary.opener_video,
         bumper=summary.bumper_video,
-        announcements=summary.announcements_video,
     )
     songs_table = _make_songs_table(songs=summary.songs)
     message_table = _make_message_table(summary.message_notes)
@@ -742,7 +711,6 @@ def plan_summary_to_json(summary: PlanItemsSummary) -> str:
         "walk_in_slides": summary.walk_in_slides,
         "opener_video": _annotated_item_to_json(summary.opener_video),
         "announcements": summary.announcements,
-        "announcements_video": _annotated_item_to_json(summary.announcements_video),
         "songs": [_annotated_song_to_json(s) for s in summary.songs],
         "bumper_video": _annotated_item_to_json(summary.bumper_video),
         "message_notes": _annotated_item_to_json(summary.message_notes),
@@ -763,11 +731,6 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
     bumper_vid = (
         _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
     )
-    announcements_vid = (
-        _parse_annotated_item(data["announcements_video"])
-        if "announcements_video" in data
-        else None
-    )
     songs = [_parse_annotated_song(s) for s in data["songs"]]
     message_notes = _parse_annotated_item(data["message_notes"])
     return PlanItemsSummary(
@@ -776,7 +739,6 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
         announcements=data["announcements"],
         opener_video=opener_vid,
         bumper_video=bumper_vid,
-        announcements_video=announcements_vid,
         songs=songs,
         message_notes=message_notes,
         num_visuals_notes=data["num_visuals_notes"],

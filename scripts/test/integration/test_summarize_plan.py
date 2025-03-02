@@ -250,7 +250,6 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
             "After Party",
             "See You Next Sunday",
         ],
-        announcements_video=AnnotatedItem(content="Video Announcements", notes=[]),
         songs=[
             AnnotatedSong(
                 Song(

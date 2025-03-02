@@ -1,6 +1,6 @@
 import sys
 from argparse import ArgumentParser, Namespace
-from typing import Callable
+from typing import Callable, Literal, Optional
 
 import autochecklist
 from args import ReccArgs
@@ -28,26 +28,68 @@ class DownloadAssetsArgs(ReccArgs):
         return super().set_up_parser(parser)
 
 
+class DownloadAssetsConfig(Config):
+    def __init__(
+        self,
+        args: ReccArgs,
+        profile: Optional[str] = None,
+        strict: bool = False,
+        allow_multiple_only_for_testing: bool = False,
+    ) -> None:
+        self._args = args
+        super().__init__(
+            args,
+            profile=profile,
+            strict=strict,
+            allow_multiple_only_for_testing=allow_multiple_only_for_testing,
+        )
+
+    # Don't error out even if assets are missing.
+    # That way, this script can be used as a fallback in case the MCR setup
+    # script gets stuck due to missing assets but the user wants to keep
+    # working.
+
+    @property
+    def if_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "warn"
+
+    @property
+    def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "warn"
+
+    @property
+    def if_sermon_notes_missing(self) -> Literal["ok", "warn", "error"]:
+        return "warn"
+
+
 def download_PCO_assets(
     args: DownloadAssetsArgs,
-    config: Config,
+    config: DownloadAssetsConfig,
     client: PlanningCenterClient,
     messenger: Messenger,
     manager: AssetManager,
 ):
-    results = manager.download_pco_assets(
-        client=client,
+    pco_plan = client.find_plan_by_date(config.start_time.date())
+    attachments = client.find_attachments(plan_id=pco_plan.id)
+    download_plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
+    if args.dry_run:
+        messenger.log_debug("Skipping downloading assets: dry run.")
+        msg = "\n".join(
+            [f"* {a.filename}: {d}" for (a, d) in download_plan.downloads.items()]
+        )
+        messenger.log_status(TaskStatus.DONE, msg)
+    results = manager.execute_plan(
+        plan=download_plan,
+        pco_client=client,
         messenger=messenger,
-        download_kids_video=config.station == "mcr",
-        download_notes_docx=config.station == "mcr",
-        require_announcements=False,
-        dry_run=args.dry_run,
     )
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
     messenger.log_status(TaskStatus.DONE, msg)
 
 
-def main(args: DownloadAssetsArgs, config: Config, dep: ReccDependencyProvider) -> None:
+def main(
+    args: DownloadAssetsArgs, config: DownloadAssetsConfig, dep: ReccDependencyProvider
+) -> None:
     tasks = TaskModel(
         name="download_PCO_assets",
         description="Failed to download assets.",
@@ -64,7 +106,7 @@ def main(args: DownloadAssetsArgs, config: Config, dep: ReccDependencyProvider) 
 
 if __name__ == "__main__":
     args = DownloadAssetsArgs.parse(sys.argv)
-    config = Config(args)
+    config = DownloadAssetsConfig(args)
     dependency_provider = ReccDependencyProvider(
         args=args,
         config=config,

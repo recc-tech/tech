@@ -17,7 +17,7 @@ from args import McrTeardownArgs, ReccArgs
 from autochecklist import FileMessenger, Messenger, ProblemLevel, TaskStatus
 from check_credentials import CheckCredentialsArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
-from download_pco_assets import DownloadAssetsArgs
+from download_pco_assets import DownloadAssetsArgs, DownloadAssetsConfig
 from external_services import CredentialStore
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 from launch_apps import LaunchAppsArgs
@@ -140,7 +140,7 @@ class PyStartupSmokeTestCase(unittest.TestCase):
 
     def test_download_pco_assets(self) -> None:
         args = DownloadAssetsArgs.parse(["", "--no-run"])
-        config = Config(args, allow_multiple_only_for_testing=True)
+        config = DownloadAssetsConfig(args, allow_multiple_only_for_testing=True)
         dep = MockDependencyProvider(args=args, config=config)
         download_pco_assets.main(args, config, dep)
         self.assertEqual([], dep.input_messenger.errors)

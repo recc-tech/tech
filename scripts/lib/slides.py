@@ -130,20 +130,6 @@ class SlideBlueprintReader:
         with open(file, mode="w", encoding="utf-8") as f:
             json.dump({"slides": slides_dicts}, f, indent="\t")
 
-    def _split_message_notes(self, text: str) -> List[str]:
-        # The particular value here isn't a big deal, as long as it does not occur within the notes themselves
-        slide_boundary = "----- SLIDE BOUNDARY -----"
-        slides_prefix_regex = re.compile(
-            "^(title )?slides? ?- ?", flags=re.IGNORECASE | re.MULTILINE
-        )
-        if slides_prefix_regex.match(text):
-            delimited_text = slides_prefix_regex.sub(slide_boundary, text)
-        else:
-            delimited_text = text.replace("\r\n", "\n").replace("\n", slide_boundary)
-        notes = delimited_text.split(slide_boundary)
-        non_empty_notes = [n.strip() for n in notes if n.strip()]
-        return non_empty_notes
-
     def _split_lyrics(self, text: str) -> List[str]:
         text = text.replace("\r\n", "\n")
         text = re.sub("\n\n+", "\n\n", text)

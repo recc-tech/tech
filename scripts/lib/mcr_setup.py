@@ -9,14 +9,7 @@ from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 def download_assets(
     client: PlanningCenterClient, messenger: Messenger, manager: AssetManager
 ):
-    results = manager.download_pco_assets(
-        client=client,
-        messenger=messenger,
-        download_kids_video=True,
-        download_notes_docx=True,
-        require_announcements=False,
-        dry_run=False,
-    )
+    results = manager.download_pco_assets(client=client, messenger=messenger)
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
     messenger.log_status(TaskStatus.DONE, msg)
 
@@ -29,6 +22,16 @@ def import_Kids_Connection_video(
         raise ValueError("The path to the Kids Connection video is not known.")
     client.list_remove_all(config.vmix_kids_connection_list_key)
     client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
+
+
+def import_livestream_announcements_video(
+    client: VmixClient, config: McrSetupConfig, manager: AssetManager
+) -> None:
+    p = manager.locate_announcements_video()
+    if p is None:
+        raise ValueError("The path to the livestream announcements video is not known.")
+    client.list_remove_all(config.vmix_announcements_list_key)
+    client.list_add(config.vmix_announcements_list_key, p)
 
 
 def restart_videos(client: VmixClient) -> None:

@@ -477,6 +477,9 @@ class Config(BaseConfig):
             self.vmix_kids_connection_list_key = reader.get_str(
                 "vmix.kids_connection_list_key"
             )
+            self.vmix_announcements_list_key = reader.get_str(
+                "vmix.livestream_announcements_list_key"
+            )
             self.vmix_pre_stream_title_key = reader.get_str("vmix.pre_stream_title_key")
             self.vmix_speaker_title_key = reader.get_str("vmix.speaker_title_key")
             self.vmix_host_title_key = reader.get_str("vmix.host_title_key")
@@ -691,6 +694,30 @@ class Config(BaseConfig):
     @property
     def start_time(self) -> datetime:
         return self._args.start_time
+
+    @property
+    def download_announcements_vid(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def download_kids_vid(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def download_sermon_notes(self) -> bool:
+        return self.station == "mcr"
+
+    @property
+    def if_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error"
+
+    @property
+    def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error"
+
+    @property
+    def if_sermon_notes_missing(self) -> Literal["ok", "warn", "error"]:
+        return "warn"
 
     def fill_placeholders(self, text: str) -> str:
         return self._reader.fill_placeholders(text)

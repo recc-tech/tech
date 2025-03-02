@@ -10,6 +10,7 @@ from .assets import (
     Download,
     DownloadDeduplicated,
     DownloadFailed,
+    DownloadPlan,
     DownloadResult,
     DownloadSkipped,
     DownloadSucceeded,
