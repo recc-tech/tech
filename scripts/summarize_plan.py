@@ -218,5 +218,6 @@ if __name__ == "__main__":
             "Are you sure you want to exit?"
             " The plan summary will no longer be updated automatically."
         ),
+        lazy_login=_args.demo,
     )
     main(_args, _cfg, dependency_provider)
