@@ -38,10 +38,19 @@ def download_PCO_assets(
     messenger: Messenger,
     manager: AssetManager,
 ):
-    results = manager.download_pco_assets(
-        client=client,
+    pco_plan = client.find_plan_by_date(config.start_time.date())
+    attachments = client.find_attachments(plan_id=pco_plan.id)
+    download_plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
+    if args.dry_run:
+        messenger.log_debug("Skipping downloading assets: dry run.")
+        msg = "\n".join(
+            [f"* {a.filename}: {d}" for (a, d) in download_plan.downloads.items()]
+        )
+        messenger.log_status(TaskStatus.DONE, msg)
+    results = manager.execute_plan(
+        plan=download_plan,
+        pco_client=client,
         messenger=messenger,
-        dry_run=args.dry_run,
     )
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
     messenger.log_status(TaskStatus.DONE, msg)

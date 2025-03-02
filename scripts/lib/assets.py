@@ -131,6 +131,11 @@ class DownloadDeduplicated(DownloadResult):
         return f"Duplicate of {self.original.resolve().as_posix()}"
 
 
+@dataclass
+class DownloadPlan:
+    downloads: Dict[Attachment, Union[Download, DownloadSkipped]]
+
+
 class AssetManager:
     _VIDEO_EXTENSIONS = {".mp4", ".mov"}
 
@@ -250,99 +255,24 @@ class AssetManager:
         self,
         client: PlanningCenterClient,
         messenger: Messenger,
-        *,
-        dry_run: bool,
     ) -> Dict[Attachment, DownloadResult]:
-        cancellation_token = messenger.allow_cancel()
-
         plan = client.find_plan_by_date(self._config.start_time.date())
         attachments = client.find_attachments(plan.id)
-        download_plan = self._plan_downloads(
+        download_plan = self.plan_downloads(
             attachments=attachments,
             messenger=messenger,
         )
-        downloads = {
-            a: d for (a, d) in download_plan.items() if isinstance(d, Download)
-        }
-
-        if len(downloads) == 0:
-            messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
-            return {
-                a: d
-                for (a, d) in download_plan.items()
-                if isinstance(d, DownloadSkipped)
-            }
-        if dry_run:
-            messenger.log_debug("Skipping downloading assets: dry run.")
-            return {
-                a: (
-                    d
-                    if isinstance(d, DownloadSkipped)
-                    else DownloadSucceeded(d.destination)
-                )
-                for (a, d) in download_plan.items()
-            }
-
-        self._config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
-        # Just in case
-        self._config.videos_dir.mkdir(exist_ok=True, parents=True)
-        self._config.images_dir.mkdir(exist_ok=True, parents=True)
-
-        messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
-        results = asyncio.run(
-            client.download_attachments(
-                {d.destination: a for (a, d) in downloads.items()},
-                messenger,
-                cancellation_token,
-            )
+        return self.execute_plan(
+            download_plan,
+            pco_client=client,
+            messenger=messenger,
         )
 
-        ret: Dict[Attachment, DownloadResult] = {}
-        for a, d in download_plan.items():
-            if isinstance(d, DownloadSkipped):
-                ret[a] = d
-            elif d.destination not in results:
-                ret[a] = DownloadSkipped("unknown reason")
-            elif (e := results[d.destination]) is not None:
-                ret[a] = DownloadFailed(e)
-            else:
-                ret[a] = DownloadSucceeded(d.destination)
-
-        messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
-        for a, d in downloads.items():
-            p = d.destination
-            should_dedup = results.get(p, None) is None and d.deduplicate
-            if should_dedup and (dup_of := _find_original(p)):
-                ret[a] = DownloadDeduplicated(dup_of)
-                p.unlink()
-
-        messenger.log_status(TaskStatus.RUNNING, "Checking download results.")
-        for a, d in downloads.items():
-            if d.destination not in results:
-                messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"The result of the download to '{d.destination.as_posix()}' is unknown.",
-                )
-            elif (exc := results[d.destination]) is not None:
-                msg = f"Failed to download {a.filename}: {exc} ({type(exc).__name__})"
-                if d.is_required:
-                    raise Exception(msg)
-                else:
-                    messenger.log_problem(ProblemLevel.WARN, msg)
-
-        return ret
-
-    def _classify(self, attachment: Attachment) -> Optional[AssetCategory]:
-        for c in self._CATEGORIES:
-            if c.matches(attachment):
-                return c
-        return None
-
-    def _plan_downloads(
+    def plan_downloads(
         self,
         attachments: Set[Attachment],
         messenger: Messenger,
-    ) -> Dict[Attachment, Union[Download, DownloadSkipped]]:
+    ) -> DownloadPlan:
         messenger.log_status(
             TaskStatus.RUNNING, "Looking for attachments in Planning Center."
         )
@@ -399,7 +329,81 @@ class AssetManager:
         for a in attachments_by_category[self._KIDS_VID_CATEGORY]:
             _check_kids_video_week_num(a, today, messenger)
 
-        return downloads
+        return DownloadPlan(downloads)
+
+    def execute_plan(
+        self,
+        plan: DownloadPlan,
+        pco_client: PlanningCenterClient,
+        messenger: Messenger,
+    ) -> Dict[Attachment, DownloadResult]:
+        cancellation_token = messenger.allow_cancel()
+        downloads = {
+            a: d for (a, d) in plan.downloads.items() if isinstance(d, Download)
+        }
+
+        if len(downloads) == 0:
+            messenger.log_problem(ProblemLevel.WARN, "No assets found to download.")
+            return {
+                a: d
+                for (a, d) in plan.downloads.items()
+                if isinstance(d, DownloadSkipped)
+            }
+
+        self._config.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
+        # Just in case
+        self._config.videos_dir.mkdir(exist_ok=True, parents=True)
+        self._config.images_dir.mkdir(exist_ok=True, parents=True)
+
+        messenger.log_status(TaskStatus.RUNNING, "Downloading new assets.")
+        results = asyncio.run(
+            pco_client.download_attachments(
+                {d.destination: a for (a, d) in downloads.items()},
+                messenger,
+                cancellation_token,
+            )
+        )
+
+        ret: Dict[Attachment, DownloadResult] = {}
+        for a, d in plan.downloads.items():
+            if isinstance(d, DownloadSkipped):
+                ret[a] = d
+            elif d.destination not in results:
+                ret[a] = DownloadSkipped("unknown reason")
+            elif (e := results[d.destination]) is not None:
+                ret[a] = DownloadFailed(e)
+            else:
+                ret[a] = DownloadSucceeded(d.destination)
+
+        messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
+        for a, d in downloads.items():
+            p = d.destination
+            should_dedup = results.get(p, None) is None and d.deduplicate
+            if should_dedup and (dup_of := _find_original(p)):
+                ret[a] = DownloadDeduplicated(dup_of)
+                p.unlink()
+
+        messenger.log_status(TaskStatus.RUNNING, "Checking download results.")
+        for a, d in downloads.items():
+            if d.destination not in results:
+                messenger.log_problem(
+                    ProblemLevel.WARN,
+                    f"The result of the download to '{d.destination.as_posix()}' is unknown.",
+                )
+            elif (exc := results[d.destination]) is not None:
+                msg = f"Failed to download {a.filename}: {exc} ({type(exc).__name__})"
+                if d.is_required:
+                    raise Exception(msg)
+                else:
+                    messenger.log_problem(ProblemLevel.WARN, msg)
+
+        return ret
+
+    def _classify(self, attachment: Attachment) -> Optional[AssetCategory]:
+        for c in self._CATEGORIES:
+            if c.matches(attachment):
+                return c
+        return None
 
 
 def _skip(a: Attachment, c: AssetCategory) -> Optional[DownloadSkipped]:

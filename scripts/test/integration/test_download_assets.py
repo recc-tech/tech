@@ -15,6 +15,7 @@ from lib import (
     Attachment,
     Download,
     DownloadDeduplicated,
+    DownloadPlan,
     DownloadSkipped,
     DownloadSucceeded,
 )
@@ -215,46 +216,48 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _BUMPER_VID: Download(
-                destination=config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _OPENER_VID: Download(
-                destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _SERIES_TITLE_IMG: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _BUMPER_VID: Download(
+                    destination=config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
+                    is_required=False,
+                    deduplicate=True,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _OPENER_VID: Download(
+                    destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
+                    is_required=False,
+                    deduplicate=True,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
-        }
+                _SERIES_TITLE_IMG: Download(
+                    destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
+                ),
+                _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -271,34 +274,36 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: DownloadSkipped(
-                reason='assets in category "kids video" are not downloaded at this station'
-            ),
-            _BUMPER_VID: Download(
-                destination=config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _OPENER_VID: Download(
-                destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _SERIES_TITLE_IMG: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _ANNOUNCEMENT_VID: DownloadSkipped(
-                reason='assets in category "livestream announcements video" are not downloaded at this station'
-            ),
-            _SERMON_NOTES_DOCX: DownloadSkipped(
-                reason='assets in category "sermon notes" are not downloaded at this station',
-            ),
-            _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: DownloadSkipped(
+                    reason='assets in category "kids video" are not downloaded at this station'
+                ),
+                _BUMPER_VID: Download(
+                    destination=config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _OPENER_VID: Download(
+                    destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _SERIES_TITLE_IMG: Download(
+                    destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _ANNOUNCEMENT_VID: DownloadSkipped(
+                    reason='assets in category "livestream announcements video" are not downloaded at this station'
+                ),
+                _SERMON_NOTES_DOCX: DownloadSkipped(
+                    reason='assets in category "sermon notes" are not downloaded at this station',
+                ),
+                _HOST_SCRIPT_DOCX: DownloadSkipped(reason="unknown attachment"),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -310,7 +315,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
         with self.assertRaises(ValueError) as cm:
-            manager._plan_downloads(attachments, messenger=messenger)
+            manager.plan_downloads(attachments, messenger=messenger)
         self.assertEqual(
             'No attachments found for category "kids video".', str(cm.exception)
         )
@@ -320,14 +325,16 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _SERIES_TITLE_IMG: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _SERIES_TITLE_IMG: Download(
+                    destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -337,7 +344,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
         with self.assertRaises(ValueError) as cm:
-            manager._plan_downloads(attachments=attachments, messenger=messenger)
+            manager.plan_downloads(attachments=attachments, messenger=messenger)
         self.assertEqual(
             'No attachments found for category "livestream announcements video".',
             str(cm.exception),
@@ -347,8 +354,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments=set(), messenger=messenger)
-        self.assertEqual({}, plan)
+        plan = manager.plan_downloads(attachments=set(), messenger=messenger)
+        self.assertEqual(DownloadPlan({}), plan)
         messenger.log_problem.assert_not_called()
 
     def test_plan_missing_sermon_notes_mcr(self) -> None:
@@ -356,23 +363,25 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_called_with(
             level=ProblemLevel.WARN,
@@ -384,8 +393,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments=set(), messenger=messenger)
-        self.assertEqual({}, plan)
+        plan = manager.plan_downloads(attachments=set(), messenger=messenger)
+        self.assertEqual(DownloadPlan({}), plan)
         messenger.log_problem.assert_not_called()
 
     # What happens if there are multiple attachments with the same name?
@@ -395,37 +404,39 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _KIDS_VID_COPY: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2 (1).mp4",
+                _KIDS_VID_COPY: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2 (1).mp4",
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_called_with(
             level=ProblemLevel.WARN,
@@ -443,37 +454,39 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID_COPY: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14 (1).mov"
+                _ANNOUNCEMENT_VID_COPY: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14 (1).mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_called_with(
             level=ProblemLevel.WARN,
@@ -491,37 +504,39 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX_COPY: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast (1).docx"
+                _SERMON_NOTES_DOCX_COPY: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast (1).docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_called_with(
             level=ProblemLevel.WARN,
@@ -534,19 +549,23 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _SERIES_TITLE_IMG: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _SERIES_TITLE_IMG_COPY: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide (1).PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _SERIES_TITLE_IMG: Download(
+                    destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _SERIES_TITLE_IMG_COPY: Download(
+                    destination=config.images_dir.joinpath(
+                        "WORTHY Title Slide (1).PNG"
+                    ),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -555,19 +574,23 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _OPENER_VID: Download(
-                destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-            _OPENER_VID_COPY: Download(
-                destination=config.videos_dir.joinpath("Welcome Opener Video (1).mp4"),
-                is_required=False,
-                deduplicate=True,
-            ),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _OPENER_VID: Download(
+                    destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+                _OPENER_VID_COPY: Download(
+                    destination=config.videos_dir.joinpath(
+                        "Welcome Opener Video (1).mp4"
+                    ),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -584,30 +607,32 @@ class DownloadAssetsTestCase(unittest.TestCase):
         existing_vid.write_text("")
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -621,30 +646,32 @@ class DownloadAssetsTestCase(unittest.TestCase):
         existing_vid.write_text("")
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -658,30 +685,32 @@ class DownloadAssetsTestCase(unittest.TestCase):
         existing_docx.write_text("")
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W2.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -695,14 +724,18 @@ class DownloadAssetsTestCase(unittest.TestCase):
         existing_img2.write_text("")
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _SERIES_TITLE_IMG: Download(
-                destination=config.images_dir.joinpath("WORTHY Title Slide (2).PNG"),
-                is_required=False,
-                deduplicate=True,
-            ),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _SERIES_TITLE_IMG: Download(
+                    destination=config.images_dir.joinpath(
+                        "WORTHY Title Slide (2).PNG"
+                    ),
+                    is_required=False,
+                    deduplicate=True,
+                ),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -714,12 +747,14 @@ class DownloadAssetsTestCase(unittest.TestCase):
         existing_vid.write_text("")
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _OPENER_VID: DownloadSkipped(
-                reason=f"{existing_vid.resolve().as_posix()} already exists"
-            ),
-        }
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _OPENER_VID: DownloadSkipped(
+                    reason=f"{existing_vid.resolve().as_posix()} already exists"
+                ),
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
@@ -730,30 +765,32 @@ class DownloadAssetsTestCase(unittest.TestCase):
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager._plan_downloads(attachments, messenger=messenger)
-        expected_plan = {
-            _KIDS_VID_20240421: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Kids_OnlineExperience_W3.mp4"
+        plan = manager.plan_downloads(attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID_20240421: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W3.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-            _SERMON_NOTES_DOCX: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
                 ),
-                is_required=False,
-                deduplicate=False,
-            ),
-            _ANNOUNCEMENT_VID: Download(
-                destination=config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                _ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Announcement Video 2024-04-14.mov"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
                 ),
-                is_required=True,
-                deduplicate=False,
-            ),
-        }
+            }
+        )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_called_with(
             level=ProblemLevel.WARN,
@@ -778,11 +815,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _HOST_SCRIPT_DOCX,
         }
         messenger = create_autospec(Messenger)
-        results = manager.download_pco_assets(
-            client=pco_client,
-            messenger=messenger,
-            dry_run=False,
-        )
+        results = manager.download_pco_assets(client=pco_client, messenger=messenger)
         expected_results = {
             _KIDS_VID: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath("Kids_OnlineExperience_W2.mp4")
@@ -836,11 +869,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _OPENER_VID_COPY_NEW_NAME,
             _BAPTISM_VID,
         }
-        results = manager.download_pco_assets(
-            client=pco_client,
-            messenger=messenger,
-            dry_run=False,
-        )
+        results = manager.download_pco_assets(client=pco_client, messenger=messenger)
         expected_results = {
             _KIDS_VID: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath("Kids_OnlineExperience_W2.mp4")
@@ -900,11 +929,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _HOST_SCRIPT_DOCX,
         }
         messenger = create_autospec(Messenger)
-        results = manager.download_pco_assets(
-            client=pco_client,
-            messenger=messenger,
-            dry_run=False,
-        )
+        results = manager.download_pco_assets(client=pco_client, messenger=messenger)
         expected_results = {
             _BUMPER_VID: DownloadSucceeded(
                 config.videos_dir.joinpath("Worthy Sermon Bumper.mp4")
@@ -954,11 +979,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _OPENER_VID_COPY_NEW_NAME,
             _BAPTISM_VID,
         }
-        results = manager.download_pco_assets(
-            client=pco_client,
-            messenger=messenger,
-            dry_run=False,
-        )
+        results = manager.download_pco_assets(client=pco_client, messenger=messenger)
         expected_results = {
             _SERIES_TITLE_IMG_COPY_NEW_NAME: DownloadDeduplicated(
                 original=config.images_dir.joinpath("WORTHY Title Slide.PNG")
@@ -998,6 +1019,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
         }
         self.assertEqual(expected_files, actual_files)
         messenger.log_problem.assert_not_called()
+
+    # TODO: Test that the downloads go ahead even with missing assets if
+    #       invoking the download_assets script directly
 
 
 async def _fake_download(

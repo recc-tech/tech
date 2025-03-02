@@ -9,11 +9,7 @@ from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 def download_assets(
     client: PlanningCenterClient, messenger: Messenger, manager: AssetManager
 ):
-    results = manager.download_pco_assets(
-        client=client,
-        messenger=messenger,
-        dry_run=False,
-    )
+    results = manager.download_pco_assets(client=client, messenger=messenger)
     msg = "\n".join([f"* {a.filename}: {res}" for (a, res) in results.items()])
     messenger.log_status(TaskStatus.DONE, msg)
 
