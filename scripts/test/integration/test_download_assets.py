@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from unittest.mock import create_autospec
 
+import download_pco_assets as dpa
 from args import ReccArgs
 from autochecklist import CancellationToken, Messenger, ProblemLevel
 from config import Config
@@ -1020,8 +1021,64 @@ class DownloadAssetsTestCase(unittest.TestCase):
         self.assertEqual(expected_files, actual_files)
         messenger.log_problem.assert_not_called()
 
-    # TODO: Test that the downloads go ahead even with missing assets if
-    #       invoking the download_assets script directly
+    def test_full_download_via_script(self) -> None:
+        """
+        The dedicated download_pco_assets.py script should go ahead and
+        download whatever's available, even if some assets are missing.
+        That way, if something is missing in the MCR, the person can fall back
+        to using that script to download what's available so far and proceed.
+        """
+        args = dpa.DownloadAssetsArgs.parse(["", "--no-run"])
+        config = dpa.DownloadAssetsConfig(
+            args,
+            # Pretend we're at the MCR, which requires certain assets (e.g.,
+            # kids video and livestream announcements)
+            profile="mcr_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        messenger = create_autospec(Messenger)
+        pco_client = create_autospec(PlanningCenterClient)
+        pco_client.download_attachments = _fake_download
+        pco_client.find_attachments.return_value = {
+            # Notice how the kids video, announcements video, and sermon notes
+            # are all missing
+            _BUMPER_VID,
+            _OPENER_VID,
+            _SERIES_TITLE_IMG,
+            _HOST_SCRIPT_DOCX,
+        }
+        manager = AssetManager(config)
+        dpa.download_PCO_assets(
+            args=args,
+            config=config,
+            client=pco_client,
+            manager=manager,
+            messenger=messenger,
+        )
+        expected_files = {
+            config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
+            config.videos_dir.joinpath("Welcome Opener Video.mp4"),
+            config.images_dir.joinpath("WORTHY Title Slide.PNG"),
+        }
+        actual_files = {
+            p.resolve()
+            for d in {config.images_dir, config.videos_dir}
+            for p in d.iterdir()
+        }
+        self.assertEqual(expected_files, actual_files)
+        messenger.log_problem.assert_any_call(
+            level=ProblemLevel.WARN,
+            message='No attachments found for category "kids video".',
+        )
+        messenger.log_problem.assert_any_call(
+            level=ProblemLevel.WARN,
+            message='No attachments found for category "livestream announcements video".',
+        )
+        messenger.log_problem.assert_any_call(
+            level=ProblemLevel.WARN,
+            message='No attachments found for category "sermon notes".',
+        )
+        self.assertEqual(3, messenger.log_problem.call_count)
 
 
 async def _fake_download(
