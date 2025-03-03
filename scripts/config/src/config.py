@@ -369,8 +369,8 @@ class Config(BaseConfig):
         data |= _flatten({"args": self._args.dump()})
         self._reader = ConfigReader(raw_data=data, strict=self._strict)
         with self._reader as reader:
-            self.station: Literal["mcr", "foh"] = reader.get_enum(
-                "station", {"mcr", "foh"}
+            self.station: Literal["mcr", "foh", "pi"] = reader.get_enum(
+                "station", {"mcr", "foh", "pi"}
             )
 
             # UI

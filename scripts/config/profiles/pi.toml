@@ -1,0 +1,9 @@
+station = "pi"
+
+[folder]
+home = "~"
+assets_by_service = "%{folder.home}%/Assets"
+assets_by_type = "%{folder.home}%/Assets"
+images = "%{folder.home}%/Assets"
+videos = "%{folder.home}%/Assets"
+plan_summaries = "%{folder.home}%/Plan Summaries"
