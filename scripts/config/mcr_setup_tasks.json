@@ -167,6 +167,14 @@
 			]
 		},
 		{
+			"name": "save_final_vMix_preset",
+			"description": "Save the vMix preset.",
+			"prerequisites": [
+				"create_and_import_backup_slides",
+				"import_other_assets"
+			]
+		},
+		{
 			"name": "check_GitHub_checklist",
 			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: [[url|https://github.com/recc-tech/tech/issues]].",
 			"prerequisites": [
