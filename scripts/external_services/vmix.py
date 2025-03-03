@@ -51,6 +51,12 @@ class VmixClient:
     def __init__(self, config: Config) -> None:
         self._cfg = config
 
+    def save_preset(self, p: Path) -> None:
+        response = self._send(
+            params={"Function": "SavePreset", "Value": str(p.resolve())}
+        )
+        response.raise_for_status()
+
     def set_text(self, input: str, value: str) -> None:
         response = self._send(
             params={"Function": "SetText", "Input": input, "Value": value},
