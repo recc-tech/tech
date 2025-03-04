@@ -25,6 +25,7 @@ IF NOT "%day_of_week%" == "Sunday" (
 :: You need to pass the /D flag because the MCR computer uses the D:/ drive.
 CD /D %~dp0
 
+python manage_config.py activate --profile mcr
 CALL ./update_scripts.bat
 CALL ./launch_apps.bat --auto-close
 CALL ./mcr_setup.bat

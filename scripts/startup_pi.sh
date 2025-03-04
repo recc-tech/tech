@@ -11,6 +11,7 @@ function main {
 	cd "$(dirname "$0")"
 	source .venv/bin/activate
 
+	python3 manage_config.py activate --profile pi
 	./update_scripts.command
 	python3 launch_apps.py pco_live --auto-close &
 }

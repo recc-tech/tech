@@ -10,6 +10,7 @@ function main {
 	# Go to the scripts directory
 	cd "$(dirname "$0")"
 
+	python3 manage_config.py activate --profile foh
 	./update_scripts.command
 	./launch_apps.command         --auto-close &
 	./download_pco_assets.command --auto-close &
