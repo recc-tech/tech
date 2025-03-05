@@ -250,7 +250,7 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
             "After Party",
             "See You Next Sunday",
         ],
-        songs=[
+        songs=[[
             AnnotatedSong(
                 Song(
                     ccli="7104200",
@@ -259,7 +259,8 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
                 ),
                 notes=[],
                 description="",
-            ),
+            )],
+            [
             # Linked song, but no CCLI number or author
             AnnotatedSong(
                 Song(
@@ -297,8 +298,8 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
                     )
                 ],
                 description="",
-            ),
-            # No linked song at all
+            )],
+            [# No linked song at all
             AnnotatedSong(
                 Song(
                     ccli=None,
@@ -308,7 +309,7 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
                 notes=[],
                 description="",
             ),
-        ],
+        ]],
         bumper_video=AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[]),
         message_notes=AnnotatedItem(
             content=inspect.cleandoc(

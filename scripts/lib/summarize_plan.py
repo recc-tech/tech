@@ -41,7 +41,7 @@ class PlanItemsSummary:
     announcements: List[str]
     opener_video: Optional[AnnotatedItem]
     bumper_video: Optional[AnnotatedItem]
-    songs: List[AnnotatedSong]
+    songs: List[List[AnnotatedSong]]
     message_notes: Optional[AnnotatedItem]
     num_visuals_notes: int
 
@@ -209,19 +209,23 @@ def _get_message_notes(
 
 def _get_songs(
     sections: List[PlanSection], note_categories: Set[str]
-) -> List[AnnotatedSong]:
-    matching_items = [
-        i
-        for s in sections
-        for i in s.items
-        if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
-    ]
-    songs: List[AnnotatedSong] = []
-    for i in matching_items:
-        song = i.song or Song(ccli=None, title=i.title, author=None)
-        notes = _filter_notes_by_category(i.notes, note_categories)
-        songs.append(AnnotatedSong(song, notes=notes, description=i.description))
-    return songs
+) -> List[List[AnnotatedSong]]:
+    all_songs: List[List[AnnotatedSong]] = []
+    for s in sections:
+        matching_items = [
+            i
+            for i in s.items
+            if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
+        ]
+        if not matching_items: 
+            continue
+        songs = [] 
+        for i in matching_items:
+            song = i.song or Song(ccli=None, title=i.title, author=None)
+            notes = _filter_notes_by_category(i.notes, note_categories)
+            songs.append(AnnotatedSong(song, notes=notes, description=i.description))
+        all_songs.append(songs)
+    return all_songs
 
 
 def _find_duplicate_lines(sermon: str) -> Set[str]:
@@ -419,7 +423,7 @@ def _make_videos_table(
     )
 
 
-def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
+def _make_songs_table(songs: List[List[AnnotatedSong]]) -> HtmlTable:
     rows = [
         [
             _escape(s.song.ccli or ""),
@@ -711,7 +715,7 @@ def plan_summary_to_json(summary: PlanItemsSummary) -> str:
         "walk_in_slides": summary.walk_in_slides,
         "opener_video": _annotated_item_to_json(summary.opener_video),
         "announcements": summary.announcements,
-        "songs": [_annotated_song_to_json(s) for s in summary.songs],
+        "songs": [[_annotated_song_to_json(s) for s in sec] for sec in summary.songs],
         "bumper_video": _annotated_item_to_json(summary.bumper_video),
         "message_notes": _annotated_item_to_json(summary.message_notes),
         "num_visuals_notes": summary.num_visuals_notes,
@@ -731,7 +735,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
     bumper_vid = (
         _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
     )
-    songs = [_parse_annotated_song(s) for s in data["songs"]]
+    songs = [[_parse_annotated_song(s) for s in sec] for sec in data["songs"]]
     message_notes = _parse_annotated_item(data["message_notes"])
     return PlanItemsSummary(
         plan=_parse_plan(data["plan"]),
