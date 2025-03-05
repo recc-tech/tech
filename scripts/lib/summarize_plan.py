@@ -217,9 +217,9 @@ def _get_songs(
             for i in s.items
             if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
         ]
-        if not matching_items: 
+        if not matching_items:
             continue
-        songs = [] 
+        songs = []
         for i in matching_items:
             song = i.song or Song(ccli=None, title=i.title, author=None)
             notes = _filter_notes_by_category(i.notes, note_categories)
@@ -315,6 +315,7 @@ _SUPERHEADER_CLS = "superheader"
 _HEADER_CLS = "header-row"
 _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
+_SKIP_ROW_CLS = "skip-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
@@ -336,12 +337,16 @@ def _show_notes(notes: List[ItemNote]) -> str:
     return "<br>".join(notes_str)
 
 
+Row = List[str]
+Block = List[Row]
+
+
 @dataclass
 class HtmlTable:
     cls: str
     col_widths: List[str]
     header: Optional[List[str]]
-    rows: List[List[str]]
+    blocks: List[Block]
     indent: bool = True
 
     def __post_init__(self) -> None:
@@ -351,17 +356,19 @@ class HtmlTable:
         ncols = len(self.col_widths)
         if self.header is not None and len(self.header) != ncols:
             raise ValueError("Number of columns in header is not as expected.")
-        for i, r in enumerate(self.rows):
-            if len(r) != ncols:
-                raise ValueError(
-                    f"Number of columns in row {i} is not as expected. Expected {ncols} but found {len(r)}."
-                )
+        for i, b in enumerate(self.blocks):
+            for j, r in enumerate(b):
+                if len(r) != ncols:
+                    raise ValueError(
+                        f"Number of columns in block {i}, row {j} is not as expected."
+                        f" Expected {ncols} but found {len(r)}."
+                    )
 
     def to_css(self) -> str:
         return f"""
 .{self.cls} {{
     display: grid;
-    border: 2px solid var(--dark-background-color);
+    border: 3px solid var(--dim-highlight-color);
     border-top: 0;
     grid-template-columns: {' '.join(self.col_widths)};
 }}
@@ -371,9 +378,11 @@ class HtmlTable:
         divs: List[str] = []
         if self.header is not None:
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
-        for i, row in enumerate(self.rows):
-            cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
-            divs += [f"<div class='{cls}'>{x}</div>" for x in row]
+        for block in self.blocks:
+            divs += [f"<div class='{_SKIP_ROW_CLS}'></div>" for _ in self.col_widths]
+            for i, row in enumerate(block):
+                cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
+                divs += [f"<div class='{cls}'>{x}</div>" for x in row]
         divs_str = "\n".join(divs)
         return f"""
 <div class="{self.cls}">
@@ -419,31 +428,34 @@ def _make_videos_table(
         cls="videos-table",
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
-        rows=rows,
+        blocks=[rows],
     )
 
 
 def _make_songs_table(songs: List[List[AnnotatedSong]]) -> HtmlTable:
-    rows = [
+    blocks = [
         [
-            _escape(s.song.ccli or ""),
-            _show_notes(s.notes),
-            _escape(s.song.title or ""),
-            _escape(s.song.author or ""),
-            _escape(s.description or ""),
+            [
+                _escape(s.song.ccli or ""),
+                _show_notes(s.notes),
+                _escape(s.song.title or ""),
+                _escape(s.song.author or ""),
+                _escape(s.description or ""),
+            ]
+            for s in sec
         ]
-        for s in songs
+        for sec in songs
     ]
     col_widths = ["min-content", "3fr", "2fr", "3fr", "3fr"]
     header = ["CCLI", "Notes", "Title", "Author", "Description"]
     # No notes
-    if all(not r[1] for r in rows):
+    if all(not row[1] for b in blocks for row in b):
         col_widths[1] = "min-content"
     return HtmlTable(
         cls="songs-table",
         col_widths=col_widths,
         header=header,
-        rows=rows,
+        blocks=blocks,
     )
 
 
@@ -463,7 +475,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
         cls="message-table",
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
-        rows=[row],
+        blocks=[[row]],
         indent=False,
     )
 
@@ -552,7 +564,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 font-size: x-large;
                 font-weight: bolder;
                 background-color: var(--dim-highlight-color);
-                border: 2px solid var(--dark-background-color);
+                border: 3px solid var(--dim-highlight-color);
                 border-bottom: 0;
                 color: white;
                 margin-top: 0.5em;
@@ -568,6 +580,10 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             }}
             .{_ODD_ROW_CLS} {{
                 background-color: var(--dark-background-color);
+            }}
+            .{_SKIP_ROW_CLS} {{
+                background-color: var(--dim-highlight-color);
+                height: 3px;
             }}
             #copy-btn {{
                 font-size: large;
