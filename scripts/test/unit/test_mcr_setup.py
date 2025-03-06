@@ -1,6 +1,6 @@
 import unittest
 from datetime import date
-from typing import List
+from typing import Set
 from unittest.mock import call, create_autospec
 
 from autochecklist import Messenger, ProblemLevel
@@ -21,10 +21,10 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles(self) -> None:
         dt = date(year=2024, month=3, day=9)
         pco_client = self._create_pco_client(
-            speakers=[TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)],
-            hosts=[
+            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            hosts={
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED)
-            ],
+            },
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -59,10 +59,10 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_no_speaker(self) -> None:
         dt = date(year=2024, month=3, day=16)
         pco_client = self._create_pco_client(
-            speakers=[],
-            hosts=[
+            speakers=set(),
+            hosts={
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED)
-            ],
+            },
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -106,13 +106,13 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_multiple_speakers(self) -> None:
         dt = date(year=2024, month=3, day=16)
         pco_client = self._create_pco_client(
-            speakers=[
+            speakers={
                 TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED),
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED),
-            ],
-            hosts=[
+            },
+            hosts={
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED)
-            ],
+            },
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -135,8 +135,8 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_no_host(self) -> None:
         dt = date(year=2024, month=3, day=16)
         pco_client = self._create_pco_client(
-            speakers=[TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)],
-            hosts=[],
+            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            hosts=set(),
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -157,11 +157,11 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_two_hosts(self) -> None:
         dt = date(year=2024, month=3, day=9)
         pco_client = self._create_pco_client(
-            speakers=[TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)],
-            hosts=[
+            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            hosts={
                 TeamMember(name="Sally Carrera", status=TeamMemberStatus.CONFIRMED),
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED),
-            ],
+            },
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -198,12 +198,12 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_three_hosts(self) -> None:
         dt = date(year=2024, month=3, day=16)
         pco_client = self._create_pco_client(
-            speakers=[TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)],
-            hosts=[
+            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            hosts={
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED),
                 TeamMember(name="Doc Hudson", status=TeamMemberStatus.CONFIRMED),
                 TeamMember(name="Sally Carrera", status=TeamMemberStatus.CONFIRMED),
-            ],
+            },
             series="Radiator Springs",
             title="How to Tip Tractors",
             date=dt,
@@ -225,8 +225,8 @@ class McrSetupTestCase(unittest.TestCase):
 
     def _create_pco_client(
         self,
-        speakers: List[TeamMember],
-        hosts: List[TeamMember],
+        speakers: Set[TeamMember],
+        hosts: Set[TeamMember],
         series: str,
         title: str,
         date: date,

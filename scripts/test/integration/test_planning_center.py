@@ -11,7 +11,14 @@ from unittest.mock import Mock
 from args import ReccArgs
 from autochecklist import Messenger
 from config import Config
-from external_services import Attachment, CredentialStore, PlanningCenterClient
+from external_services import (
+    Attachment,
+    CredentialStore,
+    PlanningCenterClient,
+    PresenterSet,
+    TeamMember,
+    TeamMemberStatus,
+)
 
 DATA_DIR = Path(__file__).parent.joinpath("planning_center_data")
 TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
@@ -133,6 +140,25 @@ class PlanningCenterTestCase(unittest.TestCase):
             filecmp.cmp(expected_script_path, actual_script_path, shallow=False),
             "MC host script files must match.",
         )
+        log_problem_mock.assert_not_called()
+
+    def test_find_presenters_20250302(self) -> None:
+        client, _, log_problem_mock = self._create_client()
+        expected_presenters = PresenterSet(
+            speakers={
+                TeamMember(
+                    name="Lorenzo DellaForesta", status=TeamMemberStatus.CONFIRMED
+                )
+            },
+            hosts={
+                TeamMember(
+                    name="Maria Garcia Carrasco", status=TeamMemberStatus.CONFIRMED
+                ),
+                TeamMember(name="Paul Hanash", status=TeamMemberStatus.UNCONFIRMED),
+            },
+        )
+        actual_presenters = client.find_presenters(plan_id="78328967")
+        self.assertEqual(actual_presenters, expected_presenters)
         log_problem_mock.assert_not_called()
 
     def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:

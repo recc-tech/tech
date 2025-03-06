@@ -67,7 +67,7 @@ def update_titles(
         )
         speaker_name = config.default_speaker_name
     elif len(people.speakers) == 1:
-        speaker_name = people.speakers[0].name
+        speaker_name = list(people.speakers)[0].name
     else:
         raise ValueError("More than one speaker is confirmed for today.")
 

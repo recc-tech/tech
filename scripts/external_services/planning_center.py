@@ -119,8 +119,8 @@ class TeamMember:
 
 @dataclass(frozen=True)
 class PresenterSet:
-    speakers: List[TeamMember]
-    hosts: List[TeamMember]
+    speakers: Set[TeamMember]
+    hosts: Set[TeamMember]
 
 
 class PlanningCenterClient:
@@ -302,22 +302,22 @@ class PlanningCenterClient:
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members",
             params={"filter": "not_declined"},
         )["data"]
-        speakers = [
+        speakers = {
             TeamMember(
                 name=p["attributes"]["name"],
                 status=TeamMemberStatus.parse(p["attributes"]["status"]),
             )
             for p in people
             if p["attributes"]["team_position_name"].lower() == "speaker"
-        ]
-        hosts = [
+        }
+        hosts = {
             TeamMember(
                 name=p["attributes"]["name"],
                 status=TeamMemberStatus.parse(p["attributes"]["status"]),
             )
             for p in people
             if p["attributes"]["team_position_name"].lower() == "mc host"
-        ]
+        }
         return PresenterSet(speakers=speakers, hosts=hosts)
 
     def _test_credentials(self, max_attempts: int):
