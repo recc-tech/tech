@@ -19,6 +19,8 @@ from .planning_center import (
     PlanSection,
     PresenterSet,
     Song,
+    TeamMember,
+    TeamMemberStatus,
 )
 from .vimeo import ReccVimeoClient
 from .vmix import VmixClient, VmixInput, VmixInputType, VmixState

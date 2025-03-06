@@ -60,24 +60,24 @@ def update_titles(
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
 
-    if len(people.speaker_names) == 0:
+    if len(people.speakers) == 0:
         messenger.log_problem(
             ProblemLevel.WARN,
             f"No speaker is confirmed for today. Defaulting to {config.default_speaker_name}.",
         )
         speaker_name = config.default_speaker_name
-    elif len(people.speaker_names) == 1:
-        speaker_name = people.speaker_names[0]
+    elif len(people.speakers) == 1:
+        speaker_name = people.speakers[0].name
     else:
         raise ValueError("More than one speaker is confirmed for today.")
 
-    if len(people.mc_host_names) == 0:
+    if len(people.hosts) == 0:
         raise ValueError("No MC host is scheduled for today.")
-    if len(people.mc_host_names) > 2:
+    if len(people.hosts) > 2:
         raise ValueError("More than two MC hosts are scheduled for today.")
-    mc_hosts = sorted(people.mc_host_names)
-    mc_host1_name = mc_hosts[0]
-    mc_host2_name = mc_hosts[1] if len(mc_hosts) > 1 else None
+    mc_hosts = sorted(people.hosts, key=lambda p: p.name)
+    mc_host1_name = mc_hosts[0].name
+    mc_host2_name = mc_hosts[1].name if len(mc_hosts) > 1 else None
 
     pre_stream_title = inspect.cleandoc(
         f"""{plan.series_title}
