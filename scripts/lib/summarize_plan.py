@@ -368,7 +368,7 @@ class HtmlTable:
         return f"""
 .{self.cls} {{
     display: grid;
-    border: 3px solid var(--dim-highlight-color);
+    border: 3px solid var(--header-color);
     border-top: 0;
     grid-template-columns: {' '.join(self.col_widths)};
 }}
@@ -501,9 +501,9 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
-    HEADER_OK = "#1a7ee5"  # Same as the website
-    HEADER_ERROR = "darkorange"
-    HEADER_CHANGE = "tomato"
+    HEADER_OK = "hsl(210, 50%, 50%)"
+    HEADER_ERROR = "hsl(30, 65%, 50%)"
+    HEADER_CHANGE = "hsl(0, 50%, 50%)"
     return f"""
 <!DOCTYPE html>
 <html>
@@ -517,7 +517,6 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: var(--background-color);
                 --header-color: {HEADER_OK};
-                --dim-highlight-color: #8ea0b7;
                 --background-color: #fafafa;
                 --dark-background-color: rgb(235, 235, 235);
             }}
@@ -563,8 +562,8 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             .{_SUPERHEADER_CLS} {{
                 font-size: x-large;
                 font-weight: bolder;
-                background-color: var(--dim-highlight-color);
-                border: 3px solid var(--dim-highlight-color);
+                background-color: var(--header-color);
+                border: 3px solid var(--header-color);
                 border-bottom: 0;
                 color: white;
                 margin-top: 0.5em;
@@ -572,7 +571,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             .{_HEADER_CLS} {{
                 font-weight: bolder;
                 font-size: large;
-                background-color: var(--dim-highlight-color);
+                background-color: var(--header-color);
                 color: white;
             }}
             .{_EVEN_ROW_CLS} {{
@@ -582,7 +581,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 background-color: var(--dark-background-color);
             }}
             .{_SKIP_ROW_CLS} {{
-                background-color: var(--dim-highlight-color);
+                background-color: var(--header-color);
                 height: 3px;
             }}
             #copy-btn {{
