@@ -41,7 +41,7 @@ class PlanItemsSummary:
     announcements: List[str]
     opener_video: Optional[AnnotatedItem]
     bumper_video: Optional[AnnotatedItem]
-    songs: List[AnnotatedSong]
+    songs: List[List[AnnotatedSong]]
     message_notes: Optional[AnnotatedItem]
     num_visuals_notes: int
 
@@ -209,19 +209,23 @@ def _get_message_notes(
 
 def _get_songs(
     sections: List[PlanSection], note_categories: Set[str]
-) -> List[AnnotatedSong]:
-    matching_items = [
-        i
-        for s in sections
-        for i in s.items
-        if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
-    ]
-    songs: List[AnnotatedSong] = []
-    for i in matching_items:
-        song = i.song or Song(ccli=None, title=i.title, author=None)
-        notes = _filter_notes_by_category(i.notes, note_categories)
-        songs.append(AnnotatedSong(song, notes=notes, description=i.description))
-    return songs
+) -> List[List[AnnotatedSong]]:
+    all_songs: List[List[AnnotatedSong]] = []
+    for s in sections:
+        matching_items = [
+            i
+            for i in s.items
+            if i.song is not None or re.search(r"worship", s.title, re.IGNORECASE)
+        ]
+        if not matching_items:
+            continue
+        songs = []
+        for i in matching_items:
+            song = i.song or Song(ccli=None, title=i.title, author=None)
+            notes = _filter_notes_by_category(i.notes, note_categories)
+            songs.append(AnnotatedSong(song, notes=notes, description=i.description))
+        all_songs.append(songs)
+    return all_songs
 
 
 def _find_duplicate_lines(sermon: str) -> Set[str]:
@@ -311,6 +315,7 @@ _SUPERHEADER_CLS = "superheader"
 _HEADER_CLS = "header-row"
 _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
+_SKIP_ROW_CLS = "skip-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
@@ -332,12 +337,16 @@ def _show_notes(notes: List[ItemNote]) -> str:
     return "<br>".join(notes_str)
 
 
+Row = List[str]
+Block = List[Row]
+
+
 @dataclass
 class HtmlTable:
     cls: str
     col_widths: List[str]
     header: Optional[List[str]]
-    rows: List[List[str]]
+    blocks: List[Block]
     indent: bool = True
 
     def __post_init__(self) -> None:
@@ -347,17 +356,19 @@ class HtmlTable:
         ncols = len(self.col_widths)
         if self.header is not None and len(self.header) != ncols:
             raise ValueError("Number of columns in header is not as expected.")
-        for i, r in enumerate(self.rows):
-            if len(r) != ncols:
-                raise ValueError(
-                    f"Number of columns in row {i} is not as expected. Expected {ncols} but found {len(r)}."
-                )
+        for i, b in enumerate(self.blocks):
+            for j, r in enumerate(b):
+                if len(r) != ncols:
+                    raise ValueError(
+                        f"Number of columns in block {i}, row {j} is not as expected."
+                        f" Expected {ncols} but found {len(r)}."
+                    )
 
     def to_css(self) -> str:
         return f"""
 .{self.cls} {{
     display: grid;
-    border: 2px solid var(--dark-background-color);
+    border: 3px solid var(--header-color);
     border-top: 0;
     grid-template-columns: {' '.join(self.col_widths)};
 }}
@@ -367,9 +378,11 @@ class HtmlTable:
         divs: List[str] = []
         if self.header is not None:
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
-        for i, row in enumerate(self.rows):
-            cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
-            divs += [f"<div class='{cls}'>{x}</div>" for x in row]
+        for block in self.blocks:
+            divs += [f"<div class='{_SKIP_ROW_CLS}'></div>" for _ in self.col_widths]
+            for i, row in enumerate(block):
+                cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
+                divs += [f"<div class='{cls}'>{x}</div>" for x in row]
         divs_str = "\n".join(divs)
         return f"""
 <div class="{self.cls}">
@@ -415,31 +428,34 @@ def _make_videos_table(
         cls="videos-table",
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
-        rows=rows,
+        blocks=[rows],
     )
 
 
-def _make_songs_table(songs: List[AnnotatedSong]) -> HtmlTable:
-    rows = [
+def _make_songs_table(songs: List[List[AnnotatedSong]]) -> HtmlTable:
+    blocks = [
         [
-            _escape(s.song.ccli or ""),
-            _show_notes(s.notes),
-            _escape(s.song.title or ""),
-            _escape(s.song.author or ""),
-            _escape(s.description or ""),
+            [
+                _escape(s.song.ccli or ""),
+                _show_notes(s.notes),
+                _escape(s.song.title or ""),
+                _escape(s.song.author or ""),
+                _escape(s.description or ""),
+            ]
+            for s in sec
         ]
-        for s in songs
+        for sec in songs
     ]
     col_widths = ["min-content", "3fr", "2fr", "3fr", "3fr"]
     header = ["CCLI", "Notes", "Title", "Author", "Description"]
     # No notes
-    if all(not r[1] for r in rows):
+    if all(not row[1] for b in blocks for row in b):
         col_widths[1] = "min-content"
     return HtmlTable(
         cls="songs-table",
         col_widths=col_widths,
         header=header,
-        rows=rows,
+        blocks=blocks,
     )
 
 
@@ -459,7 +475,7 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
         cls="message-table",
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
-        rows=[row],
+        blocks=[[row]],
         indent=False,
     )
 
@@ -485,9 +501,9 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
-    HEADER_OK = "#1a7ee5"  # Same as the website
-    HEADER_ERROR = "darkorange"
-    HEADER_CHANGE = "tomato"
+    HEADER_OK = "hsl(210, 50%, 50%)"
+    HEADER_ERROR = "hsl(30, 65%, 50%)"
+    HEADER_CHANGE = "hsl(0, 50%, 50%)"
     return f"""
 <!DOCTYPE html>
 <html>
@@ -501,7 +517,6 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: var(--background-color);
                 --header-color: {HEADER_OK};
-                --dim-highlight-color: #8ea0b7;
                 --background-color: #fafafa;
                 --dark-background-color: rgb(235, 235, 235);
             }}
@@ -547,8 +562,8 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             .{_SUPERHEADER_CLS} {{
                 font-size: x-large;
                 font-weight: bolder;
-                background-color: var(--dim-highlight-color);
-                border: 2px solid var(--dark-background-color);
+                background-color: var(--header-color);
+                border: 3px solid var(--header-color);
                 border-bottom: 0;
                 color: white;
                 margin-top: 0.5em;
@@ -556,7 +571,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             .{_HEADER_CLS} {{
                 font-weight: bolder;
                 font-size: large;
-                background-color: var(--dim-highlight-color);
+                background-color: var(--header-color);
                 color: white;
             }}
             .{_EVEN_ROW_CLS} {{
@@ -564,6 +579,10 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             }}
             .{_ODD_ROW_CLS} {{
                 background-color: var(--dark-background-color);
+            }}
+            .{_SKIP_ROW_CLS} {{
+                background-color: var(--header-color);
+                height: 3px;
             }}
             #copy-btn {{
                 font-size: large;
@@ -711,7 +730,7 @@ def plan_summary_to_json(summary: PlanItemsSummary) -> str:
         "walk_in_slides": summary.walk_in_slides,
         "opener_video": _annotated_item_to_json(summary.opener_video),
         "announcements": summary.announcements,
-        "songs": [_annotated_song_to_json(s) for s in summary.songs],
+        "songs": [[_annotated_song_to_json(s) for s in sec] for sec in summary.songs],
         "bumper_video": _annotated_item_to_json(summary.bumper_video),
         "message_notes": _annotated_item_to_json(summary.message_notes),
         "num_visuals_notes": summary.num_visuals_notes,
@@ -731,7 +750,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
     bumper_vid = (
         _parse_annotated_item(data["bumper_video"]) if "bumper_video" in data else None
     )
-    songs = [_parse_annotated_song(s) for s in data["songs"]]
+    songs = [[_parse_annotated_song(s) for s in sec] for sec in data["songs"]]
     message_notes = _parse_annotated_item(data["message_notes"])
     return PlanItemsSummary(
         plan=_parse_plan(data["plan"]),

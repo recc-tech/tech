@@ -36,61 +36,69 @@
 		"notes": []
 	},
 	"songs": [
-		{
-			"song": {
-				"ccli": null,
-				"title": "Come Now Is The Time To Worship (C to A)",
-				"author": null
+		[
+			{
+				"song": {
+					"ccli": null,
+					"title": "Come Now Is The Time To Worship (C to A)",
+					"author": null
+				},
+				"notes": [
+					{
+						"category": "Visuals",
+						"contents": "Bible Verse at the beginning of the service: \n\nEphesians 2: 8-10 (NIV)\n\n\"For it is by grace you have been saved, through faith - and this not from yourselves, it is the gift of God - not by works, so that no one can boast. For we are God's workmanship, created in Christ Jesus to do good works, which God prepared in advance for us to do.\" "
+					}
+				],
+				"description": "CCLI Song # 2430948"
+			}
+		],
+		[
+			{
+				"song": {
+					"ccli": null,
+					"title": "Miracle / All Hail King Jesus (C)",
+					"author": null
+				},
+				"notes": [],
+				"description": "Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216"
+			}
+		],
+		[
+			{
+				"song": {
+					"ccli": null,
+					"title": "How Deep The Father's Love For Us / He Lives (B)",
+					"author": null
+				},
+				"notes": [],
+				"description": "How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098"
 			},
-			"notes": [
-				{
-					"category": "Visuals",
-					"contents": "Bible Verse at the beginning of the service: \n\nEphesians 2: 8-10 (NIV)\n\n\"For it is by grace you have been saved, through faith - and this not from yourselves, it is the gift of God - not by works, so that no one can boast. For we are God's workmanship, created in Christ Jesus to do good works, which God prepared in advance for us to do.\" "
-				}
-			],
-			"description": "CCLI Song # 2430948"
-		},
-		{
-			"song": {
-				"ccli": null,
-				"title": "Miracle / All Hail King Jesus (C)",
-				"author": null
-			},
-			"notes": [],
-			"description": "Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216"
-		},
-		{
-			"song": {
-				"ccli": null,
-				"title": "How Deep The Father's Love For Us / He Lives (B)",
-				"author": null
-			},
-			"notes": [],
-			"description": "How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098"
-		},
-		{
-			"song": {
-				"ccli": null,
-				"title": "What a Beautiful Name / Agnus Dei (B)",
-				"author": null
-			},
-			"notes": [],
-			"description": "What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713"
-		},
-		{
-			"song": {
-				"ccli": null,
-				"title": "Worthy Of It All / I Exalt Thee (B)",
-				"author": null
-			},
-			"notes": [
-				{
-					"category": "Visuals",
-					"contents": "During Instrumental: \n“May my prayer be set before you like incense; may the lifting of my hands be like the evening sacrifice.” Psalms 141:2 NIV"
-				}
-			],
-			"description": "Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803"
-		}
+			{
+				"song": {
+					"ccli": null,
+					"title": "What a Beautiful Name / Agnus Dei (B)",
+					"author": null
+				},
+				"notes": [],
+				"description": "What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713"
+			}
+		],
+		[
+			{
+				"song": {
+					"ccli": null,
+					"title": "Worthy Of It All / I Exalt Thee (B)",
+					"author": null
+				},
+				"notes": [
+					{
+						"category": "Visuals",
+						"contents": "During Instrumental: \n“May my prayer be set before you like incense; may the lifting of my hands be like the evening sacrifice.” Psalms 141:2 NIV"
+					}
+				],
+				"description": "Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803"
+			}
+		]
 	],
 	"message_notes": {
 		"content": "",

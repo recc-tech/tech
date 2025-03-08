@@ -251,63 +251,68 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
             "See You Next Sunday",
         ],
         songs=[
-            AnnotatedSong(
-                Song(
-                    ccli="7104200",
-                    title="Echo",
-                    author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
+            [
+                AnnotatedSong(
+                    Song(
+                        ccli="7104200",
+                        title="Echo",
+                        author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
+                    ),
+                    notes=[],
+                    description="",
+                )
+            ],
+            [
+                # Linked song, but no CCLI number or author
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Different (Live at Mosaic, Los Angeles, 2023)",
+                        author=None,
+                    ),
+                    notes=[],
+                    description="",
                 ),
-                notes=[],
-                description="",
-            ),
-            # Linked song, but no CCLI number or author
-            AnnotatedSong(
-                Song(
-                    ccli=None,
-                    title="Different (Live at Mosaic, Los Angeles, 2023)",
-                    author=None,
+                AnnotatedSong(
+                    Song(
+                        ccli="5508444",
+                        title="One Thing Remains",
+                        author="Christa Black, Brian Johnson, and Jeremy Riddle",
+                    ),
+                    notes=[
+                        ItemNote(
+                            category="Visuals",
+                            contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
+                        )
+                    ],
+                    description="",
                 ),
-                notes=[],
-                description="",
-            ),
-            AnnotatedSong(
-                Song(
-                    ccli="5508444",
-                    title="One Thing Remains",
-                    author="Christa Black, Brian Johnson, and Jeremy Riddle",
+                AnnotatedSong(
+                    Song(
+                        ccli="7117726",
+                        title="Goodness Of God",
+                        author="Ed Cash and Jenn Johnson",
+                    ),
+                    notes=[
+                        ItemNote(
+                            category="Visuals",
+                            contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
+                        )
+                    ],
+                    description="",
                 ),
-                notes=[
-                    ItemNote(
-                        category="Visuals",
-                        contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
-                    )
-                ],
-                description="",
-            ),
-            AnnotatedSong(
-                Song(
-                    ccli="7117726",
-                    title="Goodness Of God",
-                    author="Ed Cash and Jenn Johnson",
+            ],
+            [  # No linked song at all
+                AnnotatedSong(
+                    Song(
+                        ccli=None,
+                        title="Song 5: DIFFERENT ",
+                        author=None,
+                    ),
+                    notes=[],
+                    description="",
                 ),
-                notes=[
-                    ItemNote(
-                        category="Visuals",
-                        contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
-                    )
-                ],
-                description="",
-            ),
-            # No linked song at all
-            AnnotatedSong(
-                Song(
-                    ccli=None,
-                    title="Song 5: DIFFERENT ",
-                    author=None,
-                ),
-                notes=[],
-                description="",
-            ),
+            ],
         ],
         bumper_video=AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[]),
         message_notes=AnnotatedItem(
