@@ -149,8 +149,8 @@ kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
 livestream_announcements_list_key = "3e42ac58-0965-4a10-94a1-41e85be9f2c8"
 pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
 speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
-host_title_key = "407171aa-af67-4d25-8ab5-1659176fc79d"
-extra_presenter_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
+host1_title_key = "407171aa-af67-4d25-8ab5-1659176fc79d"
+host2_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 
 [api]
 # After this many seconds, a request is assumed to have failed

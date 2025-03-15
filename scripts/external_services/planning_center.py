@@ -110,6 +110,15 @@ class TeamMemberStatus(Enum):
             case _:
                 raise ValueError(f"Unknown status '{s}'")
 
+    def __str__(self):
+        match self:
+            case TeamMemberStatus.CONFIRMED:
+                return "confirmed"
+            case TeamMemberStatus.UNCONFIRMED:
+                return "unconfirmed"
+            case TeamMemberStatus.DECLINED:
+                return "declined"
+
 
 @dataclass(frozen=True)
 class TeamMember:

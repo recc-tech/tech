@@ -2,7 +2,7 @@ import inspect
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import McrSetupConfig
-from external_services import PlanningCenterClient, VmixClient
+from external_services import PlanningCenterClient, TeamMemberStatus, VmixClient
 from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 
 
@@ -59,17 +59,48 @@ def update_titles(
     today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
+    error_count = 0
 
+    confirmed_speakers = [
+        p for p in people.speakers if p.status == TeamMemberStatus.CONFIRMED
+    ]
+    unconfirmed_speakers = [
+        p for p in people.speakers if p.status == TeamMemberStatus.UNCONFIRMED
+    ]
+    for p in unconfirmed_speakers:
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f'The speaker "{p.name}" is scheduled on Planning Center but did not confirm.',
+        )
     if len(people.speakers) == 0:
         messenger.log_problem(
             ProblemLevel.WARN,
-            f"No speaker is confirmed for today. Defaulting to {config.default_speaker_name}.",
+            f'No speaker is scheduled on Planning Center. Defaulting to "{config.default_speaker_name}".',
         )
         speaker_name = config.default_speaker_name
     elif len(people.speakers) == 1:
         speaker_name = list(people.speakers)[0].name
+    elif len(confirmed_speakers) == 1:
+        speaker_name = list(confirmed_speakers)[0].name
+        speaker_list = ", ".join(
+            [
+                f"{p.name} ({p.status})"
+                for p in sorted(people.speakers, key=lambda p: p.name)
+            ]
+        )
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            f"Multiple speakers are listed on Planning Center: {speaker_list}."
+            " Only the confirmed speaker has been given a title.",
+        )
     else:
-        raise ValueError("More than one speaker is confirmed for today.")
+        error_count += 1
+        messenger.log_problem(
+            ProblemLevel.ERROR, "More than one speaker is confirmed for today."
+        )
+        # Just choose the speaker alphabetically from the confirmed list.
+        # Any title is better than nothing.
+        speaker_name = sorted(confirmed_speakers, key=lambda p: p.name)[0].name
 
     if len(people.hosts) == 0:
         raise ValueError("No MC host is scheduled for today.")
@@ -91,9 +122,19 @@ def update_titles(
 
     vmix_client.set_text(config.vmix_pre_stream_title_key, pre_stream_title)
     vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
-    vmix_client.set_text(config.vmix_host_title_key, mc_host1_name)
+    vmix_client.set_text(config.vmix_host1_title_key, mc_host1_name)
     if mc_host2_name:
-        vmix_client.set_text(config.vmix_extra_presenter_title_key, mc_host2_name)
+        vmix_client.set_text(config.vmix_host2_title_key, mc_host2_name)
+    else:
+        vmix_client.set_text(config.vmix_host2_title_key, "")
+
+    if error_count > 0:
+        was_or_were = "was" if error_count == 1 else "were"
+        error_or_errors = "error" if error_count == 1 else "errors"
+        raise ValueError(
+            f"There {was_or_were} {error_count} {error_or_errors}."
+            ' See the "Problems" section for details.'
+        )
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):
