@@ -17,14 +17,17 @@ from lib import mcr_setup
 from mcr_setup import McrSetupArgs
 
 
-# TODO: Also add a declined speaker or host in each case?
 class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_1c_speaker_1c_host(self) -> None:
         dt = date(year=2024, month=3, day=9)
         pco_client = self._create_pco_client(
-            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            speakers={
+                TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED),
+                TeamMember(name="Sheriff", status=TeamMemberStatus.DECLINED),
+            },
             hosts={
-                TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED)
+                TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED),
+                TeamMember(name="Sheriff", status=TeamMemberStatus.DECLINED),
             },
             series="Radiator Springs",
             title="How to Tip Tractors",
@@ -61,10 +64,14 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_1c_speaker_2c_hosts(self) -> None:
         dt = date(year=2024, month=3, day=9)
         pco_client = self._create_pco_client(
-            speakers={TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED)},
+            speakers={
+                TeamMember(name="Mater", status=TeamMemberStatus.CONFIRMED),
+                TeamMember(name="Sheriff", status=TeamMemberStatus.DECLINED),
+            },
             hosts={
                 TeamMember(name="Sally Carrera", status=TeamMemberStatus.CONFIRMED),
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED),
+                TeamMember(name="Sheriff", status=TeamMemberStatus.DECLINED),
             },
             series="Radiator Springs",
             title="How to Tip Tractors",
@@ -102,7 +109,9 @@ class McrSetupTestCase(unittest.TestCase):
     def test_update_titles_0_speakers(self) -> None:
         dt = date(year=2024, month=3, day=16)
         pco_client = self._create_pco_client(
-            speakers=set(),
+            speakers={
+                TeamMember(name="Sheriff", status=TeamMemberStatus.DECLINED),
+            },
             hosts={
                 TeamMember(name="Lightning McQueen", status=TeamMemberStatus.CONFIRMED)
             },

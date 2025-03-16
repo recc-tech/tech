@@ -6,6 +6,7 @@ from config import McrSetupConfig
 from external_services import (
     Plan,
     PlanningCenterClient,
+    PresenterSet,
     TeamMember,
     TeamMemberStatus,
     VmixClient,
@@ -66,14 +67,18 @@ def update_titles(
     today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
+    available_people = PresenterSet(
+        speakers={p for p in people.speakers if p.status != TeamMemberStatus.DECLINED},
+        hosts={p for p in people.hosts if p.status != TeamMemberStatus.DECLINED},
+    )
     (error_count, speaker_name) = _update_speaker_title(
-        speakers=people.speakers,
+        speakers=available_people.speakers,
         vmix_client=vmix_client,
         messenger=messenger,
         config=config,
     )
     error_count += _update_host_titles(
-        hosts=people.hosts,
+        hosts=available_people.hosts,
         vmix_client=vmix_client,
         config=config,
         messenger=messenger,
@@ -101,6 +106,7 @@ def _update_speaker_title(
     messenger: Messenger,
     config: McrSetupConfig,
 ) -> Tuple[int, str]:
+    assert all(p.status != TeamMemberStatus.DECLINED for p in speakers)
     error_count = 0
     for p in speakers:
         if p.status == TeamMemberStatus.UNCONFIRMED:
@@ -135,6 +141,7 @@ def _update_host_titles(
     config: McrSetupConfig,
     messenger: Messenger,
 ) -> int:
+    assert all(p.status != TeamMemberStatus.DECLINED for p in hosts)
     error_count = 0
     for h in hosts:
         if h.status == TeamMemberStatus.UNCONFIRMED:
