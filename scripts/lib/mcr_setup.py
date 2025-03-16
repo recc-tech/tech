@@ -102,13 +102,30 @@ def update_titles(
         # Any title is better than nothing.
         speaker_name = sorted(confirmed_speakers, key=lambda p: p.name)[0].name
 
-    if len(people.hosts) == 0:
-        raise ValueError("No MC host is scheduled for today.")
-    if len(people.hosts) > 2:
-        raise ValueError("More than two MC hosts are scheduled for today.")
-    mc_hosts = sorted(people.hosts, key=lambda p: p.name)
-    mc_host1_name = mc_hosts[0].name
-    mc_host2_name = mc_hosts[1].name if len(mc_hosts) > 1 else None
+    for h in people.hosts:
+        if h.status == TeamMemberStatus.UNCONFIRMED:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f'The host "{h.name}" is scheduled on Planning Center but did not confirm.',
+            )
+    available_speakers = sorted(
+        people.hosts,
+        # Take confirmed hosts first, break ties by name
+        key=lambda p: (p.status != TeamMemberStatus.CONFIRMED, p.name),
+    )
+    if len(available_speakers) == 0:
+        error_count += 1
+        messenger.log_problem(ProblemLevel.ERROR, "No hosts are scheduled for today.")
+    elif len(available_speakers) > 2:
+        error_count += 1
+        messenger.log_problem(
+            ProblemLevel.ERROR, "More than two hosts are scheduled for today."
+        )
+
+    # If two titles were chosen, sort them alphabetically regardless of status
+    titles = [p.name for p in sorted(available_speakers[:2], key=lambda p: p.name)]
+    mc_host1_name = titles[0] if len(titles) > 0 else ""
+    mc_host2_name = titles[1] if len(titles) > 1 else ""
 
     pre_stream_title = inspect.cleandoc(
         f"""{plan.series_title}
@@ -123,10 +140,7 @@ def update_titles(
     vmix_client.set_text(config.vmix_pre_stream_title_key, pre_stream_title)
     vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
     vmix_client.set_text(config.vmix_host1_title_key, mc_host1_name)
-    if mc_host2_name:
-        vmix_client.set_text(config.vmix_host2_title_key, mc_host2_name)
-    else:
-        vmix_client.set_text(config.vmix_host2_title_key, "")
+    vmix_client.set_text(config.vmix_host2_title_key, mc_host2_name)
 
     if error_count > 0:
         was_or_were = "was" if error_count == 1 else "were"
