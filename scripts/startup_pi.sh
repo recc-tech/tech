@@ -7,9 +7,13 @@ function main {
 		exit 0
 	fi
 
-	# Go to the scripts directory
-	cd "$(dirname "$0")"
+	scripts_dir="$(dirname "$(readlink -f "$0")")"
+	cd "$scripts_dir"
+ 	pwd
 	source .venv/bin/activate
+
+ 	# tkinter needs the $DISPLAY environment variable
+  	export DISPLAY=':0'
 
 	python3 manage_config.py activate --profile pi
 	./update_scripts.command
