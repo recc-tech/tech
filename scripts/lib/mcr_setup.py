@@ -102,7 +102,6 @@ def _update_speaker_title(
     config: McrSetupConfig,
 ) -> Tuple[int, str]:
     error_count = 0
-    confirmed_speakers = [p for p in speakers if p.status == TeamMemberStatus.CONFIRMED]
     for p in speakers:
         if p.status == TeamMemberStatus.UNCONFIRMED:
             messenger.log_problem(
@@ -117,24 +116,15 @@ def _update_speaker_title(
         speaker_name = config.default_speaker_name
     elif len(speakers) == 1:
         speaker_name = list(speakers)[0].name
-    elif len(confirmed_speakers) == 1:
-        speaker_name = list(confirmed_speakers)[0].name
-        speaker_list = ", ".join(
-            [f"{p.name} ({p.status})" for p in sorted(speakers, key=lambda p: p.name)]
-        )
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"Multiple speakers are listed on Planning Center: {speaker_list}."
-            " Only the confirmed speaker has been given a title.",
-        )
     else:
         error_count += 1
         messenger.log_problem(
-            ProblemLevel.ERROR, "More than one speaker is confirmed for today."
+            ProblemLevel.ERROR, "More than one speaker is scheduled for today."
         )
-        # Just choose the speaker alphabetically from the confirmed list.
-        # Any title is better than nothing.
-        speaker_name = sorted(confirmed_speakers, key=lambda p: p.name)[0].name
+        # Just choose somebody; any title is better than nothing
+        speaker_name = sorted(
+            speakers, key=lambda p: (p.status != TeamMemberStatus.CONFIRMED, p.name)
+        )[0].name
     vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
     return (error_count, speaker_name)
 
