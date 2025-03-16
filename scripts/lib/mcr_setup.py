@@ -1,8 +1,15 @@
 import inspect
+from typing import Set, Tuple
 
 from autochecklist import Messenger, ProblemLevel, TaskStatus
 from config import McrSetupConfig
-from external_services import PlanningCenterClient, TeamMemberStatus, VmixClient
+from external_services import (
+    Plan,
+    PlanningCenterClient,
+    TeamMember,
+    TeamMemberStatus,
+    VmixClient,
+)
 from lib import AssetManager, SlideBlueprintReader, SlideGenerator
 
 
@@ -59,34 +66,61 @@ def update_titles(
     today = config.start_time.date()
     plan = pco_client.find_plan_by_date(today)
     people = pco_client.find_presenters(plan.id)
-    error_count = 0
-
-    confirmed_speakers = [
-        p for p in people.speakers if p.status == TeamMemberStatus.CONFIRMED
-    ]
-    unconfirmed_speakers = [
-        p for p in people.speakers if p.status == TeamMemberStatus.UNCONFIRMED
-    ]
-    for p in unconfirmed_speakers:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f'The speaker "{p.name}" is scheduled on Planning Center but did not confirm.',
+    (error_count, speaker_name) = _update_speaker_title(
+        speakers=people.speakers,
+        vmix_client=vmix_client,
+        messenger=messenger,
+        config=config,
+    )
+    error_count += _update_host_titles(
+        hosts=people.hosts,
+        vmix_client=vmix_client,
+        config=config,
+        messenger=messenger,
+    )
+    _update_pre_stream_title(
+        plan=plan,
+        speaker_name=speaker_name,
+        vmix_client=vmix_client,
+        config=config,
+    )
+    # Delay errors so that we still set as many titles as possible.
+    # That way we minimize the amount of manual work required of the user.
+    if error_count > 0:
+        was_or_were = "was" if error_count == 1 else "were"
+        error_or_errors = "error" if error_count == 1 else "errors"
+        raise ValueError(
+            f"There {was_or_were} {error_count} {error_or_errors}."
+            ' See the "Problems" section for details.'
         )
-    if len(people.speakers) == 0:
+
+
+def _update_speaker_title(
+    speakers: Set[TeamMember],
+    vmix_client: VmixClient,
+    messenger: Messenger,
+    config: McrSetupConfig,
+) -> Tuple[int, str]:
+    error_count = 0
+    confirmed_speakers = [p for p in speakers if p.status == TeamMemberStatus.CONFIRMED]
+    for p in speakers:
+        if p.status == TeamMemberStatus.UNCONFIRMED:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f'The speaker "{p.name}" is scheduled on Planning Center but did not confirm.',
+            )
+    if len(speakers) == 0:
         messenger.log_problem(
             ProblemLevel.WARN,
             f'No speaker is scheduled on Planning Center. Defaulting to "{config.default_speaker_name}".',
         )
         speaker_name = config.default_speaker_name
-    elif len(people.speakers) == 1:
-        speaker_name = list(people.speakers)[0].name
+    elif len(speakers) == 1:
+        speaker_name = list(speakers)[0].name
     elif len(confirmed_speakers) == 1:
         speaker_name = list(confirmed_speakers)[0].name
         speaker_list = ", ".join(
-            [
-                f"{p.name} ({p.status})"
-                for p in sorted(people.speakers, key=lambda p: p.name)
-            ]
+            [f"{p.name} ({p.status})" for p in sorted(speakers, key=lambda p: p.name)]
         )
         messenger.log_problem(
             ProblemLevel.WARN,
@@ -101,32 +135,56 @@ def update_titles(
         # Just choose the speaker alphabetically from the confirmed list.
         # Any title is better than nothing.
         speaker_name = sorted(confirmed_speakers, key=lambda p: p.name)[0].name
+    vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
+    return (error_count, speaker_name)
 
-    for h in people.hosts:
+
+def _update_host_titles(
+    hosts: Set[TeamMember],
+    vmix_client: VmixClient,
+    config: McrSetupConfig,
+    messenger: Messenger,
+) -> int:
+    error_count = 0
+    for h in hosts:
         if h.status == TeamMemberStatus.UNCONFIRMED:
             messenger.log_problem(
                 ProblemLevel.WARN,
                 f'The host "{h.name}" is scheduled on Planning Center but did not confirm.',
             )
-    available_speakers = sorted(
-        people.hosts,
+    available_hosts = sorted(
+        hosts,
         # Take confirmed hosts first, break ties by name
         key=lambda p: (p.status != TeamMemberStatus.CONFIRMED, p.name),
     )
-    if len(available_speakers) == 0:
+    if len(available_hosts) == 0:
         error_count += 1
         messenger.log_problem(ProblemLevel.ERROR, "No hosts are scheduled for today.")
-    elif len(available_speakers) > 2:
+    elif len(available_hosts) > 2:
         error_count += 1
         messenger.log_problem(
             ProblemLevel.ERROR, "More than two hosts are scheduled for today."
         )
 
     # If two titles were chosen, sort them alphabetically regardless of status
-    titles = [p.name for p in sorted(available_speakers[:2], key=lambda p: p.name)]
+    chosen_hosts = available_hosts[:2]
+    titles = [p.name for p in sorted(chosen_hosts, key=lambda p: p.name)]
     mc_host1_name = titles[0] if len(titles) > 0 else ""
     mc_host2_name = titles[1] if len(titles) > 1 else ""
 
+    vmix_client.set_text(config.vmix_host1_title_key, mc_host1_name)
+    vmix_client.set_text(config.vmix_host2_title_key, mc_host2_name)
+
+    return error_count
+
+
+def _update_pre_stream_title(
+    plan: Plan,
+    speaker_name: str,
+    vmix_client: VmixClient,
+    config: McrSetupConfig,
+) -> None:
+    today = config.start_time.date()
     pre_stream_title = inspect.cleandoc(
         f"""{plan.series_title}
 
@@ -136,19 +194,7 @@ def update_titles(
 
             {today.strftime('%B')} {today.day}, {today.year}"""
     )
-
     vmix_client.set_text(config.vmix_pre_stream_title_key, pre_stream_title)
-    vmix_client.set_text(config.vmix_speaker_title_key, speaker_name)
-    vmix_client.set_text(config.vmix_host1_title_key, mc_host1_name)
-    vmix_client.set_text(config.vmix_host2_title_key, mc_host2_name)
-
-    if error_count > 0:
-        was_or_were = "was" if error_count == 1 else "were"
-        error_or_errors = "error" if error_count == 1 else "errors"
-        raise ValueError(
-            f"There {was_or_were} {error_count} {error_or_errors}."
-            ' See the "Problems" section for details.'
-        )
 
 
 def download_message_notes(client: PlanningCenterClient, config: McrSetupConfig):

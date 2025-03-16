@@ -185,6 +185,8 @@ class McrSetupTestCase(unittest.TestCase):
             any_order=True,
         )
 
+    # TODO: Test 2u speakers
+
     def test_update_titles_1c_1u_speaker(self) -> None:
         dt = date(year=2025, month=3, day=9)
         pco_client = self._create_pco_client(
