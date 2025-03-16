@@ -482,10 +482,8 @@ class Config(BaseConfig):
             )
             self.vmix_pre_stream_title_key = reader.get_str("vmix.pre_stream_title_key")
             self.vmix_speaker_title_key = reader.get_str("vmix.speaker_title_key")
-            self.vmix_host_title_key = reader.get_str("vmix.host_title_key")
-            self.vmix_extra_presenter_title_key = reader.get_str(
-                "vmix.extra_presenter_title_key"
-            )
+            self.vmix_host1_title_key = reader.get_str("vmix.host1_title_key")
+            self.vmix_host2_title_key = reader.get_str("vmix.host2_title_key")
             self.vmix_preset_dir = reader.get_directory("vmix.preset_dir")
             self.vmix_preset_file = reader.get_file("vmix.preset_path")
 

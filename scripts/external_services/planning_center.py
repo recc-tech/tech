@@ -93,10 +93,43 @@ class Attachment:
             return FileType.OTHER
 
 
+class TeamMemberStatus(Enum):
+    CONFIRMED = auto()
+    UNCONFIRMED = auto()
+    DECLINED = auto()
+
+    @staticmethod
+    def parse(s: str) -> TeamMemberStatus:
+        match s.lower():
+            case "c":
+                return TeamMemberStatus.CONFIRMED
+            case "u":
+                return TeamMemberStatus.UNCONFIRMED
+            case "d":
+                return TeamMemberStatus.DECLINED
+            case _:
+                raise ValueError(f"Unknown status '{s}'")
+
+    def __str__(self):
+        match self:
+            case TeamMemberStatus.CONFIRMED:
+                return "confirmed"
+            case TeamMemberStatus.UNCONFIRMED:
+                return "unconfirmed"
+            case TeamMemberStatus.DECLINED:
+                return "declined"
+
+
+@dataclass(frozen=True)
+class TeamMember:
+    name: str
+    status: TeamMemberStatus
+
+
 @dataclass(frozen=True)
 class PresenterSet:
-    speaker_names: List[str]
-    mc_host_names: List[str]
+    speakers: Set[TeamMember]
+    hosts: Set[TeamMember]
 
 
 class PlanningCenterClient:
@@ -275,20 +308,26 @@ class PlanningCenterClient:
     ) -> PresenterSet:
         service_type = service_type or self._cfg.pco_service_type_id
         people = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members?filter=confirmed",
-            params={"filter": "confirmed"},
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members",
+            params={"filter": "not_declined"},
         )["data"]
-        speaker_names = [
-            p["attributes"]["name"]
+        speakers = {
+            TeamMember(
+                name=p["attributes"]["name"],
+                status=TeamMemberStatus.parse(p["attributes"]["status"]),
+            )
             for p in people
             if p["attributes"]["team_position_name"].lower() == "speaker"
-        ]
-        mc_host_names = [
-            p["attributes"]["name"]
+        }
+        hosts = {
+            TeamMember(
+                name=p["attributes"]["name"],
+                status=TeamMemberStatus.parse(p["attributes"]["status"]),
+            )
             for p in people
             if p["attributes"]["team_position_name"].lower() == "mc host"
-        ]
-        return PresenterSet(speaker_names=speaker_names, mc_host_names=mc_host_names)
+        }
+        return PresenterSet(speakers=speakers, hosts=hosts)
 
     def _test_credentials(self, max_attempts: int):
         url = f"{self._cfg.pco_base_url}/people/v2/me"
