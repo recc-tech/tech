@@ -74,6 +74,7 @@ class TkMessenger(InputMessenger):
         self._start_event = threading.Event()
         self._end_event = threading.Event()
         self._is_script_done = False
+        self._close_confirm = Lock()
         self._num_problems = 0
         self._mutex = Lock()
         self._waiting_events: Set[threading.Event] = set()
@@ -141,10 +142,22 @@ class TkMessenger(InputMessenger):
         """
         Called when the user presses the "x" button to close the window.
         """
-        should_exit = self._is_script_done or self.input_bool(
-            title="Confirm exit",
-            prompt=self._confirm_exit_message,
-        )
+        if self._is_script_done:
+            # If all tasks are done, no need to wait
+            should_exit = True
+        elif self._close_confirm.acquire(blocking=False):
+            # The user clicked "x" just once and the script is not done.
+            # Ask for confirmation.
+            try:
+                should_exit = self.input_bool(
+                    title="Confirm exit",
+                    prompt=self._confirm_exit_message,
+                )
+            finally:
+                self._close_confirm.release()
+        else:
+            # The user clicked twice in a row, so go ahead and exit.
+            should_exit = True
         if should_exit:
             self._tk.quit()
 
