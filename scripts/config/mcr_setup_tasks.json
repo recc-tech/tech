@@ -118,7 +118,7 @@
 			"subtasks": [
 				{
 					"name": "start_stream",
-					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (LR on the sound computer and the NDI source), play the kids 5 minute countdown loop, and start the stream by pressing the STM button. Check in Church Online Platform's Host Tools that the stream is working."
+					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (e.g., from the sound station and NDI source), play the kids 5 minute countdown loop, and start the stream by pressing the STM button. Check in Church Online Platform's Host Tools that the stream is working."
 				},
 				{
 					"name": "set_up_in_annex",
