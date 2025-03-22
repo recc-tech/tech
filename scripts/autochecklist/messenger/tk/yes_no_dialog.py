@@ -20,6 +20,7 @@ class YesNoDialog(Toplevel):
     ):
         super().__init__(tk, background=background, padx=padx, pady=pady)
 
+        self._is_destroyed = False
         # This may be called from the main thread, so use IntVar and
         # wait_variable() rather than threading.Event() and event.wait().
         self._choice = False if default_answer == "no" else True
@@ -63,7 +64,14 @@ class YesNoDialog(Toplevel):
         self.wait_variable(self._v)
         return self._choice
 
-    # TODO: Override the destroy() method to set the variable?
+    def destroy(self) -> None:
+        if self._is_destroyed:
+            return
+        self._is_destroyed = True
+        super().destroy()
+        # Set the variable so that tkinter can break out of the local loop in
+        # wait_variable()
+        self._v.set(1)
 
     def _handle_select_yes(self) -> None:
         self._choice = True

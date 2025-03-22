@@ -132,7 +132,7 @@ class TkMessenger(InputMessenger):
         if self.is_closed:
             return
         if self._auto_close and error_count == 0:
-            self._tk.quit()
+            self._tk.destroy()
         else:
             self._is_script_done = True
             self._tk.after_idle(show_goodbye_message)
@@ -159,7 +159,7 @@ class TkMessenger(InputMessenger):
             # The user clicked twice in a row, so go ahead and exit.
             should_exit = True
         if should_exit:
-            self._tk.quit()
+            self._tk.destroy()
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
