@@ -235,7 +235,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
                 TaskModel(
                     name="follow_captions_workflow",
                     description="Go through the full captions workflow.",
-                    prerequisites={"ready_update_captions"},
+                    prerequisites={"ready_captions_workflow"},
                     only_auto=True,
                 ),
             ],
