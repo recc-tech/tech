@@ -111,7 +111,7 @@ upload_captions_retry_delay = 15
 # In seconds
 generate_captions_retry_delay = 60
 # In minutes
-max_captions_wait_time = 30
+max_captions_wait_time = 60
 
 [planning_center]
 base_url = "https://api.planningcenteronline.com"
