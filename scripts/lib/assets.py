@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import filecmp
+import os
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -375,27 +376,30 @@ class AssetManager:
             else:
                 ret[a] = DownloadSucceeded(d.destination)
 
-        messenger.log_status(TaskStatus.RUNNING, "Removing duplicate assets.")
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            "Checking download results and removing duplicates.",
+        )
         for a, d in downloads.items():
-            p = d.destination
-            should_dedup = results.get(p, None) is None and d.deduplicate
-            if should_dedup and (dup_of := _find_original(p)):
-                ret[a] = DownloadDeduplicated(dup_of)
-                p.unlink()
-
-        messenger.log_status(TaskStatus.RUNNING, "Checking download results.")
-        for a, d in downloads.items():
-            if d.destination not in results:
-                messenger.log_problem(
-                    ProblemLevel.WARN,
-                    f"The result of the download to '{d.destination.as_posix()}' is unknown.",
-                )
-            elif (exc := results[d.destination]) is not None:
+            assert (
+                d.destination in results
+            ), f"the result of downloading {d.destination} should be known"
+            if (exc := results[d.destination]) is not None:
                 msg = f"Failed to download {a.filename}: {exc} ({type(exc).__name__})"
                 if d.is_required:
                     raise Exception(msg)
                 else:
                     messenger.log_problem(ProblemLevel.WARN, msg)
+            elif d.deduplicate and (dup_of := _find_original(d.destination)):
+                ret[a] = DownloadDeduplicated(dup_of)
+                d.destination.unlink(missing_ok=True)
+            else:
+                try:
+                    # https://github.com/recc-tech/tech/issues/551
+                    os.utime(d.destination)
+                except FileNotFoundError as e:
+                    # Should probably never happen
+                    ret[a] = DownloadFailed(e)
 
         return ret
 
@@ -430,7 +434,7 @@ def _append_date(filename: str, dt: date) -> str:
 
 
 def _get_planned_paths(
-    downloads: Dict[Attachment, Union[Download, DownloadSkipped]]
+    downloads: Dict[Attachment, Union[Download, DownloadSkipped]],
 ) -> Set[Path]:
     return {d.destination for d in downloads.values() if isinstance(d, Download)}
 
