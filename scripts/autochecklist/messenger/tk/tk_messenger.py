@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from threading import Lock
-from tkinter import Canvas, IntVar, Menu, Misc, PhotoImage, Tk, Toplevel, messagebox
+from tkinter import Canvas, Menu, Misc, PhotoImage, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Style
 from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
 
@@ -30,6 +30,7 @@ from ..input_messenger import (
 from .progress_bar_group import ProgressBarGroup
 from .responsive_textbox import ResponsiveTextbox
 from .scrollable_frame import ScrollableFrame
+from .yes_no_dialog import YesNoDialog
 
 T = TypeVar("T")
 
@@ -73,6 +74,7 @@ class TkMessenger(InputMessenger):
         self._start_event = threading.Event()
         self._end_event = threading.Event()
         self._is_script_done = False
+        self._close_confirm = Lock()
         self._num_problems = 0
         self._mutex = Lock()
         self._waiting_events: Set[threading.Event] = set()
@@ -130,7 +132,7 @@ class TkMessenger(InputMessenger):
         if self.is_closed:
             return
         if self._auto_close and error_count == 0:
-            self._tk.quit()
+            self._tk.destroy()
         else:
             self._is_script_done = True
             self._tk.after_idle(show_goodbye_message)
@@ -140,12 +142,24 @@ class TkMessenger(InputMessenger):
         """
         Called when the user presses the "x" button to close the window.
         """
-        should_exit = self._is_script_done or self.input_bool(
-            title="Confirm exit",
-            prompt=self._confirm_exit_message,
-        )
+        if self._is_script_done:
+            # If all tasks are done, no need to wait
+            should_exit = True
+        elif self._close_confirm.acquire(blocking=False):
+            # The user clicked "x" just once and the script is not done.
+            # Ask for confirmation.
+            try:
+                should_exit = self.input_bool(
+                    title="Confirm exit",
+                    prompt=self._confirm_exit_message,
+                )
+            finally:
+                self._close_confirm.release()
+        else:
+            # The user clicked twice in a row, so go ahead and exit.
+            should_exit = True
         if should_exit:
-            self._tk.quit()
+            self._tk.destroy()
 
     def log_status(
         self, task_name: str, index: Optional[int], status: TaskStatus, message: str
@@ -304,55 +318,24 @@ class TkMessenger(InputMessenger):
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
         """Ask the user a yes/no question."""
-        # This may be called from the main thread, so use IntVar and
-        # wait_variable() rather than threading.Event() and event.wait().
-        choice = False
-        v = IntVar(value=0)
-
-        def select_yes() -> None:
-            nonlocal choice
-            choice = True
-            v.set(1)
-
-        def select_no() -> None:
-            nonlocal choice
-            choice = False
-            v.set(1)
-
-        w = Toplevel(self._tk, padx=10, pady=10, background=self._background)
+        w = None
         try:
-            w.title(title)
-            w.protocol("WM_DELETE_WINDOW", select_no)
-            w.columnconfigure(index=0, weight=1)
-            w.rowconfigure(index=0, weight=1)
-            frame = Frame(w, padding=20)
-            frame.grid(row=0, column=0, sticky="NSEW")
-            frame.columnconfigure(index=0, weight=1)
-            frame.rowconfigure(index=0, weight=1)
-            question_box = ResponsiveTextbox(
-                frame,
-                width=20,
-                font=_NORMAL_FONT,
+            w = YesNoDialog(
+                self._tk,
+                title=title,
+                prompt=prompt,
+                default_answer="no",
                 background=self._background,
                 foreground=self._foreground,
-                allow_entry=False,
+                font=_NORMAL_FONT,
+                padx=10,
+                pady=10,
             )
-            question_box.grid(row=0, column=0, sticky="NEW")
-            question_box.set_text(prompt)
-            button_row = Frame(frame)
-            button_row.grid(row=1, column=0, sticky="SEW")
-            button_row.columnconfigure(index=0, weight=1)
-            button_row.columnconfigure(index=1, weight=1)
-            ok_btn = Button(button_row, text="Yes", command=select_yes)
-            ok_btn.grid(row=0, column=0, sticky="EW", padx=10, pady=10)
-            no_btn = Button(button_row, text="No", command=select_no)
-            no_btn.grid(row=0, column=1, sticky="EW", padx=10, pady=10)
             _position_toplevel(self._tk, w)
-
-            ok_btn.wait_variable(v)
-            return choice
+            return w.wait_for_answer()
         finally:
-            w.destroy()
+            if w:
+                w.destroy()
 
     def wait(
         self,
