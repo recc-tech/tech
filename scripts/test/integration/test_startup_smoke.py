@@ -3,12 +3,15 @@ import subprocess
 import unittest
 from pathlib import Path
 from test.mock import MockInputMessenger
-from typing import TypeVar
+from typing import Any, TypeVar
 from unittest.mock import create_autospec
 
 import check_credentials
 import download_pco_assets
 import generate_slides
+import keyring
+import keyring.backends
+import keyring.backends.null
 import launch_apps
 import mcr_setup
 import mcr_teardown
@@ -18,7 +21,12 @@ from autochecklist import FileMessenger, Messenger, ProblemLevel, TaskStatus
 from check_credentials import CheckCredentialsArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
 from download_pco_assets import DownloadAssetsArgs, DownloadAssetsConfig
-from external_services import CredentialStore
+from external_services import (
+    Credential,
+    CredentialStore,
+    CredentialUnavailableError,
+    InputPolicy,
+)
 from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 from launch_apps import LaunchAppsArgs
 from lib import ReccDependencyProvider
@@ -71,6 +79,14 @@ class PyStartupSmokeTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
         self.maxDiff = None
+        # Make sure we don't accidentally do anything bad while testing
+        keyring.set_keyring(keyring.backends.null.Keyring())
+        messenger: Any = None
+        cs = CredentialStore(messenger, request_input=InputPolicy.NEVER)
+        for c in Credential:
+            self.assertRaises(
+                CredentialUnavailableError, lambda: cs.get(c, InputPolicy.NEVER)
+            )
 
     def test_broken_task_graph(self) -> None:
         """Make sure this test suite can catch broken task graph."""

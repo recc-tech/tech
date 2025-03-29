@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from argparse import ArgumentTypeError
 from enum import Enum, auto
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import keyring
 from autochecklist import Messenger, Parameter
@@ -44,6 +44,11 @@ class InputPolicy(Enum):
     ALWAYS = auto()
 
 
+class CredentialUnavailableError(Exception):
+    def __init__(self, creds: Set[Credential]) -> None:
+        self.creds = creds
+
+
 class CredentialStore:
     _KEYRING_APP_NAME = "recc_tech_mcr_teardown"
 
@@ -68,13 +73,11 @@ class CredentialStore:
         }
         match input_policy:
             case InputPolicy.NEVER:
-                unknown_credentials = [
+                unknown_credentials = {
                     c for (c, v) in saved_credentials.items() if not v
-                ]
+                }
                 if unknown_credentials:
-                    raise ValueError(
-                        f"The following credentials are not saved and this credential store is not allowed to request user input: {', '.join([c.display_name for c in unknown_credentials])}"
-                    )
+                    raise CredentialUnavailableError(unknown_credentials)
                 credentials_to_input: List[Credential] = []
             case InputPolicy.AS_REQUIRED:
                 credentials_to_input = [
