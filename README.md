@@ -22,11 +22,10 @@ Welcome to the River's Edge Production Team repository!
 
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
-3. Optionally create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
-4. Install the required external libraries by running `pip install -r setup/requirements.txt`
-5. Install the required development dependencies (e.g., those required for testing but not when running the code in production) by running `pip install -r setup/requirements-dev.txt`.
-6. Activate the configuration profile by running `python manage_config.py activate --profile PROFILE`. To see the full list of available profiles, run `python manage_config.py list`.
-7. Activate the Git pre-commit hook using `git config core.hooksPath ./.git-hooks`.
+3. Create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
+4. Install the required external libraries (those that are required for the main scripts as well as those that are only needed for testing) by running `pip install -r setup/requirements-dev.txt`
+5. Activate the configuration profile by running `python manage_config.py activate --profile PROFILE`. To see the full list of available profiles, run `python manage_config.py list`.
+6. Activate the Git pre-commit hook using `git config core.hooksPath ./.git-hooks`.
 
 ## Repository Structure
 
