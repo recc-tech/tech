@@ -10,7 +10,6 @@ import check_credentials
 import download_pco_assets
 import generate_slides
 import keyring
-import keyring.backends
 import keyring.backends.null
 import launch_apps
 import mcr_setup
@@ -41,7 +40,8 @@ from .startup_smoke_test_data import (
 
 T = TypeVar("T")
 
-_LOG_FILE = Path(__file__).parent.joinpath("startup_smoke_test_data", "test.log")
+_DATA_DIR = Path(__file__).parent.joinpath("startup_smoke_test_data")
+_LOG_FILE = _DATA_DIR.joinpath("test.log")
 _SCRIPTS_DIR = Path(__file__).resolve().parent.parent.parent
 _HELP_DIR = Path(__file__).parent.joinpath("help_messages")
 
@@ -349,3 +349,66 @@ class CommandStartupTestCase(unittest.TestCase):
             self.assertEqual(result.stdout, "")
         finally:
             bak_path.rename(py_path)
+
+
+class StartupInVenvTestCase(unittest.TestCase):
+    """
+    Smoke tests to ensure that the scripts can be launched in a fresh virtual
+    environment.
+    For example, this should catch startup errors due to missing dependencies.
+    """
+
+    def setUp(self) -> None:
+        self.maxDiff = None
+        p = platform.system()
+        match p:
+            case "Darwin" | "Linux":
+                pass
+            case "Windows":
+                self.skipTest("Wrong platform.")
+            case _:
+                self.fail(f"Unrecognized platform '{p}'.")
+
+    def test_launch_apps_positive(self) -> None:
+        self._test_positive("launch_apps")
+
+    def test_launch_apps_negative(self) -> None:
+        requirements_path = _SCRIPTS_DIR.joinpath("setup", "requirements.txt")
+        # TODO: Use requirements-launch-apps.txt instead
+        self._test_negative("launch_apps", requirements_path=requirements_path)
+
+    def test_summarize_plan_positive(self) -> None:
+        self._test_positive("summarize_plan")
+
+    def test_summarize_plan_negative(self) -> None:
+        requirements_path = _SCRIPTS_DIR.joinpath("setup", "requirements.txt")
+        self._test_negative("summarize_plan", requirements_path=requirements_path)
+
+    def _test_positive(self, name: str) -> None:
+        script_path = _DATA_DIR.joinpath(f"{name}_in_new_venv.sh")
+        help_path = _HELP_DIR.joinpath(f"{name}.txt")
+        result = subprocess.run(
+            [script_path.resolve().as_posix()],
+            capture_output=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, help_path.read_text())
+
+    def _test_negative(self, name: str, requirements_path: Path) -> None:
+        script_path = _DATA_DIR.joinpath(f"{name}_in_new_venv.sh")
+        requirements_bak_path = requirements_path.with_suffix(".bak")
+        requirements_path.rename(requirements_bak_path)
+        try:
+            requirements_path.write_text("")
+            result = subprocess.run(
+                [script_path.resolve().as_posix()],
+                capture_output=True,
+                encoding="utf-8",
+            )
+            self.assertNotEqual(result.stderr, "")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+        finally:
+            requirements_bak_path.rename(requirements_path)
