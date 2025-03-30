@@ -16,14 +16,7 @@ from .assets import (
     DownloadSucceeded,
 )
 from .dependency_provider import ReccDependencyProvider
-from .slides import (
-    BibleVerse,
-    BibleVerseFinder,
-    Slide,
-    SlideBlueprint,
-    SlideBlueprintReader,
-    SlideGenerator,
-)
+from .slides import Slide, SlideBlueprint, SlideBlueprintReader, SlideGenerator
 from .summarize_plan import (
     AnnotatedItem,
     AnnotatedSong,

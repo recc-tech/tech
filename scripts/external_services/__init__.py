@@ -4,7 +4,6 @@ Code for connecting to external services (BoxCast, Vimeo, etc.)
 
 # pyright: reportUnusedImport=false
 
-from .bible import BibleVerse, BibleVerseFinder
 from .boxcast import BoxCastApiClient, Broadcast, BroadcastInPastError, NoCaptionsError
 from .credentials import (
     Credential,

@@ -21,7 +21,7 @@ from config import (
     Rectangle,
     Textbox,
 )
-from external_services import BibleVerse, BibleVerseFinder
+from external_services.bible import BibleVerse, BibleVerseFinder
 from matplotlib.font_manager import FontManager, FontProperties
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
