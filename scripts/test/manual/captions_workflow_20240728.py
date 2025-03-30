@@ -8,7 +8,7 @@ import lib.mcr_teardown as mcr_teardown
 from args import ReccArgs
 from autochecklist import TaskModel
 from config import Config
-from external_services import BoxCastApiClient
+from external_services.boxcast import BoxCastApiClient
 from lib import ReccDependencyProvider
 
 _MCR_TEARDOWN_TASKS = (

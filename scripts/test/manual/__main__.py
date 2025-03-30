@@ -10,7 +10,8 @@ import summarize_plan
 from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
-from external_services import BoxCastApiClient, PlanningCenterClient
+from external_services import PlanningCenterClient
+from external_services.boxcast import BoxCastApiClient
 from lib import ReccDependencyProvider
 from summarize_plan import SummarizePlanArgs
 

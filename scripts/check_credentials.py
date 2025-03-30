@@ -7,12 +7,12 @@ from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
 from external_services import (
-    BoxCastApiClient,
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
     ReccVimeoClient,
 )
+from external_services.boxcast import BoxCastApiClient
 from lib import ReccDependencyProvider
 
 

@@ -6,7 +6,6 @@ from args import ReccArgs
 from autochecklist import DependencyProvider, Messenger
 from config import Config
 from external_services import (
-    BoxCastApiClient,
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
@@ -14,6 +13,7 @@ from external_services import (
     VmixClient,
 )
 from external_services.bible import BibleVerseFinder
+from external_services.boxcast import BoxCastApiClient
 
 from .assets import AssetManager
 from .slides import SlideBlueprintReader, SlideGenerator
