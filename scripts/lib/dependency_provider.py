@@ -9,11 +9,11 @@ from external_services import (
     CredentialStore,
     InputPolicy,
     PlanningCenterClient,
-    ReccVimeoClient,
     VmixClient,
 )
 from external_services.bible import BibleVerseFinder
 from external_services.boxcast import BoxCastApiClient
+from external_services.vimeo import ReccVimeoClient
 
 from .assets import AssetManager
 from .slides import SlideBlueprintReader, SlideGenerator
