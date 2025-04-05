@@ -369,8 +369,9 @@ class StartupInVenvTestCase(unittest.TestCase):
         self._test_positive("launch_apps")
 
     def test_launch_apps_negative(self) -> None:
-        requirements_path = _SCRIPTS_DIR.joinpath("setup", "requirements.txt")
-        # TODO: Use requirements-launch-apps.txt instead
+        requirements_path = _SCRIPTS_DIR.joinpath(
+            "setup", "requirements-launch-apps.txt"
+        )
         self._test_negative("launch_apps", requirements_path=requirements_path)
 
     def test_summarize_plan_positive(self) -> None:

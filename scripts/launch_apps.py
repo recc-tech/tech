@@ -7,10 +7,9 @@ from typing import Callable, List, Optional
 import autochecklist
 import external_services
 from args import ReccArgs
-from autochecklist import DependencyProvider, TaskModel
+from autochecklist import DependencyProvider, MessengerSettings, TaskModel
 from config import Config
-from external_services import IssueType, PlanningCenterClient
-from lib import ReccDependencyProvider, SimplifiedMessengerSettings
+from external_services import CredentialStore, IssueType, PlanningCenterClient
 
 
 class App(Enum):
@@ -154,20 +153,30 @@ pco: Optional[PlanningCenterClient] = None
 
 
 def lazy_pco_client() -> PlanningCenterClient:
-    global pco, recc_dep
+    global pco, dep, config
     if pco is not None:
         return pco
-    return recc_dep.get(PlanningCenterClient)
+    cs = CredentialStore(messenger=dep.messenger)
+    pco_client = PlanningCenterClient(
+        messenger=dep.messenger,
+        credential_store=cs,
+        config=config,
+        lazy_login=False,
+    )
+    return pco_client
 
 
 if __name__ == "__main__":
     args = LaunchAppsArgs.parse(sys.argv)
     config = Config(args)
-    msg = SimplifiedMessengerSettings(
+    msg = MessengerSettings(
         log_file=config.launch_apps_log,
         script_name=LaunchAppsArgs.NAME,
         description=LaunchAppsArgs.DESCRIPTION,
         show_statuses_by_default=False,
+        ui_theme=config.ui_theme,
+        icon=None,  # TODO: Move this to config so I can use it?
+        auto_close=args.auto_close,
     )
-    recc_dep = ReccDependencyProvider(args=args, config=config, messenger=msg)
-    main(args, config, recc_dep.no_op())
+    dep = DependencyProvider(args=args, config=config, messenger=msg)
+    main(args, config, dep)

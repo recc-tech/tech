@@ -1,0 +1,5 @@
+aiohttp~=3.10.7
+keyring~=23.13.0
+pillow~=10.4.0
+requests~=2.32.3
+tomli~=2.0.0
