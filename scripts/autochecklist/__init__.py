@@ -20,5 +20,11 @@ from .messenger import (
     UserResponse,
 )
 from .startup import run
-from .task import DependencyProvider, FunctionFinder, TaskGraph, TaskModel
+from .task import (
+    DependencyProvider,
+    FunctionFinder,
+    MessengerSettings,
+    TaskGraph,
+    TaskModel,
+)
 from .wait import sleep_attentively

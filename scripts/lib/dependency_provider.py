@@ -1,9 +1,10 @@
 import typing
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar, Union
 
 from args import ReccArgs
-from autochecklist import DependencyProvider, Messenger
+from autochecklist import DependencyProvider, Messenger, MessengerSettings
 from config import Config
 from external_services import (
     CredentialStore,
@@ -21,34 +22,51 @@ from .slides import SlideBlueprintReader, SlideGenerator
 T = TypeVar("T")
 
 
+@dataclass
+class SimplifiedMessengerSettings:
+    log_file: Path
+    script_name: str
+    description: str
+    show_statuses_by_default: bool
+    confirm_exit_message: str = ""
+
+
 class ReccDependencyProvider(DependencyProvider):
     def __init__(
         self,
         *,
         args: ReccArgs,
         config: Config,
-        log_file: Path,
-        script_name: str,
-        description: str,
-        show_statuses_by_default: bool,
-        messenger: Optional[Messenger] = None,
+        messenger: Union[Messenger, SimplifiedMessengerSettings],
         lazy_login: bool = False,
         credentials_input_policy: Optional[InputPolicy] = None,
-        confirm_exit_message: str = "Are you sure you want to exit? The script is not done yet.",
     ) -> None:
-        super().__init__(
-            args=args,
-            config=config,
-            messenger=messenger,
-            log_file=log_file,
-            script_name=script_name,
-            description=description,
-            confirm_exit_message=confirm_exit_message,
-            show_statuses_by_default=show_statuses_by_default,
-            ui_theme=config.ui_theme,
-            icon=Path(__file__).parent.parent.parent.joinpath("icon_512x512.png"),
-            auto_close_messenger=args.auto_close,
-        )
+        if isinstance(messenger, Messenger):
+            msg = messenger
+        else:
+            icon = Path(__file__).parent.parent.parent.joinpath("icon_512x512.png")
+            if messenger.confirm_exit_message:
+                msg = MessengerSettings(
+                    log_file=messenger.log_file,
+                    script_name=messenger.script_name,
+                    description=messenger.description,
+                    show_statuses_by_default=messenger.show_statuses_by_default,
+                    ui_theme=config.ui_theme,
+                    icon=icon,
+                    auto_close=args.auto_close,
+                    confirm_exit_message=messenger.confirm_exit_message,
+                )
+            else:
+                msg = MessengerSettings(
+                    log_file=messenger.log_file,
+                    script_name=messenger.script_name,
+                    description=messenger.description,
+                    show_statuses_by_default=messenger.show_statuses_by_default,
+                    ui_theme=config.ui_theme,
+                    icon=icon,
+                    auto_close=args.auto_close,
+                )
+        super().__init__(args=args, config=config, messenger=msg)
 
         # Optional args
         self._lazy_login = lazy_login
@@ -65,6 +83,15 @@ class ReccDependencyProvider(DependencyProvider):
         self._asset_manager: Optional[AssetManager] = None
         self._vimeo_client: Optional[ReccVimeoClient] = None
         self._boxcast_client: Optional[BoxCastApiClient] = None
+
+    def no_op(self) -> DependencyProvider:
+        """
+        Return a new `DependencyProvider` with the same args, config, and
+        messenger but which will not provide any other dependencies.
+        """
+        return DependencyProvider(
+            args=self._args, config=self._config, messenger=self.messenger
+        )
 
     def get(self, typ: Type[T]) -> T:
         method_by_type = {

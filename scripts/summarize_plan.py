@@ -14,7 +14,7 @@ from args import ReccArgs
 from autochecklist import Messenger, ProblemLevel, TaskModel, TaskStatus
 from config import Config
 from external_services import PlanningCenterClient
-from lib import PlanItemsSummary, ReccDependencyProvider
+from lib import PlanItemsSummary, ReccDependencyProvider, SimplifiedMessengerSettings
 
 _DEMO_FILE = Path(__file__).parent.joinpath(
     "test", "integration", "summarize_plan_data", "20240414_summary.json"
@@ -207,9 +207,7 @@ def _generate_and_save_summary(
 if __name__ == "__main__":
     _args = SummarizePlanArgs.parse(sys.argv)
     _cfg = Config(_args)
-    dependency_provider = ReccDependencyProvider(
-        args=_args,
-        config=_cfg,
+    msg = SimplifiedMessengerSettings(
         log_file=_cfg.summarize_plan_log,
         script_name="Summarize Plan",
         description=SummarizePlanArgs.DESCRIPTION,
@@ -218,6 +216,8 @@ if __name__ == "__main__":
             "Are you sure you want to exit?"
             " The plan summary will no longer be updated automatically."
         ),
-        lazy_login=_args.demo,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=_args, config=_cfg, messenger=msg, lazy_login=_args.demo
     )
     main(_args, _cfg, dependency_provider)

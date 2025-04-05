@@ -12,6 +12,7 @@ from . import (
     BaseConfig,
     DependencyProvider,
     Messenger,
+    MessengerSettings,
     Parameter,
     ProblemLevel,
     TaskModel,
@@ -215,20 +216,19 @@ if __name__ == "__main__":
             ),
         ],
     )
-    dependency_provider = DependencyProvider(
-        args=args,
-        config=config,
-        messenger=None,
+    msg = MessengerSettings(
         log_file=Path(__file__).parent.joinpath("demo.log"),
         script_name="AutoChecklist Demo",
         description=_DESCRIPTION,
         confirm_exit_message="Are you sure you want to exit? The script is not done yet.",
         show_statuses_by_default=True,
         ui_theme=args.ui_theme,
+        icon=None,
         # No point in passing True here, since this script will always have
         # some warnings and errors if you run the whole thing
-        auto_close_messenger=False,
+        auto_close=False,
     )
+    dependency_provider = DependencyProvider(args=args, config=config, messenger=msg)
     autochecklist.run(
         args=args,
         config=config,

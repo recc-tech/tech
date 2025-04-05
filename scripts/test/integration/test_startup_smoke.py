@@ -55,10 +55,6 @@ class MockDependencyProvider(ReccDependencyProvider):
             args=args,
             config=config,
             messenger=messenger,
-            log_file=_LOG_FILE,
-            script_name="test",
-            description="test",
-            show_statuses_by_default=True,
             lazy_login=True,
         )
         self._credentials_mock = create_autospec(CredentialStore)

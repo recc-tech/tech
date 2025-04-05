@@ -9,7 +9,7 @@ from inspect import Parameter, Signature
 from pathlib import Path
 from threading import Thread
 from types import ModuleType
-from typing import Callable, Dict, List, Literal, Optional, Set, Type
+from typing import Callable, Dict, List, Literal, Optional, Set, Type, Union
 
 from .base_args import BaseArgs
 from .base_config import BaseConfig
@@ -345,61 +345,51 @@ class TaskModel:
         return [cls._parse(st) for st in subtasks_list]
 
 
+@dataclass
+class MessengerSettings:
+    log_file: Path
+    script_name: str
+    description: str
+    show_statuses_by_default: bool
+    ui_theme: Literal["light", "dark"]
+    icon: Optional[Path]
+    auto_close: bool
+    confirm_exit_message: str = (
+        "Are you sure you want to exit? The script is not done yet."
+    )
+
+
 class DependencyProvider:
     def __init__(
         self,
         args: BaseArgs,
         config: BaseConfig,
-        log_file: Path,
-        script_name: str,
-        description: str,
-        confirm_exit_message: str,
-        show_statuses_by_default: bool,
-        ui_theme: Literal["light", "dark"],
-        messenger: Optional[Messenger],
-        auto_close_messenger: bool,
-        icon: Optional[Path] = None,
+        messenger: Union[Messenger, MessengerSettings],
     ) -> None:
         self._args = args
         self._config = config
-        self.messenger = messenger or self._make_messenger(
-            log_file=log_file,
-            script_name=script_name,
-            description=description,
-            confirm_exit_message=confirm_exit_message,
-            show_statuses_by_default=show_statuses_by_default,
-            ui_theme=ui_theme,
-            icon=icon,
-            auto_close=auto_close_messenger,
-        )
+        if isinstance(messenger, Messenger):
+            self.messenger = messenger
+        else:
+            self.messenger = self._make_messenger(messenger)
 
-    def _make_messenger(
-        self,
-        log_file: Path,
-        script_name: str,
-        description: str,
-        confirm_exit_message: str,
-        show_statuses_by_default: bool,
-        ui_theme: Literal["light", "dark"],
-        icon: Optional[Path],
-        auto_close: bool,
-    ) -> Messenger:
-        file_messenger = FileMessenger(log_file=log_file)
+    def _make_messenger(self, s: MessengerSettings) -> Messenger:
+        file_messenger = FileMessenger(log_file=s.log_file)
         input_messenger = (
             ConsoleMessenger(
-                description=f"{description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
+                description=f"{s.description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
                 show_task_status=self._args.verbose,
             )
             if self._args.ui == "console"
             else TkMessenger(
-                title=script_name,
-                description=description,
-                confirm_exit_message=confirm_exit_message,
+                title=s.script_name,
+                description=s.description,
+                confirm_exit_message=s.confirm_exit_message,
                 config=self._config,
-                theme=ui_theme,
-                show_statuses_by_default=show_statuses_by_default,
-                icon=icon,
-                auto_close=auto_close,
+                theme=s.ui_theme,
+                show_statuses_by_default=s.show_statuses_by_default,
+                icon=s.icon,
+                auto_close=s.auto_close,
             )
         )
         return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
@@ -705,7 +695,9 @@ def _convert_models_to_tasks(
         raise ValueError(
             f"The list of tasks to automate includes the following values, which are not valid task names: {','.join(invalid_auto_tasks)}."
         )
-    name_to_func = finder.find_functions(list(all_task_names))
+    # Don't even try to find dependencies for tasks that already have a func.
+    # This is important because the function finding may fail.
+    name_to_func = finder.find_functions([m.name for m in models if m.func is None])
     name_to_task: Dict[str, _Task] = {}
     tasks: List[_Task] = []
     for i, m in enumerate(models, start=1):

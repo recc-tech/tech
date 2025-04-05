@@ -15,7 +15,7 @@ from .assets import (
     DownloadSkipped,
     DownloadSucceeded,
 )
-from .dependency_provider import ReccDependencyProvider
+from .dependency_provider import ReccDependencyProvider, SimplifiedMessengerSettings
 from .slides import Slide, SlideBlueprint, SlideBlueprintReader, SlideGenerator
 from .summarize_plan import (
     AnnotatedItem,

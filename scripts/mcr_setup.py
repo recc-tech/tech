@@ -5,7 +5,7 @@ import autochecklist
 import lib.mcr_setup as mcr_setup
 from args import ReccArgs
 from config import McrSetupConfig
-from lib import ReccDependencyProvider
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 
 
 class McrSetupArgs(ReccArgs):
@@ -28,12 +28,13 @@ def main(
 if __name__ == "__main__":
     args = McrSetupArgs.parse(sys.argv)
     config = McrSetupConfig(args, profile=None, strict=False)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.mcr_setup_log,
         script_name="MCR Setup",
         description=McrSetupArgs.DESCRIPTION,
         show_statuses_by_default=False,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
     main(args, config, dependency_provider)

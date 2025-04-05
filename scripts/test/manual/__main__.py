@@ -12,7 +12,7 @@ from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
 from external_services import PlanningCenterClient
 from external_services.boxcast import BoxCastApiClient
-from lib import ReccDependencyProvider
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 from summarize_plan import SummarizePlanArgs
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
@@ -398,13 +398,14 @@ def summarize_plan_20240505(client: PlanningCenterClient, messenger: Messenger) 
 if __name__ == "__main__":
     args = ManualTestArgs.parse(sys.argv)
     config = Config(args)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.manual_test_log,
         script_name="Manual Test",
         description=ManualTestArgs.DESCRIPTION,
         show_statuses_by_default=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
     autochecklist.run(
         args=args,
