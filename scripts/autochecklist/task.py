@@ -240,6 +240,7 @@ class TaskModel:
     prerequisites: Set[str] = field(default_factory=set)
     subtasks: List[TaskModel] = field(default_factory=list)
     only_auto: bool = False
+    func: Optional[Callable[[], None]] = None
 
     def __post_init__(self):
         object.__setattr__(self, "name", self.name.strip())
@@ -562,6 +563,7 @@ def _normalize_prerequisites(
             prerequisites=expanded_prerequisites,
             subtasks=task.subtasks,
             only_auto=task.only_auto,
+            func=task.func,
         )
     else:
         return TaskModel(
@@ -573,6 +575,7 @@ def _normalize_prerequisites(
                 for t in task.subtasks
             ],
             only_auto=task.only_auto,
+            func=task.func,
         )
 
 
@@ -682,6 +685,7 @@ def _remove_redundant_prerequisites(sorted_tasks: List[TaskModel]) -> List[TaskM
             prerequisites=required_direct_prerequisites[t.name],
             subtasks=[],
             only_auto=t.only_auto,
+            func=t.func,
         )
         for t in sorted_tasks
     ]
@@ -705,7 +709,7 @@ def _convert_models_to_tasks(
     name_to_task: Dict[str, _Task] = {}
     tasks: List[_Task] = []
     for i, m in enumerate(models, start=1):
-        func = name_to_func.get(m.name, None)
+        func = m.func or name_to_func.get(m.name, None)
         if func is None and m.only_auto:
             raise ValueError(
                 f"Task '{m.name}' has only_auto=True, but no automation was found for it."
