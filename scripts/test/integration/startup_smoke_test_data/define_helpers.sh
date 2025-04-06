@@ -23,6 +23,9 @@ function create_and_activate_venv {
 
 	python -m venv "$venv_dir"
 	source "$venv_dir/bin/activate"
+	# In case pip is out of date (which would cause a warning to be printed and
+	# make the tests fail)
+	pip install --upgrade pip 2>&1 > /dev/null
 }
 
 function use_null_keyring {
