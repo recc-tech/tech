@@ -27,7 +27,14 @@ class TaskGraphTestCase(unittest.TestCase):
         function_finder = create_autospec(FunctionFinder)
         # The value for task c is deliberately omitted. The TaskGraph
         # constructor should use None for missing keys.
-        function_finder.find_functions.return_value = {"a": sentinel.func_a, "b": None}
+        # A value is deliberately provided for task d. The TaskGraph
+        # constructor should prioritize the `func` attribute in the TaskModel
+        # itself.
+        function_finder.find_functions.return_value = {
+            "a": sentinel.func_a,
+            "b": None,
+            "d": sentinel.wrong_func_d,
+        }
 
         task = TaskModel(
             name="root",
@@ -38,6 +45,12 @@ class TaskGraphTestCase(unittest.TestCase):
                 # TaskGraph constructor should ignore it and put everything in
                 # one thread.
                 TaskModel(name="c", description="D C", prerequisites={"a", "b"}),
+                TaskModel(
+                    name="d",
+                    description="D D",
+                    prerequisites={"c"},
+                    func=sentinel.func_d,
+                ),
             ],
         )
         graph = TaskGraph(
@@ -50,17 +63,39 @@ class TaskGraphTestCase(unittest.TestCase):
         actual = [ThreadData.from_thread(th) for th in graph._threads]
         expected = [
             ThreadData(
-                name="C",
+                # The thread name is based on its final task.
+                name="D",
                 tasks=[
                     TaskData(
                         name="a",
+                        # Each description should have an asterisk at the end
+                        # from the fill_placeholders() function.
                         description="D A*",
                         index=1,
                         func=sentinel.func_a,
                         only_auto=True,
                     ),
-                    TaskData(name="b", description="D B*", index=2),
-                    TaskData(name="c", description="D C*", index=3),
+                    TaskData(
+                        name="b",
+                        description="D B*",
+                        index=2,
+                        func=None,
+                        only_auto=False,
+                    ),
+                    TaskData(
+                        name="c",
+                        description="D C*",
+                        index=3,
+                        func=None,
+                        only_auto=False,
+                    ),
+                    TaskData(
+                        name="d",
+                        description="D D*",
+                        index=4,
+                        func=sentinel.func_d,
+                        only_auto=False,
+                    ),
                 ],
                 prerequisites=set(),
             )

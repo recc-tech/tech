@@ -8,8 +8,8 @@ import lib.mcr_teardown as mcr_teardown
 from args import ReccArgs
 from autochecklist import TaskModel
 from config import Config
-from external_services import BoxCastApiClient
-from lib import ReccDependencyProvider
+from external_services.boxcast import BoxCastApiClient
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 
 _MCR_TEARDOWN_TASKS = (
     Path(__file__)
@@ -99,13 +99,14 @@ def main():
     # We probably won't be running this test only on Sunday afternoons, so the
     # latest Vimeo video might be a while ago
     config.vimeo_new_video_hours = 24 * 7
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.log_dir.joinpath("test_captions_workflow.log"),
         script_name="Test Captions Workflow",
         description="Manually test the captions workflow.",
         show_statuses_by_default=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
 
     boxcast_client = dependency_provider.get(BoxCastApiClient)

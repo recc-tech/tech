@@ -2,15 +2,14 @@ import os
 import sys
 from argparse import ArgumentParser, Namespace
 from enum import Enum
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 import autochecklist
 import external_services
 from args import ReccArgs
-from autochecklist import TaskModel
+from autochecklist import DependencyProvider, MessengerSettings, TaskModel
 from config import Config
-from external_services import IssueType, PlanningCenterClient
-from lib import ReccDependencyProvider
+from external_services import CredentialStore, IssueType, PlanningCenterClient
 
 
 class App(Enum):
@@ -40,7 +39,7 @@ class LaunchAppsArgs(ReccArgs):
         return super().set_up_parser(parser)
 
 
-def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> None:
+def main(args: LaunchAppsArgs, config: Config, dep: DependencyProvider) -> None:
     tasks: List[TaskModel] = []
     for app in args.apps:
         match app:
@@ -48,38 +47,49 @@ def main(args: LaunchAppsArgs, config: Config, dep: ReccDependencyProvider) -> N
                 t = TaskModel(
                     name="launch_PCO",
                     description="Open Planning Center Online.",
+                    func=lambda: launch_PCO(lazy_pco_client(), config),
                 )
             case App.PLANNING_CENTER_LIVE:
                 t = TaskModel(
                     name="launch_PCO_live",
                     description="Open the Planning Center live view.",
+                    func=lambda: launch_PCO_live(lazy_pco_client(), config),
                 )
             case App.BOXCAST:
-                t = TaskModel(name="launch_BoxCast", description="Open BoxCast.")
+                t = TaskModel(
+                    name="launch_BoxCast",
+                    description="Open BoxCast.",
+                    func=lambda: launch_BoxCast(config),
+                )
             case App.CHURCH_ONLINE_PLATFORM:
                 t = TaskModel(
                     name="launch_COP",
                     description="Open Church Online Platform.",
+                    func=lambda: launch_COP(config),
                 )
             case App.FOH_SETUP_CHECKLIST:
                 t = TaskModel(
                     name="open_FOH_setup_checklist",
                     description="Open the FOH setup checklist on GitHub.",
+                    func=lambda: open_FOH_setup_checklist(config),
                 )
             case App.MCR_SETUP_CHECKLIST:
                 t = TaskModel(
                     name="open_MCR_setup_checklist",
                     description="Open the MCR setup checklist on GitHub.",
+                    func=lambda: open_MCR_setup_checklist(config),
                 )
             case App.MCR_TEARDOWN_CHECKLIST:
                 t = TaskModel(
                     name="open_MCR_teardown_checklist",
                     description="Open the MCR teardown checklist on GitHub.",
+                    func=lambda: open_MCR_teardown_checklist(config),
                 )
             case App.VMIX:
                 t = TaskModel(
                     name="open_vMix",
                     description="Open last week's preset in vMix.",
+                    func=lambda: open_vMix(config),
                 )
         tasks.append(t)
     autochecklist.run(
@@ -139,15 +149,34 @@ def open_vMix(config: Config) -> None:
     external_services.launch_vmix(latest_preset)
 
 
+pco: Optional[PlanningCenterClient] = None
+
+
+def lazy_pco_client() -> PlanningCenterClient:
+    global pco, dep, config
+    if pco is not None:
+        return pco
+    cs = CredentialStore(messenger=dep.messenger)
+    pco_client = PlanningCenterClient(
+        messenger=dep.messenger,
+        credential_store=cs,
+        config=config,
+        lazy_login=False,
+    )
+    return pco_client
+
+
 if __name__ == "__main__":
     args = LaunchAppsArgs.parse(sys.argv)
     config = Config(args)
-    dep = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = MessengerSettings(
         log_file=config.launch_apps_log,
         script_name=LaunchAppsArgs.NAME,
         description=LaunchAppsArgs.DESCRIPTION,
         show_statuses_by_default=False,
+        ui_theme=config.ui_theme,
+        icon=config.icon,
+        auto_close=args.auto_close,
     )
+    dep = DependencyProvider(args=args, config=config, messenger=msg)
     main(args, config, dep)

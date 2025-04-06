@@ -6,14 +6,10 @@ import autochecklist
 from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
-from external_services import (
-    BoxCastApiClient,
-    CredentialStore,
-    InputPolicy,
-    PlanningCenterClient,
-    ReccVimeoClient,
-)
-from lib import ReccDependencyProvider
+from external_services import CredentialStore, InputPolicy, PlanningCenterClient
+from external_services.boxcast import BoxCastApiClient
+from external_services.vimeo import ReccVimeoClient
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 
 
 class CheckCredentialsArgs(ReccArgs):
@@ -110,13 +106,16 @@ def main(
 if __name__ == "__main__":
     args = CheckCredentialsArgs.parse(sys.argv)
     config = Config(args)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.check_credentials_log,
         script_name="Check Credentials",
         description=CheckCredentialsArgs.DESCRIPTION,
         show_statuses_by_default=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args,
+        config=config,
+        messenger=msg,
         credentials_input_policy=(
             InputPolicy.ALWAYS if args.force_input else InputPolicy.AS_REQUIRED
         ),

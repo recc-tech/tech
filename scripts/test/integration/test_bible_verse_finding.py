@@ -1,6 +1,6 @@
 import unittest
 
-from external_services import BibleVerse, BibleVerseFinder
+from external_services.bible import BibleVerse, BibleVerseFinder
 
 
 class BibleVerseFindingTest(unittest.TestCase):

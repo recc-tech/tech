@@ -10,14 +10,8 @@ from autochecklist import Messenger
 from captions import Cue
 from config import Config
 from dateutil.tz import tzutc
-from external_services import (
-    BoxCastApiClient,
-    Broadcast,
-    BroadcastInPastError,
-    Credential,
-    CredentialStore,
-    InputPolicy,
-)
+from external_services import Credential, CredentialStore, InputPolicy
+from external_services.boxcast import BoxCastApiClient, Broadcast, BroadcastInPastError
 
 _BROADCAST_20240505_ID = "orn5qh81x7dojxwlbbng"
 _EXPECTED_CAPTIONS_20240505 = Path(__file__).parent.joinpath(

@@ -377,6 +377,7 @@ class Config(BaseConfig):
             self.ui_theme: Literal["dark", "light"] = reader.get_enum(
                 "ui.theme", {"dark", "light"}
             )
+            self.icon = reader.get_file("ui.icon")
 
             # Folder structure
             # (Some folders should already exist in production, but create them

@@ -6,7 +6,7 @@ from pathlib import Path
 import autochecklist
 import lib.mcr_teardown as mcr_teardown
 from config import McrTeardownArgs, McrTeardownConfig
-from lib import ReccDependencyProvider
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 
 
 def main(
@@ -25,12 +25,13 @@ def main(
 if __name__ == "__main__":
     args = McrTeardownArgs.parse(sys.argv)
     config = McrTeardownConfig(args)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.mcr_teardown_log,
         script_name="MCR Teardown",
         description=McrTeardownArgs.DESCRIPTION,
         show_statuses_by_default=False,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
     main(args, config, dependency_provider)

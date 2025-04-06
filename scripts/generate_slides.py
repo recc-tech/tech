@@ -6,7 +6,7 @@ from typing import Callable, List, Optional, Set
 import autochecklist
 from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
-from lib import ReccDependencyProvider
+from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 from lib.slides import (
     Config,
     Slide,
@@ -248,12 +248,13 @@ def main(
 if __name__ == "__main__":
     args = GenerateSlidesArgs.parse(sys.argv)
     config = GenerateSlidesConfig(args, profile=None, strict=False)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.generate_slides_log,
         script_name="Generate Slides",
         description=GenerateSlidesArgs.DESCRIPTION,
         show_statuses_by_default=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
     main(args, config, dependency_provider)

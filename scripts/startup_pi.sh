@@ -9,14 +9,19 @@ function main {
 
 	scripts_dir="$(dirname "$(readlink -f "$0")")"
 	cd "$scripts_dir"
- 	pwd
 	source .venv/bin/activate
 
- 	# tkinter needs the $DISPLAY environment variable
-  	export DISPLAY=':0'
+	# tkinter needs the $DISPLAY environment variable
+	export DISPLAY=':0'
+
+	git stash --include-untracked
+	git switch main
+	git pull
+	python3 -m pip install --upgrade pip
+	python3 -m pip install --upgrade --upgrade-strategy eager -r ./setup/requirements-launch-apps.txt
 
 	python3 manage_config.py activate --profile pi
-	./update_scripts.command
+
 	python3 launch_apps.py pco_live --auto-close &
 }
 

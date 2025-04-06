@@ -7,7 +7,7 @@ from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
 from external_services import PlanningCenterClient
-from lib import AssetManager, ReccDependencyProvider
+from lib import AssetManager, ReccDependencyProvider, SimplifiedMessengerSettings
 
 
 class DownloadAssetsArgs(ReccArgs):
@@ -107,12 +107,13 @@ def main(
 if __name__ == "__main__":
     args = DownloadAssetsArgs.parse(sys.argv)
     config = DownloadAssetsConfig(args)
-    dependency_provider = ReccDependencyProvider(
-        args=args,
-        config=config,
+    msg = SimplifiedMessengerSettings(
         log_file=config.download_assets_log,
         script_name="Download PCO Assets",
         description=DownloadAssetsArgs.DESCRIPTION,
         show_statuses_by_default=True,
+    )
+    dependency_provider = ReccDependencyProvider(
+        args=args, config=config, messenger=msg
     )
     main(args, config, dependency_provider)
