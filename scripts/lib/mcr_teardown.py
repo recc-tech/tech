@@ -8,7 +8,6 @@ import autochecklist
 import captions
 from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
-from captions import Cue
 from config import Config, McrTeardownConfig
 from external_services import PlanningCenterClient
 from external_services.boxcast import (
@@ -202,9 +201,6 @@ def generate_captions(
     )
 
 
-_MARKER_CUE_TEXT = "[REMOVE THIS CUE]"
-
-
 def automatically_edit_captions(
     client: BoxCastApiClient, config: Config, messenger: Messenger
 ) -> None:
@@ -224,17 +220,7 @@ def automatically_edit_captions(
     edited_captions = captions.apply_substitutions(
         filtered_cues, config.caption_substitutions
     )
-    # This marker makes it easy to tell if the script somehow downloaded the
-    # wrong captions later on.
-    marker_cue = Cue(
-        id="0",
-        start=timedelta(0),
-        end=timedelta(milliseconds=500),
-        text=_MARKER_CUE_TEXT,
-        confidence=0.0,
-    )
-    with_marker = [marker_cue] + edited_captions
-    captions.save(with_marker, config.auto_edited_captions_file)
+    captions.save(edited_captions, config.auto_edited_captions_file)
 
     messenger.log_status(TaskStatus.RUNNING, "Re-uploading the edited captions.")
     client.upload_captions(
@@ -271,17 +257,6 @@ def upload_captions_to_Vimeo(
     boxcast_client.download_captions(
         broadcast_id=broadcast.id, path=config.final_captions_file
     )
-    cues = list(captions.load(config.final_captions_file))
-
-    # Make sure the marker is gone. If not, the script probably downloaded the
-    # wrong captions.
-    if cues[0].text == _MARKER_CUE_TEXT:
-        raise ValueError(
-            f'The caption "{_MARKER_CUE_TEXT}" is still there.'
-            " Please remove it and publish the captions again."
-            " If you already removed it, something went wrong with the script."
-            " Please wait a minute or two and try again."
-        )
 
     messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
