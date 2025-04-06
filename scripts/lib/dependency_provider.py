@@ -44,7 +44,6 @@ class ReccDependencyProvider(DependencyProvider):
         if isinstance(messenger, Messenger):
             msg = messenger
         else:
-            icon = Path(__file__).parent.parent.parent.joinpath("icon_512x512.png")
             if messenger.confirm_exit_message:
                 msg = MessengerSettings(
                     log_file=messenger.log_file,
@@ -52,7 +51,7 @@ class ReccDependencyProvider(DependencyProvider):
                     description=messenger.description,
                     show_statuses_by_default=messenger.show_statuses_by_default,
                     ui_theme=config.ui_theme,
-                    icon=icon,
+                    icon=config.icon,
                     auto_close=args.auto_close,
                     confirm_exit_message=messenger.confirm_exit_message,
                 )
@@ -63,7 +62,7 @@ class ReccDependencyProvider(DependencyProvider):
                     description=messenger.description,
                     show_statuses_by_default=messenger.show_statuses_by_default,
                     ui_theme=config.ui_theme,
-                    icon=icon,
+                    icon=config.icon,
                     auto_close=args.auto_close,
                 )
         super().__init__(args=args, config=config, messenger=msg)

@@ -175,7 +175,7 @@ if __name__ == "__main__":
         description=LaunchAppsArgs.DESCRIPTION,
         show_statuses_by_default=False,
         ui_theme=config.ui_theme,
-        icon=None,  # TODO: Move this to config so I can use it?
+        icon=config.icon,
         auto_close=args.auto_close,
     )
     dep = DependencyProvider(args=args, config=config, messenger=msg)

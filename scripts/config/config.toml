@@ -10,6 +10,7 @@
 
 [ui]
 theme = "dark"
+icon = "%{args.repo_root}%/icon_512x512.png"
 
 [folder]
 logs = "%{folder.home}%/Logs"
