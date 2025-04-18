@@ -52,6 +52,12 @@ class PlanSection:
     items: List[PlanItem]
 
 
+@dataclass
+class ServiceType:
+    id: str
+    name: str
+
+
 @dataclass(frozen=True)
 class Plan:
     id: str
@@ -146,6 +152,13 @@ class PlanningCenterClient:
 
         if not lazy_login:
             self._test_credentials(max_attempts=3)
+
+    def find_service_types(self) -> List[ServiceType]:
+        response = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types", params={}
+        )
+        response = response["data"]
+        return [ServiceType(id=s["id"], name=s["attributes"]["name"]) for s in response]
 
     def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
         service_type = service_type or self._cfg.pco_service_type_id

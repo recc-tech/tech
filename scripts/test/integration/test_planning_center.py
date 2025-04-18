@@ -26,7 +26,7 @@ TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
 
 class PlanningCenterTestCase(unittest.TestCase):
     def test_find_plan_by_date(self) -> None:
-        client, _, log_problem_mock = self._create_client()
+        client, _, log_problem_mock, _ = self._create_client()
 
         plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
 
@@ -36,7 +36,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_find_message_notes(self) -> None:
-        client, _, log_problem_mock = self._create_client()
+        client, _, log_problem_mock, _ = self._create_client()
         expected_message_notes = inspect.cleandoc(
             """New Series: Let There Be Joy - Slide
             Rejected By God
@@ -70,7 +70,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_find_attachments(self) -> None:
-        client, _, log_problem_mock = self._create_client()
+        client, _, log_problem_mock, _ = self._create_client()
         # It would be nice to test on a plan with more attachments (images,
         # videos, etc.), but the attachments seem to disappear quite quickly
         # after a service
@@ -97,7 +97,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_download_assets(self) -> None:
-        client, messenger, log_problem_mock = self._create_client()
+        client, messenger, log_problem_mock, _ = self._create_client()
         expected_notes_path = DATA_DIR.joinpath("2023-04-16 Notes.docx")
         actual_notes_path = TEMP_DIR.joinpath("2023-04-16 Notes.docx")
         expected_script_path = DATA_DIR.joinpath("2023-04-16 MC Host Script.docx")
@@ -143,7 +143,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         log_problem_mock.assert_not_called()
 
     def test_find_presenters_20250302(self) -> None:
-        client, _, log_problem_mock = self._create_client()
+        client, _, log_problem_mock, _ = self._create_client()
         expected_presenters = PresenterSet(
             speakers={
                 TeamMember(
@@ -161,7 +161,23 @@ class PlanningCenterTestCase(unittest.TestCase):
         self.assertEqual(actual_presenters, expected_presenters)
         log_problem_mock.assert_not_called()
 
-    def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock]:
+    def test_find_service_types(self) -> None:
+        client, _, log_problem_mock, config = self._create_client()
+        service_types = client.find_service_types()
+        sunday_service_types = [
+            s for s in service_types if s.id == config.pco_service_type_id
+        ]
+        self.assertEqual(
+            len(sunday_service_types),
+            1,
+            "there should be one service type which matches the default one from the config file",
+        )
+        sunday_service_type = sunday_service_types[0]
+        self.assertEqual(sunday_service_type.name, "10:30AM Sunday Gathering")
+        log_problem_mock.assert_not_called()
+
+    # TODO: Move this to setUp()?
+    def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
         args = ReccArgs(
             Namespace(
                 ui="tk",
@@ -186,11 +202,12 @@ class PlanningCenterTestCase(unittest.TestCase):
         messenger.input = input_mock
         messenger.wait = input_mock
         credential_store = CredentialStore(messenger)
+        config = Config(args, allow_multiple_only_for_testing=True)
         client = PlanningCenterClient(
             messenger=messenger,
             credential_store=credential_store,
-            config=Config(args, allow_multiple_only_for_testing=True),
+            config=config,
             # Use a different value from test_find_message_notes
             lazy_login=False,
         )
-        return client, messenger, log_problem_mock
+        return client, messenger, log_problem_mock, config
