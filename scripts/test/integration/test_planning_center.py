@@ -14,6 +14,7 @@ from config import Config
 from external_services import (
     Attachment,
     CredentialStore,
+    PlanId,
     PlanningCenterClient,
     PresenterSet,
     TeamMember,
@@ -30,7 +31,7 @@ class PlanningCenterTestCase(unittest.TestCase):
 
         plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
 
-        self.assertEqual("66578821", plan.id)
+        self.assertEqual(PlanId(service_type="882857", plan="66578821"), plan.id)
         self.assertEqual("Rejected", plan.series_title)
         self.assertEqual("Rejected By God", plan.title)
         log_problem_mock.assert_not_called()
@@ -64,7 +65,9 @@ class PlanningCenterTestCase(unittest.TestCase):
             All We Need Is Jesus – Everyday He’s All We Need."""
         )
 
-        actual_notes = client.find_message_notes("66578821")
+        actual_notes = client.find_message_notes(
+            PlanId(service_type="882857", plan="66578821")
+        )
 
         self.assertEqual(expected_message_notes, actual_notes)
         log_problem_mock.assert_not_called()
@@ -91,7 +94,9 @@ class PlanningCenterTestCase(unittest.TestCase):
             ),
         }
 
-        actual_attachments = client.find_attachments("64650350")
+        actual_attachments = client.find_attachments(
+            PlanId(service_type="882857", plan="64650350")
+        )
 
         self.assertEqual(expected_attachments, actual_attachments)
         log_problem_mock.assert_not_called()
@@ -157,7 +162,9 @@ class PlanningCenterTestCase(unittest.TestCase):
                 TeamMember(name="Paul Hanash", status=TeamMemberStatus.UNCONFIRMED),
             },
         )
-        actual_presenters = client.find_presenters(plan_id="78328967")
+        actual_presenters = client.find_presenters(
+            PlanId(service_type="882857", plan="78328967")
+        )
         self.assertEqual(actual_presenters, expected_presenters)
         log_problem_mock.assert_not_called()
 

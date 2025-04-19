@@ -1,6 +1,9 @@
 {
 	"plan": {
-		"id": "72395216",
+		"id": {
+			"service_type": "882857",
+			"plan": "72395216"
+		},
 		"title": "Running Father + Communion - Yohan Larochelle",
 		"series_title": "WORTHY",
 		"date": "2024-05-05",

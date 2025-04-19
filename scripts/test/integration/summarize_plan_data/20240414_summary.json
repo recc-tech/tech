@@ -1,6 +1,9 @@
 {
 	"plan": {
-		"id": "71699950",
+		"id": {
+			"service_type": "882857",
+			"plan": "71699950"
+		},
 		"series_title": "WORTHY",
 		"title": "Worthy Of The Feast",
 		"date": "2024-04-14",

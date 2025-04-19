@@ -17,6 +17,7 @@ from .planning_center import (
     FileType,
     ItemNote,
     Plan,
+    PlanId,
     PlanItem,
     PlanningCenterClient,
     PlanSection,

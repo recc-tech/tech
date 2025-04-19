@@ -70,7 +70,7 @@ def download_PCO_assets(
     manager: AssetManager,
 ):
     pco_plan = client.find_plan_by_date(config.start_time.date())
-    attachments = client.find_attachments(plan_id=pco_plan.id)
+    attachments = client.find_attachments(pco_plan.id)
     download_plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
     if args.dry_run:
         messenger.log_debug("Skipping downloading assets: dry run.")

@@ -7,6 +7,7 @@ from autochecklist import Messenger, ProblemLevel
 from config import McrSetupConfig
 from external_services import (
     Plan,
+    PlanId,
     PlanningCenterClient,
     PresenterSet,
     TeamMember,
@@ -807,7 +808,7 @@ class McrSetupTestCase(unittest.TestCase):
     ) -> PlanningCenterClient:
         pco_client = create_autospec(PlanningCenterClient)
         pco_client.find_plan_by_date.return_value = Plan(
-            id="123456",
+            id=PlanId(service_type="987654", plan="123456"),
             title=title,
             series_title=series,
             date=date,

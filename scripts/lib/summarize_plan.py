@@ -14,6 +14,7 @@ from config import Config
 from external_services import (
     ItemNote,
     Plan,
+    PlanId,
     PlanItem,
     PlanningCenterClient,
     PlanSection,
@@ -774,7 +775,7 @@ def _cast(t: Type[T], x: object) -> T:
 
 def _plan_to_json(plan: Plan) -> object:
     return {
-        "id": plan.id,
+        "id": _plan_id_to_json(plan.id),
         "series_title": plan.series_title,
         "title": plan.title,
         "date": datetime.strftime(datetime.combine(plan.date, time()), "%Y-%m-%d"),
@@ -785,11 +786,23 @@ def _plan_to_json(plan: Plan) -> object:
 def _parse_plan(plan: object) -> Plan:
     plan = typing.cast(dict[object, object], _cast(dict, plan))
     return Plan(
-        id=_cast(str, plan["id"]),
+        id=_parse_plan_id(plan["id"]),
         series_title=_cast(str, plan["series_title"]),
         title=_cast(str, plan["title"]),
         date=datetime.strptime(_cast(str, plan["date"]), "%Y-%m-%d").date(),
         web_page_url=_cast(str, plan["web_page_url"]),
+    )
+
+
+def _plan_id_to_json(id: PlanId) -> object:
+    return {"plan": id.plan, "service_type": id.service_type}
+
+
+def _parse_plan_id(id: object) -> PlanId:
+    id = typing.cast(dict[object, object], _cast(dict, id))
+    return PlanId(
+        service_type=_cast(str, id["service_type"]),
+        plan=_cast(str, id["plan"]),
     )
 
 

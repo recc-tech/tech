@@ -15,6 +15,7 @@ from external_services import (
     CredentialStore,
     ItemNote,
     Plan,
+    PlanId,
     PlanningCenterClient,
     Song,
 )
@@ -229,7 +230,7 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
 class PlanSummaryJsonTestCase(PlanSummaryTestCase):
     SUMMARY = PlanItemsSummary(
         plan=Plan(
-            id="71699950",
+            id=PlanId(service_type="882857", plan="71699950"),
             series_title="WORTHY",
             title="Worthy Of The Feast",
             date=date(year=2024, month=4, day=14),

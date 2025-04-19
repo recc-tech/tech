@@ -58,9 +58,15 @@ class ServiceType:
     name: str
 
 
+@dataclass
+class PlanId:
+    service_type: str
+    plan: str
+
+
 @dataclass(frozen=True)
 class Plan:
-    id: str
+    id: PlanId
     title: str
     series_title: str
     date: date
@@ -160,8 +166,9 @@ class PlanningCenterClient:
         response = response["data"]
         return [ServiceType(id=s["id"], name=s["attributes"]["name"]) for s in response]
 
-    def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
-        service_type = service_type or self._cfg.pco_service_type_id
+    def find_plan_by_date(self, dt: date) -> Plan:
+        # TODO: Automatically check other service types if this one doesn't work?
+        service_type = self._cfg.pco_service_type_id
         today_str = dt.strftime("%Y-%m-%d")
         plans = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
@@ -179,7 +186,7 @@ class PlanningCenterClient:
             )
         plan = plans[0]
         return Plan(
-            id=plan["id"],
+            id=PlanId(service_type=service_type, plan=plan["id"]),
             title=plan["attributes"]["title"],
             series_title=plan["attributes"]["series_title"],
             date=dt,
@@ -188,12 +195,10 @@ class PlanningCenterClient:
 
     def find_plan_items(
         self,
-        plan_id: str,
+        id: PlanId,
         include_songs: bool,
         include_item_notes: bool,
-        service_type: Optional[str] = None,
     ) -> List[PlanSection]:
-        service_type = service_type or self._cfg.pco_service_type_id
         params: Dict[str, object] = {"per_page": 200}
         include: List[str] = []
         if include_songs:
@@ -203,7 +208,7 @@ class PlanningCenterClient:
         if include:
             params["include"] = ",".join(include)
         items_json = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
+            url=f"{self._plan_url(id)}/items",
             params=params,
         )
         sections: List[PlanSection] = []
@@ -239,14 +244,9 @@ class PlanningCenterClient:
             )
         return sections
 
-    def find_message_notes(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> str:
+    def find_message_notes(self, id: PlanId) -> str:
         sections = self.find_plan_items(
-            plan_id=plan_id,
-            service_type=service_type,
-            include_songs=False,
-            include_item_notes=False,
+            id=id, include_songs=False, include_item_notes=False
         )
         message_items = [
             i
@@ -260,12 +260,9 @@ class PlanningCenterClient:
             )
         return message_items[0].description
 
-    def find_attachments(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> Set[Attachment]:
-        service_type = service_type or self._cfg.pco_service_type_id
+    def find_attachments(self, id: PlanId) -> Set[Attachment]:
         attachments_json = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
+            url=f"{self._plan_url(id)}/attachments",
             params={"per_page": 100},
         )["data"]
         return {
@@ -316,12 +313,9 @@ class PlanningCenterClient:
         await asyncio.sleep(0.25)
         return {p: r for (p, r) in zip(paths, results)}
 
-    def find_presenters(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> PresenterSet:
-        service_type = service_type or self._cfg.pco_service_type_id
+    def find_presenters(self, id: PlanId) -> PresenterSet:
         people = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members",
+            url=f"{self._plan_url(id)}/team_members",
             params={"filter": "not_declined"},
         )["data"]
         speakers = {
@@ -341,6 +335,9 @@ class PlanningCenterClient:
             if p["attributes"]["team_position_name"].lower() == "mc host"
         }
         return PresenterSet(speakers=speakers, hosts=hosts)
+
+    def _plan_url(self, id: PlanId) -> str:
+        return f"{self._cfg.pco_services_base_url}/service_types/{id.service_type}/plans/{id.plan}"
 
     def _test_credentials(self, max_attempts: int):
         url = f"{self._cfg.pco_base_url}/people/v2/me"
