@@ -17,16 +17,18 @@ from queue import Queue
 from threading import Lock
 from tkinter import Canvas, Menu, Misc, PhotoImage, Tk, Toplevel, messagebox
 from tkinter.ttk import Button, Entry, Frame, Label, Style
-from typing import Callable, Dict, Literal, Optional, Set, Tuple, TypeVar
+from typing import Callable, Dict, List, Literal, Optional, Set, Tuple, TypeVar
 
 from ...base_config import BaseConfig
 from ..input_messenger import (
     InputMessenger,
+    ListChoice,
     Parameter,
     ProblemLevel,
     TaskStatus,
     UserResponse,
 )
+from .list_input_dialog import ListInputDialog
 from .progress_bar_group import ProgressBarGroup
 from .responsive_textbox import ResponsiveTextbox
 from .scrollable_frame import ScrollableFrame
@@ -345,6 +347,40 @@ class TkMessenger(InputMessenger):
         finally:
             if w:
                 w.destroy()
+
+    def input_from_list(
+        self, choices: List[ListChoice[T]], prompt: str, title: str = ""
+    ) -> Optional[T]:
+        choice = None
+        submit_event = threading.Event()
+
+        def create_dialog() -> None:
+            nonlocal choice
+            w = None
+            try:
+                w = ListInputDialog(
+                    self._tk,
+                    title=title,
+                    prompt=prompt,
+                    choices=choices,
+                    background=self._background,
+                    foreground=self._foreground,
+                    font=_NORMAL_FONT,
+                    padx=10,
+                    pady=10,
+                )
+                _position_toplevel(self._tk, w)
+                choice = w.wait_for_answer()
+            finally:
+                submit_event.set()
+                if w:
+                    w.destroy()
+
+        self._queue.put(_GuiTask(create_dialog, update_scrollregion=False))
+        self._tk.event_generate(self._QUEUE_EVENT)
+
+        self._wait_and_clear_event(submit_event)
+        return choice
 
     def wait(
         self,

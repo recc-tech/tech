@@ -4,10 +4,11 @@ import logging
 from logging import FileHandler
 from pathlib import Path
 from threading import Lock, local
-from typing import Callable, Dict, Iterable, Optional, TypeVar
+from typing import Callable, Dict, Iterable, List, Optional, TypeVar
 
 from autochecklist.messenger.input_messenger import (
     InputMessenger,
+    ListChoice,
     Parameter,
     ProblemLevel,
     TaskStatus,
@@ -131,6 +132,11 @@ class Messenger:
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
         return self._input_messenger.input_bool(prompt=prompt, title=title)
+
+    def input_from_list(
+        self, choices: List[ListChoice[T]], prompt: str, title: str = ""
+    ) -> Optional[T]:
+        return self._input_messenger.input_from_list(choices, prompt, title)
 
     def wait(
         self,

@@ -11,6 +11,7 @@ from .messenger import (
     ConsoleMessenger,
     FileMessenger,
     InputMessenger,
+    ListChoice,
     Messenger,
     Parameter,
     ProblemLevel,

@@ -8,9 +8,21 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from threading import Thread
-from typing import Callable, Dict, Optional, Set, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Set, TypeVar
 
 T = TypeVar("T")
+
+
+@dataclass
+class ListChoice(Generic[T]):
+    """
+    One option that the user can choose when presented with a list of options.
+    """
+
+    value: T
+    """The value associated with this choice."""
+    display: str
+    """What to show the user."""
 
 
 class InputMessenger:
@@ -60,6 +72,11 @@ class InputMessenger:
         raise NotImplementedError()
 
     def input_bool(self, prompt: str, title: str = "") -> bool:
+        raise NotImplementedError()
+
+    def input_from_list(
+        self, choices: List[ListChoice[T]], prompt: str, title: str = ""
+    ) -> Optional[T]:
         raise NotImplementedError()
 
     def wait(
