@@ -5,7 +5,6 @@ import unittest
 from argparse import Namespace
 from datetime import date
 from pathlib import Path
-from typing import Tuple
 from unittest.mock import Mock
 
 from args import ReccArgs
@@ -26,26 +25,57 @@ TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
 
 
 class PlanningCenterTestCase(unittest.TestCase):
-    def test_find_plan_by_date_sunday(self) -> None:
-        client, _, log_problem_mock, _ = self._create_client()
+    def setUp(self):
+        super().setUp()
 
-        plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
+        args = ReccArgs(
+            Namespace(
+                ui="tk",
+                verbose=False,
+                no_run=False,
+                auto=None,
+                date=None,
+                auto_close=True,
+            ),
+            lambda msg: self.fail(f"Argument parsing error: {msg}"),
+        )
+        self._messenger = Mock(spec=Messenger)
+        self._log_problem_mock = Mock()
+        self._messenger.log_problem = self._log_problem_mock
+
+        def input_mock(*args: object, **kwargs: object):
+            raise ValueError(
+                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
+            )
+
+        self._messenger.input_multiple = input_mock
+        self._messenger.input = input_mock
+        self._messenger.wait = input_mock
+        credential_store = CredentialStore(self._messenger)
+        config = Config(args, allow_multiple_only_for_testing=True)
+        self._client = PlanningCenterClient(
+            messenger=self._messenger,
+            credential_store=credential_store,
+            config=config,
+            # Use a different value from test_find_message_notes
+            lazy_login=False,
+        )
+
+    def test_find_plan_by_date_sunday(self) -> None:
+        plan = self._client.find_plan_by_date(date(year=2023, month=11, day=26))
 
         self.assertEqual(PlanId(service_type="882857", plan="66578821"), plan.id)
         self.assertEqual("Rejected", plan.series_title)
         self.assertEqual("Rejected By God", plan.title)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     def test_find_plan_by_date_good_friday(self) -> None:
-        client, _, log_problem_mock, _ = self._create_client()
-
-        plan = client.find_plan_by_date(date(year=2025, month=4, day=18))
+        plan = self._client.find_plan_by_date(date(year=2025, month=4, day=18))
 
         self.assertEqual(plan.id, PlanId(service_type="1237521", plan="79927548"))
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     def test_find_message_notes(self) -> None:
-        client, _, log_problem_mock, _ = self._create_client()
         expected_message_notes = inspect.cleandoc(
             """New Series: Let There Be Joy - Slide
             Rejected By God
@@ -73,15 +103,14 @@ class PlanningCenterTestCase(unittest.TestCase):
             All We Need Is Jesus – Everyday He’s All We Need."""
         )
 
-        actual_notes = client.find_message_notes(
+        actual_notes = self._client.find_message_notes(
             PlanId(service_type="882857", plan="66578821")
         )
 
         self.assertEqual(expected_message_notes, actual_notes)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     def test_find_attachments(self) -> None:
-        client, _, log_problem_mock, _ = self._create_client()
         # It would be nice to test on a plan with more attachments (images,
         # videos, etc.), but the attachments seem to disappear quite quickly
         # after a service
@@ -102,15 +131,14 @@ class PlanningCenterTestCase(unittest.TestCase):
             ),
         }
 
-        actual_attachments = client.find_attachments(
+        actual_attachments = self._client.find_attachments(
             PlanId(service_type="882857", plan="64650350")
         )
 
         self.assertEqual(expected_attachments, actual_attachments)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     def test_download_assets(self) -> None:
-        client, messenger, log_problem_mock, _ = self._create_client()
         expected_notes_path = DATA_DIR.joinpath("2023-04-16 Notes.docx")
         actual_notes_path = TEMP_DIR.joinpath("2023-04-16 Notes.docx")
         expected_script_path = DATA_DIR.joinpath("2023-04-16 MC Host Script.docx")
@@ -139,8 +167,8 @@ class PlanningCenterTestCase(unittest.TestCase):
         }
 
         results = asyncio.run(
-            client.download_attachments(
-                attachments, messenger=messenger, cancellation_token=None
+            self._client.download_attachments(
+                attachments, messenger=self._messenger, cancellation_token=None
             )
         )
 
@@ -153,10 +181,9 @@ class PlanningCenterTestCase(unittest.TestCase):
             filecmp.cmp(expected_script_path, actual_script_path, shallow=False),
             "MC host script files must match.",
         )
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     def test_find_presenters_20250302(self) -> None:
-        client, _, log_problem_mock, _ = self._create_client()
         expected_presenters = PresenterSet(
             speakers={
                 TeamMember(
@@ -170,44 +197,8 @@ class PlanningCenterTestCase(unittest.TestCase):
                 TeamMember(name="Paul Hanash", status=TeamMemberStatus.UNCONFIRMED),
             },
         )
-        actual_presenters = client.find_presenters(
+        actual_presenters = self._client.find_presenters(
             PlanId(service_type="882857", plan="78328967")
         )
         self.assertEqual(actual_presenters, expected_presenters)
-        log_problem_mock.assert_not_called()
-
-    # TODO: Move this to setUp()?
-    def _create_client(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
-        args = ReccArgs(
-            Namespace(
-                ui="tk",
-                verbose=False,
-                no_run=False,
-                auto=None,
-                date=None,
-                auto_close=True,
-            ),
-            lambda msg: self.fail(f"Argument parsing error: {msg}"),
-        )
-        messenger = Mock(spec=Messenger)
-        log_problem_mock = Mock()
-        messenger.log_problem = log_problem_mock
-
-        def input_mock(*args: object, **kwargs: object):
-            raise ValueError(
-                "Taking input during testing is not possible. If you need credentials, enter them before running the tests using check_credentials.py."
-            )
-
-        messenger.input_multiple = input_mock
-        messenger.input = input_mock
-        messenger.wait = input_mock
-        credential_store = CredentialStore(messenger)
-        config = Config(args, allow_multiple_only_for_testing=True)
-        client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            # Use a different value from test_find_message_notes
-            lazy_login=False,
-        )
-        return client, messenger, log_problem_mock, config
+        self._log_problem_mock.assert_not_called()

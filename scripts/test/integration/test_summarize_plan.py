@@ -5,8 +5,8 @@ import unittest
 from datetime import date
 from pathlib import Path
 from tkinter import Tk
-from typing import Dict, Tuple
-from unittest.mock import Mock, create_autospec
+from typing import Dict
+from unittest.mock import create_autospec
 
 from args import ReccArgs
 from autochecklist import Messenger
@@ -111,23 +111,42 @@ class PlanSummaryTestCase(unittest.TestCase):
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
+    def setUp(self):
+        super().setUp()
+
+        self._config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        self._messenger = create_autospec(Messenger)
+        self._log_problem_mock = self._messenger.log_problem
+        self._pco_client = PlanningCenterClient(
+            messenger=self._messenger,
+            credential_store=credential_store,
+            config=self._config,
+            lazy_login=True,
+        )
+        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+
     # Not a particularly important case now that 2024-05-05 is tested, but it
     # doesn't hurt to keep it around.
     def test_summarize_20240225(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240225_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 2, 25),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     # Interesting characteristics of this test case:
     #  * CCLI provided for most, but not all songs
@@ -136,58 +155,34 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     #  * Empty description for each song
     #  * Duplicate line in message notes (which I added for testing)
     def test_summarize_20240414(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240414_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 4, 14),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     # Interesting characteristics of this test case:
     #  * CCLI number in the description of each song
     def test_summarize_20240505(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240505_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 5, 5),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
-
-    # TODO: Move this to the setUp() method?
-    def _set_up(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
-        config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        messenger = create_autospec(Messenger)
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
-        )
-        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
-        return (pco_client, messenger, messenger.log_problem, config)
+        self._log_problem_mock.assert_not_called()
 
 
 class PlanSummaryToHtmlTestCase(unittest.TestCase):
