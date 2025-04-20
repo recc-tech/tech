@@ -34,6 +34,7 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 
 _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
 _TEMP_DIR = Path(__file__).parent.joinpath("summarize_plan_temp")
+_SERVICE_TYPES_URL = "https://api.planningcenteronline.com/services/v2/service_types"
 _PLANS_URL = (
     "https://api.planningcenteronline.com/services/v2/service_types/882857/plans"
 )
@@ -64,6 +65,8 @@ def _get_canned_response(fname: str) -> Dict[str, object]:
 
 
 def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object]:
+    if url == _SERVICE_TYPES_URL and params == {}:
+        return _get_canned_response("service_types.json")
     if url == _PLANS_URL and params == _PARAMS_20240225_PLANS:
         return _get_canned_response("20240225_plan.json")
     if url == _PLAN_ITEMS_20240225_URL and params == _PARAMS_PLAN_ITEMS:
@@ -166,6 +169,7 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
         self.assert_equal_summary(expected_summary, actual_summary)
         log_problem_mock.assert_not_called()
 
+    # TODO: Move this to the setUp() method?
     def _set_up(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
         config = Config(
             args=ReccArgs.parse([]),

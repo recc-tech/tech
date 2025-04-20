@@ -26,7 +26,7 @@ TEMP_DIR = Path(__file__).parent.joinpath("planning_center_temp")
 
 
 class PlanningCenterTestCase(unittest.TestCase):
-    def test_find_plan_by_date(self) -> None:
+    def test_find_plan_by_date_sunday(self) -> None:
         client, _, log_problem_mock, _ = self._create_client()
 
         plan = client.find_plan_by_date(date(year=2023, month=11, day=26))
@@ -34,6 +34,14 @@ class PlanningCenterTestCase(unittest.TestCase):
         self.assertEqual(PlanId(service_type="882857", plan="66578821"), plan.id)
         self.assertEqual("Rejected", plan.series_title)
         self.assertEqual("Rejected By God", plan.title)
+        log_problem_mock.assert_not_called()
+
+    def test_find_plan_by_date_good_friday(self) -> None:
+        client, _, log_problem_mock, _ = self._create_client()
+
+        plan = client.find_plan_by_date(date(year=2025, month=4, day=18))
+
+        self.assertEqual(plan.id, PlanId(service_type="1237521", plan="79927548"))
         log_problem_mock.assert_not_called()
 
     def test_find_message_notes(self) -> None:
@@ -166,21 +174,6 @@ class PlanningCenterTestCase(unittest.TestCase):
             PlanId(service_type="882857", plan="78328967")
         )
         self.assertEqual(actual_presenters, expected_presenters)
-        log_problem_mock.assert_not_called()
-
-    def test_find_service_types(self) -> None:
-        client, _, log_problem_mock, config = self._create_client()
-        service_types = client.find_service_types()
-        sunday_service_types = [
-            s for s in service_types if s.id == config.pco_service_type_id
-        ]
-        self.assertEqual(
-            len(sunday_service_types),
-            1,
-            "there should be one service type which matches the default one from the config file",
-        )
-        sunday_service_type = sunday_service_types[0]
-        self.assertEqual(sunday_service_type.name, "10:30AM Sunday Gathering")
         log_problem_mock.assert_not_called()
 
     # TODO: Move this to setUp()?

@@ -5,6 +5,7 @@ Code for interacting with the Planning Center Services API.
 from __future__ import annotations
 
 import asyncio
+import functools
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -13,10 +14,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 import aiohttp
-import config
 import requests
 from aiohttp import ClientTimeout
-from autochecklist import CancellationToken, Messenger
+from autochecklist import CancellationToken, ListChoice, Messenger
 from config import Config
 from requests.auth import HTTPBasicAuth
 
@@ -52,13 +52,13 @@ class PlanSection:
     items: List[PlanItem]
 
 
-@dataclass
+@dataclass(frozen=True)
 class ServiceType:
     id: str
     name: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class PlanId:
     service_type: str
     plan: str
@@ -159,39 +159,68 @@ class PlanningCenterClient:
         if not lazy_login:
             self._test_credentials(max_attempts=3)
 
-    def find_service_types(self) -> List[ServiceType]:
+    @functools.cache
+    def find_plan_by_date(self, dt: date) -> Plan:
+        service_types = set(self._find_service_types())
+        service_types = {
+            s for s in service_types if s.id not in self._cfg.pco_skipped_service_types
+        }
+        plans = {
+            (s, p)
+            for s in service_types
+            for p in self._find_plans_by_service_type_and_date(s.id, dt)
+        }
+        if len(plans) == 0:
+            raise ValueError(f"No plans found on {dt.strftime('%Y-%m-%d')}.")
+        elif len(plans) == 1:
+            return list(plans)[0][1]
+        else:
+            # TODO: Test this case (add a test in test.manual?)
+            choices = [
+                ListChoice(
+                    value=p[1],
+                    display=f"{p[0].name}, {p[1].series_title}, {p[1].title}",
+                )
+                for p in plans
+            ]
+            plan = self._messenger.input_from_list(
+                choices,
+                prompt=f"There is more than one plan on {dt.strftime('%Y-%m-%d')}. Which one should be used?",
+            )
+            if plan is None:
+                raise ValueError(
+                    f"There is more than one plan on {dt.strftime('%Y-%m-%d')}."
+                )
+            return plan
+
+    def _find_service_types(self) -> List[ServiceType]:
         response = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types", params={}
         )
         response = response["data"]
         return [ServiceType(id=s["id"], name=s["attributes"]["name"]) for s in response]
 
-    def find_plan_by_date(self, dt: date) -> Plan:
-        # TODO: Automatically check other service types if this one doesn't work?
-        service_type = self._cfg.pco_service_type_id
-        today_str = dt.strftime("%Y-%m-%d")
+    def _find_plans_by_service_type_and_date(
+        self, service_type: str, dt: date
+    ) -> Set[Plan]:
         plans = self._send_and_check_status(
             url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
             params={
                 "filter": "before,after",
                 "before": (dt + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "after": today_str,
+                "after": dt.strftime("%Y-%m-%d"),
             },
         )["data"]
-        if len(plans) != 1:
-            config_file = config.locate_global_config().as_posix()
-            raise ValueError(
-                f"Found {len(plans)} plans on {today_str}."
-                f" If this is not a weekly 10:30 gathering, you may need to change the service type ID in {config_file}."
+        return {
+            Plan(
+                id=PlanId(service_type=service_type, plan=plan["id"]),
+                title=plan["attributes"]["title"],
+                series_title=plan["attributes"]["series_title"],
+                date=dt,
+                web_page_url=plan["attributes"]["planning_center_url"],
             )
-        plan = plans[0]
-        return Plan(
-            id=PlanId(service_type=service_type, plan=plan["id"]),
-            title=plan["attributes"]["title"],
-            series_title=plan["attributes"]["series_title"],
-            date=dt,
-            web_page_url=plan["attributes"]["planning_center_url"],
-        )
+            for plan in plans
+        }
 
     def find_plan_items(
         self,
