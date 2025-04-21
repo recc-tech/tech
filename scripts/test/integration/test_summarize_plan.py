@@ -57,6 +57,7 @@ _PARAMS_20240505_PLANS = {
     "before": "2024-05-06",
     "after": "2024-05-05",
 }
+_PLAN_ITEMS_20250418_URL = "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items"
 
 
 def _get_canned_response(fname: str) -> Dict[str, object]:
@@ -79,6 +80,8 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
         return _get_canned_response("20240505_plan.json")
     if url == _PLAN_ITEMS_20240505_URL and params == _PARAMS_PLAN_ITEMS:
         return _get_canned_response("20240505_plan_items.json")
+    if url == _PLAN_ITEMS_20250418_URL and params == _PARAMS_PLAN_ITEMS:
+        return _get_canned_response("20250418_plan_items.json")
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
@@ -108,6 +111,8 @@ class PlanSummaryTestCase(unittest.TestCase):
         self.assertEqual(expected, actual)
 
 
+# TODO: Add a test case for the 2025 Good Friday service (perhaps by
+#       monkey-patching find_plan_by_date()?)
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
@@ -182,6 +187,28 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
+        self._log_problem_mock.assert_not_called()
+
+    def test_summarize_20250418_good_friday(self) -> None:
+        plan = Plan(
+            id=PlanId(service_type="1237521", plan="79927548"),
+            date=date(year=2025, month=4, day=18),
+            series_title="",
+            title="",
+            web_page_url="https://services.planningcenteronline.com/plans/79927548",
+        )
+        self._pco_client.find_plan_by_date = lambda _: plan  # pyright: ignore
+        actual_summary = get_plan_summary(
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
+            dt=date(2025, 4, 18),
+        )
+        expected_summary = load_plan_summary(
+            _DATA_DIR.joinpath("20250418_summary.json")
+        )
+
+        self.assert_equal_summary(expected=expected_summary, actual=actual_summary)
         self._log_problem_mock.assert_not_called()
 
 

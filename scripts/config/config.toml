@@ -118,6 +118,8 @@ max_captions_wait_time = 60
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2"
 live_view_url = "https://services.planningcenteronline.com/live/!{SERVICE_ID}!"
+# Service types that we can ignore (i.e., skip them when searching for plans on
+# a given date)
 skipped_service_types = [
 	"130950",  # Rehearsals
 	"130956",  # UTC | 2023-11-11
@@ -175,6 +177,7 @@ announcements_to_ignore = [
 	"PRAY For People",
 	"WELCOME",
 	"Welcome Everyone",
+	"Let’s Worship"
 ]
 
 [slides]

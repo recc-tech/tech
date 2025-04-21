@@ -13,6 +13,7 @@ from config import Config
 from external_services import (
     Attachment,
     CredentialStore,
+    Plan,
     PlanId,
     PlanningCenterClient,
     PresenterSet,
@@ -72,7 +73,14 @@ class PlanningCenterTestCase(unittest.TestCase):
     def test_find_plan_by_date_good_friday(self) -> None:
         plan = self._client.find_plan_by_date(date(year=2025, month=4, day=18))
 
-        self.assertEqual(plan.id, PlanId(service_type="1237521", plan="79927548"))
+        expected_plan = Plan(
+            id=PlanId(service_type="1237521", plan="79927548"),
+            date=date(year=2025, month=4, day=18),
+            series_title="",
+            title="",
+            web_page_url="https://services.planningcenteronline.com/plans/79927548",
+        )
+        self.assertEqual(plan, expected_plan)
         self._log_problem_mock.assert_not_called()
 
     def test_find_message_notes(self) -> None:

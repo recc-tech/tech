@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, Typ
 import aiohttp
 import requests
 from aiohttp import ClientTimeout
-from autochecklist import CancellationToken, ListChoice, Messenger
+from autochecklist import CancellationToken, ListChoice, Messenger, TaskStatus
 from config import Config
 from requests.auth import HTTPBasicAuth
 
@@ -161,6 +161,9 @@ class PlanningCenterClient:
 
     @functools.cache
     def find_plan_by_date(self, dt: date) -> Plan:
+        self._messenger.log_status(
+            TaskStatus.RUNNING, f"Searching for plans on {dt.strftime('%Y-%m-%d')}"
+        )
         service_types = set(self._find_service_types())
         service_types = {
             s for s in service_types if s.id not in self._cfg.pco_skipped_service_types
@@ -214,10 +217,10 @@ class PlanningCenterClient:
         return {
             Plan(
                 id=PlanId(service_type=service_type, plan=plan["id"]),
-                title=plan["attributes"]["title"],
-                series_title=plan["attributes"]["series_title"],
+                title=plan["attributes"]["title"] or "",
+                series_title=plan["attributes"]["series_title"] or "",
                 date=dt,
-                web_page_url=plan["attributes"]["planning_center_url"],
+                web_page_url=plan["attributes"]["planning_center_url"] or "",
             )
             for plan in plans
         }

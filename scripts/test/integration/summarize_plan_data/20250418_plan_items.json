@@ -1,0 +1,2043 @@
+{
+  "links": {
+    "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items?include=song%2Citem_notes&per_page=200"
+  },
+  "data": [
+    {
+      "type": "Item",
+      "id": "1076271510",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 1,
+        "service_position": "during",
+        "title": "Rehearsal",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271510/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271510"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271511",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 3600,
+        "sequence": 2,
+        "service_position": "pre",
+        "title": "Rehearsal",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271511/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271511"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271512",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 3,
+        "service_position": "during",
+        "title": "Rotating Announcements",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271512/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271512"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271513",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "Music In Background\nRotating Slides on Screens\n1. RIVERS\n2. Risen Series\n3. EASTER Sunday \n4. EGG Hunt \n5. Baptism Sunday\n6. Community Kitchen Brunch\n7. Celebrate Recovery\n8. Give With Us\n9. The After Party\n10. Next Steps\n11. Website\n12. Follow Us Instagram\n13. Spotify RE",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 600,
+        "sequence": 4,
+        "service_position": "pre",
+        "title": "Rotating Announcements",
+        "updated_at": "2025-04-18T02:05:53Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271513/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271513"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271514",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 5,
+        "service_position": "during",
+        "title": "Opener Video",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271514/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271514"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271515",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 110,
+        "sequence": 6,
+        "service_position": "during",
+        "title": "The Tree & The Cross",
+        "updated_at": "2025-04-18T02:13:03Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271515/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271515"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271516",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 7,
+        "service_position": "during",
+        "title": "MC Host Welcome",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271516/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271516"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271517",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "PIANO playing In the Background\nWELCOME Everyone\nGIVING Talk\nPRAY For People\nLet’s Worship",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 180,
+        "sequence": 8,
+        "service_position": "during",
+        "title": "MC Host Intro",
+        "updated_at": "2025-04-18T02:38:56Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271517/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271517"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271518",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 9,
+        "service_position": "during",
+        "title": "Worship",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271518/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271518"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1077183356",
+      "attributes": {
+        "created_at": "2025-04-10T14:42:57Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "song",
+        "key_name": "C",
+        "length": 297,
+        "sequence": 10,
+        "service_position": "during",
+        "title": "Sunday Is Coming",
+        "updated_at": "2025-04-10T14:42:57Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/songs/25980384"
+          },
+          "data": {
+            "type": "Song",
+            "id": "25980384"
+          }
+        },
+        "arrangement": {
+          "data": {
+            "type": "Arrangement",
+            "id": "30170181"
+          }
+        },
+        "key": {
+          "data": {
+            "type": "Key",
+            "id": "45707925"
+          }
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077183356/item_notes"
+          },
+          "data": [
+            {
+              "type": "ItemNote",
+              "id": "362907921"
+            }
+          ]
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077183356"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1077830455",
+      "attributes": {
+        "created_at": "2025-04-14T01:44:34Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "song",
+        "key_name": "D",
+        "length": 250,
+        "sequence": 11,
+        "service_position": "during",
+        "title": "At The Cross (Love Ran Red)",
+        "updated_at": "2025-04-14T01:44:44Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/songs/11136060"
+          },
+          "data": {
+            "type": "Song",
+            "id": "11136060"
+          }
+        },
+        "arrangement": {
+          "data": {
+            "type": "Arrangement",
+            "id": "12491238"
+          }
+        },
+        "key": {
+          "data": {
+            "type": "Key",
+            "id": "50728485"
+          }
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077830455/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077830455"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1077829160",
+      "attributes": {
+        "created_at": "2025-04-14T01:35:21Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "song",
+        "key_name": "D",
+        "length": 267,
+        "sequence": 12,
+        "service_position": "during",
+        "title": "Lead Me To The Cross",
+        "updated_at": "2025-04-14T01:35:21Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/songs/3306647"
+          },
+          "data": {
+            "type": "Song",
+            "id": "3306647"
+          }
+        },
+        "arrangement": {
+          "data": {
+            "type": "Arrangement",
+            "id": "3800612"
+          }
+        },
+        "key": {
+          "data": {
+            "type": "Key",
+            "id": "3388239"
+          }
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829160/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829160"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271529",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 13,
+        "service_position": "during",
+        "title": "RECORD MESSAGE FORMATS",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271529/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271529"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271530",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 14,
+        "service_position": "during",
+        "title": "Message",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271530/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271530"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271531",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 122,
+        "sequence": 15,
+        "service_position": "during",
+        "title": "Jesus In The Garden Bumper Video",
+        "updated_at": "2025-04-18T02:17:47Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271531/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271531"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271532",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "Watch & Pray\nMatthew 26:36-50 NLT\nRomans 7:22-25 NLT\nHebrews 4:15 NLT\nJames 5:16 NLT",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 900,
+        "sequence": 16,
+        "service_position": "during",
+        "title": "Message Title: Watch & Pray",
+        "updated_at": "2025-04-18T17:06:02Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532/item_notes"
+          },
+          "data": [
+            {
+              "type": "ItemNote",
+              "id": "362634734"
+            },
+            {
+              "type": "ItemNote",
+              "id": "362634735"
+            },
+            {
+              "type": "ItemNote",
+              "id": "362634736"
+            },
+            {
+              "type": "ItemNote",
+              "id": "362634737"
+            }
+          ]
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271522",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 17,
+        "service_position": "during",
+        "title": "Communion",
+        "updated_at": "2025-04-07T23:06:26Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271522/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271522"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271523",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:26Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 141,
+        "sequence": 18,
+        "service_position": "during",
+        "title": "Good Friday Communion Video",
+        "updated_at": "2025-04-18T02:29:51Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271523/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271523"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1079177367",
+      "attributes": {
+        "created_at": "2025-04-18T02:30:31Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 240,
+        "sequence": 19,
+        "service_position": "during",
+        "title": "Distribute Elements & Reading",
+        "updated_at": "2025-04-18T02:42:10Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1079177367/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1079177367"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271537",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 60,
+        "sequence": 20,
+        "service_position": "during",
+        "title": "Prayer",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271537/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271537"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271533",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 21,
+        "service_position": "during",
+        "title": "Worship",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271533/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271533"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1077829248",
+      "attributes": {
+        "created_at": "2025-04-14T01:36:01Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "song",
+        "key_name": "B",
+        "length": 303,
+        "sequence": 22,
+        "service_position": "during",
+        "title": "Love Came Down",
+        "updated_at": "2025-04-14T01:44:04Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/songs/1809758"
+          },
+          "data": {
+            "type": "Song",
+            "id": "1809758"
+          }
+        },
+        "arrangement": {
+          "data": {
+            "type": "Arrangement",
+            "id": "2151716"
+          }
+        },
+        "key": {
+          "data": {
+            "type": "Key",
+            "id": "50728531"
+          }
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829248/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829248"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1077829275",
+      "attributes": {
+        "created_at": "2025-04-14T01:36:34Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "song",
+        "key_name": "A",
+        "length": 300,
+        "sequence": 23,
+        "service_position": "during",
+        "title": "Living Hope",
+        "updated_at": "2025-04-18T15:16:43Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/songs/17234923"
+          },
+          "data": {
+            "type": "Song",
+            "id": "17234923"
+          }
+        },
+        "arrangement": {
+          "data": {
+            "type": "Arrangement",
+            "id": "19665630"
+          }
+        },
+        "key": {
+          "data": {
+            "type": "Key",
+            "id": "50808143"
+          }
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829275/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077829275"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271535",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 24,
+        "service_position": "during",
+        "title": "Closing Video",
+        "updated_at": "2025-04-18T02:35:31Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271535/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271535"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1079178026",
+      "attributes": {
+        "created_at": "2025-04-18T02:35:52Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 315,
+        "sequence": 25,
+        "service_position": "during",
+        "title": "Good Friday Goodbye Video",
+        "updated_at": "2025-04-18T02:36:03Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1079178026/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1079178026"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271538",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 26,
+        "service_position": "during",
+        "title": "MC Host Goodbye",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271538/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271538"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271539",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "Easter Sunday 10:30AM\nEaster Egg Hunt\nSee You Sunday",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 120,
+        "sequence": 27,
+        "service_position": "during",
+        "title": "MC Host Outro",
+        "updated_at": "2025-04-18T02:41:57Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271539/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271539"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271540",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 28,
+        "service_position": "during",
+        "title": "Rotating Announcements",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271540/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271540"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271541",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "Music In Background\nRotating Slides on Screens\n1. RIVERS\n2. Risen Series\n3. EASTER Sunday \n4. EGG Hunt \n5. Baptism Sunday\n6. Community Kitchen Brunch\n7. Celebrate Recovery\n8. Give With Us\n9. The After Party\n10. Next Steps\n11. Website\n12. Follow Us Instagram\n13. Spotify RE",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 600,
+        "sequence": 29,
+        "service_position": "post",
+        "title": "Rotating Announcements & Background Music",
+        "updated_at": "2025-04-18T02:06:04Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271541/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271541"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271542",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": null,
+        "html_details": null,
+        "item_type": "header",
+        "key_name": null,
+        "length": 0,
+        "sequence": 30,
+        "service_position": "during",
+        "title": "Post-Service",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271542/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271542"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271543",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "Stage Tear Down\nPost Production For Platforms & Rebroadcast",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 1800,
+        "sequence": 31,
+        "service_position": "post",
+        "title": "Tear Down",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271543/item_notes"
+          },
+          "data": [
+            {
+              "type": "ItemNote",
+              "id": "362634738"
+            },
+            {
+              "type": "ItemNote",
+              "id": "362634739"
+            }
+          ]
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271543"
+      }
+    },
+    {
+      "type": "Item",
+      "id": "1076271544",
+      "attributes": {
+        "created_at": "2025-04-07T23:06:27Z",
+        "custom_arrangement_sequence": null,
+        "custom_arrangement_sequence_full": null,
+        "custom_arrangement_sequence_short": null,
+        "description": "All Ministry Areas Are Cleaned and Locked Up",
+        "html_details": null,
+        "item_type": "item",
+        "key_name": null,
+        "length": 3600,
+        "sequence": 32,
+        "service_position": "post",
+        "title": "Clean-Up",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "plan": {
+          "data": {
+            "type": "Plan",
+            "id": "79927548"
+          }
+        },
+        "song": {
+          "data": null
+        },
+        "arrangement": {
+          "data": null
+        },
+        "key": {
+          "data": null
+        },
+        "selected_layout": {
+          "data": null
+        },
+        "selected_background": {
+          "data": null
+        },
+        "item_notes": {
+          "links": {
+            "related": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271544/item_notes"
+          },
+          "data": []
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271544"
+      }
+    }
+  ],
+  "included": [
+    {
+      "type": "Song",
+      "id": "25980384",
+      "attributes": {
+        "admin": null,
+        "author": "Adrian Disch, Jonathan Smith, Phil Wickham, and Steven Furtick",
+        "ccli_number": 7213928,
+        "copyright": " Be Essential Songs (Admin. by Essential Music Publishing LLC), Cashagamble Jet Music (Admin. by Essential Music Publishing LLC), Music by Elevation Worship Publishing (Admin. by Essential Music Publishing LLC), Fair Trade Global Songs (Fair Trade Music Publishing [c/o Essential Music Publishing LLC]), Phil Wickham Music (Fair Trade Music Publishing [c/o Essential Music Publishing LLC]), and Remaining portion is unaffiliated",
+        "created_at": "2024-03-23T01:36:36Z",
+        "hidden": false,
+        "last_scheduled_at": "2025-04-18T18:30:00Z",
+        "last_scheduled_short_dates": "18 Apr 2025",
+        "notes": null,
+        "themes": "Cross, Jesus, Resurrection, Sacrifice, Salvation, Second Coming",
+        "title": "Sunday Is Coming",
+        "updated_at": "2024-03-23T01:38:08Z"
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/songs/25980384"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362907921",
+      "attributes": {
+        "category_name": "Vocals",
+        "content": "Michelle: Lead\nSneha: soft Harmonies",
+        "created_at": "2025-04-10T14:42:57Z",
+        "updated_at": "2025-04-10T14:42:57Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4673949"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1077183356"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1077183356/item_notes/362907921"
+      }
+    },
+    {
+      "type": "Song",
+      "id": "11136060",
+      "attributes": {
+        "admin": "EMI Christian Music Publishing and Brentwood-Benson Music Publishing, Inc.",
+        "author": "Chris Tomlin, Ed Cash, Jonas Myrin, Matt Armstrong, and Matt Redman",
+        "ccli_number": 7017786,
+        "copyright": " © Countless Wonder Publishing (Admin. by Brentwood-Benson Music Publishing, Inc.), Fots Music (Admin. by Brentwood-Benson Music Publishing, Inc.), McKittrick Music (Admin. by Brentwood-Benson Music P",
+        "created_at": "2015-12-08T04:25:32Z",
+        "hidden": false,
+        "last_scheduled_at": "2025-04-18T18:30:00Z",
+        "last_scheduled_short_dates": "18 Apr 2025",
+        "notes": null,
+        "themes": null,
+        "title": "At The Cross (Love Ran Red)",
+        "updated_at": "2018-10-10T07:09:13Z"
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/songs/11136060"
+      }
+    },
+    {
+      "type": "Song",
+      "id": "3306647",
+      "attributes": {
+        "admin": "Integrity Music, Inc. and EMI Christian Music Publishing",
+        "author": "Brooke Fraser",
+        "ccli_number": 4785828,
+        "copyright": "2006 Hillsong Publishing",
+        "created_at": "2012-03-09T05:28:13Z",
+        "hidden": false,
+        "last_scheduled_at": "2025-04-18T18:30:00Z",
+        "last_scheduled_short_dates": "18 Apr 2025",
+        "notes": null,
+        "themes": ", Cross, Jesus Paid it all, might to save, Ministry, Praise, Prayer, price, reach",
+        "title": "Lead Me To The Cross",
+        "updated_at": "2024-09-04T05:13:13Z"
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/songs/3306647"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634734",
+      "attributes": {
+        "category_name": "Announcer",
+        "content": "Hand held wireless mic",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674292"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271532"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532/item_notes/362634734"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634735",
+      "attributes": {
+        "category_name": "Audio",
+        "content": "Hand held wireless mic",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674293"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271532"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532/item_notes/362634735"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634736",
+      "attributes": {
+        "category_name": "Lighting",
+        "content": "Message Scene 100%",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674294"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271532"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532/item_notes/362634736"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634737",
+      "attributes": {
+        "category_name": "Visuals",
+        "content": "Name slide",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674295"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271532"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271532/item_notes/362634737"
+      }
+    },
+    {
+      "type": "Song",
+      "id": "1809758",
+      "attributes": {
+        "admin": "Johnson, Brian",
+        "author": "Brian Johnson",
+        "ccli_number": 5148938,
+        "copyright": "2009 Brian And Jenn Johnson Music",
+        "created_at": "2010-04-07T16:08:14Z",
+        "hidden": false,
+        "last_scheduled_at": "2025-04-18T18:30:00Z",
+        "last_scheduled_short_dates": "18 Apr 2025",
+        "notes": null,
+        "themes": "Hope, Love, Worship",
+        "title": "Love Came Down",
+        "updated_at": "2025-02-11T04:32:04Z"
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/songs/1809758"
+      }
+    },
+    {
+      "type": "Song",
+      "id": "17234923",
+      "attributes": {
+        "admin": null,
+        "author": "Brian Johnson and Phil Wickham",
+        "ccli_number": 7106807,
+        "copyright": " Bethel Music Publishing and Remaining portion is unaffiliated",
+        "created_at": "2019-04-08T20:42:15Z",
+        "hidden": false,
+        "last_scheduled_at": "2025-04-18T18:30:00Z",
+        "last_scheduled_short_dates": "18 Apr 2025",
+        "notes": null,
+        "themes": null,
+        "title": "Living Hope",
+        "updated_at": "2019-04-08T20:42:29Z"
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/songs/17234923"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634738",
+      "attributes": {
+        "category_name": "Camera",
+        "content": "Slow zoom to full-wide",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674296"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271543"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271543/item_notes/362634738"
+      }
+    },
+    {
+      "type": "ItemNote",
+      "id": "362634739",
+      "attributes": {
+        "category_name": "Lighting",
+        "content": "DJ Scene",
+        "created_at": "2025-04-07T23:06:27Z",
+        "updated_at": "2025-04-07T23:06:27Z"
+      },
+      "relationships": {
+        "item_note_category": {
+          "data": {
+            "type": "ItemNoteCategory",
+            "id": "4674294"
+          }
+        },
+        "item": {
+          "data": {
+            "type": "Item",
+            "id": "1076271543"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items/1076271543/item_notes/362634739"
+      }
+    }
+  ],
+  "meta": {
+    "total_count": 32,
+    "count": 32,
+    "can_include": [
+      "arrangement",
+      "item_notes",
+      "item_times",
+      "key",
+      "media",
+      "selected_attachment",
+      "song"
+    ],
+    "parent": {
+      "id": "79927548",
+      "type": "Plan"
+    }
+  }
+}
