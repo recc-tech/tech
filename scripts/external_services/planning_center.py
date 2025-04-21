@@ -5,6 +5,7 @@ Code for interacting with the Planning Center Services API.
 from __future__ import annotations
 
 import asyncio
+import functools
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -13,10 +14,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 import aiohttp
-import config
 import requests
 from aiohttp import ClientTimeout
-from autochecklist import CancellationToken, Messenger
+from autochecklist import CancellationToken, ListChoice, Messenger, TaskStatus
 from config import Config
 from requests.auth import HTTPBasicAuth
 
@@ -53,10 +53,23 @@ class PlanSection:
 
 
 @dataclass(frozen=True)
-class Plan:
+class ServiceType:
     id: str
-    title: str
+    name: str
+
+
+@dataclass(frozen=True)
+class PlanId:
+    service_type: str
+    plan: str
+
+
+@dataclass(frozen=True)
+class Plan:
+    id: PlanId
+    service_type_name: str
     series_title: str
+    title: str
     date: date
     web_page_url: str
 
@@ -147,40 +160,78 @@ class PlanningCenterClient:
         if not lazy_login:
             self._test_credentials(max_attempts=3)
 
-    def find_plan_by_date(self, dt: date, service_type: Optional[str] = None) -> Plan:
-        service_type = service_type or self._cfg.pco_service_type_id
-        today_str = dt.strftime("%Y-%m-%d")
+    @functools.cache
+    def find_plan_by_date(self, dt: date) -> Plan:
+        self._messenger.log_status(
+            TaskStatus.RUNNING, f"Searching for plans on {dt.strftime('%Y-%m-%d')}"
+        )
+        service_types = set(self._find_service_types())
+        service_types = {
+            s for s in service_types if s.id not in self._cfg.pco_skipped_service_types
+        }
+        plans = {
+            (s, p)
+            for s in service_types
+            for p in self._find_plans_by_service_type_and_date(s, dt)
+        }
+        if len(plans) == 0:
+            raise ValueError(f"No plans found on {dt.strftime('%Y-%m-%d')}.")
+        elif len(plans) == 1:
+            return list(plans)[0][1]
+        else:
+            choices = [
+                ListChoice(
+                    value=p,
+                    display=f"{s.name} | {p.series_title} | {p.title}",
+                )
+                for (s, p) in plans
+            ]
+            plan = self._messenger.input_from_list(
+                choices,
+                prompt=f"There is more than one plan on {dt.strftime('%Y-%m-%d')}. Which one should be used?",
+            )
+            if plan is None:
+                raise ValueError(
+                    f"There is more than one plan on {dt.strftime('%Y-%m-%d')}."
+                )
+            return plan
+
+    def _find_service_types(self) -> List[ServiceType]:
+        response = self._send_and_check_status(
+            url=f"{self._cfg.pco_services_base_url}/service_types", params={}
+        )
+        response = response["data"]
+        return [ServiceType(id=s["id"], name=s["attributes"]["name"]) for s in response]
+
+    def _find_plans_by_service_type_and_date(
+        self, service_type: ServiceType, dt: date
+    ) -> Set[Plan]:
         plans = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type.id}/plans",
             params={
                 "filter": "before,after",
                 "before": (dt + timedelta(days=1)).strftime("%Y-%m-%d"),
-                "after": today_str,
+                "after": dt.strftime("%Y-%m-%d"),
             },
         )["data"]
-        if len(plans) != 1:
-            config_file = config.locate_global_config().as_posix()
-            raise ValueError(
-                f"Found {len(plans)} plans on {today_str}."
-                f" If this is not a weekly 10:30 gathering, you may need to change the service type ID in {config_file}."
+        return {
+            Plan(
+                id=PlanId(service_type=service_type.id, plan=plan["id"]),
+                service_type_name=service_type.name,
+                series_title=plan["attributes"]["series_title"] or "",
+                title=plan["attributes"]["title"] or "",
+                date=dt,
+                web_page_url=plan["attributes"]["planning_center_url"] or "",
             )
-        plan = plans[0]
-        return Plan(
-            id=plan["id"],
-            title=plan["attributes"]["title"],
-            series_title=plan["attributes"]["series_title"],
-            date=dt,
-            web_page_url=plan["attributes"]["planning_center_url"],
-        )
+            for plan in plans
+        }
 
     def find_plan_items(
         self,
-        plan_id: str,
+        id: PlanId,
         include_songs: bool,
         include_item_notes: bool,
-        service_type: Optional[str] = None,
     ) -> List[PlanSection]:
-        service_type = service_type or self._cfg.pco_service_type_id
         params: Dict[str, object] = {"per_page": 200}
         include: List[str] = []
         if include_songs:
@@ -190,7 +241,7 @@ class PlanningCenterClient:
         if include:
             params["include"] = ",".join(include)
         items_json = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/items",
+            url=f"{self._plan_url(id)}/items",
             params=params,
         )
         sections: List[PlanSection] = []
@@ -226,14 +277,9 @@ class PlanningCenterClient:
             )
         return sections
 
-    def find_message_notes(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> str:
+    def find_message_notes(self, id: PlanId) -> str:
         sections = self.find_plan_items(
-            plan_id=plan_id,
-            service_type=service_type,
-            include_songs=False,
-            include_item_notes=False,
+            id=id, include_songs=False, include_item_notes=False
         )
         message_items = [
             i
@@ -247,12 +293,9 @@ class PlanningCenterClient:
             )
         return message_items[0].description
 
-    def find_attachments(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> Set[Attachment]:
-        service_type = service_type or self._cfg.pco_service_type_id
+    def find_attachments(self, id: PlanId) -> Set[Attachment]:
         attachments_json = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/attachments",
+            url=f"{self._plan_url(id)}/attachments",
             params={"per_page": 100},
         )["data"]
         return {
@@ -303,12 +346,9 @@ class PlanningCenterClient:
         await asyncio.sleep(0.25)
         return {p: r for (p, r) in zip(paths, results)}
 
-    def find_presenters(
-        self, plan_id: str, service_type: Optional[str] = None
-    ) -> PresenterSet:
-        service_type = service_type or self._cfg.pco_service_type_id
+    def find_presenters(self, id: PlanId) -> PresenterSet:
         people = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans/{plan_id}/team_members",
+            url=f"{self._plan_url(id)}/team_members",
             params={"filter": "not_declined"},
         )["data"]
         speakers = {
@@ -328,6 +368,9 @@ class PlanningCenterClient:
             if p["attributes"]["team_position_name"].lower() == "mc host"
         }
         return PresenterSet(speakers=speakers, hosts=hosts)
+
+    def _plan_url(self, id: PlanId) -> str:
+        return f"{self._cfg.pco_services_base_url}/service_types/{id.service_type}/plans/{id.plan}"
 
     def _test_credentials(self, max_attempts: int):
         url = f"{self._cfg.pco_base_url}/people/v2/me"

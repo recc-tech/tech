@@ -5,8 +5,8 @@ import unittest
 from datetime import date
 from pathlib import Path
 from tkinter import Tk
-from typing import Dict, Tuple
-from unittest.mock import Mock, create_autospec
+from typing import Dict
+from unittest.mock import create_autospec
 
 from args import ReccArgs
 from autochecklist import Messenger
@@ -15,6 +15,7 @@ from external_services import (
     CredentialStore,
     ItemNote,
     Plan,
+    PlanId,
     PlanningCenterClient,
     Song,
 )
@@ -33,6 +34,7 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 
 _DATA_DIR = Path(__file__).parent.joinpath("summarize_plan_data")
 _TEMP_DIR = Path(__file__).parent.joinpath("summarize_plan_temp")
+_SERVICE_TYPES_URL = "https://api.planningcenteronline.com/services/v2/service_types"
 _PLANS_URL = (
     "https://api.planningcenteronline.com/services/v2/service_types/882857/plans"
 )
@@ -55,6 +57,7 @@ _PARAMS_20240505_PLANS = {
     "before": "2024-05-06",
     "after": "2024-05-05",
 }
+_PLAN_ITEMS_20250418_URL = "https://api.planningcenteronline.com/services/v2/service_types/1237521/plans/79927548/items"
 
 
 def _get_canned_response(fname: str) -> Dict[str, object]:
@@ -63,6 +66,8 @@ def _get_canned_response(fname: str) -> Dict[str, object]:
 
 
 def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object]:
+    if url == _SERVICE_TYPES_URL and params == {}:
+        return _get_canned_response("service_types.json")
     if url == _PLANS_URL and params == _PARAMS_20240225_PLANS:
         return _get_canned_response("20240225_plan.json")
     if url == _PLAN_ITEMS_20240225_URL and params == _PARAMS_PLAN_ITEMS:
@@ -75,6 +80,8 @@ def get_canned_response(url: str, params: Dict[str, object]) -> Dict[str, object
         return _get_canned_response("20240505_plan.json")
     if url == _PLAN_ITEMS_20240505_URL and params == _PARAMS_PLAN_ITEMS:
         return _get_canned_response("20240505_plan_items.json")
+    if url == _PLAN_ITEMS_20250418_URL and params == _PARAMS_PLAN_ITEMS:
+        return _get_canned_response("20250418_plan_items.json")
     raise ValueError(f"Unrecognized request (url: '{url}', params: {params})")
 
 
@@ -107,23 +114,42 @@ class PlanSummaryTestCase(unittest.TestCase):
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
+    def setUp(self):
+        super().setUp()
+
+        self._config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        self._messenger = create_autospec(Messenger)
+        self._log_problem_mock = self._messenger.log_problem
+        self._pco_client = PlanningCenterClient(
+            messenger=self._messenger,
+            credential_store=credential_store,
+            config=self._config,
+            lazy_login=True,
+        )
+        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+
     # Not a particularly important case now that 2024-05-05 is tested, but it
     # doesn't hurt to keep it around.
     def test_summarize_20240225(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240225_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 2, 25),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     # Interesting characteristics of this test case:
     #  * CCLI provided for most, but not all songs
@@ -132,57 +158,57 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     #  * Empty description for each song
     #  * Duplicate line in message notes (which I added for testing)
     def test_summarize_20240414(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240414_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 4, 14),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
     # Interesting characteristics of this test case:
     #  * CCLI number in the description of each song
     def test_summarize_20240505(self) -> None:
-        (pco_client, messenger, log_problem_mock, config) = self._set_up()
-
         expected_summary = load_plan_summary(
             _DATA_DIR.joinpath("20240505_summary.json")
         )
         actual_summary = get_plan_summary(
-            client=pco_client,
-            messenger=messenger,
-            config=config,
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
             dt=date(2024, 5, 5),
         )
 
         self.assert_equal_summary(expected_summary, actual_summary)
-        log_problem_mock.assert_not_called()
+        self._log_problem_mock.assert_not_called()
 
-    def _set_up(self) -> Tuple[PlanningCenterClient, Messenger, Mock, Config]:
-        config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
+    def test_summarize_20250418_good_friday(self) -> None:
+        plan = Plan(
+            id=PlanId(service_type="1237521", plan="79927548"),
+            date=date(year=2025, month=4, day=18),
+            service_type_name="Good Friday & Communion - Watch & Pray",
+            series_title="",
+            title="",
+            web_page_url="https://services.planningcenteronline.com/plans/79927548",
         )
-        credential_store = create_autospec(CredentialStore)
-        messenger = create_autospec(Messenger)
-        pco_client = PlanningCenterClient(
-            messenger=messenger,
-            credential_store=credential_store,
-            config=config,
-            lazy_login=True,
+        self._pco_client.find_plan_by_date = lambda _: plan  # pyright: ignore
+        actual_summary = get_plan_summary(
+            client=self._pco_client,
+            messenger=self._messenger,
+            config=self._config,
+            dt=date(2025, 4, 18),
         )
-        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
+        expected_summary = load_plan_summary(
+            _DATA_DIR.joinpath("20250418_summary.json")
         )
-        return (pco_client, messenger, messenger.log_problem, config)
+
+        self.assert_equal_summary(expected=expected_summary, actual=actual_summary)
+        self._log_problem_mock.assert_not_called()
 
 
 class PlanSummaryToHtmlTestCase(unittest.TestCase):
@@ -229,7 +255,8 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
 class PlanSummaryJsonTestCase(PlanSummaryTestCase):
     SUMMARY = PlanItemsSummary(
         plan=Plan(
-            id="71699950",
+            id=PlanId(service_type="882857", plan="71699950"),
+            service_type_name="10:30AM Sunday Gathering",
             series_title="WORTHY",
             title="Worthy Of The Feast",
             date=date(year=2024, month=4, day=14),

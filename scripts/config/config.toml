@@ -118,10 +118,12 @@ max_captions_wait_time = 60
 base_url = "https://api.planningcenteronline.com"
 services_base_url = "https://api.planningcenteronline.com/services/v2"
 live_view_url = "https://services.planningcenteronline.com/live/!{SERVICE_ID}!"
-# For help finding the service type for today's plan, see
-# https://github.com/recc-tech/tech/wiki/Finding-the-Service-Type-for-a-Plan.
-# Don't forget to enclose the service type ID in double quotes!
-service_type_id = "882857"
+# Service types that we can ignore (i.e., skip them when searching for plans on
+# a given date)
+skipped_service_types = [
+	"130950",  # Rehearsals
+	"130956",  # UTC | 2023-11-11
+]
 # https://regex101.com/
 kids_video_regex = "kids"
 sermon_notes_regex = "^notes"
@@ -175,6 +177,7 @@ announcements_to_ignore = [
 	"PRAY For People",
 	"WELCOME",
 	"Welcome Everyone",
+	"Let’s Worship"
 ]
 
 [slides]

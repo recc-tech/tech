@@ -450,7 +450,9 @@ class Config(BaseConfig):
                 "planning_center.services_base_url"
             )
             self.live_view_url = reader.get_template("planning_center.live_view_url")
-            self.pco_service_type_id = reader.get_str("planning_center.service_type_id")
+            self.pco_skipped_service_types = set(
+                reader.get_str_list("planning_center.skipped_service_types")
+            )
             self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"

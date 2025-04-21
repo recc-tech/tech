@@ -1,0 +1,167 @@
+{
+  "_comment": "The response is taken from the API explorer, but most service types are removed to simplify testing.",
+  "links": {
+    "self": "https://api.planningcenteronline.com/services/v2/service_types"
+  },
+  "data": [
+    {
+      "type": "ServiceType",
+      "id": "130950",
+      "attributes": {
+        "archived_at": null,
+        "attachment_types_enabled": true,
+        "background_check_permissions": "default",
+        "comment_permissions": "Scheduled Viewer",
+        "created_at": "2011-09-23T02:48:33Z",
+        "custom_item_types": [],
+        "deleted_at": null,
+        "frequency": "Weekly",
+        "last_plan_from": "organization",
+        "name": "Rehearsals",
+        "permissions": "Editor",
+        "scheduled_publish": false,
+        "sequence": 2,
+        "standard_item_types": [
+          {
+            "name": "Header",
+            "color": "#eaebeb"
+          },
+          {
+            "name": "Media",
+            "color": "#ffffff"
+          },
+          {
+            "name": "Song",
+            "color": "#ffffff"
+          }
+        ],
+        "updated_at": "2023-08-23T21:01:16Z"
+      },
+      "relationships": {
+        "parent": {
+          "data": {
+            "type": "Folder",
+            "id": "130948"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/130950"
+      }
+    },
+    {
+      "type": "ServiceType",
+      "id": "130956",
+      "attributes": {
+        "archived_at": null,
+        "attachment_types_enabled": true,
+        "background_check_permissions": "default",
+        "comment_permissions": "Scheduled Viewer",
+        "created_at": "2011-09-23T03:19:17Z",
+        "custom_item_types": [],
+        "deleted_at": null,
+        "frequency": "Monthly",
+        "last_plan_from": "organization",
+        "name": "UTC | 2023-11-11",
+        "permissions": "Editor",
+        "scheduled_publish": false,
+        "sequence": 1,
+        "standard_item_types": [
+          {
+            "name": "Header",
+            "color": "#eaebeb"
+          },
+          {
+            "name": "Media",
+            "color": "#ffffff"
+          },
+          {
+            "name": "Song",
+            "color": "#ffffff"
+          }
+        ],
+        "updated_at": "2024-03-16T22:17:39Z"
+      },
+      "relationships": {
+        "parent": {
+          "data": {
+            "type": "Folder",
+            "id": "130948"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/130956"
+      }
+    },
+    {
+      "type": "ServiceType",
+      "id": "882857",
+      "attributes": {
+        "archived_at": null,
+        "attachment_types_enabled": true,
+        "background_check_permissions": "default",
+        "comment_permissions": "Administrator",
+        "created_at": "2018-12-19T16:20:53Z",
+        "custom_item_types": [],
+        "deleted_at": null,
+        "frequency": "Weekly",
+        "last_plan_from": "organization",
+        "name": "10:30AM Sunday Gathering",
+        "permissions": "Editor",
+        "scheduled_publish": false,
+        "sequence": 1,
+        "standard_item_types": [
+          {
+            "name": "Header",
+            "color": "#eaebeb"
+          },
+          {
+            "name": "Media",
+            "color": "#ffffff"
+          },
+          {
+            "name": "Song",
+            "color": "#ffffff"
+          }
+        ],
+        "updated_at": "2024-06-03T14:49:40Z"
+      },
+      "relationships": {
+        "parent": {
+          "data": {
+            "type": "Folder",
+            "id": "882849"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.planningcenteronline.com/services/v2/service_types/882857"
+      }
+    }
+  ],
+  "included": [],
+  "meta": {
+    "total_count": 3,
+    "count": 3,
+    "can_order_by": [
+      "sequence",
+      "name"
+    ],
+    "can_query_by": [
+      "id",
+      "name",
+      "parent_id"
+    ],
+    "can_include": [
+      "time_preference_options"
+    ],
+    "can_filter": [
+      "no_parent"
+    ],
+    "parent": {
+      "id": "25657",
+      "type": "Organization"
+    }
+  }
+}

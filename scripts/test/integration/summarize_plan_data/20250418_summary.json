@@ -1,0 +1,98 @@
+{
+	"plan": {
+		"id": {
+			"service_type": "1237521",
+			"plan": "79927548"
+		},
+		"service_type_name": "Good Friday & Communion - Watch & Pray",
+		"title": "",
+		"series_title": "",
+		"date": "2025-04-18",
+		"web_page_url": "https://services.planningcenteronline.com/plans/79927548"
+	},
+	"walk_in_slides": [
+		"RIVERS",
+		"Risen Series",
+		"EASTER Sunday ",
+		"EGG Hunt ",
+		"Baptism Sunday",
+		"Community Kitchen Brunch",
+		"Celebrate Recovery",
+		"Give With Us",
+		"The After Party",
+		"Next Steps",
+		"Website",
+		"Follow Us Instagram",
+		"Spotify RE"
+	],
+	"announcements": [
+		"GIVING Talk",
+		"Easter Sunday 10:30AM",
+		"Easter Egg Hunt",
+		"See You Sunday"
+	],
+	"opener_video": {
+		"content": "The Tree & The Cross",
+		"notes": []
+	},
+	"bumper_video": {
+		"content": "Jesus In The Garden Bumper Video",
+		"notes": []
+	},
+	"songs": [
+		[
+			{
+				"song": {
+					"ccli": "7213928",
+					"title": "Sunday Is Coming",
+					"author": "Adrian Disch, Jonathan Smith, Phil Wickham, and Steven Furtick"
+				},
+				"notes": [],
+				"description": ""
+			},
+			{
+				"song": {
+					"ccli": "7017786",
+					"title": "At The Cross (Love Ran Red)",
+					"author": "Chris Tomlin, Ed Cash, Jonas Myrin, Matt Armstrong, and Matt Redman"
+				},
+				"notes": [],
+				"description": ""
+			},
+			{
+				"song": {
+					"ccli": "4785828",
+					"title": "Lead Me To The Cross",
+					"author": "Brooke Fraser"
+				},
+				"notes": [],
+				"description": ""
+			}
+		],
+		[
+			{
+				"song": {
+					"ccli": "5148938",
+					"title": "Love Came Down",
+					"author": "Brian Johnson"
+				},
+				"notes": [],
+				"description": ""
+			},
+			{
+				"song": {
+					"ccli": "7106807",
+					"title": "Living Hope",
+					"author": "Brian Johnson and Phil Wickham"
+				},
+				"notes": [],
+				"description": ""
+			}
+		]
+	],
+	"message_notes": {
+		"content": "Watch & Pray\nMatthew 26:36-50 NLT\nRomans 7:22-25 NLT\nHebrews 4:15 NLT\nJames 5:16 NLT",
+		"notes": []
+	},
+	"num_visuals_notes": 0
+}

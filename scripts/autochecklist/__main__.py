@@ -11,6 +11,7 @@ from . import (
     BaseArgs,
     BaseConfig,
     DependencyProvider,
+    ListChoice,
     Messenger,
     MessengerSettings,
     Parameter,
@@ -67,9 +68,21 @@ def demo_input(messenger: Messenger) -> None:
         title="Choose multiple",
     )
     messenger.log_status(
-        TaskStatus.DONE,
+        TaskStatus.RUNNING,
         f"You choose {inputs['pizza_topping']} on pizza and your password is '{inputs['pass']}'.",
     )
+
+    choices = [
+        ListChoice(value="id:A", display="Option A"),
+        ListChoice(value="id:B", display="Option B"),
+        ListChoice(value="id:C", display="Option C"),
+    ]
+    choice = messenger.input_from_list(
+        choices,
+        prompt="This is what it looks like to choose from a list of options.",
+        title="Choose option",
+    )
+    messenger.log_status(TaskStatus.DONE, f"You choose the option with value {choice}.")
 
 
 def demo_errors(messenger: Messenger) -> None:
