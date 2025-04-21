@@ -17,9 +17,10 @@ class App(Enum):
     PLANNING_CENTER_LIVE = "pco_live"
     BOXCAST = "boxcast"
     CHURCH_ONLINE_PLATFORM = "cop"
-    FOH_SETUP_CHECKLIST = "foh_setup_checklist"
-    MCR_SETUP_CHECKLIST = "mcr_setup_checklist"
-    MCR_TEARDOWN_CHECKLIST = "mcr_teardown_checklist"
+    FOH_VIDEO_SETUP_CHECKLIST = "foh_video_setup_checklist"
+    MCR_SOUND_SETUP_CHECKLIST = "mcr_sound_setup_checklist"
+    MCR_VIDEO_SETUP_CHECKLIST = "mcr_video_setup_checklist"
+    MCR_VIDEO_TEARDOWN_CHECKLIST = "mcr_video_teardown_checklist"
     VMIX = "vmix"
 
 
@@ -67,23 +68,29 @@ def main(args: LaunchAppsArgs, config: Config, dep: DependencyProvider) -> None:
                     description="Open Church Online Platform.",
                     func=lambda: launch_COP(config),
                 )
-            case App.FOH_SETUP_CHECKLIST:
+            case App.FOH_VIDEO_SETUP_CHECKLIST:
                 t = TaskModel(
-                    name="open_FOH_setup_checklist",
-                    description="Open the FOH setup checklist on GitHub.",
-                    func=lambda: open_FOH_setup_checklist(config),
+                    name="open_FOH_video_setup_checklist",
+                    description="Open the FOH video setup checklist on GitHub.",
+                    func=lambda: open_FOH_video_setup_checklist(config),
                 )
-            case App.MCR_SETUP_CHECKLIST:
+            case App.MCR_SOUND_SETUP_CHECKLIST:
                 t = TaskModel(
-                    name="open_MCR_setup_checklist",
-                    description="Open the MCR setup checklist on GitHub.",
-                    func=lambda: open_MCR_setup_checklist(config),
+                    name="open_MCR_sound_setup_checklist",
+                    description="Open the MCR sound setup checklist on GitHub.",
+                    func=lambda: open_MCR_sound_setup_checklist(config),
                 )
-            case App.MCR_TEARDOWN_CHECKLIST:
+            case App.MCR_VIDEO_SETUP_CHECKLIST:
                 t = TaskModel(
-                    name="open_MCR_teardown_checklist",
-                    description="Open the MCR teardown checklist on GitHub.",
-                    func=lambda: open_MCR_teardown_checklist(config),
+                    name="open_MCR_video_setup_checklist",
+                    description="Open the MCR video setup checklist on GitHub.",
+                    func=lambda: open_MCR_video_setup_checklist(config),
+                )
+            case App.MCR_VIDEO_TEARDOWN_CHECKLIST:
+                t = TaskModel(
+                    name="open_MCR_video_teardown_checklist",
+                    description="Open the MCR video teardown checklist on GitHub.",
+                    func=lambda: open_MCR_video_teardown_checklist(config),
                 )
             case App.VMIX:
                 t = TaskModel(
@@ -123,18 +130,31 @@ def launch_COP(config: Config) -> None:
     external_services.launch_firefox(config.cop_host_url)
 
 
-def open_FOH_setup_checklist(config: Config) -> None:
-    issue = external_services.find_latest_github_issue(IssueType.FOH_SETUP, config)
+def open_FOH_video_setup_checklist(config: Config) -> None:
+    issue = external_services.find_latest_github_issue(
+        IssueType.FOH_VIDEO_SETUP, config
+    )
     external_services.launch_firefox(issue.html_url)
 
 
-def open_MCR_setup_checklist(config: Config) -> None:
-    issue = external_services.find_latest_github_issue(IssueType.MCR_SETUP, config)
+def open_MCR_sound_setup_checklist(config: Config) -> None:
+    issue = external_services.find_latest_github_issue(
+        IssueType.MCR_SOUND_SETUP, config
+    )
     external_services.launch_firefox(issue.html_url)
 
 
-def open_MCR_teardown_checklist(config: Config) -> None:
-    issue = external_services.find_latest_github_issue(IssueType.MCR_TEARDOWN, config)
+def open_MCR_video_setup_checklist(config: Config) -> None:
+    issue = external_services.find_latest_github_issue(
+        IssueType.MCR_VIDEO_SETUP, config
+    )
+    external_services.launch_firefox(issue.html_url)
+
+
+def open_MCR_video_teardown_checklist(config: Config) -> None:
+    issue = external_services.find_latest_github_issue(
+        IssueType.MCR_VIDEO_TEARDOWN, config
+    )
     external_services.launch_firefox(issue.html_url)
 
 

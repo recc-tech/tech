@@ -197,7 +197,9 @@ class PyStartupSmokeTestCase(unittest.TestCase):
         )
 
     def test_launch_apps_foh(self) -> None:
-        args = LaunchAppsArgs.parse(["", "pco", "foh_setup_checklist", "--no-run"])
+        args = LaunchAppsArgs.parse(
+            ["", "pco", "foh_video_setup_checklist", "--no-run"]
+        )
         config = Config(args, allow_multiple_only_for_testing=True)
         dep = MockDependencyProvider(args=args, config=config)
         launch_apps.main(args, config, dep)
@@ -219,8 +221,8 @@ class PyStartupSmokeTestCase(unittest.TestCase):
                 "boxcast",
                 "cop",
                 "vmix",
-                "mcr_setup_checklist",
-                "mcr_teardown_checklist",
+                "mcr_video_setup_checklist",
+                "mcr_video_teardown_checklist",
                 "--no-run",
             ]
         )

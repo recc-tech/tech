@@ -14,35 +14,35 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 
 
 class GitHubTestCase(unittest.TestCase):
-    def test_find_foh_setup_checklist(self) -> None:
+    def test_find_foh_video_setup_checklist(self) -> None:
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
         expected_title = f"FOH Video Setup (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
-            type=IssueType.FOH_SETUP, config=_get_config()
+            type=IssueType.FOH_VIDEO_SETUP, config=_get_config()
         )
         self.assertEqual(expected_title, issue.title)
         self._check_web_page(url=issue.html_url, expected_title=expected_title)
 
-    def test_find_mcr_setup_checklist(self) -> None:
+    def test_find_mcr_video_setup_checklist(self) -> None:
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
         expected_title = f"MCR Video Setup (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
-            type=IssueType.MCR_SETUP, config=_get_config()
+            type=IssueType.MCR_VIDEO_SETUP, config=_get_config()
         )
         self.assertEqual(expected_title, issue.title)
         self._check_web_page(url=issue.html_url, expected_title=expected_title)
 
-    def test_find_mcr_teardown_checklist(self) -> None:
+    def test_find_mcr_video_teardown_checklist(self) -> None:
         # This will fail if run very early on Sunday, but that's not usually
         # when we're running tests anyway
         sunday = _get_latest_sunday()
         expected_title = f"MCR Video Teardown (Sunday, {sunday.strftime('%B')} {_day_with_suffix(sunday.day)})"
         issue = external_services.find_latest_github_issue(
-            type=IssueType.MCR_TEARDOWN, config=_get_config()
+            type=IssueType.MCR_VIDEO_TEARDOWN, config=_get_config()
         )
         self.assertEqual(expected_title, issue.title)
         self._check_web_page(url=issue.html_url, expected_title=expected_title)

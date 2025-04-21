@@ -19,6 +19,6 @@ jobs:
         with:
           days-before-stale: 0
           days-before-close: 0
-          any-of-labels: mcr_setup_checklist,foh_setup_checklist,mcr_teardown_checklist
+          any-of-labels: foh_video_setup_checklist,mcr_sound_setup_checklist,mcr_video_setup_checklist,mcr_video_teardown_checklist
           close-issue-message: "Closing this checklist because it is stale."
           close-issue-reason: completed
