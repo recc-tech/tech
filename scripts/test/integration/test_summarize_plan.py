@@ -193,6 +193,7 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
         plan = Plan(
             id=PlanId(service_type="1237521", plan="79927548"),
             date=date(year=2025, month=4, day=18),
+            service_type_name="Good Friday & Communion - Watch & Pray",
             series_title="",
             title="",
             web_page_url="https://services.planningcenteronline.com/plans/79927548",
@@ -257,6 +258,7 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
     SUMMARY = PlanItemsSummary(
         plan=Plan(
             id=PlanId(service_type="882857", plan="71699950"),
+            service_type_name="10:30AM Sunday Gathering",
             series_title="WORTHY",
             title="Worthy Of The Feast",
             date=date(year=2024, month=4, day=14),

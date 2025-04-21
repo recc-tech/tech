@@ -76,6 +76,7 @@ class PlanningCenterTestCase(unittest.TestCase):
         expected_plan = Plan(
             id=PlanId(service_type="1237521", plan="79927548"),
             date=date(year=2025, month=4, day=18),
+            service_type_name="Good Friday & Communion - Watch & Pray",
             series_title="",
             title="",
             web_page_url="https://services.planningcenteronline.com/plans/79927548",

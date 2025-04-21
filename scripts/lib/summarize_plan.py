@@ -481,15 +481,21 @@ def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
     )
 
 
+def _make_page_title(plan: Plan) -> str:
+    return " | ".join(
+        [
+            (s or "").strip()
+            for s in [plan.service_type_name, plan.series_title, plan.title]
+            if (s or "").strip()
+        ]
+    )
+
+
 def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
     """
     Convert the plan summary to an HTML string.
     """
-    title = (
-        _escape(f"{summary.plan.series_title}: {summary.plan.title}")
-        if summary.plan.series_title
-        else _escape(summary.plan.title)
-    )
+    title = _escape(_make_page_title(summary.plan))
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slides_list = _make_walk_in_slides_list(summary.walk_in_slides)
     announcements_list = _make_announcements_list(summary.announcements)
@@ -776,6 +782,7 @@ def _cast(t: Type[T], x: object) -> T:
 def _plan_to_json(plan: Plan) -> object:
     return {
         "id": _plan_id_to_json(plan.id),
+        "service_type_name": plan.service_type_name,
         "series_title": plan.series_title,
         "title": plan.title,
         "date": datetime.strftime(datetime.combine(plan.date, time()), "%Y-%m-%d"),
@@ -787,6 +794,7 @@ def _parse_plan(plan: object) -> Plan:
     plan = typing.cast(dict[object, object], _cast(dict, plan))
     return Plan(
         id=_parse_plan_id(plan["id"]),
+        service_type_name=_cast(str, plan["service_type_name"]),
         series_title=_cast(str, plan["series_title"]),
         title=_cast(str, plan["title"]),
         date=datetime.strptime(_cast(str, plan["date"]), "%Y-%m-%d").date(),

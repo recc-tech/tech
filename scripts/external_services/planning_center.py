@@ -67,8 +67,9 @@ class PlanId:
 @dataclass(frozen=True)
 class Plan:
     id: PlanId
-    title: str
+    service_type_name: str
     series_title: str
+    title: str
     date: date
     web_page_url: str
 
@@ -171,7 +172,7 @@ class PlanningCenterClient:
         plans = {
             (s, p)
             for s in service_types
-            for p in self._find_plans_by_service_type_and_date(s.id, dt)
+            for p in self._find_plans_by_service_type_and_date(s, dt)
         }
         if len(plans) == 0:
             raise ValueError(f"No plans found on {dt.strftime('%Y-%m-%d')}.")
@@ -204,10 +205,10 @@ class PlanningCenterClient:
         return [ServiceType(id=s["id"], name=s["attributes"]["name"]) for s in response]
 
     def _find_plans_by_service_type_and_date(
-        self, service_type: str, dt: date
+        self, service_type: ServiceType, dt: date
     ) -> Set[Plan]:
         plans = self._send_and_check_status(
-            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type}/plans",
+            url=f"{self._cfg.pco_services_base_url}/service_types/{service_type.id}/plans",
             params={
                 "filter": "before,after",
                 "before": (dt + timedelta(days=1)).strftime("%Y-%m-%d"),
@@ -216,9 +217,10 @@ class PlanningCenterClient:
         )["data"]
         return {
             Plan(
-                id=PlanId(service_type=service_type, plan=plan["id"]),
-                title=plan["attributes"]["title"] or "",
+                id=PlanId(service_type=service_type.id, plan=plan["id"]),
+                service_type_name=service_type.name,
                 series_title=plan["attributes"]["series_title"] or "",
+                title=plan["attributes"]["title"] or "",
                 date=dt,
                 web_page_url=plan["attributes"]["planning_center_url"] or "",
             )
