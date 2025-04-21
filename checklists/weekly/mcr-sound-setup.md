@@ -1,7 +1,7 @@
 ---
 title: MCR Sound Setup ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
-labels: checklist
+labels: checklist, mcr_sound_setup_checklist
 ---
 
 # MCR Sound Setup Checklist

@@ -14,9 +14,10 @@ class Issue:
 
 
 class IssueType(Enum):
-    FOH_SETUP = "foh_setup_checklist"
-    MCR_SETUP = "mcr_setup_checklist"
-    MCR_TEARDOWN = "mcr_teardown_checklist"
+    FOH_VIDEO_SETUP = "foh_video_setup_checklist"
+    MCR_SOUND_SETUP = "mcr_sound_setup_checklist"
+    MCR_VIDEO_SETUP = "mcr_video_setup_checklist"
+    MCR_VIDEO_TEARDOWN = "mcr_video_teardown_checklist"
 
 
 def find_latest_github_issue(type: IssueType, config: Config) -> Issue:

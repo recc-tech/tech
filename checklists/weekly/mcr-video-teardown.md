@@ -1,7 +1,7 @@
 ---
 title: MCR Video Teardown ({{ date | date('dddd, MMMM Do') }})
 assignees: recc-tech
-labels: checklist, mcr_teardown_checklist
+labels: checklist, mcr_video_teardown_checklist
 ---
 
 > :warning: Pay special attention to tasks that have been completed automatically by the teardown script.
