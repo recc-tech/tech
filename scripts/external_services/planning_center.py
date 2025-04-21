@@ -179,13 +179,12 @@ class PlanningCenterClient:
         elif len(plans) == 1:
             return list(plans)[0][1]
         else:
-            # TODO: Test this case (add a test in test.manual?)
             choices = [
                 ListChoice(
-                    value=p[1],
-                    display=f"{p[0].name}, {p[1].series_title}, {p[1].title}",
+                    value=p,
+                    display=f"{s.name} | {p.series_title} | {p.title}",
                 )
-                for p in plans
+                for (s, p) in plans
             ]
             plan = self._messenger.input_from_list(
                 choices,

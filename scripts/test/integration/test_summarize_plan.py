@@ -111,8 +111,6 @@ class PlanSummaryTestCase(unittest.TestCase):
         self.assertEqual(expected, actual)
 
 
-# TODO: Add a test case for the 2025 Good Friday service (perhaps by
-#       monkey-patching find_plan_by_date()?)
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
