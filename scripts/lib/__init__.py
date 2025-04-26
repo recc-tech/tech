@@ -16,6 +16,7 @@ from .assets import (
     DownloadSucceeded,
 )
 from .dependency_provider import ReccDependencyProvider, SimplifiedMessengerSettings
+from .diff import Deletion, Edit, Insertion, NoOp, find_diff
 from .slides import Slide, SlideBlueprint, SlideBlueprintReader, SlideGenerator
 from .summarize_plan import (
     AnnotatedItem,
