@@ -20,6 +20,7 @@ from external_services import (
     PlanSection,
     Song,
 )
+from lib import Edit, diff_has_changes, find_diff
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class AnnotatedItem:
 
 
 @dataclass(frozen=True)
-class PlanItemsSummary:
+class PlanSummary:
     plan: Plan
     walk_in_slides: List[str]
     announcements: List[str]
@@ -45,6 +46,59 @@ class PlanItemsSummary:
     songs: List[List[AnnotatedSong]]
     message_notes: Optional[AnnotatedItem]
     num_visuals_notes: int
+
+
+@dataclass(frozen=True)
+class PlanSummaryDiff:
+    """Difference between two plan summaries."""
+
+    plan: Plan
+    walk_in_slides: List[Edit[str]]
+    announcements: List[Edit[str]]
+    opener_video: List[Edit[AnnotatedItem]]
+    bumper_video: List[Edit[AnnotatedItem]]
+    songs: List[List[Edit[AnnotatedSong]]]
+    message: List[Edit[str]]
+    message_warnings: List[Edit[ItemNote]]
+    num_visuals_notes: int
+
+    @property
+    def plan_changed(self) -> bool:
+        """Whether anything has changed from one plan summary to another."""
+        return (
+            self.walk_in_slides_changed
+            or self.announcements_changed
+            or self.videos_changed
+            or self.songs_changed
+            or self.message_changed
+        )
+
+    @property
+    def walk_in_slides_changed(self) -> bool:
+        """Whether any changes have been made to the walk in slides."""
+        return diff_has_changes(self.walk_in_slides)
+
+    @property
+    def announcements_changed(self) -> bool:
+        """Whether any changes have been made to the announcements."""
+        return diff_has_changes(self.announcements)
+
+    @property
+    def videos_changed(self) -> bool:
+        """Whether any changes have been made to any of the videos."""
+        opener_changed = diff_has_changes(self.opener_video)
+        bumper_changed = diff_has_changes(self.bumper_video)
+        return opener_changed or bumper_changed
+
+    @property
+    def songs_changed(self) -> bool:
+        """Whether any changes have been made to the songs."""
+        return any(diff_has_changes(s) for s in self.songs)
+
+    @property
+    def message_changed(self) -> bool:
+        """Whether any changes have been made to the message."""
+        return diff_has_changes(self.message) or diff_has_changes(self.message_warnings)
 
 
 T = TypeVar("T")
@@ -264,7 +318,7 @@ def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
 
 def get_plan_summary(
     client: PlanningCenterClient, messenger: Messenger, config: Config, dt: date
-) -> PlanItemsSummary:
+) -> PlanSummary:
     plan = client.find_plan_by_date(dt)
     sections = client.find_plan_items(
         plan.id, include_songs=True, include_item_notes=True
@@ -300,7 +354,7 @@ def get_plan_summary(
     visuals_notes = _filter_notes_by_category(
         all_notes, config.plan_summary_note_categories
     )
-    return PlanItemsSummary(
+    return PlanSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
         announcements=announcements,
@@ -309,6 +363,56 @@ def get_plan_summary(
         songs=songs,
         message_notes=message_notes,
         num_visuals_notes=len(visuals_notes),
+    )
+
+
+def _find_songs_diff(
+    old: List[List[AnnotatedSong]], new: List[List[AnnotatedSong]]
+) -> List[List[Edit[AnnotatedSong]]]:
+    if len(old) < len(new):
+        old = old + [[] for _ in range(len(new) - len(old))]
+    elif len(new) < len(old):
+        new = new + [[] for _ in range(len(old) - len(new))]
+    assert len(old) == len(new)
+    return [find_diff(old=os, new=ns) for (os, ns) in zip(old, new)]
+
+
+def _find_message_diff(
+    old: Optional[AnnotatedItem], new: Optional[AnnotatedItem]
+) -> List[Edit[str]]:
+    old_lines = [] if old is None else old.content.splitlines()
+    new_lines = [] if new is None else new.content.splitlines()
+    return find_diff(old=old_lines, new=new_lines)
+
+
+def _find_message_warnings_diff(
+    old: Optional[AnnotatedItem], new: Optional[AnnotatedItem]
+) -> List[Edit[ItemNote]]:
+    old_notes = [] if old is None else old.notes
+    new_notes = [] if new is None else new.notes
+    return find_diff(old=old_notes, new=new_notes)
+
+
+def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
+    """Find the differences between two plan summaries."""
+    return PlanSummaryDiff(
+        plan=new.plan,
+        walk_in_slides=find_diff(old=old.walk_in_slides, new=new.walk_in_slides),
+        announcements=find_diff(old=old.announcements, new=new.announcements),
+        opener_video=find_diff(
+            old=[old.opener_video] if old.opener_video is not None else [],
+            new=[new.opener_video] if new.opener_video is not None else [],
+        ),
+        bumper_video=find_diff(
+            old=[old.bumper_video] if old.bumper_video is not None else [],
+            new=[new.bumper_video] if new.bumper_video is not None else [],
+        ),
+        songs=_find_songs_diff(old=old.songs, new=new.songs),
+        message=_find_message_diff(old=old.message_notes, new=new.message_notes),
+        message_warnings=_find_message_warnings_diff(
+            old=old.message_notes, new=new.message_notes
+        ),
+        num_visuals_notes=new.num_visuals_notes,
     )
 
 
@@ -491,7 +595,7 @@ def _make_page_title(plan: Plan) -> str:
     )
 
 
-def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
+def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
     """
     Convert the plan summary to an HTML string.
     """
@@ -727,7 +831,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
 """.lstrip()
 
 
-def plan_summary_to_json(summary: PlanItemsSummary) -> str:
+def plan_summary_to_json(summary: PlanSummary) -> str:
     """
     Convert the plan summary to a JSON string.
     This is the inverse of `load_plan_summary`.
@@ -745,7 +849,7 @@ def plan_summary_to_json(summary: PlanItemsSummary) -> str:
     return json.dumps(json_summary, indent="\t")
 
 
-def load_plan_summary(path: Path) -> PlanItemsSummary:
+def load_plan_summary(path: Path) -> PlanSummary:
     """
     Load a plan summary from a JSON file.
     """
@@ -759,7 +863,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
     )
     songs = [[_parse_annotated_song(s) for s in sec] for sec in data["songs"]]
     message_notes = _parse_annotated_item(data["message_notes"])
-    return PlanItemsSummary(
+    return PlanSummary(
         plan=_parse_plan(data["plan"]),
         walk_in_slides=data["walk_in_slides"],
         announcements=data["announcements"],

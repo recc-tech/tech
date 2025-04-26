@@ -43,6 +43,20 @@ class Deletion(Edit[T]):
         return f"Deletion({repr(self.val)})"
 
 
+def diff_has_changes(edits: List[Edit[T]]) -> bool:
+    """
+    Check whether the given edit sequence includes any changes.
+
+    >>> diff_has_changes([])
+    False
+    >>> diff_has_changes([NoOp("c"), NoOp("a"), NoOp("t")])
+    False
+    >>> diff_has_changes([NoOp("c"), Deletion("a"), Insertion("o"), NoOp("t")])
+    True
+    """
+    return any(e for e in edits if not isinstance(e, NoOp))
+
+
 def find_diff(old: List[T], new: List[T]) -> List[Edit[T]]:
     """
     Construct a sequence of edits to go from `old` to `new`.

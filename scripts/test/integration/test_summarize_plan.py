@@ -22,7 +22,12 @@ from external_services import (
 from lib import (
     AnnotatedItem,
     AnnotatedSong,
-    PlanItemsSummary,
+    Deletion,
+    Insertion,
+    NoOp,
+    PlanSummary,
+    PlanSummaryDiff,
+    diff_plan_summaries,
     get_plan_summary,
     load_plan_summary,
     plan_summary_to_html,
@@ -91,9 +96,7 @@ class PlanSummaryTestCase(unittest.TestCase):
         self.maxDiff = None
         _TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-    def assert_equal_summary(
-        self, expected: PlanItemsSummary, actual: PlanItemsSummary
-    ) -> None:
+    def assert_equal_summary(self, expected: PlanSummary, actual: PlanSummary) -> None:
         # Compare field-by-field for better error message
         self.assertEqual(expected.plan, actual.plan)
         self.assertEqual(expected.walk_in_slides, actual.walk_in_slides)
@@ -107,6 +110,23 @@ class PlanSummaryTestCase(unittest.TestCase):
             )
             self.assertEqual(expected.message_notes.notes, actual.message_notes.notes)
         self.assertEqual(expected.message_notes, actual.message_notes)
+        self.assertEqual(expected.num_visuals_notes, actual.num_visuals_notes)
+        # Just in case
+        self.assertEqual(expected, actual)
+
+    def assert_equal_summary_diff(
+        self, expected: PlanSummaryDiff, actual: PlanSummaryDiff
+    ) -> None:
+        # Compare field-by-field for better error message
+        self.assertEqual(expected.plan, actual.plan)
+        self.assertEqual(expected.walk_in_slides, actual.walk_in_slides)
+        self.assertEqual(expected.opener_video, actual.opener_video)
+        self.assertEqual(expected.announcements, actual.announcements)
+        self.assertEqual(expected.songs, actual.songs)
+        self.assertEqual(expected.bumper_video, actual.bumper_video)
+        self.assertEqual(expected.message, actual.message)
+        self.assertEqual(expected.message_warnings, actual.message_warnings)
+        self.assertEqual(expected.num_visuals_notes, actual.num_visuals_notes)
         # Just in case
         self.assertEqual(expected, actual)
 
@@ -211,6 +231,319 @@ class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
         self._log_problem_mock.assert_not_called()
 
 
+class DiffPlanSummaryTestCase(PlanSummaryTestCase):
+    def test_no_diff(self) -> None:
+        original = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
+        edited = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
+        actual = diff_plan_summaries(old=original, new=edited)
+        expected = PlanSummaryDiff(
+            plan=Plan(
+                id=PlanId(service_type="882857", plan="71699950"),
+                service_type_name="10:30AM Sunday Gathering",
+                series_title="WORTHY",
+                title="Worthy Of The Feast",
+                date=date(year=2024, month=4, day=14),
+                web_page_url="https://services.planningcenteronline.com/plans/71699950",
+            ),
+            walk_in_slides=[
+                NoOp("River’s Edge"),
+                NoOp("Worthy Series Title Slide"),
+                NoOp("Give Generously"),
+                NoOp("The After Party"),
+                NoOp("Website"),
+                NoOp("Follow Us Instagram"),
+            ],
+            opener_video=[
+                NoOp(AnnotatedItem(content="Welcome Opener Video", notes=[]))
+            ],
+            announcements=[
+                NoOp("GIVING TALK"),
+                NoOp("Prayer Ministry"),
+                NoOp("After Party"),
+                NoOp("See You Next Sunday"),
+            ],
+            songs=[
+                [
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli="7104200",
+                                title="Echo",
+                                author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    )
+                ],
+                [
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli=None,
+                                title="Different (Live at Mosaic, Los Angeles, 2023)",
+                                author=None,
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    ),
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli="5508444",
+                                title="One Thing Remains",
+                                author="Christa Black, Brian Johnson, and Jeremy Riddle",
+                            ),
+                            notes=[
+                                ItemNote(
+                                    category="Visuals",
+                                    contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
+                                )
+                            ],
+                            description="",
+                        )
+                    ),
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli="7117726",
+                                title="Goodness Of God",
+                                author="Ed Cash and Jenn Johnson",
+                            ),
+                            notes=[
+                                ItemNote(
+                                    category="Visuals",
+                                    contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
+                                )
+                            ],
+                            description="",
+                        )
+                    ),
+                ],
+                [
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli=None,
+                                title="Song 5: DIFFERENT ",
+                                author=None,
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    ),
+                ],
+            ],
+            bumper_video=[
+                NoOp(AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[]))
+            ],
+            message=[
+                NoOp("Worthy Of The Feast"),
+                NoOp("Matthew 22:1-14 NLT"),
+                NoOp("Our Worth Isn’t Earned It’s Given"),
+                NoOp("Matthew 22:4"),
+                NoOp("Our Worth Is Experienced Through Acceptance"),
+                NoOp("Matthew 22:10"),
+                NoOp("Our Worth Is Revealed By Our Garments"),
+                NoOp("Matthew 22:11"),
+                NoOp("You Are Worthy Because You Are Chosen"),
+                NoOp("Matthew 22:14"),
+                NoOp("Our Worth Is Connected To Our Embrace Of The Worth Of The Feast"),
+                NoOp("Our worth is experienced  through\tacceptance  "),
+                NoOp("Live According To The Level Of Worth We Have Received"),
+            ],
+            message_warnings=[
+                NoOp(
+                    ItemNote(
+                        category="Warning",
+                        contents='There are duplicate lines in the sermon notes ("our worth is experienced through acceptance"). Check with Pastor Lorenzo that this is intentional.',
+                    )
+                )
+            ],
+            num_visuals_notes=2,
+        )
+        self.assert_equal_summary_diff(expected, actual)
+        self.assertEqual(False, actual.plan_changed)
+        self.assertEqual(False, actual.walk_in_slides_changed)
+        self.assertEqual(False, actual.announcements_changed)
+        self.assertEqual(False, actual.videos_changed)
+        self.assertEqual(False, actual.songs_changed)
+        self.assertEqual(False, actual.message_changed)
+
+    def test_diff_20240414(self) -> None:
+        original = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
+        edited = load_plan_summary(_DATA_DIR.joinpath("20240414_summary_edited.json"))
+        actual = diff_plan_summaries(old=original, new=edited)
+        expected = PlanSummaryDiff(
+            plan=Plan(
+                id=PlanId(service_type="882857", plan="71699950"),
+                service_type_name="10:30AM Sunday Gathering",
+                series_title="Worthy",
+                title="Worthy of the feast",
+                date=date(year=2024, month=4, day=14),
+                web_page_url="https://services.planningcenteronline.com/plans/71699950",
+            ),
+            walk_in_slides=[
+                NoOp("River’s Edge"),
+                NoOp("Worthy Series Title Slide"),
+                Deletion("Give Generously"),
+                Insertion("Give With Us"),
+                NoOp("The After Party"),
+                NoOp("Website"),
+                Deletion("Follow Us Instagram"),
+            ],
+            opener_video=[
+                Deletion(AnnotatedItem(content="Welcome Opener Video", notes=[])),
+                Insertion(AnnotatedItem(content="New Opener Video", notes=[])),
+            ],
+            announcements=[
+                Deletion("GIVING TALK"),
+                Insertion("Giving Talk"),
+                NoOp("Prayer Ministry"),
+                NoOp("After Party"),
+                NoOp("See You Next Sunday"),
+            ],
+            songs=[
+                [
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli="7104200",
+                                title="Echo",
+                                author="Israel Houghton, Matthew Ntlele, Chris Brown, Steven Furtick, and Alexander Pappas",
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    )
+                ],
+                [
+                    Deletion(
+                        AnnotatedSong(
+                            Song(
+                                ccli=None,
+                                title="Different (Live at Mosaic, Los Angeles, 2023)",
+                                author=None,
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    ),
+                    Insertion(
+                        AnnotatedSong(
+                            Song(
+                                ccli="No CCLI number",
+                                title="Different (Live at Mosaic, Los Angeles, 2023)",
+                                author=None,
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    ),
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli="5508444",
+                                title="One Thing Remains",
+                                author="Christa Black, Brian Johnson, and Jeremy Riddle",
+                            ),
+                            notes=[
+                                ItemNote(
+                                    category="Visuals",
+                                    contents="Add lyrics at the end:\n\nBless the Lord, oh my soul\nEverything within me give Him praise (4x)\n\nYou’re just so good (3x)\n",
+                                )
+                            ],
+                            description="",
+                        )
+                    ),
+                    Deletion(
+                        AnnotatedSong(
+                            Song(
+                                ccli="7117726",
+                                title="Goodness Of God",
+                                author="Ed Cash and Jenn Johnson",
+                            ),
+                            notes=[
+                                ItemNote(
+                                    category="Visuals",
+                                    contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
+                                )
+                            ],
+                            description="",
+                        )
+                    ),
+                ],
+                [
+                    Insertion(
+                        AnnotatedSong(
+                            Song(
+                                ccli="7117726",
+                                title="Goodness Of God",
+                                author="Ed Cash and Jenn Johnson",
+                            ),
+                            notes=[
+                                ItemNote(
+                                    category="Visuals",
+                                    contents='Extended version: At the end will add the Chorus of another song called Evidence by Josh Baldwin:               "I see the evidence of your goodness. All over my life. All over life. I see your promises in fulfillment. All over my life. All over my life."                                            \n Repeated several times. The will go back to the Bridges and Chorus and then end the song. ',
+                                )
+                            ],
+                            description="",
+                        )
+                    ),
+                    NoOp(
+                        AnnotatedSong(
+                            Song(
+                                ccli=None,
+                                title="Song 5: DIFFERENT ",
+                                author=None,
+                            ),
+                            notes=[],
+                            description="",
+                        )
+                    ),
+                ],
+            ],
+            bumper_video=[
+                Deletion(AnnotatedItem(content="Worthy Sermon Bumper Video", notes=[])),
+                Insertion(AnnotatedItem(content="New Bumper Video", notes=[])),
+            ],
+            message=[
+                NoOp("Worthy Of The Feast"),
+                NoOp("Matthew 22:1-14 NLT"),
+                NoOp("Our Worth Isn’t Earned It’s Given"),
+                NoOp("Matthew 22:4"),
+                NoOp("Our Worth Is Experienced Through Acceptance"),
+                NoOp("Matthew 22:10"),
+                NoOp("Our Worth Is Revealed By Our Garments"),
+                NoOp("Matthew 22:11"),
+                NoOp("You Are Worthy Because You Are Chosen"),
+                NoOp("Matthew 22:14"),
+                NoOp("Our Worth Is Connected To Our Embrace Of The Worth Of The Feast"),
+                Deletion("Our worth is experienced  through\tacceptance  "),
+                NoOp("Live According To The Level Of Worth We Have Received"),
+                Insertion("New line"),
+                Insertion("Another new line"),
+            ],
+            message_warnings=[
+                Deletion(
+                    ItemNote(
+                        category="Warning",
+                        contents='There are duplicate lines in the sermon notes ("our worth is experienced through acceptance"). Check with Pastor Lorenzo that this is intentional.',
+                    )
+                )
+            ],
+            num_visuals_notes=2,
+        )
+        self.assert_equal_summary_diff(expected, actual)
+        self.assertEqual(True, actual.plan_changed)
+        self.assertEqual(True, actual.walk_in_slides_changed)
+        self.assertEqual(True, actual.announcements_changed)
+        self.assertEqual(True, actual.videos_changed)
+        self.assertEqual(True, actual.songs_changed)
+        self.assertEqual(True, actual.message_changed)
+
+
 class PlanSummaryToHtmlTestCase(unittest.TestCase):
     """Test `plan_summary_to_html()`."""
 
@@ -253,7 +586,7 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
 
 
 class PlanSummaryJsonTestCase(PlanSummaryTestCase):
-    SUMMARY = PlanItemsSummary(
+    SUMMARY = PlanSummary(
         plan=Plan(
             id=PlanId(service_type="882857", plan="71699950"),
             service_type_name="10:30AM Sunday Gathering",

@@ -14,7 +14,7 @@ from args import ReccArgs
 from autochecklist import Messenger, ProblemLevel, TaskModel, TaskStatus
 from config import Config
 from external_services import PlanningCenterClient
-from lib import PlanItemsSummary, ReccDependencyProvider, SimplifiedMessengerSettings
+from lib import PlanSummary, ReccDependencyProvider, SimplifiedMessengerSettings
 
 _DEMO_FILE = Path(__file__).parent.joinpath(
     "test", "integration", "summarize_plan_data", "20240414_summary.json"
@@ -177,7 +177,7 @@ def _generate_and_save_summary(
     messenger: Messenger,
     args: SummarizePlanArgs,
     config: Config,
-    prev_summary: Optional[PlanItemsSummary],
+    prev_summary: Optional[PlanSummary],
 ) -> bool:
     """
     Generate a summary of the current plan on Planning Center Online.
