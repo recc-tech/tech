@@ -120,7 +120,6 @@ def main():
     print("Deleting old captions...")
     config.original_captions_file.unlink(missing_ok=True)
     config.auto_edited_captions_file.unlink(missing_ok=True)
-    config.final_captions_file.unlink(missing_ok=True)
     try:
         autochecklist.run(
             args=args,

@@ -122,7 +122,7 @@
 						},
 						{
 							"name": "upload_captions_to_Vimeo",
-							"description": "Download the captions to %{captions.final}%, upload them to Vimeo, and make sure they are enabled.",
+							"description": "Upload the captions to Vimeo and make sure they are enabled.",
 							"prerequisites": [
 								"automatically_edit_captions",
 								"export_to_Vimeo",

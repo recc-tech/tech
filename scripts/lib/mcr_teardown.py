@@ -244,20 +244,11 @@ def disable_automatic_captions(vimeo_client: ReccVimeoClient, messenger: Messeng
 
 def upload_captions_to_Vimeo(
     messenger: Messenger,
-    boxcast_client: BoxCastApiClient,
     vimeo_client: ReccVimeoClient,
     config: Config,
 ) -> None:
-    messenger.log_status(TaskStatus.RUNNING, "Finding today's broadcast on BoxCast.")
-    broadcast = boxcast_client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-
-    messenger.log_status(TaskStatus.RUNNING, "Downloading the captions.")
-    boxcast_client.download_captions(
-        broadcast_id=broadcast.id, path=config.final_captions_file
-    )
-
     messenger.log_status(TaskStatus.RUNNING, "Uploading the captions to Vimeo.")
     (_, texttrack_uri) = vimeo_client.get_video_data(messenger.allow_cancel())
-    vimeo_client.upload_captions_to_vimeo(config.final_captions_file, texttrack_uri)
+    vimeo_client.upload_captions_to_vimeo(
+        config.auto_edited_captions_file, texttrack_uri
+    )
