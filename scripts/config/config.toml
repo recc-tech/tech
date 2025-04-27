@@ -31,7 +31,6 @@ boxcast_verbose_logging = false
 [captions]
 original    = "%{folder.captions}%/original.vtt"
 auto_edited = "%{folder.captions}%/auto_edited.vtt"
-final       = "%{folder.captions}%/final.vtt"
 
 	[captions.substitutions]
 	# Each phrase on the left will be replaced by the corresponding phrase on
