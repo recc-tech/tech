@@ -16,8 +16,11 @@ from config import Config
 from external_services import PlanningCenterClient
 from lib import PlanSummary, ReccDependencyProvider, SimplifiedMessengerSettings
 
-_DEMO_FILE = Path(__file__).parent.joinpath(
+_DEMO_FILE_1 = Path(__file__).parent.joinpath(
     "test", "integration", "summarize_plan_data", "20240414_summary.json"
+)
+_DEMO_FILE_2 = Path(__file__).parent.joinpath(
+    "test", "integration", "summarize_plan_data", "20240414_summary_edited.json"
 )
 
 
@@ -186,7 +189,9 @@ def _generate_and_save_summary(
     Return `True` iff the new plan is different from the previous one.
     """
     if args.demo:
-        summary = lib.load_plan_summary(_DEMO_FILE)
+        original_summary = lib.load_plan_summary(_DEMO_FILE_1)
+        summary = lib.load_plan_summary(_DEMO_FILE_2)
+        diff = lib.diff_plan_summaries(original_summary, summary)
     else:
         summary = lib.get_plan_summary(
             client=pco_client,
@@ -194,9 +199,10 @@ def _generate_and_save_summary(
             config=config,
             dt=config.start_time.date(),
         )
+        diff = lib.diff_plan_summaries(summary, summary)
 
     config.plan_summary_html_file.parent.mkdir(parents=True, exist_ok=True)
-    html = lib.plan_summary_to_html(summary, port=args.port)
+    html = lib.plan_summary_diff_to_html(diff, port=args.port)
     config.plan_summary_html_file.write_text(str(html), encoding="utf-8")
     json = lib.plan_summary_to_json(summary)
     config.plan_summary_json_file.write_text(json, encoding="utf-8")

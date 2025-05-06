@@ -30,7 +30,7 @@ from lib import (
     diff_plan_summaries,
     get_plan_summary,
     load_plan_summary,
-    plan_summary_to_html,
+    plan_summary_diff_to_html,
     plan_summary_to_json,
 )
 from selenium.webdriver.common.by import By
@@ -554,8 +554,14 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
         """
         Test that the message notes can be copied from the HTML summary.
         """
-        summary = load_plan_summary(_DATA_DIR.joinpath("20240414_summary.json"))
-        summary_html = plan_summary_to_html(summary, port=8080)
+        original_summary = load_plan_summary(
+            _DATA_DIR.joinpath("20240414_summary.json")
+        )
+        edited_summary = load_plan_summary(
+            _DATA_DIR.joinpath("20240414_summary_edited.json")
+        )
+        diff = diff_plan_summaries(original_summary, edited_summary)
+        summary_html = plan_summary_diff_to_html(diff, port=8080)
         f = _TEMP_DIR.joinpath("summary.html")
         f.write_text(summary_html, encoding="utf-8")
 
@@ -578,10 +584,10 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
             You Are Worthy Because You Are Chosen
             Matthew 22:14
             Our Worth Is Connected To Our Embrace Of The Worth Of The Feast
-            Our worth is experienced  through[TAB]acceptance  
-            Live According To The Level Of Worth We Have Received"""
-        ).replace("[TAB]", "\t")
-        # inspect.cleandoc replaces tabs with spaces
+            Live According To The Level Of Worth We Have Received
+            New line
+            Another new line"""
+        )
         self.assertEqual(expected_text, _get_clipboard_text())
 
 

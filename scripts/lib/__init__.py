@@ -26,6 +26,6 @@ from .summarize_plan import (
     diff_plan_summaries,
     get_plan_summary,
     load_plan_summary,
-    plan_summary_to_html,
+    plan_summary_diff_to_html,
     plan_summary_to_json,
 )

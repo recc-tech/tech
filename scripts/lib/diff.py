@@ -1,13 +1,21 @@
-from dataclasses import dataclass
-from typing import Generic, List, TypeVar
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Callable, Generic, List, TypeVar
+
+B = TypeVar("B")
 T = TypeVar("T")
 
 
 class Edit(Generic[T]):
     """A change to one element of a sequence."""
 
-    pass
+    val: T
+    """The value that was inserted, deleted, etc."""
+
+    def map(self, f: Callable[[T], B]) -> Edit[B]:
+        """Change the content of this edit without changing the edit type."""
+        raise NotImplementedError()
 
 
 @dataclass
@@ -16,6 +24,9 @@ class NoOp(Edit[T]):
 
     val: T
     """The unchanged value."""
+
+    def map(self, f: Callable[[T], B]) -> Edit[B]:
+        return NoOp(f(self.val))
 
     def __repr__(self):
         return f"NoOp({repr(self.val)})"
@@ -28,6 +39,9 @@ class Insertion(Edit[T]):
     val: T
     """The value that was inserted."""
 
+    def map(self, f: Callable[[T], B]) -> Edit[B]:
+        return Insertion(f(self.val))
+
     def __repr__(self):
         return f"Insertion({repr(self.val)})"
 
@@ -38,6 +52,9 @@ class Deletion(Edit[T]):
 
     val: T
     """The value that was deleted."""
+
+    def map(self, f: Callable[[T], B]) -> Edit[B]:
+        return Deletion(f(self.val))
 
     def __repr__(self):
         return f"Deletion({repr(self.val)})"

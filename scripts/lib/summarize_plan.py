@@ -7,7 +7,7 @@ import typing
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import List, Optional, Set, Type, TypeVar
+from typing import List, Optional, Set, Tuple, Type, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
 from config import Config
@@ -20,7 +20,7 @@ from external_services import (
     PlanSection,
     Song,
 )
-from lib import Edit, diff_has_changes, find_diff
+from lib import Deletion, Edit, Insertion, NoOp, diff_has_changes, find_diff
 
 
 @dataclass(frozen=True)
@@ -421,6 +421,9 @@ _HEADER_CLS = "header-row"
 _EVEN_ROW_CLS = "even-row"
 _ODD_ROW_CLS = "odd-row"
 _SKIP_ROW_CLS = "skip-row"
+_DIFF_MARKER_CLS = "diff-marker"
+_INSERTION_ROW_CLS = "insertion-row"
+_DELETION_ROW_CLS = "deletion-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
@@ -443,16 +446,17 @@ def _show_notes(notes: List[ItemNote]) -> str:
 
 
 Row = List[str]
-Block = List[Row]
+Block = List[Edit[Row]]
 
 
 @dataclass
 class HtmlTable:
-    cls: str
+    id: str
     col_widths: List[str]
     header: Optional[List[str]]
     blocks: List[Block]
     indent: bool = True
+    zebra_stripes: bool = True
 
     def __post_init__(self) -> None:
         self._check_ncols()
@@ -463,125 +467,164 @@ class HtmlTable:
             raise ValueError("Number of columns in header is not as expected.")
         for i, b in enumerate(self.blocks):
             for j, r in enumerate(b):
-                if len(r) != ncols:
+                row = r.val
+                if len(row) != ncols:
                     raise ValueError(
                         f"Number of columns in block {i}, row {j} is not as expected."
-                        f" Expected {ncols} but found {len(r)}."
+                        f" Expected {ncols} but found {len(row)}."
                     )
 
     def to_css(self) -> str:
         return f"""
-.{self.cls} {{
+#{self.id} {{
     display: grid;
     border: 3px solid var(--header-color);
     border-top: 0;
-    grid-template-columns: {' '.join(self.col_widths)};
+    grid-template-columns: min-content {' '.join(self.col_widths)};
 }}
 """.strip()
 
     def to_html(self) -> str:
         divs: List[str] = []
         if self.header is not None:
+            divs += [f"<div class='{_HEADER_CLS}'></div>"]
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
         for block in self.blocks:
-            divs += [f"<div class='{_SKIP_ROW_CLS}'></div>" for _ in self.col_widths]
-            for i, row in enumerate(block):
+            divs += [
+                f"<div class='{_SKIP_ROW_CLS} {_DIFF_MARKER_CLS}'></div>"
+                for _ in range(1 + len(self.col_widths))
+            ]
+            for i, row_diff in enumerate(block):
+                # TODO: Make insertions green and deletions red
+                # TODO: Show or hide zebra stripes depending on self.zebra_stripes
                 cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
+                match row_diff:
+                    case NoOp(r):
+                        diff_symbol = ""
+                        row = r
+                    case Insertion(r):
+                        diff_symbol = "+"
+                        row = r
+                        cls += f" {_INSERTION_ROW_CLS}"
+                    case Deletion(r):
+                        diff_symbol = "-"
+                        row = r
+                        cls += f" {_DELETION_ROW_CLS}"
+                    case e:
+                        raise ValueError(f"Unknown edit: {e}")
+                divs += [f"<div class='{cls} {_DIFF_MARKER_CLS}'>{diff_symbol}</div>"]
                 divs += [f"<div class='{cls}'>{x}</div>" for x in row]
         divs_str = "\n".join(divs)
         return f"""
-<div class="{self.cls}">
+<div id="{self.id}">
 {_indent(divs_str, 1 if self.indent else 0)}
 </div>
 """.strip()
 
 
-def _make_walk_in_slides_list(slides: List[str]) -> str:
-    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
-    return f"""
-<ul>
-{_indent(items, 1)}
-</ul>
-""".strip()
+def _make_walk_in_slides_list(slides: List[Edit[str]]) -> HtmlTable:
+    rows = [e.map(lambda x: [x]) for e in slides]
+    return HtmlTable(
+        id="walk-in-slides-table",
+        col_widths=["1fr"],
+        header=None,
+        blocks=[rows],
+    )
 
 
-def _make_announcements_list(slides: List[str]) -> str:
-    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
-    return f"""
-<ul>
-{_indent(items, 1)}
-</ul>
-""".strip()
+def _make_announcements_list(slides: List[Edit[str]]) -> HtmlTable:
+    rows = [e.map(lambda x: [x]) for e in slides]
+    return HtmlTable(
+        id="announcements-slides-table",
+        col_widths=["1fr"],
+        header=None,
+        blocks=[rows],
+    )
 
 
 def _make_videos_table(
-    opener: Optional[AnnotatedItem], bumper: Optional[AnnotatedItem]
+    opener_changes: List[Edit[AnnotatedItem]],
+    bumper_changes: List[Edit[AnnotatedItem]],
 ) -> HtmlTable:
-    missing = "<span class='missing'>None found</span>"
-
-    # Escape content only if it is not missing; escape only used when opener, bumper or announcements is not None
-    opener_name = _escape(opener.content) if opener is not None else missing
-    opener_notes = _show_notes(opener.notes) if opener is not None else ""
-    bumper_name = _escape(bumper.content) if bumper is not None else missing
-    bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-
-    rows = [
-        ["Opener", opener_name, opener_notes],
-        ["Bumper", bumper_name, bumper_notes],
+    MISSING = "<span class='missing'>None found</span>"
+    rows: List[Edit[List[str]]] = []
+    if not opener_changes:
+        rows.append(NoOp(["Opener", MISSING, ""]))
+    if not bumper_changes:
+        rows.append(NoOp(["Bumper", MISSING, ""]))
+    rows += [
+        e.map(lambda x: ["Opener", x.content, _show_notes(x.notes)])
+        for e in opener_changes
+    ]
+    rows += [
+        e.map(lambda x: ["Bumper", x.content, _show_notes(x.notes)])
+        for e in bumper_changes
     ]
     return HtmlTable(
-        cls="videos-table",
+        id="videos-table",
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
         blocks=[rows],
     )
 
 
-def _make_songs_table(songs: List[List[AnnotatedSong]]) -> HtmlTable:
+def _make_songs_table(songs: List[List[Edit[AnnotatedSong]]]) -> HtmlTable:
     blocks = [
         [
-            [
-                _escape(s.song.ccli or ""),
-                _show_notes(s.notes),
-                _escape(s.song.title or ""),
-                _escape(s.song.author or ""),
-                _escape(s.description or ""),
-            ]
-            for s in sec
+            song_edit.map(
+                lambda s: [
+                    _escape(s.song.ccli or ""),
+                    _show_notes(s.notes),
+                    _escape(s.song.title or ""),
+                    _escape(s.song.author or ""),
+                    _escape(s.description or ""),
+                ]
+            )
+            for song_edit in sec
         ]
         for sec in songs
     ]
     col_widths = ["min-content", "3fr", "2fr", "3fr", "3fr"]
     header = ["CCLI", "Notes", "Title", "Author", "Description"]
     # No notes
-    if all(not row[1] for b in blocks for row in b):
+    if all(not row.val[1] for b in blocks for row in b):
         col_widths[1] = "min-content"
     return HtmlTable(
-        cls="songs-table",
+        id="songs-table",
         col_widths=col_widths,
         header=header,
         blocks=blocks,
     )
 
 
-def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
-    sermon_notes = message.content if message else ""
-    has_sermon_notes = bool(sermon_notes.strip())
-    sermon_notes = (
-        f"<details open><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
-        if sermon_notes
-        else "<span class='missing'>No Notes Available</span>"
-    )
+def _make_message_table(message: List[Edit[str]]) -> Tuple[str, HtmlTable]:
+    rows: List[Edit[List[str]]]
+    rows = [line.map(lambda e: [e]) for line in message]
+    has_sermon_notes = len(rows) > 0
+    if not has_sermon_notes:
+        rows = [NoOp(["<span class='missing'>No notes available</span>"])]
     disabled = "disabled" if not has_sermon_notes else ""
-    btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><br><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
-    visuals_notes = _show_notes(message.notes) if message is not None else ""
-    row = [btn, sermon_notes, visuals_notes]
+    btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
+    return (
+        btn,
+        HtmlTable(
+            id="message-table",
+            col_widths=["1fr"],
+            header=None,
+            blocks=[rows],
+            indent=False,
+            zebra_stripes=False,
+        ),
+    )
+
+
+def _make_message_warnings_table(warnings: List[Edit[ItemNote]]) -> HtmlTable:
+    rows = [e.map(lambda x: [_show_notes([x])]) for e in warnings]
     return HtmlTable(
-        cls="message-table",
-        col_widths=["min-content", "1fr", "1fr"],
+        id="message-warnings-table",
+        col_widths=["1fr"],
         header=None,
-        blocks=[[row]],
-        indent=False,
+        blocks=[rows],
     )
 
 
@@ -595,20 +638,21 @@ def _make_page_title(plan: Plan) -> str:
     )
 
 
-def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
+def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
     """
-    Convert the plan summary to an HTML string.
+    Convert a plan summary diff to an HTML string.
     """
     title = _escape(_make_page_title(summary.plan))
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
-    walk_in_slides_list = _make_walk_in_slides_list(summary.walk_in_slides)
-    announcements_list = _make_announcements_list(summary.announcements)
+    walk_in_slides_table = _make_walk_in_slides_list(summary.walk_in_slides)
+    announcements_table = _make_announcements_list(summary.announcements)
     videos_table = _make_videos_table(
-        opener=summary.opener_video,
-        bumper=summary.bumper_video,
+        opener_changes=summary.opener_video,
+        bumper_changes=summary.bumper_video,
     )
     songs_table = _make_songs_table(songs=summary.songs)
-    message_table = _make_message_table(summary.message_notes)
+    (message_btn, message_table) = _make_message_table(summary.message)
+    message_warnings_table = _make_message_warnings_table(summary.message_warnings)
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
@@ -724,9 +768,12 @@ def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
                 border-radius: 5px;
                 padding: 0.5em;
             }}
+{_indent(walk_in_slides_table.to_css(), 3)}
+{_indent(announcements_table.to_css(), 3)}
 {_indent(videos_table.to_css(), 3)}
 {_indent(songs_table.to_css(),3)}
 {_indent(message_table.to_css(),3)}
+{_indent(message_warnings_table.to_css(),3)}
         </style>
         <script>
             const MILLISECONDS_PER_MINUTE = 60 * 1000;
@@ -774,8 +821,21 @@ def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
             }}
 
             function copyMessageNotes() {{
-                const messageNotesElement = document.getElementById("message-notes");
-                const messageNotes = messageNotesElement.textContent;
+                const messageTblElement = document.getElementById("message-table");
+                // TODO: How to skip rows that represent deletions?
+                let messageNotes = "";
+                for (const div of messageTblElement.children) {{
+                    // Don't copy the diff markers (+, -)
+                    if (div.classList.contains("{_DIFF_MARKER_CLS}")) {{
+                        continue;
+                    }}
+                    // Don't include deleted text
+                    if (div.classList.contains("{_DELETION_ROW_CLS}")) {{
+                        continue;
+                    }}
+                    messageNotes = `${{messageNotes}}\n${{div.textContent}}`
+                }}
+                messageNotes = messageNotes.trimLeft();
 
                 // Attempt to copy text to clipboard; make copy-confirm more dynamic
                 navigator.clipboard.writeText(messageNotes)
@@ -789,6 +849,7 @@ def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
                         }}
                     }})
                     .catch(err => {{
+                        alert("Failed to copy");
                         console.error('Failed to copy text: ', err);
                     }});
             }}
@@ -816,15 +877,17 @@ def plan_summary_to_html(summary: PlanSummary, port: int) -> str:
                 and ensure the "Visuals" checkbox is checked.
             </div>
             <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
-{_indent(walk_in_slides_list, 3)}
+{_indent(walk_in_slides_table.to_html(), 3)}
             <div class="{_SUPERHEADER_CLS}">Announcements</div>
-{_indent(announcements_list, 3)}
+{_indent(announcements_table.to_html(), 3)}
             <div class="{_SUPERHEADER_CLS}">Videos</div>
 {_indent(videos_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Songs</div>
 {_indent(songs_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Message</div>
-{message_table.to_html()}
+{_indent(message_btn, 3)}
+{_indent(message_table.to_html(), 3)}
+{_indent(message_warnings_table.to_html(), 3)}
         </div>
     </body>
 </html>
