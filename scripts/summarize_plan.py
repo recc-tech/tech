@@ -3,6 +3,7 @@ import signal
 import sys
 import traceback
 from argparse import ArgumentParser, Namespace
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -30,6 +31,7 @@ class SummarizePlanArgs(ReccArgs):
 
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         self.no_open: bool = args.no_open
+        # TODO: Improve demo mode
         self.demo: bool = args.demo
         self.port: int = args.port
         super().__init__(args, error)
@@ -58,61 +60,19 @@ class SummarizePlanArgs(ReccArgs):
 def main(args: SummarizePlanArgs, config: Config, dep: ReccDependencyProvider) -> None:
     tasks = TaskModel(
         "summarize_plan",
-        subtasks=[
-            TaskModel(
-                "generate_initial_summary",
-                description="An error occurred while generating the initial summary.",
-                only_auto=True,
-            ),
-            TaskModel(
-                "listen_for_updates",
-                description="An error occurred while listening for updates.",
-                only_auto=True,
-                prerequisites={"generate_initial_summary"},
-            ),
-        ],
+        description="An error occurred.",
+        only_auto=True,
     )
-    autochecklist.run(
-        args=args,
-        config=config,
-        dependency_provider=dep,
-        tasks=tasks,
-        module=sys.modules[__name__],
-    )
-    _stop_server()
-
-
-def generate_initial_summary(
-    pco_client: PlanningCenterClient,
-    args: SummarizePlanArgs,
-    config: Config,
-    messenger: Messenger,
-) -> None:
-    _generate_and_save_summary(
-        pco_client=pco_client,
-        messenger=messenger,
-        args=args,
-        config=config,
-        prev_summary=None,
-    )
-
-    html_path = config.plan_summary_html_file
-    url = html_path.resolve().as_uri()
     try:
-        fname = html_path.relative_to(config.home_dir).as_posix()
-    except ValueError:
-        fname = html_path.as_posix()
-    messenger.log_status(TaskStatus.RUNNING, f"Saved summary at [[url|{url}|{fname}]].")
-
-    if not args.no_open:
-        try:
-            external_services.launch_firefox(html_path.as_posix())
-        except Exception as e:
-            messenger.log_problem(
-                ProblemLevel.WARN,
-                f"Failed to open summary in Firefox: {e}.",
-                traceback.format_exc(),
-            )
+        autochecklist.run(
+            args=args,
+            config=config,
+            dependency_provider=dep,
+            tasks=tasks,
+            module=sys.modules[__name__],
+        )
+    finally:
+        _stop_server()
 
 
 # Use global variables to keep track of services (e.g., the
@@ -126,7 +86,7 @@ global_config: Config
 global_server_started = False
 
 
-def listen_for_updates(
+def summarize_plan(
     pco_client: PlanningCenterClient,
     messenger: Messenger,
     args: SummarizePlanArgs,
@@ -137,6 +97,41 @@ def listen_for_updates(
     global_messenger = messenger
     global_args = args
     global_config = config
+
+    config.plan_summaries_dir.mkdir(exist_ok=True, parents=True)
+
+    # TODO: Delete (or just archive) old summaries?
+
+    latest_summary_path = _find_latest_summary(args, config)
+    if latest_summary_path is not None:
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"A plan summary already exists at {latest_summary_path.resolve().as_posix()}.",
+        )
+    else:
+        summary = _generate_summary(
+            pco_client=pco_client,
+            messenger=messenger,
+            args=args,
+            config=config,
+        )
+        new_summary_path = _save_summary(summary, config.plan_summaries_dir)
+        messenger.log_status(
+            TaskStatus.RUNNING,
+            f"Saved summary to {new_summary_path.resolve().as_posix()}.",
+        )
+
+    # TODO: Will it work to open the summary *before* starting the server?
+    if not args.no_open:
+        url = f"http://localhost:{args.port}/plan-summary.html"
+        try:
+            external_services.launch_firefox(url)
+        except Exception as e:
+            messenger.log_problem(
+                ProblemLevel.WARN,
+                f"Failed to open summary in Firefox: {e}.",
+                traceback.format_exc(),
+            )
 
     # The Bottle app logs requests to the terminal by default, which crashes
     # the app if it's running without a terminal
@@ -156,17 +151,46 @@ def _enable_cors() -> None:  # pyright: ignore[reportUnusedFunction]
     bottle.response.headers["Access-Control-Allow-Origin"] = "*"
 
 
-@bottle.get("/check-updates")
-def _check_for_updates():  # pyright: ignore[reportUnusedFunction]
-    prev_summary = lib.load_plan_summary(global_config.plan_summary_json_file)
-    summary_changed = _generate_and_save_summary(
+@bottle.post("/summaries")
+def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
+    prev_summary_path = _find_latest_summary(global_args, global_config)
+    prev_summary = (
+        None if prev_summary_path is None else lib.load_plan_summary(prev_summary_path)
+    )
+    new_summary = _generate_summary(
         pco_client=global_pco_client,
         messenger=global_messenger,
         args=global_args,
         config=global_config,
-        prev_summary=prev_summary,
     )
-    return {"changes": summary_changed}
+    changes = (
+        True
+        if prev_summary is None
+        else lib.diff_plan_summaries(old=prev_summary, new=new_summary).plan_changed
+    )
+    if changes:
+        _save_summary(new_summary, global_config.plan_summaries_dir)
+    return {"changes": changes}
+
+
+@bottle.get("/plan-summary.html")
+def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
+    old_summary_id = (
+        bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+        or "latest"
+    )
+    old_summary_path = _find_latest_summary(global_args, global_config)
+    if old_summary_path is None:
+        return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
+    old_summary = lib.load_plan_summary(old_summary_path)
+    new_summary_path = (
+        old_summary_path
+        if old_summary_id == "latest"
+        else global_config.plan_summaries_dir.joinpath(f"{old_summary_id}.json")
+    )
+    new_summary = lib.load_plan_summary(new_summary_path)
+    diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
+    return lib.plan_summary_diff_to_html(diff, port=global_args.port)
 
 
 def _stop_server():
@@ -175,39 +199,41 @@ def _stop_server():
         os.kill(my_pid, signal.SIGTERM)
 
 
-def _generate_and_save_summary(
+def _generate_summary(
     pco_client: PlanningCenterClient,
     messenger: Messenger,
     args: SummarizePlanArgs,
     config: Config,
-    prev_summary: Optional[PlanSummary],
-) -> bool:
+) -> PlanSummary:
     """
     Generate a summary of the current plan on Planning Center Online.
-    Save HTML and JSON versions of the plan in the directory specified by
-    `config`.
-    Return `True` iff the new plan is different from the previous one.
     """
     if args.demo:
-        original_summary = lib.load_plan_summary(_DEMO_FILE_1)
-        summary = lib.load_plan_summary(_DEMO_FILE_2)
-        diff = lib.diff_plan_summaries(original_summary, summary)
+        return lib.load_plan_summary(_DEMO_FILE_2)
     else:
-        summary = lib.get_plan_summary(
+        return lib.get_plan_summary(
             client=pco_client,
             messenger=messenger,
             config=config,
             dt=config.start_time.date(),
         )
-        diff = lib.diff_plan_summaries(summary, summary)
 
-    config.plan_summary_html_file.parent.mkdir(parents=True, exist_ok=True)
-    html = lib.plan_summary_diff_to_html(diff, port=args.port)
-    config.plan_summary_html_file.write_text(str(html), encoding="utf-8")
-    json = lib.plan_summary_to_json(summary)
-    config.plan_summary_json_file.write_text(json, encoding="utf-8")
 
-    return summary != prev_summary
+def _save_summary(summary: PlanSummary, dir: Path) -> Path:
+    fname = f"{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+    json_path = dir.joinpath(fname)
+    json_path.write_text(lib.plan_summary_to_json(summary))
+    return json_path
+
+
+def _find_latest_summary(args: SummarizePlanArgs, config: Config) -> Optional[Path]:
+    if args.demo:
+        return _DEMO_FILE_1
+    else:
+        today = datetime.now().strftime("%Y%m%d")
+        time_pattern = "[0123456789]" * 6
+        files = sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
+        return None if not files else files[-1]
 
 
 if __name__ == "__main__":

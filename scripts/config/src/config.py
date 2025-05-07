@@ -392,6 +392,7 @@ class Config(BaseConfig):
             self.log_dir = reader.get_directory("folder.logs")
             self.captions_dir = reader.get_directory("folder.captions")
             self.archived_assets_dir = reader.get_directory("folder.archived_assets")
+            self.plan_summaries_dir = reader.get_directory("folder.plan_summaries")
             if create_dirs:
                 self.home_dir.mkdir(exist_ok=True, parents=True)
                 self.assets_by_service_dir.mkdir(exist_ok=True, parents=True)
@@ -401,6 +402,7 @@ class Config(BaseConfig):
                 self.log_dir.mkdir(exist_ok=True, parents=True)
                 self.captions_dir.mkdir(exist_ok=True, parents=True)
                 self.archived_assets_dir.mkdir(exist_ok=True, parents=True)
+                self.plan_summaries_dir.mkdir(exist_ok=True, parents=True)
 
             # Logging
             self.check_credentials_log = reader.get_file("logging.check_credentials")
@@ -495,8 +497,6 @@ class Config(BaseConfig):
             self.timeout = timedelta(seconds=self.timeout_seconds)
 
             # Plan Summaries
-            self.plan_summary_html_file = reader.get_file("plan_summary.html_file")
-            self.plan_summary_json_file = reader.get_file("plan_summary.json_file")
             self.plan_summary_note_categories = set(
                 reader.get_str_list("plan_summary.note_categories")
             )

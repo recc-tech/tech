@@ -418,8 +418,8 @@ def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
 
 _SUPERHEADER_CLS = "superheader"
 _HEADER_CLS = "header-row"
-_EVEN_ROW_CLS = "even-row"
-_ODD_ROW_CLS = "odd-row"
+_LIGHT_ROW_CLS = "even-row"
+_DARK_ROW_CLS = "odd-row"
 _SKIP_ROW_CLS = "skip-row"
 _DIFF_MARKER_CLS = "diff-marker"
 _INSERTION_ROW_CLS = "insertion-row"
@@ -495,9 +495,11 @@ class HtmlTable:
                 for _ in range(1 + len(self.col_widths))
             ]
             for i, row_diff in enumerate(block):
-                # TODO: Make insertions green and deletions red
-                # TODO: Show or hide zebra stripes depending on self.zebra_stripes
-                cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
+                cls = (
+                    _LIGHT_ROW_CLS
+                    if i % 2 == 0 or not self.zebra_stripes
+                    else _DARK_ROW_CLS
+                )
                 match row_diff:
                     case NoOp(r):
                         diff_symbol = ""
@@ -642,6 +644,10 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
     """
     Convert a plan summary diff to an HTML string.
     """
+    # TODO: Add drop-down menu to choose which summary to compare against
+    # TODO: If there's no query param, then find the latest plan and set that
+    #       as the query param so that, on reload, you keep comparing against
+    #       the same plan
     title = _escape(_make_page_title(summary.plan))
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slides_table = _make_walk_in_slides_list(summary.walk_in_slides)
@@ -674,6 +680,10 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 --header-color: {HEADER_OK};
                 --background-color: #fafafa;
                 --dark-background-color: rgb(235, 235, 235);
+                --light-green-background-color: TODO;
+                --dark-green-background-color: TODO;
+                --light-red-background-color: TODO;
+                --dark-red-background-color: TODO;
             }}
             body {{
                 margin: 0;
@@ -729,11 +739,23 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 background-color: var(--header-color);
                 color: white;
             }}
-            .{_EVEN_ROW_CLS} {{
+            .{_LIGHT_ROW_CLS} {{
                 background-color: var(--background-color);
             }}
-            .{_ODD_ROW_CLS} {{
+            .{_LIGHT_ROW_CLS}.{_INSERTION_ROW_CLS} {{
+                background-color: var(--light-green-background-color);
+            }}
+            .{_LIGHT_ROW_CLS}.{_DELETION_ROW_CLS} {{
+                background-color: var(--light-red-background-color);
+            }}
+            .{_DARK_ROW_CLS} {{
                 background-color: var(--dark-background-color);
+            }}
+            .{_DARK_ROW_CLS}.{_INSERTION_ROW_CLS} {{
+                background-color: var(--dark-green-background-color);
+            }}
+            .{_DARK_ROW_CLS}.{_DELETION_ROW_CLS} {{
+                background-color: var(--dark-red-background-color);
             }}
             .{_SKIP_ROW_CLS} {{
                 background-color: var(--header-color);
@@ -778,7 +800,7 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
         <script>
             const MILLISECONDS_PER_MINUTE = 60 * 1000;
             const INTERVAL_ID = setInterval(checkForUpdates, MILLISECONDS_PER_MINUTE);
-            const BACKEND_URL = "http://localhost:{port}/check-updates";
+            const BACKEND_URL = "http://localhost:{port}/summaries";
 
             document.addEventListener("DOMContentLoaded", () => {{
                 checkForUpdates();
@@ -789,7 +811,7 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 STATUS_ELEM.textContent = "Checking for updates...";
                 STATUS_ELEM.className = "";
                 try {{
-                    const response = await fetch(BACKEND_URL);
+                    const response = await fetch(BACKEND_URL, {{method: "POST"}});
                     if (response.ok) {{
                         const body = await response.json();
                         if (body.changes) {{
@@ -822,7 +844,6 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
 
             function copyMessageNotes() {{
                 const messageTblElement = document.getElementById("message-table");
-                // TODO: How to skip rows that represent deletions?
                 let messageNotes = "";
                 for (const div of messageTblElement.children) {{
                     // Don't copy the diff markers (+, -)
