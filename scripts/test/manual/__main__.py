@@ -271,23 +271,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     if TestCase.PLAN_SUMMARY_20240414 in cases:
         t = TaskModel(
             name="test_summarize_plan_20240414",
-            subtasks=[
-                TaskModel(
-                    name="ready_summarize_plan_20240414",
-                    description="The next task should show a summary of the plan from April 14, 2024.",
-                ),
-                TaskModel(
-                    name="summarize_plan_20240414",
-                    description="Show a summary of the plan from April 14, 2024.",
-                    only_auto=True,
-                    prerequisites={"ready_summarize_plan_20240414"},
-                ),
-                TaskModel(
-                    name="check_plan_summary_20240414",
-                    description="Check that the plan summary looks good.",
-                    prerequisites={"summarize_plan_20240414"},
-                ),
-            ],
+            description="Test that the plan summary from 2024-04-14 looks good by running python summarize_plan.py --clean && python summarize_plan.py --demo.",
             prerequisites={latest_task},
         )
         tasks.append(t)
@@ -295,23 +279,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     if TestCase.PLAN_SUMMARY_20240505 in cases:
         t = TaskModel(
             name="test_summarize_plan_20240505",
-            subtasks=[
-                TaskModel(
-                    name="ready_summarize_plan_20240505",
-                    description="The next task should show a summary of the plan from May 5, 2024.",
-                ),
-                TaskModel(
-                    name="summarize_plan_20240505",
-                    description="Show a summary of the plan from May 5, 2024.",
-                    only_auto=True,
-                    prerequisites={"ready_summarize_plan_20240505"},
-                ),
-                TaskModel(
-                    name="check_plan_summary_20240505",
-                    description="Check that the plan summary looks good.",
-                    prerequisites={"summarize_plan_20240505"},
-                ),
-            ],
+            description="Test that the plan summary from 2024-05-05 looks good by running python summarize_plan.py --clean && python summarize_plan.py --date 2024-05-05.",
             prerequisites={latest_task},
         )
         tasks.append(t)
