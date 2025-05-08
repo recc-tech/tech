@@ -31,7 +31,6 @@ class SummarizePlanArgs(ReccArgs):
 
     def __init__(self, args: Namespace, error: Callable[[str], None]) -> None:
         self.no_open: bool = args.no_open
-        # TODO: Improve demo mode
         self.demo: bool = args.demo
         self.port: int = args.port
         super().__init__(args, error)
@@ -102,6 +101,15 @@ def summarize_plan(
 
     # TODO: Delete (or just archive) old summaries?
 
+    if args.demo:
+        s = lib.load_plan_summary(_DEMO_FILE_1)
+        _save_summary(s, config.plan_summaries_dir)
+        messenger.log_problem(
+            ProblemLevel.WARN,
+            "The script is running in demo mode, so it will not check Planning Center."
+            f" The plan will instead be loaded from {_DEMO_FILE_2.resolve().as_posix()}",
+        )
+
     latest_summary_path = _find_latest_summary(args, config)
     if latest_summary_path is not None:
         messenger.log_status(
@@ -124,6 +132,8 @@ def summarize_plan(
     # TODO: Will it work to open the summary *before* starting the server?
     if not args.no_open:
         url = f"http://localhost:{args.port}/plan-summary.html"
+        if latest_summary_path is not None:
+            url += f"?old={latest_summary_path.stem}"
         try:
             external_services.launch_firefox(url)
         except Exception as e:
@@ -179,16 +189,16 @@ def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
         bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
         or "latest"
     )
-    old_summary_path = _find_latest_summary(global_args, global_config)
-    if old_summary_path is None:
+    new_summary_path = _find_latest_summary(global_args, global_config)
+    if new_summary_path is None:
         return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
-    old_summary = lib.load_plan_summary(old_summary_path)
-    new_summary_path = (
-        old_summary_path
+    new_summary = lib.load_plan_summary(new_summary_path)
+    old_summary_path = (
+        new_summary_path
         if old_summary_id == "latest"
         else global_config.plan_summaries_dir.joinpath(f"{old_summary_id}.json")
     )
-    new_summary = lib.load_plan_summary(new_summary_path)
+    old_summary = lib.load_plan_summary(old_summary_path)
     diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
     return lib.plan_summary_diff_to_html(diff, port=global_args.port)
 
@@ -227,13 +237,10 @@ def _save_summary(summary: PlanSummary, dir: Path) -> Path:
 
 
 def _find_latest_summary(args: SummarizePlanArgs, config: Config) -> Optional[Path]:
-    if args.demo:
-        return _DEMO_FILE_1
-    else:
-        today = datetime.now().strftime("%Y%m%d")
-        time_pattern = "[0123456789]" * 6
-        files = sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
-        return None if not files else files[-1]
+    today = datetime.now().strftime("%Y%m%d")
+    time_pattern = "[0123456789]" * 6
+    files = sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
+    return None if not files else files[-1]
 
 
 if __name__ == "__main__":
