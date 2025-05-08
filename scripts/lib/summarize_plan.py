@@ -678,12 +678,12 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: var(--background-color);
                 --header-color: {HEADER_OK};
-                --background-color: #fafafa;
-                --dark-background-color: rgb(235, 235, 235);
-                --light-green-background-color: TODO;
-                --dark-green-background-color: TODO;
-                --light-red-background-color: TODO;
-                --dark-red-background-color: TODO;
+                --background-color: hsl(0, 0, 98%);
+                --dark-background-color: hsl(0, 0%, 88%);
+                --light-green-background-color: hsl(120, 50%, 75%);
+                --dark-green-background-color: hsl(120, 50%, 65%);
+                --light-red-background-color: hsl(0, 50%, 75%);
+                --dark-red-background-color: hsl(0, 50%, 65%);
             }}
             body {{
                 margin: 0;
