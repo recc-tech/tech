@@ -1,6 +1,7 @@
 import os
 import signal
 import sys
+import time
 import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -33,7 +34,10 @@ class SummarizePlanArgs(ReccArgs):
         self.no_open: bool = args.no_open
         self.demo: bool = args.demo
         self.port: int = args.port
+        self.clean: bool = args.clean
         super().__init__(args, error)
+        if self.clean:
+            self.auto_close = True
 
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
@@ -52,6 +56,11 @@ class SummarizePlanArgs(ReccArgs):
             type=int,
             default=8080,
             help="Which port to use for the web server that checks for updates.",
+        )
+        parser.add_argument(
+            "--clean",
+            action="store_true",
+            help="Delete all old plan summaries and exit.",
         )
         return super().set_up_parser(parser)
 
@@ -99,6 +108,10 @@ def summarize_plan(
 
     config.plan_summaries_dir.mkdir(exist_ok=True, parents=True)
 
+    if args.clean:
+        _delete_old_plan_summaries(config.plan_summaries_dir)
+        return
+
     if args.demo:
         s = lib.load_plan_summary(_DEMO_FILE_1)
         _save_summary(s, config.plan_summaries_dir)
@@ -108,7 +121,7 @@ def summarize_plan(
             f" The plan will instead be loaded from {_DEMO_FILE_2.resolve().as_posix()}",
         )
 
-    latest_summary_path = _find_latest_summary(args, config)
+    latest_summary_path = _find_latest_summary(config.plan_summaries_dir)
     if latest_summary_path is not None:
         messenger.log_status(
             TaskStatus.RUNNING,
@@ -158,7 +171,7 @@ def _enable_cors() -> None:  # pyright: ignore[reportUnusedFunction]
 
 @bottle.post("/summaries")
 def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
-    prev_summary_path = _find_latest_summary(global_args, global_config)
+    prev_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
     prev_summary = (
         None if prev_summary_path is None else lib.load_plan_summary(prev_summary_path)
     )
@@ -183,7 +196,7 @@ def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
     old_summary_id = (
         bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
     )
-    new_summary_path = _find_latest_summary(global_args, global_config)
+    new_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
     if new_summary_path is None:
         return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
     if not old_summary_id:
@@ -199,7 +212,7 @@ def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
     diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
     old_plans = [
         (p.stem, _friendly_plan_name(p))
-        for p in _list_existing_summaries(global_args, global_config)
+        for p in _list_existing_summaries(global_config.plan_summaries_dir)
     ]
     return lib.plan_summary_diff_to_html(
         diff,
@@ -236,8 +249,15 @@ def _generate_summary(
 
 
 def _save_summary(summary: PlanSummary, dir: Path) -> Path:
-    fname = f"{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
-    json_path = dir.joinpath(fname)
+    choose_fname = lambda: f"{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+    json_path = dir.joinpath(choose_fname())
+
+    # Avoid overwriting a previous summary
+    if json_path.exists():
+        time.sleep(2)
+        json_path = dir.joinpath(choose_fname())
+    assert not json_path.exists()
+
     json_path.write_text(lib.plan_summary_to_json(summary))
     return json_path
 
@@ -251,14 +271,22 @@ def _friendly_plan_name(p: Path) -> str:
     return f"{hour}:{minute}:{second}"
 
 
-def _list_existing_summaries(args: SummarizePlanArgs, config: Config) -> List[Path]:
+def _list_existing_summaries(dir: Path) -> List[Path]:
     today = datetime.now().strftime("%Y%m%d")
     time_pattern = "[0123456789]" * 6
-    return sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
+    return sorted(dir.glob(f"{today}{time_pattern}.json"))
 
 
-def _find_latest_summary(args: SummarizePlanArgs, config: Config) -> Optional[Path]:
-    files = _list_existing_summaries(args, config)
+def _delete_old_plan_summaries(dir: Path) -> None:
+    files = _list_existing_summaries(dir)
+    for f in files:
+        # It would be weird for the file to not exist, but why should it cause
+        # the app to crash?
+        f.unlink(missing_ok=True)
+
+
+def _find_latest_summary(dir: Path) -> Optional[Path]:
+    files = _list_existing_summaries(dir)
     return None if not files else files[-1]
 
 
