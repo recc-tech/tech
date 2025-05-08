@@ -640,14 +640,22 @@ def _make_page_title(plan: Plan) -> str:
     )
 
 
-def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
+def _old_plan_option(val: str, display: str, selected: bool) -> str:
+    selected_attr = "selected" if selected else ""
+    escaped_val = html.escape(val)
+    escaped_display = html.escape(display)
+    return f"<option value='{escaped_val}' {selected_attr}>{escaped_display}</option>"
+
+
+def plan_summary_diff_to_html(
+    summary: PlanSummaryDiff,
+    old_plans: List[Tuple[str, str]],
+    current_plan_id: str,
+    port: int,
+) -> str:
     """
     Convert a plan summary diff to an HTML string.
     """
-    # TODO: Add drop-down menu to choose which summary to compare against
-    # TODO: If there's no query param, then find the latest plan and set that
-    #       as the query param so that, on reload, you keep comparing against
-    #       the same plan
     title = _escape(_make_page_title(summary.plan))
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
     walk_in_slides_table = _make_walk_in_slides_list(summary.walk_in_slides)
@@ -659,6 +667,12 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
     songs_table = _make_songs_table(songs=summary.songs)
     (message_btn, message_table) = _make_message_table(summary.message)
     message_warnings_table = _make_message_warnings_table(summary.message_warnings)
+    old_plan_options = "\n".join(
+        [
+            _old_plan_option(val=val, display=display, selected=val == current_plan_id)
+            for (val, display) in old_plans
+        ]
+    )
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
@@ -705,6 +719,12 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 position: sticky;
                 top: 0;
                 padding: 1em;
+            }}
+            #status-bar-right {{
+                display: flex;
+                flex-direction: row;
+                justify-content: end;
+                gap: 2em;
             }}
             #main-content {{
                 margin: 1em 1em 10em 1em;
@@ -836,6 +856,16 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
                 setLastUpdateTime();
             }}
 
+            function setOldPlanId() {{
+                const dropdownElem = document.getElementById("old-plan-dropdown");
+                const planId = dropdownElem.value;
+                const newUrl = `http://localhost:{port}/plan-summary.html?old=${{planId}}`;
+                const oldUrl = window.location.href;
+                if (newUrl !== oldUrl) {{
+                    window.location.replace(newUrl);
+                }}
+            }}
+
             function setLastUpdateTime() {{
                 const elem = document.getElementById("last-update-time");
                 const options = {{ "hour": "numeric", "minute": "2-digit" }}
@@ -883,7 +913,15 @@ def plan_summary_diff_to_html(summary: PlanSummaryDiff, port: int) -> str:
         </header>
         <div id="status-bar">
             <span id="summary-status"></span>
-            <span><b>Last update:</b> <span id="last-update-time">-</span></span>
+            <div id="status-bar-right">
+                <div>
+                    <span><b>Compare with:</b></span>
+                    <select id="old-plan-dropdown" onchange="setOldPlanId()">
+{_indent(old_plan_options, 6)}
+                    </select>
+                </div>
+                <span><b>Last update:</b> <span id="last-update-time">-</span></span>
+            </div>
         </div>
         <div id='main-content'>
             <div class="{_NOTES_WARNING_CLS}">

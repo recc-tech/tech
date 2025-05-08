@@ -5,7 +5,7 @@ import traceback
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import autochecklist
 import bottle  # pyright: ignore[reportMissingTypeStubs]
@@ -132,8 +132,6 @@ def summarize_plan(
     # TODO: Will it work to open the summary *before* starting the server?
     if not args.no_open:
         url = f"http://localhost:{args.port}/plan-summary.html"
-        if latest_summary_path is not None:
-            url += f"?old={latest_summary_path.stem}"
         try:
             external_services.launch_firefox(url)
         except Exception as e:
@@ -187,11 +185,13 @@ def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
 def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
     old_summary_id = (
         bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
-        or "latest"
     )
     new_summary_path = _find_latest_summary(global_args, global_config)
     if new_summary_path is None:
         return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
+    if not old_summary_id:
+        old_id = new_summary_path.stem
+        bottle.redirect(f"/plan-summary.html?old={old_id}")
     new_summary = lib.load_plan_summary(new_summary_path)
     old_summary_path = (
         new_summary_path
@@ -200,7 +200,16 @@ def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
     )
     old_summary = lib.load_plan_summary(old_summary_path)
     diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
-    return lib.plan_summary_diff_to_html(diff, port=global_args.port)
+    old_plans = [
+        (p.stem, _friendly_plan_name(p))
+        for p in _list_existing_summaries(global_args, global_config)
+    ]
+    return lib.plan_summary_diff_to_html(
+        diff,
+        old_plans=old_plans,
+        current_plan_id=old_summary_id,
+        port=global_args.port,
+    )
 
 
 def _stop_server():
@@ -236,10 +245,23 @@ def _save_summary(summary: PlanSummary, dir: Path) -> Path:
     return json_path
 
 
-def _find_latest_summary(args: SummarizePlanArgs, config: Config) -> Optional[Path]:
+def _friendly_plan_name(p: Path) -> str:
+    id = p.stem
+    assert len(id) == 14
+    hour = id[8:10]
+    minute = id[10:12]
+    second = id[12:14]
+    return f"{hour}:{minute}:{second}"
+
+
+def _list_existing_summaries(args: SummarizePlanArgs, config: Config) -> List[Path]:
     today = datetime.now().strftime("%Y%m%d")
     time_pattern = "[0123456789]" * 6
-    files = sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
+    return sorted(config.plan_summaries_dir.glob(f"{today}{time_pattern}.json"))
+
+
+def _find_latest_summary(args: SummarizePlanArgs, config: Config) -> Optional[Path]:
+    files = _list_existing_summaries(args, config)
     return None if not files else files[-1]
 
 

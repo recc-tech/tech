@@ -563,7 +563,9 @@ class PlanSummaryToHtmlTestCase(unittest.TestCase):
             _DATA_DIR.joinpath("20240414_summary_edited.json")
         )
         diff = diff_plan_summaries(original_summary, edited_summary)
-        summary_html = plan_summary_diff_to_html(diff, port=8080)
+        summary_html = plan_summary_diff_to_html(
+            diff, old_plans=[], current_plan_id="", port=8080
+        )
         f = _TEMP_DIR.joinpath("summary.html")
         f.write_text(summary_html, encoding="utf-8")
 
