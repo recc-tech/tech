@@ -99,8 +99,6 @@ def summarize_plan(
 
     config.plan_summaries_dir.mkdir(exist_ok=True, parents=True)
 
-    # TODO: Delete (or just archive) old summaries?
-
     if args.demo:
         s = lib.load_plan_summary(_DEMO_FILE_1)
         _save_summary(s, config.plan_summaries_dir)
@@ -129,7 +127,6 @@ def summarize_plan(
             f"Saved summary to {new_summary_path.resolve().as_posix()}.",
         )
 
-    # TODO: Will it work to open the summary *before* starting the server?
     if not args.no_open:
         url = f"http://localhost:{args.port}/plan-summary.html"
         try:
