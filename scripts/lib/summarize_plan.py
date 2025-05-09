@@ -806,7 +806,7 @@ def plan_summary_diff_to_html(
                 color: gold;
             }}
             .{_NOTES_WARNING_CLS} {{
-                visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
+                {"display: none;" if summary.num_visuals_notes == 0 else ""}
                 border: 2px solid #b57b0e;
                 color: #b57b0e;
                 background-color: #fffaa0;
