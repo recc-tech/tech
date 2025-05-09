@@ -531,6 +531,7 @@ def _make_walk_in_slides_list(slides: List[Edit[str]]) -> HtmlTable:
         col_widths=["1fr"],
         header=None,
         blocks=[rows],
+        zebra_stripes=False,
     )
 
 
@@ -541,6 +542,7 @@ def _make_announcements_list(slides: List[Edit[str]]) -> HtmlTable:
         col_widths=["1fr"],
         header=None,
         blocks=[rows],
+        zebra_stripes=False,
     )
 
 
@@ -567,6 +569,7 @@ def _make_videos_table(
         col_widths=["min-content", "1fr", "1fr"],
         header=None,
         blocks=[rows],
+        zebra_stripes=False,
     )
 
 
