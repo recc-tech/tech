@@ -417,15 +417,19 @@ def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
 
 
 _SUPERHEADER_CLS = "superheader"
+_BLOCK_START_CLS = "block-start"
+_BLOCK_END_CLS = "block-end"
+_ROW_START_CLS = "row-start"
+_ROW_END_CLS = "row-end"
 _HEADER_CLS = "header-row"
 _LIGHT_ROW_CLS = "even-row"
 _DARK_ROW_CLS = "odd-row"
-_SKIP_ROW_CLS = "skip-row"
 _DIFF_MARKER_CLS = "diff-marker"
 _INSERTION_ROW_CLS = "insertion-row"
 _DELETION_ROW_CLS = "deletion-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
+_COPY_BTN_ID = "copy-btn"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
 
 
@@ -478,8 +482,6 @@ class HtmlTable:
         return f"""
 #{self.id} {{
     display: grid;
-    border: 3px solid var(--header-color);
-    border-top: 0;
     grid-template-columns: min-content {' '.join(self.col_widths)};
 }}
 """.strip()
@@ -490,16 +492,16 @@ class HtmlTable:
             divs += [f"<div class='{_HEADER_CLS}'></div>"]
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
         for block in self.blocks:
-            divs += [
-                f"<div class='{_SKIP_ROW_CLS} {_DIFF_MARKER_CLS}'></div>"
-                for _ in range(1 + len(self.col_widths))
-            ]
             for i, row_diff in enumerate(block):
                 cls = (
                     _LIGHT_ROW_CLS
                     if i % 2 == 0 or not self.zebra_stripes
                     else _DARK_ROW_CLS
                 )
+                if i == 0:
+                    cls += f" {_BLOCK_START_CLS}"
+                if i == len(block) - 1:
+                    cls += f" {_BLOCK_END_CLS}"
                 match row_diff:
                     case NoOp(r):
                         diff_symbol = ""
@@ -514,8 +516,13 @@ class HtmlTable:
                         cls += f" {_DELETION_ROW_CLS}"
                     case e:
                         raise ValueError(f"Unknown edit: {e}")
-                divs += [f"<div class='{cls} {_DIFF_MARKER_CLS}'>{diff_symbol}</div>"]
-                divs += [f"<div class='{cls}'>{x}</div>" for x in row]
+                divs.append(
+                    f"<div class='{cls} {_DIFF_MARKER_CLS} {_ROW_START_CLS}'>{diff_symbol}</div>"
+                )
+                for j, cell in enumerate(row):
+                    if j == len(row) - 1:
+                        cls += f" {_ROW_END_CLS}"
+                    divs.append(f"<div class='{cls}'>{cell}</div>")
         divs_str = "\n".join(divs)
         return f"""
 <div id="{self.id}">
@@ -609,7 +616,7 @@ def _make_message_table(message: List[Edit[str]]) -> Tuple[str, HtmlTable]:
     if not has_sermon_notes:
         rows = [NoOp(["<span class='missing'>No notes available</span>"])]
     disabled = "disabled" if not has_sermon_notes else ""
-    btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
+    btn = f"<button id='{_COPY_BTN_ID}' onclick='copyMessageNotes()' {disabled}>Copy</button><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
     return (
         btn,
         HtmlTable(
@@ -762,6 +769,19 @@ def plan_summary_diff_to_html(
                 background-color: var(--header-color);
                 color: white;
             }}
+            .{_BLOCK_START_CLS} {{
+                margin-top: 10px;
+                border-top: 3px solid var(--header-color);
+            }}
+            .{_BLOCK_END_CLS} {{
+                border-bottom: 3px solid var(--header-color);
+            }}
+            .{_ROW_START_CLS} {{
+                border-left: 3px solid var(--header-color);
+            }}
+            .{_ROW_END_CLS} {{
+                border-right: 3px solid var(--header-color);
+            }}
             .{_LIGHT_ROW_CLS} {{
                 background-color: var(--background-color);
             }}
@@ -780,14 +800,12 @@ def plan_summary_diff_to_html(
             .{_DARK_ROW_CLS}.{_DELETION_ROW_CLS} {{
                 background-color: var(--dark-red-background-color);
             }}
-            .{_SKIP_ROW_CLS} {{
-                background-color: var(--header-color);
-                height: 3px;
-            }}
-            #copy-btn {{
+            #{_COPY_BTN_ID} {{
                 font-size: large;
                 padding: 5px 10px;
-                margin-bottom: 10px;
+                margin-top: 10px;
+                margin-left: 10px;
+                margin-bottom: 0;
                 cursor: pointer;
             }}
             #copy-confirm {{
