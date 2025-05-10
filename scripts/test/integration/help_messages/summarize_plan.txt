@@ -1,4 +1,4 @@
-usage: summarize_plan [-h] [--no-open] [--demo] [--port PORT]
+usage: summarize_plan [-h] [--no-open] [--demo] [--port PORT] [--clean]
                       [--home-dir HOME_DIR] [--date DATE] [--auto-close]
                       [--ui {console,tk}] [--verbose] [--no-run] [--auto AUTO]
 
@@ -13,6 +13,8 @@ options:
                        Planning Center. (default: False)
   --port PORT          Which port to use for the web server that checks for
                        updates. (default: 8080)
+  --clean              Delete all old plan summaries and exit. (default:
+                       False)
 
 RECC common arguments:
   --home-dir HOME_DIR  The home directory. (default: None)

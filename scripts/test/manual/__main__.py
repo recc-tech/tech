@@ -6,14 +6,11 @@ from enum import Enum
 from typing import Callable, List
 
 import autochecklist
-import summarize_plan
 from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
-from external_services import PlanningCenterClient
 from external_services.boxcast import BoxCastApiClient
 from lib import ReccDependencyProvider, SimplifiedMessengerSettings
-from summarize_plan import SummarizePlanArgs
 
 _BROADCAST_ID = "on8bvqsbddurxkmhppld"
 _REBROADCAST_TITLE = f"Test Rebroadcast {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -274,23 +271,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     if TestCase.PLAN_SUMMARY_20240414 in cases:
         t = TaskModel(
             name="test_summarize_plan_20240414",
-            subtasks=[
-                TaskModel(
-                    name="ready_summarize_plan_20240414",
-                    description="The next task should show a summary of the plan from April 14, 2024.",
-                ),
-                TaskModel(
-                    name="summarize_plan_20240414",
-                    description="Show a summary of the plan from April 14, 2024.",
-                    only_auto=True,
-                    prerequisites={"ready_summarize_plan_20240414"},
-                ),
-                TaskModel(
-                    name="check_plan_summary_20240414",
-                    description="Check that the plan summary looks good.",
-                    prerequisites={"summarize_plan_20240414"},
-                ),
-            ],
+            description="Test that the plan summary from 2024-04-14 looks good by running python summarize_plan.py --clean && python summarize_plan.py --demo.",
             prerequisites={latest_task},
         )
         tasks.append(t)
@@ -298,23 +279,7 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
     if TestCase.PLAN_SUMMARY_20240505 in cases:
         t = TaskModel(
             name="test_summarize_plan_20240505",
-            subtasks=[
-                TaskModel(
-                    name="ready_summarize_plan_20240505",
-                    description="The next task should show a summary of the plan from May 5, 2024.",
-                ),
-                TaskModel(
-                    name="summarize_plan_20240505",
-                    description="Show a summary of the plan from May 5, 2024.",
-                    only_auto=True,
-                    prerequisites={"ready_summarize_plan_20240505"},
-                ),
-                TaskModel(
-                    name="check_plan_summary_20240505",
-                    description="Check that the plan summary looks good.",
-                    prerequisites={"summarize_plan_20240505"},
-                ),
-            ],
+            description="Test that the plan summary from 2024-05-05 looks good by running python summarize_plan.py --clean && python summarize_plan.py --date 2024-05-05.",
             prerequisites={latest_task},
         )
         tasks.append(t)
@@ -370,28 +335,6 @@ def export_to_Vimeo(client: BoxCastApiClient, config: Config) -> None:
         broadcast_id=_BROADCAST_ID,
         vimeo_user_id=config.vimeo_user_id,
         title=_VIMEO_TITLE,
-    )
-
-
-def summarize_plan_20240414(client: PlanningCenterClient, messenger: Messenger) -> None:
-    args = SummarizePlanArgs.parse(["", "--date", "2024-04-14"])
-    cfg = Config(args=args, allow_multiple_only_for_testing=True)
-    summarize_plan.generate_initial_summary(
-        pco_client=client,
-        args=args,
-        config=cfg,
-        messenger=messenger,
-    )
-
-
-def summarize_plan_20240505(client: PlanningCenterClient, messenger: Messenger) -> None:
-    args = SummarizePlanArgs.parse(["", "--date", "2024-05-05"])
-    cfg = Config(args=args, allow_multiple_only_for_testing=True)
-    summarize_plan.generate_initial_summary(
-        pco_client=client,
-        args=args,
-        config=cfg,
-        messenger=messenger,
     )
 
 

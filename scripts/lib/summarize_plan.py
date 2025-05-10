@@ -7,7 +7,7 @@ import typing
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import List, Optional, Set, Type, TypeVar
+from typing import List, Optional, Set, Tuple, Type, TypeVar
 
 from autochecklist import Messenger, ProblemLevel
 from config import Config
@@ -20,6 +20,7 @@ from external_services import (
     PlanSection,
     Song,
 )
+from lib import Deletion, Edit, Insertion, NoOp, diff_has_changes, find_diff
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class AnnotatedItem:
 
 
 @dataclass(frozen=True)
-class PlanItemsSummary:
+class PlanSummary:
     plan: Plan
     walk_in_slides: List[str]
     announcements: List[str]
@@ -45,6 +46,59 @@ class PlanItemsSummary:
     songs: List[List[AnnotatedSong]]
     message_notes: Optional[AnnotatedItem]
     num_visuals_notes: int
+
+
+@dataclass(frozen=True)
+class PlanSummaryDiff:
+    """Difference between two plan summaries."""
+
+    plan: Plan
+    walk_in_slides: List[Edit[str]]
+    announcements: List[Edit[str]]
+    opener_video: List[Edit[AnnotatedItem]]
+    bumper_video: List[Edit[AnnotatedItem]]
+    songs: List[List[Edit[AnnotatedSong]]]
+    message: List[Edit[str]]
+    message_warnings: List[Edit[ItemNote]]
+    num_visuals_notes: int
+
+    @property
+    def plan_changed(self) -> bool:
+        """Whether anything has changed from one plan summary to another."""
+        return (
+            self.walk_in_slides_changed
+            or self.announcements_changed
+            or self.videos_changed
+            or self.songs_changed
+            or self.message_changed
+        )
+
+    @property
+    def walk_in_slides_changed(self) -> bool:
+        """Whether any changes have been made to the walk in slides."""
+        return diff_has_changes(self.walk_in_slides)
+
+    @property
+    def announcements_changed(self) -> bool:
+        """Whether any changes have been made to the announcements."""
+        return diff_has_changes(self.announcements)
+
+    @property
+    def videos_changed(self) -> bool:
+        """Whether any changes have been made to any of the videos."""
+        opener_changed = diff_has_changes(self.opener_video)
+        bumper_changed = diff_has_changes(self.bumper_video)
+        return opener_changed or bumper_changed
+
+    @property
+    def songs_changed(self) -> bool:
+        """Whether any changes have been made to the songs."""
+        return any(diff_has_changes(s) for s in self.songs)
+
+    @property
+    def message_changed(self) -> bool:
+        """Whether any changes have been made to the message."""
+        return diff_has_changes(self.message) or diff_has_changes(self.message_warnings)
 
 
 T = TypeVar("T")
@@ -94,18 +148,19 @@ def _filter_notes_by_category(
     return [n for n in notes if n.category in categories]
 
 
-def _get_announcement_slide_names(item: PlanItem) -> List[str]:
-    lines = item.description.splitlines()
-    # If any lines are numbered, only keep the numbered ones
-    numbered_line_matches = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
-    if any(numbered_line_matches):
-        lines = [m[1] for m in numbered_line_matches if m is not None]
-    # If any lines end with " - Slide", only keep those
-    suffix_regex = r"(.*)\s+-\s+slide|(.*\s+-\s+title slide)"
-    suffix_matches = [re.fullmatch(suffix_regex, l, re.IGNORECASE) for l in lines]
-    if any(suffix_matches):
-        lines = [m[1] or m[2] for m in suffix_matches if m is not None]
-    return lines
+def _clean_and_filter_announcements(lines: List[str], blacklist: Set[str]) -> List[str]:
+    cleaned_lines = []
+    for ln in lines:
+        m = re.fullmatch(r"\d+\.\s*(.*)", ln)
+        cleaned_line = m[1] if m is not None else ln
+        if cleaned_line.lower().endswith(" - slide"):
+            cleaned_line = cleaned_line[: -len(" - slide")]
+        cleaned_lines.append(cleaned_line)
+
+    blacklist = {x.lower() for x in blacklist}
+    filtered_lines = [ln for ln in cleaned_lines if ln.lower() not in blacklist]
+
+    return filtered_lines
 
 
 def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
@@ -120,20 +175,18 @@ def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
     return new_list
 
 
-def _get_walk_in_slides(items: List[PlanItem]) -> List[str]:
+def _get_walk_in_slides(items: List[PlanItem], blacklist: Set[str]) -> List[str]:
     matches = [
         i for i in items if re.search("rotating announcements", i.title, re.IGNORECASE)
     ]
     slide_names: List[str] = []
     for itm in matches:
-        lines = itm.description.splitlines()
-        ms = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
-        names = [m[1] for m in ms if m is not None]
-        slide_names = _merge(slide_names, names)
+        lines = _clean_and_filter_announcements(itm.description.splitlines(), blacklist)
+        slide_names = _merge(slide_names, lines)
     return slide_names
 
 
-def _get_announcements(items: List[PlanItem]) -> List[str]:
+def _get_announcements(items: List[PlanItem], blacklist: Set[str]) -> List[str]:
     pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
         i
@@ -144,7 +197,7 @@ def _get_announcements(items: List[PlanItem]) -> List[str]:
     ]
     slide_names: List[str] = []
     for itm in matches:
-        names = _get_announcement_slide_names(itm)
+        names = _clean_and_filter_announcements(itm.description.splitlines(), blacklist)
         slide_names = _merge(slide_names, names)
     return slide_names
 
@@ -264,24 +317,20 @@ def _validate_message_notes(original_notes: AnnotatedItem) -> AnnotatedItem:
 
 def get_plan_summary(
     client: PlanningCenterClient, messenger: Messenger, config: Config, dt: date
-) -> PlanItemsSummary:
+) -> PlanSummary:
     plan = client.find_plan_by_date(dt)
     sections = client.find_plan_items(
         plan.id, include_songs=True, include_item_notes=True
     )
     sections = _remove_unnecessary_notes(sections)
     items = [i for s in sections for i in s.items]
-    walk_in_slides = _get_walk_in_slides(items)
-    walk_in_slides = [
-        s for s in walk_in_slides if s.lower() not in config.announcements_to_ignore
-    ]
+    walk_in_slides = _get_walk_in_slides(
+        items, blacklist=config.announcements_to_ignore
+    )
     opener_video = _get_opener_video(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
-    announcements = _get_announcements(items)
-    announcements = [
-        a for a in announcements if a.lower() not in config.announcements_to_ignore
-    ]
+    announcements = _get_announcements(items, blacklist=config.announcements_to_ignore)
     msg_sec = _get_message_section(sections, messenger)
     if msg_sec is None:
         bumper_video = None
@@ -300,7 +349,7 @@ def get_plan_summary(
     visuals_notes = _filter_notes_by_category(
         all_notes, config.plan_summary_note_categories
     )
-    return PlanItemsSummary(
+    return PlanSummary(
         plan=plan,
         walk_in_slides=walk_in_slides,
         announcements=announcements,
@@ -312,13 +361,70 @@ def get_plan_summary(
     )
 
 
+def _find_songs_diff(
+    old: List[List[AnnotatedSong]], new: List[List[AnnotatedSong]]
+) -> List[List[Edit[AnnotatedSong]]]:
+    if len(old) < len(new):
+        old = old + [[] for _ in range(len(new) - len(old))]
+    elif len(new) < len(old):
+        new = new + [[] for _ in range(len(old) - len(new))]
+    assert len(old) == len(new)
+    return [find_diff(old=os, new=ns) for (os, ns) in zip(old, new)]
+
+
+def _find_message_diff(
+    old: Optional[AnnotatedItem], new: Optional[AnnotatedItem]
+) -> List[Edit[str]]:
+    old_lines = [] if old is None else old.content.splitlines()
+    new_lines = [] if new is None else new.content.splitlines()
+    return find_diff(old=old_lines, new=new_lines)
+
+
+def _find_message_warnings_diff(
+    old: Optional[AnnotatedItem], new: Optional[AnnotatedItem]
+) -> List[Edit[ItemNote]]:
+    old_notes = [] if old is None else old.notes
+    new_notes = [] if new is None else new.notes
+    return find_diff(old=old_notes, new=new_notes)
+
+
+def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
+    """Find the differences between two plan summaries."""
+    return PlanSummaryDiff(
+        plan=new.plan,
+        walk_in_slides=find_diff(old=old.walk_in_slides, new=new.walk_in_slides),
+        announcements=find_diff(old=old.announcements, new=new.announcements),
+        opener_video=find_diff(
+            old=[old.opener_video] if old.opener_video is not None else [],
+            new=[new.opener_video] if new.opener_video is not None else [],
+        ),
+        bumper_video=find_diff(
+            old=[old.bumper_video] if old.bumper_video is not None else [],
+            new=[new.bumper_video] if new.bumper_video is not None else [],
+        ),
+        songs=_find_songs_diff(old=old.songs, new=new.songs),
+        message=_find_message_diff(old=old.message_notes, new=new.message_notes),
+        message_warnings=_find_message_warnings_diff(
+            old=old.message_notes, new=new.message_notes
+        ),
+        num_visuals_notes=new.num_visuals_notes,
+    )
+
+
 _SUPERHEADER_CLS = "superheader"
+_BLOCK_START_CLS = "block-start"
+_BLOCK_END_CLS = "block-end"
+_ROW_START_CLS = "row-start"
+_ROW_END_CLS = "row-end"
 _HEADER_CLS = "header-row"
-_EVEN_ROW_CLS = "even-row"
-_ODD_ROW_CLS = "odd-row"
-_SKIP_ROW_CLS = "skip-row"
+_LIGHT_ROW_CLS = "even-row"
+_DARK_ROW_CLS = "odd-row"
+_DIFF_MARKER_CLS = "diff-marker"
+_INSERTION_ROW_CLS = "insertion-row"
+_DELETION_ROW_CLS = "deletion-row"
 _NOTES_TITLE_CLS = "notes-title"
 _NOTES_WARNING_CLS = "notes-warning"
+_COPY_BTN_ID = "copy-btn"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
 
 
@@ -339,16 +445,17 @@ def _show_notes(notes: List[ItemNote]) -> str:
 
 
 Row = List[str]
-Block = List[Row]
+Block = List[Edit[Row]]
 
 
 @dataclass
 class HtmlTable:
-    cls: str
+    id: str
     col_widths: List[str]
     header: Optional[List[str]]
     blocks: List[Block]
     indent: bool = True
+    zebra_stripes: bool = True
 
     def __post_init__(self) -> None:
         self._check_ncols()
@@ -359,125 +466,172 @@ class HtmlTable:
             raise ValueError("Number of columns in header is not as expected.")
         for i, b in enumerate(self.blocks):
             for j, r in enumerate(b):
-                if len(r) != ncols:
+                row = r.val
+                if len(row) != ncols:
                     raise ValueError(
                         f"Number of columns in block {i}, row {j} is not as expected."
-                        f" Expected {ncols} but found {len(r)}."
+                        f" Expected {ncols} but found {len(row)}."
                     )
 
     def to_css(self) -> str:
         return f"""
-.{self.cls} {{
+#{self.id} {{
     display: grid;
-    border: 3px solid var(--header-color);
-    border-top: 0;
-    grid-template-columns: {' '.join(self.col_widths)};
+    grid-template-columns: min-content {' '.join(self.col_widths)};
 }}
 """.strip()
 
     def to_html(self) -> str:
         divs: List[str] = []
         if self.header is not None:
+            divs += [f"<div class='{_HEADER_CLS}'></div>"]
             divs += [f"<div class='{_HEADER_CLS}'>{h}</div>" for h in self.header]
         for block in self.blocks:
-            divs += [f"<div class='{_SKIP_ROW_CLS}'></div>" for _ in self.col_widths]
-            for i, row in enumerate(block):
-                cls = _EVEN_ROW_CLS if i % 2 == 0 else _ODD_ROW_CLS
-                divs += [f"<div class='{cls}'>{x}</div>" for x in row]
+            for i, row_diff in enumerate(block):
+                cls = (
+                    _LIGHT_ROW_CLS
+                    if i % 2 == 0 or not self.zebra_stripes
+                    else _DARK_ROW_CLS
+                )
+                if i == 0:
+                    cls += f" {_BLOCK_START_CLS}"
+                if i == len(block) - 1:
+                    cls += f" {_BLOCK_END_CLS}"
+                match row_diff:
+                    case NoOp(r):
+                        diff_symbol = ""
+                        row = r
+                    case Insertion(r):
+                        diff_symbol = "+"
+                        row = r
+                        cls += f" {_INSERTION_ROW_CLS}"
+                    case Deletion(r):
+                        diff_symbol = "-"
+                        row = r
+                        cls += f" {_DELETION_ROW_CLS}"
+                    case e:
+                        raise ValueError(f"Unknown edit: {e}")
+                divs.append(
+                    f"<div class='{cls} {_DIFF_MARKER_CLS} {_ROW_START_CLS}'>{diff_symbol}</div>"
+                )
+                for j, cell in enumerate(row):
+                    if j == len(row) - 1:
+                        cls += f" {_ROW_END_CLS}"
+                    divs.append(f"<div class='{cls}'>{cell}</div>")
         divs_str = "\n".join(divs)
         return f"""
-<div class="{self.cls}">
+<div id="{self.id}">
 {_indent(divs_str, 1 if self.indent else 0)}
 </div>
 """.strip()
 
 
-def _make_walk_in_slides_list(slides: List[str]) -> str:
-    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
-    return f"""
-<ul>
-{_indent(items, 1)}
-</ul>
-""".strip()
-
-
-def _make_announcements_list(slides: List[str]) -> str:
-    items = "\n".join([f"<li>{_escape(s)}</li>" for s in slides])
-    return f"""
-<ul>
-{_indent(items, 1)}
-</ul>
-""".strip()
-
-
-def _make_videos_table(
-    opener: Optional[AnnotatedItem], bumper: Optional[AnnotatedItem]
-) -> HtmlTable:
-    missing = "<span class='missing'>None found</span>"
-
-    # Escape content only if it is not missing; escape only used when opener, bumper or announcements is not None
-    opener_name = _escape(opener.content) if opener is not None else missing
-    opener_notes = _show_notes(opener.notes) if opener is not None else ""
-    bumper_name = _escape(bumper.content) if bumper is not None else missing
-    bumper_notes = _show_notes(bumper.notes) if bumper is not None else ""
-
-    rows = [
-        ["Opener", opener_name, opener_notes],
-        ["Bumper", bumper_name, bumper_notes],
-    ]
+def _make_walk_in_slides_list(slides: List[Edit[str]]) -> HtmlTable:
+    rows = [e.map(lambda x: [x]) for e in slides]
     return HtmlTable(
-        cls="videos-table",
-        col_widths=["min-content", "1fr", "1fr"],
+        id="walk-in-slides-table",
+        col_widths=["1fr"],
         header=None,
         blocks=[rows],
+        zebra_stripes=False,
     )
 
 
-def _make_songs_table(songs: List[List[AnnotatedSong]]) -> HtmlTable:
+def _make_announcements_list(slides: List[Edit[str]]) -> HtmlTable:
+    rows = [e.map(lambda x: [x]) for e in slides]
+    return HtmlTable(
+        id="announcements-slides-table",
+        col_widths=["1fr"],
+        header=None,
+        blocks=[rows],
+        zebra_stripes=False,
+    )
+
+
+def _make_videos_table(
+    opener_changes: List[Edit[AnnotatedItem]],
+    bumper_changes: List[Edit[AnnotatedItem]],
+) -> HtmlTable:
+    MISSING = "<span class='missing'>None found</span>"
+    rows: List[Edit[List[str]]] = []
+    if not opener_changes:
+        rows.append(NoOp(["Opener", MISSING, ""]))
+    if not bumper_changes:
+        rows.append(NoOp(["Bumper", MISSING, ""]))
+    rows += [
+        e.map(lambda x: ["Opener", x.content, _show_notes(x.notes)])
+        for e in opener_changes
+    ]
+    rows += [
+        e.map(lambda x: ["Bumper", x.content, _show_notes(x.notes)])
+        for e in bumper_changes
+    ]
+    return HtmlTable(
+        id="videos-table",
+        col_widths=["min-content", "1fr", "1fr"],
+        header=None,
+        blocks=[rows],
+        zebra_stripes=False,
+    )
+
+
+def _make_songs_table(songs: List[List[Edit[AnnotatedSong]]]) -> HtmlTable:
     blocks = [
         [
-            [
-                _escape(s.song.ccli or ""),
-                _show_notes(s.notes),
-                _escape(s.song.title or ""),
-                _escape(s.song.author or ""),
-                _escape(s.description or ""),
-            ]
-            for s in sec
+            song_edit.map(
+                lambda s: [
+                    _escape(s.song.ccli or ""),
+                    _show_notes(s.notes),
+                    _escape(s.song.title or ""),
+                    _escape(s.song.author or ""),
+                    _escape(s.description or ""),
+                ]
+            )
+            for song_edit in sec
         ]
         for sec in songs
     ]
     col_widths = ["min-content", "3fr", "2fr", "3fr", "3fr"]
     header = ["CCLI", "Notes", "Title", "Author", "Description"]
     # No notes
-    if all(not row[1] for b in blocks for row in b):
+    if all(not row.val[1] for b in blocks for row in b):
         col_widths[1] = "min-content"
     return HtmlTable(
-        cls="songs-table",
+        id="songs-table",
         col_widths=col_widths,
         header=header,
         blocks=blocks,
     )
 
 
-def _make_message_table(message: Optional[AnnotatedItem]) -> HtmlTable:
-    sermon_notes = message.content if message else ""
-    has_sermon_notes = bool(sermon_notes.strip())
-    sermon_notes = (
-        f"<details open><summary>Show notes</summary><pre id='message-notes'>{html.escape(sermon_notes)}</pre></details>"
-        if sermon_notes
-        else "<span class='missing'>No Notes Available</span>"
-    )
+def _make_message_table(message: List[Edit[str]]) -> Tuple[str, HtmlTable]:
+    rows: List[Edit[List[str]]]
+    rows = [line.map(lambda e: [e]) for line in message]
+    has_sermon_notes = len(rows) > 0
+    if not has_sermon_notes:
+        rows = [NoOp(["<span class='missing'>No notes available</span>"])]
     disabled = "disabled" if not has_sermon_notes else ""
-    btn = f"<button id='copy-btn' onclick='copyMessageNotes()' {disabled}>Copy</button><br><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
-    visuals_notes = _show_notes(message.notes) if message is not None else ""
-    row = [btn, sermon_notes, visuals_notes]
+    btn = f"<button id='{_COPY_BTN_ID}' onclick='copyMessageNotes()' {disabled}>Copy</button><span id='copy-confirm' style='visibility: hidden;'>Copied &check;</span>"
+    return (
+        btn,
+        HtmlTable(
+            id="message-table",
+            col_widths=["1fr"],
+            header=None,
+            blocks=[rows],
+            indent=False,
+            zebra_stripes=False,
+        ),
+    )
+
+
+def _make_message_warnings_table(warnings: List[Edit[ItemNote]]) -> HtmlTable:
+    rows = [e.map(lambda x: [_show_notes([x])]) for e in warnings]
     return HtmlTable(
-        cls="message-table",
-        col_widths=["min-content", "1fr", "1fr"],
+        id="message-warnings-table",
+        col_widths=["1fr"],
         header=None,
-        blocks=[[row]],
-        indent=False,
+        blocks=[rows],
     )
 
 
@@ -491,20 +645,39 @@ def _make_page_title(plan: Plan) -> str:
     )
 
 
-def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
+def _old_plan_option(val: str, display: str, selected: bool) -> str:
+    selected_attr = "selected" if selected else ""
+    escaped_val = html.escape(val)
+    escaped_display = html.escape(display)
+    return f"<option value='{escaped_val}' {selected_attr}>{escaped_display}</option>"
+
+
+def plan_summary_diff_to_html(
+    summary: PlanSummaryDiff,
+    old_plans: List[Tuple[str, str]],
+    current_plan_id: str,
+    port: int,
+) -> str:
     """
-    Convert the plan summary to an HTML string.
+    Convert a plan summary diff to an HTML string.
     """
     title = _escape(_make_page_title(summary.plan))
     subtitle = _escape(summary.plan.date.strftime("%B %d, %Y"))
-    walk_in_slides_list = _make_walk_in_slides_list(summary.walk_in_slides)
-    announcements_list = _make_announcements_list(summary.announcements)
+    walk_in_slides_table = _make_walk_in_slides_list(summary.walk_in_slides)
+    announcements_table = _make_announcements_list(summary.announcements)
     videos_table = _make_videos_table(
-        opener=summary.opener_video,
-        bumper=summary.bumper_video,
+        opener_changes=summary.opener_video,
+        bumper_changes=summary.bumper_video,
     )
     songs_table = _make_songs_table(songs=summary.songs)
-    message_table = _make_message_table(summary.message_notes)
+    (message_btn, message_table) = _make_message_table(summary.message)
+    message_warnings_table = _make_message_warnings_table(summary.message_warnings)
+    old_plan_options = "\n".join(
+        [
+            _old_plan_option(val=val, display=display, selected=val == current_plan_id)
+            for (val, display) in old_plans
+        ]
+    )
     is_or_are = "is" if summary.num_visuals_notes == 1 else "are"
     note_or_notes = "note" if summary.num_visuals_notes == 1 else "notes"
     it_or_they = "it" if summary.num_visuals_notes == 1 else "they"
@@ -524,8 +697,12 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 background-color: var(--background-color);
                 --header-color: {HEADER_OK};
-                --background-color: #fafafa;
-                --dark-background-color: rgb(235, 235, 235);
+                --background-color: hsl(0, 0, 98%);
+                --dark-background-color: hsl(0, 0%, 88%);
+                --light-green-background-color: hsl(120, 50%, 75%);
+                --dark-green-background-color: hsl(120, 50%, 65%);
+                --light-red-background-color: hsl(0, 50%, 75%);
+                --dark-red-background-color: hsl(0, 50%, 65%);
             }}
             body {{
                 margin: 0;
@@ -547,6 +724,12 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 position: sticky;
                 top: 0;
                 padding: 1em;
+            }}
+            #status-bar-right {{
+                display: flex;
+                flex-direction: row;
+                justify-content: end;
+                gap: 2em;
             }}
             #main-content {{
                 margin: 1em 1em 10em 1em;
@@ -581,20 +764,43 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 background-color: var(--header-color);
                 color: white;
             }}
-            .{_EVEN_ROW_CLS} {{
+            .{_BLOCK_START_CLS} {{
+                margin-top: 10px;
+                border-top: 3px solid var(--header-color);
+            }}
+            .{_BLOCK_END_CLS} {{
+                border-bottom: 3px solid var(--header-color);
+            }}
+            .{_ROW_START_CLS} {{
+                border-left: 3px solid var(--header-color);
+            }}
+            .{_ROW_END_CLS} {{
+                border-right: 3px solid var(--header-color);
+            }}
+            .{_LIGHT_ROW_CLS} {{
                 background-color: var(--background-color);
             }}
-            .{_ODD_ROW_CLS} {{
+            .{_LIGHT_ROW_CLS}.{_INSERTION_ROW_CLS} {{
+                background-color: var(--light-green-background-color);
+            }}
+            .{_LIGHT_ROW_CLS}.{_DELETION_ROW_CLS} {{
+                background-color: var(--light-red-background-color);
+            }}
+            .{_DARK_ROW_CLS} {{
                 background-color: var(--dark-background-color);
             }}
-            .{_SKIP_ROW_CLS} {{
-                background-color: var(--header-color);
-                height: 3px;
+            .{_DARK_ROW_CLS}.{_INSERTION_ROW_CLS} {{
+                background-color: var(--dark-green-background-color);
             }}
-            #copy-btn {{
+            .{_DARK_ROW_CLS}.{_DELETION_ROW_CLS} {{
+                background-color: var(--dark-red-background-color);
+            }}
+            #{_COPY_BTN_ID} {{
                 font-size: large;
                 padding: 5px 10px;
-                margin-bottom: 10px;
+                margin-top: 10px;
+                margin-left: 10px;
+                margin-bottom: 0;
                 cursor: pointer;
             }}
             #copy-confirm {{
@@ -613,21 +819,24 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 color: gold;
             }}
             .{_NOTES_WARNING_CLS} {{
-                visibility: {'visible' if summary.num_visuals_notes > 0 else 'hidden'};
+                {"display: none;" if summary.num_visuals_notes == 0 else ""}
                 border: 2px solid #b57b0e;
                 color: #b57b0e;
                 background-color: #fffaa0;
                 border-radius: 5px;
                 padding: 0.5em;
             }}
+{_indent(walk_in_slides_table.to_css(), 3)}
+{_indent(announcements_table.to_css(), 3)}
 {_indent(videos_table.to_css(), 3)}
 {_indent(songs_table.to_css(),3)}
 {_indent(message_table.to_css(),3)}
+{_indent(message_warnings_table.to_css(),3)}
         </style>
         <script>
             const MILLISECONDS_PER_MINUTE = 60 * 1000;
             const INTERVAL_ID = setInterval(checkForUpdates, MILLISECONDS_PER_MINUTE);
-            const BACKEND_URL = "http://localhost:{port}/check-updates";
+            const BACKEND_URL = "http://localhost:{port}/summaries";
 
             document.addEventListener("DOMContentLoaded", () => {{
                 checkForUpdates();
@@ -638,7 +847,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 STATUS_ELEM.textContent = "Checking for updates...";
                 STATUS_ELEM.className = "";
                 try {{
-                    const response = await fetch(BACKEND_URL);
+                    const response = await fetch(BACKEND_URL, {{method: "POST"}});
                     if (response.ok) {{
                         const body = await response.json();
                         if (body.changes) {{
@@ -663,6 +872,16 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 setLastUpdateTime();
             }}
 
+            function setOldPlanId() {{
+                const dropdownElem = document.getElementById("old-plan-dropdown");
+                const planId = dropdownElem.value;
+                const newUrl = `http://localhost:{port}/plan-summary.html?old=${{planId}}`;
+                const oldUrl = window.location.href;
+                if (newUrl !== oldUrl) {{
+                    window.location.replace(newUrl);
+                }}
+            }}
+
             function setLastUpdateTime() {{
                 const elem = document.getElementById("last-update-time");
                 const options = {{ "hour": "numeric", "minute": "2-digit" }}
@@ -670,8 +889,20 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
             }}
 
             function copyMessageNotes() {{
-                const messageNotesElement = document.getElementById("message-notes");
-                const messageNotes = messageNotesElement.textContent;
+                const messageTblElement = document.getElementById("message-table");
+                let messageNotes = "";
+                for (const div of messageTblElement.children) {{
+                    // Don't copy the diff markers (+, -)
+                    if (div.classList.contains("{_DIFF_MARKER_CLS}")) {{
+                        continue;
+                    }}
+                    // Don't include deleted text
+                    if (div.classList.contains("{_DELETION_ROW_CLS}")) {{
+                        continue;
+                    }}
+                    messageNotes = `${{messageNotes}}\n${{div.textContent}}`
+                }}
+                messageNotes = messageNotes.trimLeft();
 
                 // Attempt to copy text to clipboard; make copy-confirm more dynamic
                 navigator.clipboard.writeText(messageNotes)
@@ -685,6 +916,7 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                         }}
                     }})
                     .catch(err => {{
+                        alert("Failed to copy");
                         console.error('Failed to copy text: ', err);
                     }});
             }}
@@ -697,7 +929,15 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
         </header>
         <div id="status-bar">
             <span id="summary-status"></span>
-            <span><b>Last update:</b> <span id="last-update-time">-</span></span>
+            <div id="status-bar-right">
+                <div>
+                    <span><b>Compare with:</b></span>
+                    <select id="old-plan-dropdown" onchange="setOldPlanId()">
+{_indent(old_plan_options, 6)}
+                    </select>
+                </div>
+                <span><b>Last update:</b> <span id="last-update-time">-</span></span>
+            </div>
         </div>
         <div id='main-content'>
             <div class="{_NOTES_WARNING_CLS}">
@@ -712,22 +952,24 @@ def plan_summary_to_html(summary: PlanItemsSummary, port: int) -> str:
                 and ensure the "Visuals" checkbox is checked.
             </div>
             <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
-{_indent(walk_in_slides_list, 3)}
+{_indent(walk_in_slides_table.to_html(), 3)}
             <div class="{_SUPERHEADER_CLS}">Announcements</div>
-{_indent(announcements_list, 3)}
+{_indent(announcements_table.to_html(), 3)}
             <div class="{_SUPERHEADER_CLS}">Videos</div>
 {_indent(videos_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Songs</div>
 {_indent(songs_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Message</div>
-{message_table.to_html()}
+{_indent(message_btn, 3)}
+{_indent(message_table.to_html(), 3)}
+{_indent(message_warnings_table.to_html(), 3)}
         </div>
     </body>
 </html>
 """.lstrip()
 
 
-def plan_summary_to_json(summary: PlanItemsSummary) -> str:
+def plan_summary_to_json(summary: PlanSummary) -> str:
     """
     Convert the plan summary to a JSON string.
     This is the inverse of `load_plan_summary`.
@@ -745,7 +987,7 @@ def plan_summary_to_json(summary: PlanItemsSummary) -> str:
     return json.dumps(json_summary, indent="\t")
 
 
-def load_plan_summary(path: Path) -> PlanItemsSummary:
+def load_plan_summary(path: Path) -> PlanSummary:
     """
     Load a plan summary from a JSON file.
     """
@@ -759,7 +1001,7 @@ def load_plan_summary(path: Path) -> PlanItemsSummary:
     )
     songs = [[_parse_annotated_song(s) for s in sec] for sec in data["songs"]]
     message_notes = _parse_annotated_item(data["message_notes"])
-    return PlanItemsSummary(
+    return PlanSummary(
         plan=_parse_plan(data["plan"]),
         walk_in_slides=data["walk_in_slides"],
         announcements=data["announcements"],

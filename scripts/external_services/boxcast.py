@@ -155,7 +155,7 @@ class BoxCastApiClient:
         broadcast_id: str,
         captions_id: str,
         cancellation_token: Optional[CancellationToken],
-        timeout: timedelta = timedelta(minutes=2),
+        timeout: timedelta = timedelta(minutes=5),
     ) -> None:
         start = datetime.now()
         while (datetime.now() - start) < timeout:

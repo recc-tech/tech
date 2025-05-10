@@ -159,9 +159,6 @@ host2_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 timeout_seconds = 30.0
 
 [plan_summary]
-# Where to save the summary
-html_file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.html"
-json_file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-summary.json"
 # Categories of notes that will be shown (e.g., visuals is relevant, vocals is
 # probably not)
 note_categories = ["Visuals"]
@@ -176,7 +173,11 @@ announcements_to_ignore = [
 	"PRAY For People",
 	"WELCOME",
 	"Welcome Everyone",
-	"Let’s Worship"
+	"Let’s Worship",
+	"Music In Background",
+	"Rotating Slides on Screens",
+	"MC Host On Stage",
+	"Wrap Up",
 ]
 
 [slides]

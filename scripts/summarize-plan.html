@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Plan Summary</title>
+		<script>
+			document.addEventListener("DOMContentLoaded", async () => {
+				const url = "http://localhost:8080/plan-summary.html"
+				try {
+					await fetch(url, {method: "HEAD"});
+					window.location.replace(url);
+				} catch (e) {
+					const elem = document.getElementById("message");
+					elem.innerHTML = (
+						"An error occurred while trying to access the plan summary."
+						+ " Is the script running?"
+						+ ` If it is, see if you can access the summary at <a href='${url}'>${url}</a>.`
+					);
+				}
+			})
+		</script>
+	</head>
+	<body>
+		<h1>Plan Summary</h1>
+		<p id="message">
+			Checking whether the script is running...
+			If it is, you should be redirected to the plan summary momentarily.
+		</p>
+	</body>
+</html>
