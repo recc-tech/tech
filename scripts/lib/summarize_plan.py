@@ -148,18 +148,19 @@ def _filter_notes_by_category(
     return [n for n in notes if n.category in categories]
 
 
-def _get_announcement_slide_names(item: PlanItem) -> List[str]:
-    lines = item.description.splitlines()
-    # If any lines are numbered, only keep the numbered ones
-    numbered_line_matches = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
-    if any(numbered_line_matches):
-        lines = [m[1] for m in numbered_line_matches if m is not None]
-    # If any lines end with " - Slide", only keep those
-    suffix_regex = r"(.*)\s+-\s+slide|(.*\s+-\s+title slide)"
-    suffix_matches = [re.fullmatch(suffix_regex, l, re.IGNORECASE) for l in lines]
-    if any(suffix_matches):
-        lines = [m[1] or m[2] for m in suffix_matches if m is not None]
-    return lines
+def _clean_and_filter_announcements(lines: List[str], blacklist: Set[str]) -> List[str]:
+    cleaned_lines = []
+    for ln in lines:
+        m = re.fullmatch(r"\d+\.\s*(.*)", ln)
+        cleaned_line = m[1] if m is not None else ln
+        if cleaned_line.lower().endswith(" - slide"):
+            cleaned_line = cleaned_line[: -len(" - slide")]
+        cleaned_lines.append(cleaned_line)
+
+    blacklist = {x.lower() for x in blacklist}
+    filtered_lines = [ln for ln in cleaned_lines if ln.lower() not in blacklist]
+
+    return filtered_lines
 
 
 def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
@@ -174,20 +175,18 @@ def _merge(lst1: List[T], lst2: List[T]) -> List[T]:
     return new_list
 
 
-def _get_walk_in_slides(items: List[PlanItem]) -> List[str]:
+def _get_walk_in_slides(items: List[PlanItem], blacklist: Set[str]) -> List[str]:
     matches = [
         i for i in items if re.search("rotating announcements", i.title, re.IGNORECASE)
     ]
     slide_names: List[str] = []
     for itm in matches:
-        lines = itm.description.splitlines()
-        ms = [re.fullmatch(r"\d+\. (.*)", l) for l in lines]
-        names = [m[1] for m in ms if m is not None]
-        slide_names = _merge(slide_names, names)
+        lines = _clean_and_filter_announcements(itm.description.splitlines(), blacklist)
+        slide_names = _merge(slide_names, lines)
     return slide_names
 
 
-def _get_announcements(items: List[PlanItem]) -> List[str]:
+def _get_announcements(items: List[PlanItem], blacklist: Set[str]) -> List[str]:
     pattern = "(mc hosts?|announcements|mc hosts?)"
     matches = [
         i
@@ -198,7 +197,7 @@ def _get_announcements(items: List[PlanItem]) -> List[str]:
     ]
     slide_names: List[str] = []
     for itm in matches:
-        names = _get_announcement_slide_names(itm)
+        names = _clean_and_filter_announcements(itm.description.splitlines(), blacklist)
         slide_names = _merge(slide_names, names)
     return slide_names
 
@@ -325,17 +324,13 @@ def get_plan_summary(
     )
     sections = _remove_unnecessary_notes(sections)
     items = [i for s in sections for i in s.items]
-    walk_in_slides = _get_walk_in_slides(items)
-    walk_in_slides = [
-        s for s in walk_in_slides if s.lower() not in config.announcements_to_ignore
-    ]
+    walk_in_slides = _get_walk_in_slides(
+        items, blacklist=config.announcements_to_ignore
+    )
     opener_video = _get_opener_video(
         sections, messenger, note_categories=config.plan_summary_note_categories
     )
-    announcements = _get_announcements(items)
-    announcements = [
-        a for a in announcements if a.lower() not in config.announcements_to_ignore
-    ]
+    announcements = _get_announcements(items, blacklist=config.announcements_to_ignore)
     msg_sec = _get_message_section(sections, messenger)
     if msg_sec is None:
         bumper_video = None

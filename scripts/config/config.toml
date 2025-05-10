@@ -174,7 +174,11 @@ announcements_to_ignore = [
 	"PRAY For People",
 	"WELCOME",
 	"Welcome Everyone",
-	"Let’s Worship"
+	"Let’s Worship",
+	"Music In Background",
+	"Rotating Slides on Screens",
+	"MC Host On Stage",
+	"Wrap Up",
 ]
 
 [slides]
