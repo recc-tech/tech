@@ -171,55 +171,74 @@ def _enable_cors() -> None:  # pyright: ignore[reportUnusedFunction]
 
 @bottle.post("/summaries")
 def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
-    prev_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
-    prev_summary = (
-        None if prev_summary_path is None else lib.load_plan_summary(prev_summary_path)
-    )
-    new_summary = _generate_summary(
-        pco_client=global_pco_client,
-        messenger=global_messenger,
-        args=global_args,
-        config=global_config,
-    )
-    changes = (
-        True
-        if prev_summary is None
-        else lib.diff_plan_summaries(old=prev_summary, new=new_summary).plan_changed
-    )
-    if changes:
-        _save_summary(new_summary, global_config.plan_summaries_dir)
-    return {"changes": changes}
+    try:
+        prev_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
+        prev_summary = (
+            None
+            if prev_summary_path is None
+            else lib.load_plan_summary(prev_summary_path)
+        )
+        new_summary = _generate_summary(
+            pco_client=global_pco_client,
+            messenger=global_messenger,
+            args=global_args,
+            config=global_config,
+        )
+        changes = (
+            True
+            if prev_summary is None
+            else lib.diff_plan_summaries(old=prev_summary, new=new_summary).plan_changed
+        )
+        if changes:
+            _save_summary(new_summary, global_config.plan_summaries_dir)
+        return {"changes": changes}
+    except Exception as e:
+        global_messenger.log_problem(
+            ProblemLevel.ERROR,
+            f"An error occurred while checking for updates: {e} ({type(e).__name__})",
+        )
+        raise
 
 
 @bottle.get("/plan-summary.html")
 def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
-    old_summary_id = (
-        bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
-    )
-    new_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
-    if new_summary_path is None:
-        return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
-    if not old_summary_id:
-        old_id = new_summary_path.stem
-        bottle.redirect(f"/plan-summary.html?old={old_id}")
-    new_summary = lib.load_plan_summary(new_summary_path)
-    old_summary_path = (
-        new_summary_path
-        if old_summary_id == "latest"
-        else global_config.plan_summaries_dir.joinpath(f"{old_summary_id}.json")
-    )
-    old_summary = lib.load_plan_summary(old_summary_path)
-    diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
-    old_plans = [
-        (p.stem, _friendly_plan_name(p))
-        for p in _list_existing_summaries(global_config.plan_summaries_dir)
-    ]
-    return lib.plan_summary_diff_to_html(
-        diff,
-        old_plans=old_plans,
-        current_plan_id=old_summary_id,
-        port=global_args.port,
-    )
+    try:
+        old_summary_id = (
+            bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+        )
+        new_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
+        if new_summary_path is None:
+            return f"No plan summaries have been generated yet (in {global_config.plan_summaries_dir.resolve().as_posix()})."
+        if not old_summary_id:
+            old_id = new_summary_path.stem
+            bottle.redirect(f"/plan-summary.html?old={old_id}")
+        new_summary = lib.load_plan_summary(new_summary_path)
+        old_summary_path = (
+            new_summary_path
+            if old_summary_id == "latest"
+            else global_config.plan_summaries_dir.joinpath(f"{old_summary_id}.json")
+        )
+        old_summary = lib.load_plan_summary(old_summary_path)
+        diff = lib.diff_plan_summaries(old=old_summary, new=new_summary)
+        old_plans = [
+            (p.stem, _friendly_plan_name(p))
+            for p in _list_existing_summaries(global_config.plan_summaries_dir)
+        ]
+        return lib.plan_summary_diff_to_html(
+            diff,
+            old_plans=old_plans,
+            current_plan_id=old_summary_id,
+            port=global_args.port,
+        )
+    except bottle.BottleException:
+        # This is what redirect() raises, so it's probably not a problem
+        raise
+    except Exception as e:
+        global_messenger.log_problem(
+            ProblemLevel.ERROR,
+            f"An error occurred while generating summary web page: {e} ({type(e).__name__})",
+        )
+        raise
 
 
 def _stop_server():
