@@ -4,6 +4,7 @@ import asyncio
 import filecmp
 import os
 import re
+import traceback
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
@@ -389,7 +390,11 @@ class AssetManager:
                 if d.is_required:
                     raise Exception(msg)
                 else:
-                    messenger.log_problem(ProblemLevel.WARN, msg)
+                    messenger.log_problem(
+                        ProblemLevel.WARN,
+                        msg,
+                        "".join(traceback.TracebackException.from_exception(exc).format())
+                    )
             elif d.deduplicate and (dup_of := _find_original(d.destination)):
                 ret[a] = DownloadDeduplicated(dup_of)
                 d.destination.unlink(missing_ok=True)
