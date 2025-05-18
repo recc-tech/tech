@@ -5,8 +5,10 @@ Code for interacting with the Planning Center Services API.
 from __future__ import annotations
 
 import asyncio
+import certifi
 import functools
 import re
+import ssl
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
@@ -441,7 +443,8 @@ class PlanningCenterClient:
             link_url = (
                 f"{self._cfg.pco_services_base_url}/attachments/{attachment.id}/open"
             )
-            async with session.post(link_url, auth=auth) as response:
+            ctx = ssl.create_default_context(cafile=certifi.where())
+            async with session.post(link_url, auth=auth, ssl=ctx) as response:
                 if response.status // 100 != 2:
                     raise ValueError(
                         f"Request to '{link_url}' for file '{destination.name}' failed with status {response.status}."
@@ -454,7 +457,7 @@ class PlanningCenterClient:
             # Get actual data
             # Increase the timeout because we often read large videos
             timeout = ClientTimeout(total=30 * 60)
-            async with session.get(file_contents_url, timeout=timeout) as response:
+            async with session.get(file_contents_url, timeout=timeout, ssl=ctx) as response:
                 if response.status // 100 != 2:
                     raise ValueError(
                         f"Request to '{file_contents_url}' for file '{destination.name}' failed with status {response.status}."

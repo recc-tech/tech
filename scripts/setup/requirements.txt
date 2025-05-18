@@ -1,6 +1,7 @@
 -r requirements-launch-apps.txt
-bottle~=0.13
-python-dateutil~=2.8.0
-lxml~=5.2.0
-matplotlib==3.9.0
-PyVimeo~=1.1.0
+bottle          ~= 0.13
+certifi         >= 2025.4.26
+python-dateutil ~= 2.8.0
+lxml            ~= 5.2.0
+matplotlib      == 3.9.0
+PyVimeo         ~= 1.1.0
