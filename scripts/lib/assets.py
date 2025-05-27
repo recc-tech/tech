@@ -393,7 +393,9 @@ class AssetManager:
                     messenger.log_problem(
                         ProblemLevel.WARN,
                         msg,
-                        "".join(traceback.TracebackException.from_exception(exc).format())
+                        "".join(
+                            traceback.TracebackException.from_exception(exc).format()
+                        ),
                     )
             elif d.deduplicate and (dup_of := _find_original(d.destination)):
                 ret[a] = DownloadDeduplicated(dup_of)
