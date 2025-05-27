@@ -434,7 +434,6 @@ class Config(BaseConfig):
             self.boxcast_broadcasts_html_url = reader.get_str(
                 "boxcast.broadcasts_html_url"
             )
-            self.rebroadcast_title = reader.get_str("boxcast.rebroadcast_title")
             self.upload_captions_retry_delay = timedelta(
                 seconds=reader.get_float("boxcast.upload_captions_retry_delay")
             )

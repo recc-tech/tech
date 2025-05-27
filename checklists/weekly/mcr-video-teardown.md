@@ -6,9 +6,6 @@ labels: checklist, mcr_video_teardown_checklist
 
 > :warning: Pay special attention to tasks that have been completed automatically by the teardown script.
 
-- Rebroadcasts have been correctly set up:
-    - [ ] Rebroadcasts exist at 1:00 pm, 5:00 pm, and 7:00 pm.
-    - [ ] The rebroadcasts are not recorded or sent to destinations like YouTube or Facebook.
 - The video is correctly uploaded to Vimeo:
     - [ ] The video is named `{{ date | date('YYYY-MM-DD') }} | Series | Title`, where `Series` is the message series and `Title` is the title of today's message.
     - [ ] The video thumbnail is the pre-stream title loop.
