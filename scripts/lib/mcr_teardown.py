@@ -10,11 +10,7 @@ from args import McrTeardownArgs
 from autochecklist import Messenger, Parameter, ProblemLevel, TaskStatus
 from config import Config, McrTeardownConfig
 from external_services import PlanningCenterClient
-from external_services.boxcast import (
-    BoxCastApiClient,
-    BroadcastInPastError,
-    NoCaptionsError,
-)
+from external_services.boxcast import BoxCastApiClient, NoCaptionsError
 from external_services.vimeo import ReccVimeoClient
 
 
@@ -89,71 +85,6 @@ def wait_for_BoxCast_recording(
             autochecklist.sleep_attentively(
                 timeout=retry_delay, cancellation_token=cancel_token
             )
-
-
-def create_rebroadcast_1pm(
-    client: BoxCastApiClient,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-) -> None:
-    _create_rebroadcast(
-        start=config.start_time.replace(hour=13, minute=0, second=0),
-        client=client,
-        config=config,
-        messenger=messenger,
-    )
-
-
-def create_rebroadcast_5pm(
-    client: BoxCastApiClient,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-) -> None:
-    _create_rebroadcast(
-        start=config.start_time.replace(hour=17, minute=0, second=0),
-        client=client,
-        config=config,
-        messenger=messenger,
-    )
-
-
-def create_rebroadcast_7pm(
-    client: BoxCastApiClient, config: McrTeardownConfig, messenger: Messenger
-) -> None:
-    _create_rebroadcast(
-        start=config.start_time.replace(hour=19, minute=0, second=0),
-        client=client,
-        config=config,
-        messenger=messenger,
-    )
-
-
-def _create_rebroadcast(
-    start: datetime,
-    client: BoxCastApiClient,
-    config: McrTeardownConfig,
-    messenger: Messenger,
-) -> None:
-    broadcast = client.find_main_broadcast_by_date(dt=config.start_time.date())
-    if broadcast is None:
-        raise ValueError("No broadcast found on BoxCast.")
-
-    try:
-        client.schedule_rebroadcast(
-            broadcast_id=broadcast.id,
-            name=config.rebroadcast_title,
-            start=start,
-        )
-    except BroadcastInPastError:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"The target rebroadcast start time of {start.strftime('%H:%M:%S')} is in the past.",
-            stacktrace=traceback.format_exc(),
-        )
-        messenger.log_status(
-            TaskStatus.SKIPPED,
-            "Skipped creating broadcast because the target start time has passed.",
-        )
 
 
 def export_to_Vimeo(client: BoxCastApiClient, config: McrTeardownConfig) -> None:

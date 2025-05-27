@@ -42,32 +42,6 @@
 					"description": "Wait until the BoxCast recording is available."
 				},
 				{
-					"name": "rebroadcasts",
-					"subtasks": [
-						{
-							"name": "create_rebroadcast_1pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 1:00 pm. [[url|https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast|More details]].",
-							"prerequisites": [
-								"wait_for_BoxCast_recording"
-							]
-						},
-						{
-							"name": "create_rebroadcast_5pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 5:00 pm. [[url|https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast|More details]].",
-							"prerequisites": [
-								"create_rebroadcast_1pm"
-							]
-						},
-						{
-							"name": "create_rebroadcast_7pm",
-							"description": "On BoxCast, create a rebroadcast titled '%{boxcast.rebroadcast_title}%' at 7:00 pm. [[url|https://github.com/recc-tech/tech/wiki/Creating-Rebroadcasts-on-BoxCast|More details]].",
-							"prerequisites": [
-								"create_rebroadcast_5pm"
-							]
-						}
-					]
-				},
-				{
 					"name": "Vimeo",
 					"subtasks": [
 						{

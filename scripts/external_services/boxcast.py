@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 import autochecklist
 import captions
 import dateutil.parser
-import dateutil.tz
 import requests
 from autochecklist import CancellationToken, Messenger, ProblemLevel
 from captions import Cue
@@ -31,11 +30,6 @@ class Broadcast:
 
 class NoCaptionsError(Exception):
     pass
-
-
-class BroadcastInPastError(Exception):
-    def __str__(self):
-        return "Rebroadcast start time is in the past."
 
 
 class BoxCastApiClient:
@@ -174,31 +168,6 @@ class BoxCastApiClient:
             f"The captions have still not been published after {timeout.total_seconds()} seconds."
             " Please check their status on BoxCast.",
         )
-
-    def schedule_rebroadcast(
-        self, broadcast_id: str, name: str, start: datetime
-    ) -> None:
-        current_dt = datetime.combine(
-            date=self._config.start_time.date(),
-            time=datetime.now().time(),
-        )
-        if start <= current_dt:
-            raise BroadcastInPastError()
-        url = f"{self._config.boxcast_base_url}/account/broadcasts"
-        start_utc = start.astimezone(dateutil.tz.tzutc())
-        starts_at = start_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-        payload = {
-            "name": name,
-            "stream_source": "recording",
-            "source_broadcast_id": broadcast_id,
-            "starts_at": starts_at,
-            "is_private": False,
-            "is_ticketed": False,
-            "do_not_record": True,
-            "requests_captioning": False,
-        }
-        headers = {"Content-Type": "application/json"}
-        self._send_and_check(method="POST", url=url, json=payload, headers=headers)
 
     def export_to_vimeo(
         self, broadcast_id: str, vimeo_user_id: str, title: str

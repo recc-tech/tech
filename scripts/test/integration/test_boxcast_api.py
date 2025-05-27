@@ -1,5 +1,5 @@
 import unittest
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from unittest.mock import Mock, create_autospec
@@ -11,7 +11,7 @@ from captions import Cue
 from config import Config
 from dateutil.tz import tzutc
 from external_services import Credential, CredentialStore, InputPolicy
-from external_services.boxcast import BoxCastApiClient, Broadcast, BroadcastInPastError
+from external_services.boxcast import BoxCastApiClient, Broadcast
 
 _BROADCAST_20240505_ID = "orn5qh81x7dojxwlbbng"
 _BROADCAST_20250525_ID = "l2wqebtjkrdg9qdcigx2"
@@ -116,127 +116,6 @@ class BoxCastTestCase(unittest.TestCase):
         self.assertEqual(modified_captions, redownloaded_captions)
         log_problem_mock.assert_not_called()
 
-    # IMPORTANT: These tests MUST NOT actually create new rebroadcasts
-    # Instead, test those things manually so that the tester can go and clean
-    # up as needed
-
-    def test_schedule_valid_rebroadcast(self) -> None:
-        # Use a date in the past so that, if somehow the request goes through
-        # to BoxCast, it will fail
-        today = date(year=1999, month=12, day=25)
-        (client, log_problem_mock, credential_store) = _set_up_dependencies(
-            lazy_login=True, fake_credentials=True, today=today
-        )
-        # Make sure the credential store doesn't provide valid credentials so
-        # that we don't actually send a request to BoxCast
-        self._assert_credentials_are_fake(credential_store)
-        send_mock = Mock()
-        client._send_and_check = send_mock  # pyright: ignore[reportPrivateUsage]
-        client._get_new_oauth_token = _fake_tok  # pyright: ignore[reportPrivateUsage]
-        client.schedule_rebroadcast(
-            broadcast_id="test_id",
-            name="Test Broadcast",
-            start=datetime.combine(
-                date=today + timedelta(days=1),
-                time=time(hour=1, minute=59, second=42),
-            ),
-        )
-        send_mock.assert_called_once_with(
-            method="POST",
-            url="https://rest.boxcast.com/account/broadcasts",
-            json={
-                "name": "Test Broadcast",
-                "stream_source": "recording",
-                "source_broadcast_id": "test_id",
-                "starts_at": "1999-12-26T06:59:42.000Z",
-                "is_private": False,
-                "is_ticketed": False,
-                "do_not_record": True,
-                "requests_captioning": False,
-            },
-            headers={"Content-Type": "application/json"},
-        )
-        log_problem_mock.assert_not_called()
-
-    def test_schedule_valid_rebroadcast_daylight_savings(self) -> None:
-        # Use a date in the past so that, if somehow the request goes through
-        # to BoxCast, it will fail
-        today = date(year=1999, month=6, day=3)
-        (client, log_problem_mock, credential_store) = _set_up_dependencies(
-            lazy_login=True, fake_credentials=True, today=today
-        )
-        # Make sure the credential store doesn't provide valid credentials so
-        # that we don't actually send a request to BoxCast
-        self._assert_credentials_are_fake(credential_store)
-        send_mock = Mock()
-        client._send_and_check = send_mock  # pyright: ignore[reportPrivateUsage]
-        client._get_new_oauth_token = _fake_tok  # pyright: ignore[reportPrivateUsage]
-        client.schedule_rebroadcast(
-            broadcast_id="test_id",
-            name="Test Broadcast",
-            start=datetime.combine(
-                date=today + timedelta(days=1),
-                time=time(hour=1, minute=0, second=0),
-            ),
-        )
-        send_mock.assert_called_once_with(
-            method="POST",
-            url="https://rest.boxcast.com/account/broadcasts",
-            json={
-                "name": "Test Broadcast",
-                "stream_source": "recording",
-                "source_broadcast_id": "test_id",
-                "starts_at": "1999-06-04T05:00:00.000Z",
-                "is_private": False,
-                "is_ticketed": False,
-                "do_not_record": True,
-                "requests_captioning": False,
-            },
-            headers={"Content-Type": "application/json"},
-        )
-        log_problem_mock.assert_not_called()
-
-    def test_schedule_rebroadcast_earlier_today(self) -> None:
-        # Use a date in the past so that, if somehow the request goes through
-        # to BoxCast, it will fail
-        today = date(year=1999, month=1, day=2)
-        (client, _, credential_store) = _set_up_dependencies(
-            lazy_login=True, fake_credentials=True, today=today
-        )
-        # Make sure the credential store doesn't provide valid credentials so
-        # that we don't actually send a request to BoxCast
-        self._assert_credentials_are_fake(credential_store)
-        send_mock = Mock()
-        client._send_and_check = send_mock  # pyright: ignore[reportPrivateUsage]
-        client._get_new_oauth_token = _fake_tok  # pyright: ignore[reportPrivateUsage]
-        with self.assertRaises(BroadcastInPastError) as cm:
-            client.schedule_rebroadcast(
-                broadcast_id="test_id",
-                name="Test Broadcast",
-                start=(
-                    datetime.combine(date=today, time=datetime.now().time())
-                    - timedelta(minutes=1)
-                ),
-            )
-        send_mock.assert_not_called()
-        self.assertEqual("Rebroadcast start time is in the past.", str(cm.exception))
-
-    def _assert_credentials_are_fake(self, credential_store: CredentialStore) -> None:
-        self.assertEqual(
-            {
-                Credential.BOXCAST_CLIENT_ID: "FAKE CREDENTIAL",
-                Credential.BOXCAST_CLIENT_SECRET: "FAKE CREDENTIAL",
-            },
-            credential_store.get_multiple(
-                prompt="",
-                credentials=[
-                    Credential.BOXCAST_CLIENT_ID,
-                    Credential.BOXCAST_CLIENT_SECRET,
-                ],
-                request_input=InputPolicy.NEVER,
-            ),
-        )
-
 
 def _set_up_dependencies(
     lazy_login: bool = False,
@@ -278,7 +157,3 @@ def _get_fake_credentials(
     prompt: str, credentials: List[Credential], request_input: InputPolicy
 ) -> Dict[Credential, str]:
     return {c: "FAKE CREDENTIAL" for c in credentials}
-
-
-def _fake_tok(*args: object, **kwargs: object) -> str:
-    return "FAKE TOKEN"
