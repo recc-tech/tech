@@ -7,6 +7,9 @@ function main {
 		exit 0
 	fi
 
+	# Some apps (e.g., Firefox, Spotify) are installed via Brew
+	brew upgrade
+
 	# Go to the scripts directory
 	cd "$(dirname "$0")"
 
