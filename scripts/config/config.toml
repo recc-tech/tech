@@ -123,7 +123,7 @@ skipped_service_types = [
 	"130956",  # UTC | 2023-11-11
 ]
 # https://regex101.com/
-kids_video_regex = "kids"
+kids_video_regex = 'kids|_W\d\.'
 sermon_notes_regex = "^notes"
 announcements_video_regex = "announcement"
 default_speaker_name = "Lorenzo DellaForesta"

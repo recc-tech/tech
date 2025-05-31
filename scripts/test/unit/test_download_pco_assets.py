@@ -76,6 +76,16 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
         )
         self.assertEqual("kids video", self._classify(kids_video))
 
+    def test_classify_kids_video_2(self) -> None:
+        kids_video = Attachment(
+            id="201155267",
+            filename="Live_It_Out_W1.mp4",
+            num_bytes=446005615,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual("kids video", self._classify(kids_video))
+
     def test_classify_sermon_notes(self) -> None:
         notes = Attachment(
             id="163869600",
