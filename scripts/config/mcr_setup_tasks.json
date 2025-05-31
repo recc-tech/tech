@@ -188,7 +188,10 @@
 			"name": "follow_Planning_Center_plan",
 			"description": "On Planning Center Online, open the live view of today's plan.",
 			"prerequisites": [
-				"turn_everything_on"
+				"check_streaming_platforms",
+				"check_live_feeds",
+				"save_vMix_preset",
+				"publish_sermon_notes"
 			]
 		}
 	]

@@ -1,8 +1,9 @@
 import inspect
 from typing import Set, Tuple
 
+import external_services
 from autochecklist import Messenger, ProblemLevel, TaskStatus
-from config import McrSetupConfig
+from config import Config, McrSetupConfig
 from external_services import (
     Plan,
     PlanningCenterClient,
@@ -237,4 +238,14 @@ def generate_backup_slides(
     messenger.log_status(
         TaskStatus.DONE,
         f"Generated {len(slides)} slides in {config.assets_by_service_dir.as_posix()}.",
+    )
+
+
+def follow_Planning_Center_plan(
+    pco_client: PlanningCenterClient, config: Config
+) -> None:
+    plan = pco_client.find_plan_by_date(dt=config.start_time.date())
+    external_services.launch_firefox(
+        config.live_view_url.fill({"SERVICE_ID": plan.id.plan}),
+        fullscreen=False,
     )
