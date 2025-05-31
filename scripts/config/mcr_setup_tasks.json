@@ -104,7 +104,7 @@
 		},
 		{
 			"name": "publish_sermon_notes",
-			"description": "Publish the sermon notes to Church Online Platform. ⚠️ [[styled|emph|Check at the bottom of the page that you are ONLY modifying the correct events (today's main event the first time and today's rebroadcasts the second time)]] ⚠️. [[url|https://github.com/recc-tech/tech/wiki/Publishing-Sermon-Notes-to-Church-Online-Platform|More details]].",
+			"description": "Publish the sermon notes to Church Online Platform. ⚠️ [[styled|emph|Check at the bottom of the page that you are ONLY modifying today's event]] ⚠️. [[url|https://github.com/recc-tech/tech/wiki/Publishing-Sermon-Notes-to-Church-Online-Platform|More details]].",
 			"prerequisites": [
 				"download_assets",
 				"check_COP_events"

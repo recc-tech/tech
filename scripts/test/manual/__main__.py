@@ -26,7 +26,6 @@ class TestCase(Enum):
     RELOAD_CONFIG = "reload_config"
     RUN_GUI = "run_gui"
     CANCEL_GUI = "cancel_gui"
-    REBROADCAST = "rebroadcast"
     CAPTIONS = "captions"
     VIMEO_EXPORT = "vimeo_export"
     PLAN_SUMMARY_20240414 = "plan_summary_20240414"
@@ -195,33 +194,6 @@ def _make_task_model(cases: List[TestCase]) -> TaskModel:
         )
         tasks.append(t)
         latest_task = t.name
-    if TestCase.REBROADCAST in cases:
-        t = TaskModel(
-            name="test_schedule_rebroadcast",
-            subtasks=[
-                TaskModel(
-                    name="ready_schedule_rebroadcast",
-                    description=(
-                        f"The next task should create a broadcast called '{_REBROADCAST_TITLE}' starting at {_REBROADCAST_START.strftime('%Y-%m-%d %H:%M:%S')}."
-                        + f" [IMPORTANT] Log in to BoxCast using the owner account before continuing."
-                    ),
-                ),
-                TaskModel(
-                    name="schedule_rebroadcast",
-                    description="Failed to schedule rebroadcast.",
-                    only_auto=True,
-                    prerequisites={"ready_schedule_rebroadcast"},
-                ),
-                TaskModel(
-                    name="delete_rebroadcast",
-                    description="Go to BoxCast, check that the rebroadcast was created properly, and then delete it.",
-                    prerequisites={"schedule_rebroadcast"},
-                ),
-            ],
-            prerequisites={latest_task},
-        )
-        tasks.append(t)
-        latest_task = t.name
     if TestCase.CAPTIONS in cases:
         t = TaskModel(
             name="test_captions_workflow",
@@ -315,12 +287,6 @@ def cancel_GUI(args: ManualTestArgs) -> None:
     # Python process is not supported (and not normally needed anyway)
     cmd = ["coverage", "run", "--append"] if args.coverage else ["python"]
     subprocess.run(cmd + ["-m", "autochecklist"])
-
-
-def schedule_rebroadcast(client: BoxCastApiClient) -> None:
-    client.schedule_rebroadcast(
-        broadcast_id=_BROADCAST_ID, name=_REBROADCAST_TITLE, start=_REBROADCAST_START
-    )
 
 
 def follow_captions_workflow() -> None:
