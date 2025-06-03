@@ -227,7 +227,7 @@ class AssetManager:
             return (
                 p.is_file()
                 and p.suffix.lower() in self._VIDEO_EXTENSIONS
-                and bool(re.search(pattern, p.stem, flags=re.IGNORECASE))
+                and bool(re.search(pattern, p.name, flags=re.IGNORECASE))
             )
 
         folder = self._config.assets_by_service_dir
@@ -243,7 +243,7 @@ class AssetManager:
             return (
                 p.is_file()
                 and p.suffix.lower() in self._VIDEO_EXTENSIONS
-                and bool(re.search(pattern, p.stem, flags=re.IGNORECASE))
+                and bool(re.search(pattern, p.name, flags=re.IGNORECASE))
             )
 
         folder = self._config.assets_by_service_dir
