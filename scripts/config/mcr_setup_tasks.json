@@ -123,13 +123,6 @@
 				{
 					"name": "set_up_in_annex",
 					"description": "Set up for Sunday school in the Annex. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]]."
-				},
-				{
-					"name": "start_recording",
-					"description": "After the Kids Connection broadcast, start recording the stream by pressing the REC button.",
-					"prerequisites": [
-						"start_stream"
-					]
 				}
 			]
 		},

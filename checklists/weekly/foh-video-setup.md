@@ -17,6 +17,7 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - [ ] Message
 - [ ] Make sure the projectors are lined up well and in focus.
 - [ ] Check that all the images and videos on Planning Center are in ProPresenter.
+- [ ] In ProPresenter, remove walk-in slides and announcement slides that are definitely outdated.
 - [ ] For each slide, make sure you use the correct look:
     - "Lyrics" for song lyrics
     - "Scripture" for Bible verses
@@ -33,14 +34,15 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 ### (Nice to Have)
 
 - [ ] Check that the message notes are up to date (in case some last-minute changes were made).
-- [ ] Check that all the songs are correct (in case there was a typo on Planning Center).
 - [ ] Check that all slides look good on the projector and on NDI (e.g., the text isn't too small).
-- [ ] Remove walk-in slides and MC announcements that are definitely outdated.
+- [ ] Check that all the songs are correct (in case the wrong CCLI number was provided).
+    - For example, check the sheet music.
+- [ ] In the `ProPresenter Assets` directory, archive outdated files.
 
 ## After Rehearsal
 
 - [ ] Play each video to make sure the sound is working.
-- [ ] Turn off the red light and the stage lights.
+- [ ] Turn down the red light and the stage lights.
 - [ ] Play some music from Spotify.
 - [ ] Show the walk-in slides.
 - [ ] Turn on NDI Video Monitor and select NDI > Desktop-D9Q3BCP > vMix - Output 1.
@@ -48,6 +50,4 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 ## General Reminders
 
-- Control the lights:
-    - Lower MASTER LEVEL to 0 when a video is played and raise it back to 10 afterwards.
-    - If the speaker goes over time, flash the red light a few times and then leave it on.
+- Lower MASTER LEVEL to 0 when a video is played and raise it back to 10 afterwards.

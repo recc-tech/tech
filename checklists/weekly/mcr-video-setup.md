@@ -11,6 +11,7 @@ labels: checklist, mcr_video_setup_checklist
 - [ ] The stream is running smoothly on Church Online Platform.
 - [ ] Sound is working and cameras are responsive.
 - [ ] Titles are up to date in vMix.
+- [ ] The pre-stream title loop looks good (e.g., the text is not overlapping with the logo).
 - [ ] All videos and loops have been restarted.
 - [ ] The tech for the kids is set up in the Annex.
 

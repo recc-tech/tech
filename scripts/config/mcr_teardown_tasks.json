@@ -147,7 +147,7 @@
 				},
 				{
 					"name": "turn_off_cams",
-					"description": "Turn off camera 4 (the camera on the tripod)."
+					"description": "Turn off camera 4 (the camera on the tripod) and put the lens cap on cam 5 (the camera on stage)."
 				},
 				{
 					"name": "turn_off_speakers",
