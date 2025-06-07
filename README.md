@@ -20,6 +20,8 @@ Welcome to the River's Edge Production Team repository!
 
 ## Setting Up a New Development Environment
 
+See [set-up-dev-env.sh](scripts/setup/set-up-dev-env.sh).
+
 1. Install Python. The scripts were developed and tested using Python 3.10.
 2. Move to the `scripts/` directory.
 3. Create a new Python virtual environment using the command `python -m venv .venv`. Activate this virtual environment using `source .venv/bin/activate` on MacOS or `.venv/Scripts/activate` on Windows.
