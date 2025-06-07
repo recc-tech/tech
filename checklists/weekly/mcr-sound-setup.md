@@ -20,6 +20,7 @@ Then, turn on the MCR sound station.
 
 ## Initial Check
 
+- [ ] Raise the M/C, LR, and Matrix 1/2 faders to 0.
 - [ ] Unmute and raise faders for channels that are being used.
 - [ ] Mute and lower faders to -oo for channels that are *not* in use (to reduce visual clutter).
 - [ ] Check that the input gain (trim) is as expected for each unmuted channel.

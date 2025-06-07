@@ -317,10 +317,7 @@ if __name__ == "__main__":
         script_name="Summarize Plan",
         description=SummarizePlanArgs.DESCRIPTION,
         show_statuses_by_default=True,
-        confirm_exit_message=(
-            "Are you sure you want to exit?"
-            " The plan summary will no longer be updated automatically."
-        ),
+        confirm_exit_message="Stop checking for updates?",
     )
     dependency_provider = ReccDependencyProvider(
         args=_args, config=_cfg, messenger=msg, lazy_login=_args.demo
