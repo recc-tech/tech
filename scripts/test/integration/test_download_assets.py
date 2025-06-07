@@ -1081,6 +1081,36 @@ class DownloadAssetsTestCase(unittest.TestCase):
         self.assertEqual(3, messenger.log_problem.call_count)
 
 
+class LocateAssetsTestCase(unittest.TestCase):
+    def setUp(self):
+        self._config = Config(
+            ReccArgs.parse([]),
+            profile="mcr_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        self.assertTrue(
+            _TEST_DIR in self._config.assets_by_service_dir.parents,
+            "Assets by service directory must be within the test directory to avoid unintended data loss.",
+        )
+        shutil.rmtree(self._config.assets_by_service_dir, ignore_errors=True)
+        self._config.assets_by_service_dir.mkdir(parents=True, exist_ok=False)
+        self._manager = AssetManager(self._config)
+
+    def test_locate_kids_video_1(self) -> None:
+        p = self._config.assets_by_service_dir.joinpath("Kids_OnlineExperience_W2.mp4")
+        with open(p, "w"):
+            pass
+        self.assertTrue(p.exists(), "File should exist.")
+        self.assertEqual(self._manager.locate_kids_video(), p)
+
+    def test_locate_kids_video_2(self) -> None:
+        p = self._config.assets_by_service_dir.joinpath("Live_It_Out_W1.mp4")
+        with open(p, "w"):
+            pass
+        self.assertTrue(p.exists(), "File should exist.")
+        self.assertEqual(self._manager.locate_kids_video(), p)
+
+
 async def _fake_download(
     downloads: Dict[Path, Attachment],
     messenger: Messenger,
