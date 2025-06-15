@@ -124,7 +124,7 @@ skipped_service_types = [
 ]
 # https://regex101.com/
 # The regex is for the full file name, including the extension
-kids_video_regex = 'kids|_W\d\.'
+kids_video_regex = 'kids|(\b|_)W\d\b'
 sermon_notes_regex = "^notes"
 announcements_video_regex = "announcement"
 default_speaker_name = "Lorenzo DellaForesta"
