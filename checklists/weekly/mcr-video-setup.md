@@ -9,6 +9,7 @@ labels: checklist, mcr_video_setup_checklist
 ## Essentials
 
 - [ ] The stream is running smoothly on Church Online Platform.
+- [ ] After the kids broadcast, vMix is recording (this should be triggered automatically).
 - [ ] Sound is working and cameras are responsive.
 - [ ] Titles are up to date in vMix.
 - [ ] The pre-stream title loop looks good (e.g., the text is not overlapping with the logo).
