@@ -78,6 +78,7 @@ def download_PCO_assets(
             [f"* {a.filename}: {d}" for (a, d) in download_plan.downloads.items()]
         )
         messenger.log_status(TaskStatus.DONE, msg)
+        return
     results = manager.execute_plan(
         plan=download_plan,
         pco_client=client,
