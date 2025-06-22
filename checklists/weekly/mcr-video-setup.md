@@ -10,11 +10,13 @@ labels: checklist, mcr_video_setup_checklist
 
 - [ ] The stream is running smoothly on Church Online Platform.
 - [ ] After the kids broadcast, vMix is recording (this should be triggered automatically).
-- [ ] Sound is working and cameras are responsive.
+- [ ] Sound is working.
+- [ ] Cameras are working, including cam 4 (the broadcast camera in the FOH booth) and cam 5 (the small camera onstage).
 - [ ] Titles are up to date in vMix.
 - [ ] The pre-stream title loop looks good (e.g., the text is not overlapping with the logo).
 - [ ] All videos and loops have been restarted.
 - [ ] The tech for the kids is set up in the Annex.
+- [ ] The Next Steps iPad is set up.
 
 ## Nice-To-Have
 
