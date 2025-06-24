@@ -29,6 +29,7 @@ from lib import (
     PlanSummaryDiff,
     diff_plan_summaries,
     get_plan_summary,
+    get_vocals_notes,
     load_plan_summary,
     plan_summary_diff_to_html,
     plan_summary_to_json,
@@ -730,6 +731,115 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
         # At least one test must have run, otherwise there's something wrong
         # with the test itself
         self.assertGreater(n, 0)
+
+
+class GetVocalsNotesTestCase(unittest.TestCase):
+    """Test `get_vocals_notes()`."""
+
+    def setUp(self):
+        # TODO: Make a helper method for this (copied from
+        #       GeneratePlanSummaryTestCase)?
+        super().setUp()
+
+        self._config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        self._messenger = create_autospec(Messenger)
+        self._log_problem_mock = self._messenger.log_problem
+        self._pco_client = PlanningCenterClient(
+            messenger=self._messenger,
+            credential_store=credential_store,
+            config=self._config,
+            lazy_login=True,
+        )
+        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+
+    def test_get_vocals_notes_20240505(self) -> None:
+        expected_notes = [
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Come Now Is The Time To Worship (C to A)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Rodger\nMelody: Iris (boost during last half of the song after we modulate in key of A)\nHarmony: Kristina",
+                    )
+                ],
+                description="CCLI Song # 2430948",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Miracle / All Hail King Jesus (C)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Kristina\nInstrumental V1 chords during MC Hosts speaking\nIntro\nV1 - Kristina\nChorus - Kristina\nTurnaround\nV2 - All (uni)\nChorus - All (harms)\nBridge\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B\nTurnaround\nV3 - Kristina (first 2 lines) / (last 2 lines all in - harms)\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B",
+                    )
+                ],
+                description="Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="How Deep The Father's Love For Us / He Lives (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Iris / Harmony: Kristina\nInstrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\n(2X) He Lives Bridge  - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\nStay on B to transition to What a Beautiful Name",
+                    )
+                ],
+                description="How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="What a Beautiful Name / Agnus Dei (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Kristina\nV1 - Kristina\nChorus 1 - Kristina\nV2 - All (harms)\nChorus 2 - All (harms)\nInstrumental\nBridge 1 - Kristina\nBridge 2 - All (harms)\nChorus 3 - All (harms)\nBridge 2 - All (harms) \n(2X) Agnus Dei Chorus - All (harms)\nChorus 1 - Kristina\nlast line tag 2X - Kristina",
+                    )
+                ],
+                description="What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Worthy Of It All / I Exalt Thee (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Instrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\n(2X) He Lives - Chorus - All (harms)\nStay on B to transition to What a Beautiful Name",
+                    )
+                ],
+                description="Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803",
+            ),
+        ]
+        actual_notes = get_vocals_notes(
+            client=self._pco_client,
+            config=self._config,
+            dt=date(2024, 5, 5),
+        )
+
+        self.assertEqual(actual_notes, expected_notes)
+        self._log_problem_mock.assert_not_called()
 
 
 def _get_clipboard_text() -> str:

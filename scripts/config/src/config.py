@@ -496,7 +496,10 @@ class Config(BaseConfig):
 
             # Plan Summaries
             self.plan_summary_note_categories = set(
-                reader.get_str_list("plan_summary.note_categories")
+                reader.get_str_list("plan_summary.tech_note_categories")
+            )
+            self.vocals_note_categories = set(
+                reader.get_str_list("plan_summary.vocal_note_categories")
             )
             self.announcements_to_ignore = {
                 a.lower()

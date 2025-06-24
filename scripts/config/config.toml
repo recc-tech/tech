@@ -159,9 +159,11 @@ host2_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
 timeout_seconds = 30.0
 
 [plan_summary]
-# Categories of notes that will be shown (e.g., visuals is relevant, vocals is
-# probably not)
-note_categories = ["Visuals"]
+# Categories of notes that will be shown in the plan summary (e.g., visuals is
+# relevant, vocals is probably not)
+tech_note_categories = ["Visuals"]
+# Categories of notes that will be included in the vocal notes summary
+vocal_note_categories = ["Vocals"]
 # Lines in the announcement-related sections of the plan to ignore
 # (case-insensitive)
 announcements_to_ignore = [

@@ -411,6 +411,17 @@ def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
     )
 
 
+def get_vocals_notes(
+    client: PlanningCenterClient, config: Config, dt: date
+) -> List[AnnotatedSong]:
+    plan = client.find_plan_by_date(dt)
+    sections = client.find_plan_items(
+        plan.id, include_songs=True, include_item_notes=True
+    )
+    songs = _get_songs(sections, note_categories=config.vocals_note_categories)
+    return [s for sec in songs for s in sec]
+
+
 _SUPERHEADER_CLS = "superheader"
 _BLOCK_START_CLS = "block-start"
 _BLOCK_END_CLS = "block-end"

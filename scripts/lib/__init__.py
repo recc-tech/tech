@@ -25,6 +25,7 @@ from .summarize_plan import (
     PlanSummaryDiff,
     diff_plan_summaries,
     get_plan_summary,
+    get_vocals_notes,
     load_plan_summary,
     plan_summary_diff_to_html,
     plan_summary_to_json,
