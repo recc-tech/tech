@@ -722,12 +722,12 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
         n = 0
         for p in _DATA_DIR.glob("*_summary.json"):
             with self.subTest(p.stem):
+                n += 1
                 summary1 = load_plan_summary(p)
                 temp_file = _TEMP_DIR.joinpath(p.relative_to(_DATA_DIR))
                 temp_file.write_text(plan_summary_to_json(summary1))
                 summary2 = load_plan_summary(temp_file)
                 self.assert_equal_summary(summary1, summary2)
-        n += 1
         # At least one test must have run, otherwise there's something wrong
         # with the test itself
         self.assertGreater(n, 0)

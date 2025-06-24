@@ -164,6 +164,8 @@ timeout_seconds = 30.0
 tech_note_categories = ["Visuals"]
 # Categories of notes that will be included in the vocal notes summary
 vocal_note_categories = ["Vocals"]
+# Where to save the vocals notes summary
+vocals_notes_file = "%{folder.plan_summaries}%/%{args.startup_ymd}%-vocals-notes.html"
 # Lines in the announcement-related sections of the plan to ignore
 # (case-insensitive)
 announcements_to_ignore = [

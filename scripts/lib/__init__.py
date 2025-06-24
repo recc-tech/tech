@@ -27,6 +27,9 @@ from .summarize_plan import (
     get_plan_summary,
     get_vocals_notes,
     load_plan_summary,
+    load_vocals_notes,
     plan_summary_diff_to_html,
     plan_summary_to_json,
+    vocals_notes_to_html,
+    vocals_notes_to_json,
 )

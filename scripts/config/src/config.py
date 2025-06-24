@@ -501,6 +501,7 @@ class Config(BaseConfig):
             self.vocals_note_categories = set(
                 reader.get_str_list("plan_summary.vocal_note_categories")
             )
+            self.vocals_notes_file = reader.get_file("plan_summary.vocals_notes_file")
             self.announcements_to_ignore = {
                 a.lower()
                 for a in reader.get_str_list("plan_summary.announcements_to_ignore")
