@@ -5,7 +5,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 from tkinter import Tk
-from typing import Dict
+from typing import Any, Dict, Tuple
 from unittest.mock import create_autospec
 
 from args import ReccArgs
@@ -131,30 +131,38 @@ class PlanSummaryTestCase(unittest.TestCase):
         # Just in case
         self.assertEqual(expected, actual)
 
+    def create_services(self) -> Tuple[Config, Messenger, Any, PlanningCenterClient]:
+        config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        messenger = create_autospec(Messenger)
+        log_problem_mock = messenger.log_problem
+        pco_client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=True,
+        )
+        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+        return (config, messenger, log_problem_mock, pco_client)
+
 
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
     def setUp(self):
         super().setUp()
-
-        self._config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        self._messenger = create_autospec(Messenger)
-        self._log_problem_mock = self._messenger.log_problem
-        self._pco_client = PlanningCenterClient(
-            messenger=self._messenger,
-            credential_store=credential_store,
-            config=self._config,
-            lazy_login=True,
-        )
-        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
+        (
+            self._config,
+            self._messenger,
+            self._log_problem_mock,
+            self._pco_client,
+        ) = self.create_services()
 
     # Not a particularly important case now that 2024-05-05 is tested, but it
     # doesn't hurt to keep it around.
@@ -733,31 +741,17 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
         self.assertGreater(n, 0)
 
 
-class GetVocalsNotesTestCase(unittest.TestCase):
+class GetVocalsNotesTestCase(PlanSummaryTestCase):
     """Test `get_vocals_notes()`."""
 
     def setUp(self):
-        # TODO: Make a helper method for this (copied from
-        #       GeneratePlanSummaryTestCase)?
         super().setUp()
-
-        self._config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        self._messenger = create_autospec(Messenger)
-        self._log_problem_mock = self._messenger.log_problem
-        self._pco_client = PlanningCenterClient(
-            messenger=self._messenger,
-            credential_store=credential_store,
-            config=self._config,
-            lazy_login=True,
-        )
-        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
+        (
+            self._config,
+            self._messenger,
+            self._log_problem_mock,
+            self._pco_client,
+        ) = self.create_services()
 
     def test_get_vocals_notes_20240505(self) -> None:
         expected_notes = [
