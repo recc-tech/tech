@@ -1,0 +1,74 @@
+{
+	"songs": [
+		{
+			"song": {
+				"ccli": null,
+				"title": "Come Now Is The Time To Worship (C to A)",
+				"author": null
+			},
+			"description": "CCLI Song # 2430948",
+			"notes": [
+				{
+					"category": "Vocals",
+					"contents": "Lead: Rodger\nMelody: Iris (boost during last half of the song after we modulate in key of A)\nHarmony: Kristina"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Miracle / All Hail King Jesus (C)",
+				"author": null
+			},
+			"description": "Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216",
+			"notes": [
+				{
+					"category": "Vocals",
+					"contents": "Lead: Kristina\nInstrumental V1 chords during MC Hosts speaking\nIntro\nV1 - Kristina\nChorus - Kristina\nTurnaround\nV2 - All (uni)\nChorus - All (harms)\nBridge\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B\nTurnaround\nV3 - Kristina (first 2 lines) / (last 2 lines all in - harms)\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "How Deep The Father's Love For Us / He Lives (B)",
+				"author": null
+			},
+			"description": "How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098",
+			"notes": [
+				{
+					"category": "Vocals",
+					"contents": "Lead: Iris / Harmony: Kristina\nInstrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\n(2X) He Lives Bridge  - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\nStay on B to transition to What a Beautiful Name"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "What a Beautiful Name / Agnus Dei (B)",
+				"author": null
+			},
+			"description": "What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713",
+			"notes": [
+				{
+					"category": "Vocals",
+					"contents": "Lead: Kristina\nV1 - Kristina\nChorus 1 - Kristina\nV2 - All (harms)\nChorus 2 - All (harms)\nInstrumental\nBridge 1 - Kristina\nBridge 2 - All (harms)\nChorus 3 - All (harms)\nBridge 2 - All (harms) \n(2X) Agnus Dei Chorus - All (harms)\nChorus 1 - Kristina\nlast line tag 2X - Kristina"
+				}
+			]
+		},
+		{
+			"song": {
+				"ccli": null,
+				"title": "Worthy Of It All / I Exalt Thee (B)",
+				"author": null
+			},
+			"description": "Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803",
+			"notes": [
+				{
+					"category": "Vocals",
+					"contents": "Instrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\n(2X) He Lives - Chorus - All (harms)\nStay on B to transition to What a Beautiful Name"
+				}
+			]
+		}
+	]
+}

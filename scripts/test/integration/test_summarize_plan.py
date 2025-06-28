@@ -5,7 +5,7 @@ import unittest
 from datetime import date
 from pathlib import Path
 from tkinter import Tk
-from typing import Dict
+from typing import Any, Dict, Tuple
 from unittest.mock import create_autospec
 
 from args import ReccArgs
@@ -29,6 +29,7 @@ from lib import (
     PlanSummaryDiff,
     diff_plan_summaries,
     get_plan_summary,
+    get_vocals_notes,
     load_plan_summary,
     plan_summary_diff_to_html,
     plan_summary_to_json,
@@ -130,30 +131,38 @@ class PlanSummaryTestCase(unittest.TestCase):
         # Just in case
         self.assertEqual(expected, actual)
 
+    def create_services(self) -> Tuple[Config, Messenger, Any, PlanningCenterClient]:
+        config = Config(
+            args=ReccArgs.parse([]),
+            profile="foh_dev",
+            allow_multiple_only_for_testing=True,
+        )
+        credential_store = create_autospec(CredentialStore)
+        messenger = create_autospec(Messenger)
+        log_problem_mock = messenger.log_problem
+        pco_client = PlanningCenterClient(
+            messenger=messenger,
+            credential_store=credential_store,
+            config=config,
+            lazy_login=True,
+        )
+        pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
+            get_canned_response
+        )
+        return (config, messenger, log_problem_mock, pco_client)
+
 
 class GeneratePlanSummaryTestCase(PlanSummaryTestCase):
     """Test `get_plan_summary()`."""
 
     def setUp(self):
         super().setUp()
-
-        self._config = Config(
-            args=ReccArgs.parse([]),
-            profile="foh_dev",
-            allow_multiple_only_for_testing=True,
-        )
-        credential_store = create_autospec(CredentialStore)
-        self._messenger = create_autospec(Messenger)
-        self._log_problem_mock = self._messenger.log_problem
-        self._pco_client = PlanningCenterClient(
-            messenger=self._messenger,
-            credential_store=credential_store,
-            config=self._config,
-            lazy_login=True,
-        )
-        self._pco_client._send_and_check_status = (  # pyright: ignore[reportPrivateUsage]
-            get_canned_response
-        )
+        (
+            self._config,
+            self._messenger,
+            self._log_problem_mock,
+            self._pco_client,
+        ) = self.create_services()
 
     # Not a particularly important case now that 2024-05-05 is tested, but it
     # doesn't hurt to keep it around.
@@ -721,15 +730,110 @@ class PlanSummaryJsonTestCase(PlanSummaryTestCase):
         n = 0
         for p in _DATA_DIR.glob("*_summary.json"):
             with self.subTest(p.stem):
+                n += 1
                 summary1 = load_plan_summary(p)
                 temp_file = _TEMP_DIR.joinpath(p.relative_to(_DATA_DIR))
                 temp_file.write_text(plan_summary_to_json(summary1))
                 summary2 = load_plan_summary(temp_file)
                 self.assert_equal_summary(summary1, summary2)
-        n += 1
         # At least one test must have run, otherwise there's something wrong
         # with the test itself
         self.assertGreater(n, 0)
+
+
+class GetVocalsNotesTestCase(PlanSummaryTestCase):
+    """Test `get_vocals_notes()`."""
+
+    def setUp(self):
+        super().setUp()
+        (
+            self._config,
+            self._messenger,
+            self._log_problem_mock,
+            self._pco_client,
+        ) = self.create_services()
+
+    def test_get_vocals_notes_20240505(self) -> None:
+        expected_notes = [
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Come Now Is The Time To Worship (C to A)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Rodger\nMelody: Iris (boost during last half of the song after we modulate in key of A)\nHarmony: Kristina",
+                    )
+                ],
+                description="CCLI Song # 2430948",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Miracle / All Hail King Jesus (C)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Kristina\nInstrumental V1 chords during MC Hosts speaking\nIntro\nV1 - Kristina\nChorus - Kristina\nTurnaround\nV2 - All (uni)\nChorus - All (harms)\nBridge\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B\nTurnaround\nV3 - Kristina (first 2 lines) / (last 2 lines all in - harms)\n(2X) All Hail King Jesus Chorus 1A (harms)\n(1X) All Hail King Jesus Chorus 1B",
+                    )
+                ],
+                description="Miracle: CCLI Song # 7118762\nAll Hail King Jesus: CCLI Song # 7097216",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="How Deep The Father's Love For Us / He Lives (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Iris / Harmony: Kristina\nInstrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\n(2X) He Lives Bridge  - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\nStay on B to transition to What a Beautiful Name",
+                    )
+                ],
+                description="How Deep The Father's Love For Us: CCLI Song # 1558110\nHe Lives: CCLI Song # 7133098",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="What a Beautiful Name / Agnus Dei (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Lead: Kristina\nV1 - Kristina\nChorus 1 - Kristina\nV2 - All (harms)\nChorus 2 - All (harms)\nInstrumental\nBridge 1 - Kristina\nBridge 2 - All (harms)\nChorus 3 - All (harms)\nBridge 2 - All (harms) \n(2X) Agnus Dei Chorus - All (harms)\nChorus 1 - Kristina\nlast line tag 2X - Kristina",
+                    )
+                ],
+                description="What a Beautiful Name: CCLI Song # 7068424\nAgnus Dei: CCLI Song # 626713",
+            ),
+            AnnotatedSong(
+                song=Song(
+                    ccli=None,
+                    title="Worthy Of It All / I Exalt Thee (B)",
+                    author=None,
+                ),
+                notes=[
+                    ItemNote(
+                        category="Vocals",
+                        contents="Instrumental V1 of What a Beautiful Name during communion\nV1 - Iris & Rodger\nTurnaround\nV2 - All (harms)\nTurnaround\nV3 - All (harms)\n(2X) He Lives - Chorus - All (harms)\nHe Lives (Instrumental)\nV1 - Iris & Rodger\n(2X) He Lives - Chorus - All (harms)\nStay on B to transition to What a Beautiful Name",
+                    )
+                ],
+                description="Worthy Of It All: CCLI Song #6280644\nI Exalt Thee: CCLI Song #17803",
+            ),
+        ]
+        actual_notes = get_vocals_notes(
+            client=self._pco_client,
+            config=self._config,
+            dt=date(2024, 5, 5),
+        )
+
+        self.assertEqual(actual_notes, expected_notes)
+        self._log_problem_mock.assert_not_called()
 
 
 def _get_clipboard_text() -> str:

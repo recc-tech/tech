@@ -411,6 +411,21 @@ def diff_plan_summaries(old: PlanSummary, new: PlanSummary) -> PlanSummaryDiff:
     )
 
 
+def get_vocals_notes(
+    client: PlanningCenterClient, config: Config, dt: date
+) -> List[AnnotatedSong]:
+    """
+    List the songs in the plan on the given date, along with their vocals
+    notes.
+    """
+    plan = client.find_plan_by_date(dt)
+    sections = client.find_plan_items(
+        plan.id, include_songs=True, include_item_notes=True
+    )
+    songs = _get_songs(sections, note_categories=config.vocals_note_categories)
+    return [s for sec in songs for s in sec]
+
+
 _SUPERHEADER_CLS = "superheader"
 _BLOCK_START_CLS = "block-start"
 _BLOCK_END_CLS = "block-end"
@@ -969,6 +984,76 @@ def plan_summary_diff_to_html(
 """.lstrip()
 
 
+def _note_to_html(note: ItemNote, include_heading: bool) -> str:
+    paragraphs = [
+        p.strip().replace("\n", "<br />") for p in note.contents.split("\n\n")
+    ]
+    paragraphs = "\n".join([f"<p>\n{_indent(p, 1)}\n</p>" for p in paragraphs])
+    heading = f"<h4>{note.category}:</h4>\n" if include_heading else ""
+    return f"{heading}{paragraphs}"
+
+
+def _make_vocals_notes_section(song: AnnotatedSong, i: int) -> str:
+    authors_header = (
+        f"<h3>{html.escape(song.song.author)}</h3>" if song.song.author else ""
+    )
+    notes = "\n".join(
+        [
+            _note_to_html(note, include_heading=len(song.notes) > 1)
+            for note in song.notes
+        ]
+    )
+    return f"""
+<section id='song-{i}'>
+<a href='#song-{i}'><h2>{html.escape(song.song.title)}</h2></a>
+{authors_header}
+
+{notes}
+</section>
+    """.strip()
+
+
+def vocals_notes_to_html(songs: List[AnnotatedSong]) -> str:
+    """
+    Generate an HTML document to visualize the given songs and vocal notes.
+    """
+    body = "\n<hr />\n".join(
+        [_make_vocals_notes_section(s, i) for i, s in enumerate(songs, start=1)]
+    )
+    return f"""
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Plan Summary</title>
+        <link rel='shortcut icon' href='{_ICON_PATH.as_posix()}' />
+        <style>
+            html {{
+                /*
+                 * Let the user scroll past the bottom of the page so that they
+                 * can move the title of the last song to the top of the page.
+                 */
+                padding-bottom: calc(100vh - 2em);
+                /* Same as Planning Center */
+                font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--background-color);
+                --background-color: hsl(0, 0, 98%);
+            }}
+            h2 {{
+                color: black;
+            }}
+            a {{
+                text-decoration: underline dotted black;
+            }}
+        </style>
+    </head>
+    <body>
+        {_indent(body, 2)}
+    </body>
+</html>
+    """
+
+
 def plan_summary_to_json(summary: PlanSummary) -> str:
     """
     Convert the plan summary to a JSON string.
@@ -1011,6 +1096,24 @@ def load_plan_summary(path: Path) -> PlanSummary:
         message_notes=message_notes,
         num_visuals_notes=data["num_visuals_notes"],
     )
+
+
+def vocals_notes_to_json(songs: List[AnnotatedSong]) -> str:
+    """
+    Convert the vocals notes summary to a JSON string.
+    This is the inverse of `load_vocals_notes_summary`.
+    """
+    json_summary = {"songs": [_annotated_song_to_json(s) for s in songs]}
+    return json.dumps(json_summary, indent="\t")
+
+
+def load_vocals_notes(path: Path) -> List[AnnotatedSong]:
+    """
+    Load a vocals notes summary from a JSON file.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return [_parse_annotated_song(s) for s in data["songs"]]
 
 
 def _cast(t: Type[T], x: object) -> T:
