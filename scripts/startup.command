@@ -19,8 +19,9 @@ function main {
 	./download_pco_assets.command --auto-close &
 	./summarize_plan.command      --auto-close &
 }
+export -f main
 
 log_dir="$HOME/Documents/Logs"
 mkdir -p "$log_dir"
 log_file="$log_dir/$(date +%Y%m%d%H%M%S) startup_foh.log"
-main 2>&1 | tee "$log_file"
+nohup bash -c main 2>&1 | tee "$log_file" &
