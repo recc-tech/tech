@@ -11,7 +11,7 @@ function main {
 	brew upgrade
 
 	# Go to the scripts directory
-	cd "$(dirname "$0")"
+	cd "$0"
 
 	python3 manage_config.py activate --profile foh
 	./update_scripts.command
@@ -24,4 +24,6 @@ export -f main
 log_dir="$HOME/Documents/Logs"
 mkdir -p "$log_dir"
 log_file="$log_dir/$(date +%Y%m%d%H%M%S) startup_foh.log"
-nohup bash -c main 2>&1 | tee "$log_file" &
+scripts_dir="$(dirname "$0")"
+scripts_dir="$(readlink -f "$scripts_dir")"
+nohup bash -c main "$scripts_dir" 2>&1 | tee "$log_file" &
