@@ -1,0 +1,125 @@
+------recctechformboundary
+Content-Disposition: form-data; name="ExpMode"
+
+MANUAL
+------recctechformboundary
+Content-Disposition: form-data; name="SlowShutterLimit"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="AeResponse"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="GainLimit"
+
+6
+Content-Disposition: form-data; name="GainLevel"
+------recctechformboundary
+
+3
+------recctechformboundary
+Content-Disposition: form-data; name="IrisLevel"
+
+16
+------recctechformboundary
+Content-Disposition: form-data; name="ShutterSpeed"
+
+6
+------recctechformboundary
+Content-Disposition: form-data; name="HighSensitivity"
+
+On
+------recctechformboundary
+Content-Disposition: form-data; name="BrightLevel"
+
+21
+------recctechformboundary
+Content-Disposition: form-data; name="WbMode"
+
+MANUAL
+------recctechformboundary
+Content-Disposition: form-data; name="RedGain"
+
+200
+------recctechformboundary
+Content-Disposition: form-data; name="BlueGain"
+
+165
+------recctechformboundary
+Content-Disposition: form-data; name="Sharpness"
+
+-70
+------recctechformboundary
+Content-Disposition: form-data; name="Effect"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="NoiseReduction"
+
+5
+------recctechformboundary
+Content-Disposition: form-data; name="Flip"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="Mirror"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="MagGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="MagHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="CmRedGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="RedHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="YellowGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="YellowHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="GreenGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="GreenHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="CyanGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="CyanHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="CmBlueGain"
+
+25
+------recctechformboundary
+Content-Disposition: form-data; name="BlueHue"
+
+31
+------recctechformboundary
+Content-Disposition: form-data; name="ColourGain"
+
+100
+------recctechformboundary
+Content-Disposition: form-data; name="HuePhase"
+
+125
+------recctechformboundary--
