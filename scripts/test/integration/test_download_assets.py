@@ -751,8 +751,12 @@ class DownloadAssetsTestCase(unittest.TestCase):
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
-                _OPENER_VID: DownloadSkipped(
-                    reason=f"{existing_vid.resolve().as_posix()} already exists"
+                _OPENER_VID: Download(
+                    destination=config.videos_dir.joinpath(
+                        "Welcome Opener Video (1).mp4"
+                    ),
+                    is_required=False,
+                    deduplicate=True,
                 ),
             }
         )
