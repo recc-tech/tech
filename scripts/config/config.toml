@@ -18,6 +18,7 @@ captions = "%{folder.home}%/Captions/%{args.startup_ymd}%"
 archived_assets = "%{folder.assets_by_type}%/Archive"
 
 [logging]
+apply_cam_settings  = "%{folder.logs}%/%{args.startup_timestamp}% apply_cam_settings.log"
 check_credentials   = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
 download_pco_assets = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
 generate_slides     = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
@@ -153,6 +154,13 @@ pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
 speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
 host1_title_key = "407171aa-af67-4d25-8ab5-1659176fc79d"
 host2_title_key = "8e81a0df-26b2-42ab-a5ae-5c79199a53d7"
+
+[cameras]
+cam_1_base_url = "http://192.168.0.100"
+cam_2_base_url = "http://192.168.0.102"
+cam_3_base_url = "http://192.168.0.101"
+settings_dir = "%{args.repo_root}%/scripts/config/cameras"
+form_boundary = "----recctechformboundary"
 
 [api]
 # After this many seconds, a request is assumed to have failed
