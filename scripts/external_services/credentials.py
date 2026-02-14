@@ -17,6 +17,7 @@ class Credential(Enum):
     VIMEO_CLIENT_SECRET = ("vimeo_client_secret", "Vimeo client secret", True)
     PLANNING_CENTER_APP_ID = ("planning_center_app_id", "Planning Center app ID", True)
     PLANNING_CENTER_SECRET = ("planning_center_secret", "Planning Center secret", True)
+    BIRD_DOG_PASSWORD = ("bird_dog_password", "BirdDog password", True)
 
     @property
     def name(self) -> str:
