@@ -1,15 +1,22 @@
 import sys
 from argparse import ArgumentParser, Namespace
-from typing import Callable
+from typing import Callable, List, Literal
 
 import autochecklist
 from args import ReccArgs
-from autochecklist import Messenger, TaskModel, TaskStatus
+from autochecklist import Messenger, ProblemLevel, TaskModel, TaskStatus
 from config import Config
-from external_services import CredentialStore, InputPolicy, PlanningCenterClient
+from external_services import (
+    Credential,
+    CredentialStore,
+    InputPolicy,
+    PlanningCenterClient,
+    bird_dog,
+)
 from external_services.boxcast import BoxCastApiClient
 from external_services.vimeo import ReccVimeoClient
 from lib import ReccDependencyProvider, SimplifiedMessengerSettings
+from requests import Session
 
 
 class CheckCredentialsArgs(ReccArgs):
@@ -71,6 +78,33 @@ def log_into_Planning_Center(
     messenger.log_status(TaskStatus.DONE, "Successfully connected to Planning Center.")
 
 
+def log_into_BirdDog(
+    config: Config, credential_store: CredentialStore, messenger: Messenger
+) -> None:
+    all_cameras: List[Literal[1, 2, 3]] = [1, 2, 3]
+    for camera in all_cameras:
+        messenger.log_status(TaskStatus.RUNNING, f"Testing cam {camera}...")
+        first_try = True
+        while True:
+            password = credential_store.get(
+                Credential.BIRD_DOG_PASSWORD,
+                InputPolicy.AS_REQUIRED if first_try else InputPolicy.ALWAYS,
+            )
+            first_try = False
+            with Session() as s:
+                bird_dog.log_in(camera, s, config, password)
+                if s.cookies.get("BirdDogSession"):
+                    break
+                messenger.log_problem(
+                    ProblemLevel.ERROR,
+                    "Failed to log in (cookie 'BirdDogSession' is not set)",
+                )
+    messenger.log_status(
+        TaskStatus.DONE,
+        f"Successfully connected to cameras {', '.join([str(c) for c in all_cameras])}.",
+    )
+
+
 def main(
     args: CheckCredentialsArgs, config: Config, dep: ReccDependencyProvider
 ) -> None:
@@ -90,6 +124,11 @@ def main(
             TaskModel(
                 name="log_into_Vimeo",
                 description="Failed to connect to the Vimeo API.",
+                only_auto=True,
+            ),
+            TaskModel(
+                name="log_into_BirdDog",
+                description="Failed to connect to the BirdDog cameras.",
                 only_auto=True,
             ),
         ],

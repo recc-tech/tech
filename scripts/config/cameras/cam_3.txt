@@ -1,0 +1,157 @@
+------recctechformboundary
+Content-Disposition: form-data; name="ExpMode"
+
+MANUAL
+------recctechformboundary
+Content-Disposition: form-data; name="SlowShutterLimit"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="AeResponse"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="GainLimit"
+
+9
+------recctechformboundary
+Content-Disposition: form-data; name="GainLevel"
+
+4
+------recctechformboundary
+Content-Disposition: form-data; name="IrisLevel"
+
+17
+------recctechformboundary
+Content-Disposition: form-data; name="ShutterSpeed"
+
+6
+------recctechformboundary
+Content-Disposition: form-data; name="HighSensitivity"
+
+On
+------recctechformboundary
+Content-Disposition: form-data; name="BrightLevel"
+
+21
+------recctechformboundary
+Content-Disposition: form-data; name="WbMode"
+
+MANUAL
+------recctechformboundary
+Content-Disposition: form-data; name="RedGain"
+
+200
+------recctechformboundary
+Content-Disposition: form-data; name="BlueGain"
+
+165
+------recctechformboundary
+Content-Disposition: form-data; name="Sharpness"
+
+-30
+------recctechformboundary
+Content-Disposition: form-data; name="Effect"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="NoiseReduction"
+
+5
+------recctechformboundary
+Content-Disposition: form-data; name="Flip"
+
+On
+------recctechformboundary
+Content-Disposition: form-data; name="Mirror"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="IRCutFilter"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="Lowlatency"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="ChromeSuppress"
+
+OFF
+------recctechformboundary
+Content-Disposition: form-data; name="HighlightComp"
+
+OFF
+------recctechformboundary
+Content-Disposition: form-data; name="HighlightCompMask"
+
+0
+------recctechformboundary
+Content-Disposition: form-data; name="BackLightCom"
+
+Off
+------recctechformboundary
+Content-Disposition: form-data; name="Stabilizer"
+
+On
+------recctechformboundary
+Content-Disposition: form-data; name="Gamma"
+
+0
+------recctechformboundary
+Content-Disposition: form-data; name="MagGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="MagHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="CmRedGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="RedHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="YellowGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="YellowHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="GreenGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="GreenHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="CyanGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="CyanHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="CmBlueGain"
+
+27
+------recctechformboundary
+Content-Disposition: form-data; name="BlueHue"
+
+1
+------recctechformboundary
+Content-Disposition: form-data; name="ColourGain"
+
+110
+------recctechformboundary
+Content-Disposition: form-data; name="HuePhase"
+
+7
+------recctechformboundary--

@@ -405,6 +405,7 @@ class Config(BaseConfig):
                 self.plan_summaries_dir.mkdir(exist_ok=True, parents=True)
 
             # Logging
+            self.apply_cam_settings_log = reader.get_file("logging.apply_cam_settings")
             self.check_credentials_log = reader.get_file("logging.check_credentials")
             self.download_assets_log = reader.get_file("logging.download_pco_assets")
             self.generate_slides_log = reader.get_file("logging.generate_slides")
@@ -489,6 +490,23 @@ class Config(BaseConfig):
             self.vmix_host2_title_key = reader.get_str("vmix.host2_title_key")
             self.vmix_preset_dir = reader.get_directory("vmix.preset_dir")
             self.vmix_preset_file = reader.get_file("vmix.preset_path")
+
+            # Cameras
+            self.cam_1_base_url = reader.get_str("cameras.cam_1_base_url")
+            self.cam_2_base_url = reader.get_str("cameras.cam_2_base_url")
+            self.cam_3_base_url = reader.get_str("cameras.cam_3_base_url")
+            self.cam_base_url: dict[Literal[1, 2, 3], str] = {
+                1: self.cam_1_base_url,
+                2: self.cam_2_base_url,
+                3: self.cam_3_base_url,
+            }
+            self.cam_settings_dir = reader.get_directory("cameras.settings_dir")
+            self.cam_settings_path: dict[Literal[1, 2, 3], Path] = {
+                1: self.cam_settings_dir / "cam_1.txt",
+                2: self.cam_settings_dir / "cam_2.txt",
+                3: self.cam_settings_dir / "cam_3.txt",
+            }
+            self.cam_settings_form_boundary = reader.get_str("cameras.form_boundary")
 
             # API
             self.timeout_seconds = reader.get_positive_float("api.timeout_seconds")
