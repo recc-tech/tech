@@ -5,7 +5,7 @@ import autochecklist
 from args import ReccArgs
 from autochecklist import Messenger, TaskModel, TaskStatus
 from config import Config
-from external_services import Credential, CredentialStore, InputPolicy
+from external_services import Credential, CredentialStore, InputPolicy, bird_dog
 from lib import ReccDependencyProvider, SimplifiedMessengerSettings
 from requests import Session
 
@@ -25,34 +25,20 @@ def _make_task(
     credential_store: CredentialStore,
 ):
     def apply_cam_settings() -> None:
-        password = credential_store.get(
-            Credential.BIRD_DOG_PASSWORD,
-            request_input=InputPolicy.AS_REQUIRED,
-        )
         base_url = config.cam_base_url[camera]
         settings_path = config.cam_settings_path[camera]
         settings = settings_path.read_text()
         with Session() as s:
             messenger.log_status(TaskStatus.RUNNING, "Logging in...")
-            url = f"{base_url}/login"
-            messenger.log_debug(f"Sending login request to {url}")
-            s.post(
-                url,
-                data=f"auth_password={password}",
-                headers={
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Encoding": "gzip, deflate",
-                    "Accept-Language": "en-US,en;q=0.9",
-                    "Connection": "keep-alive",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Cookie": "mod_sel=none; av_settings=none; exp_settings=block; wb_settings=none; pic1_settings=none; pic2_settings=none; cm_settings=none; ci_settings=none; cex_settings=none",
-                    "Host": base_url[len("http://") :],
-                    "Origin": base_url,
-                    "Priority": "u=0, i",
-                    "Referer": f"{base_url}/login",
-                    "Upgrade-Insecure-Requests": "1",
-                },
+            password = credential_store.get(
+                Credential.BIRD_DOG_PASSWORD,
+                request_input=InputPolicy.AS_REQUIRED,
             )
+            bird_dog.log_in(camera, s, config, password)
+            if not s.cookies.get("BirdDogSession"):
+                raise RuntimeError(
+                    "Failed to log in (cookie 'BirdDogSession' is not set)"
+                )
             messenger.log_status(
                 TaskStatus.RUNNING,
                 f"Sending settings (from {settings_path})...",
