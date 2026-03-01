@@ -17,7 +17,7 @@ Content-Disposition: form-data; name="GainLimit"
 ------recctechformboundary
 Content-Disposition: form-data; name="GainLevel"
 
-4
+3
 ------recctechformboundary
 Content-Disposition: form-data; name="IrisLevel"
 
