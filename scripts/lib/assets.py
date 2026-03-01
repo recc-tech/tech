@@ -148,16 +148,28 @@ class AssetManager:
                 name="livestream announcements video",
                 skip=(
                     SkipCondition.NEVER
-                    if config.download_announcements_vid
+                    if config.download_livestream_announcements_vid
                     else SkipCondition.ALWAYS
                 ),
                 file_type=FileType.VIDEO,
-                filename_regex=config.announcements_video_regex,
+                filename_regex=config.livestream_announcements_video_regex,
                 target_dir=config.assets_by_service_dir,
                 append_date=True,
                 deduplicate=False,
                 overwrite_existing=True,
-                if_missing=Action.parse(config.if_announcements_vid_missing),
+                if_missing=Action.parse(config.if_livestream_announcements_vid_missing),
+                if_many=Action.WARN,
+            ),
+            AssetCategory(
+                name="live announcements video",
+                skip=SkipCondition.NEVER,
+                file_type=FileType.VIDEO,
+                filename_regex=config.live_announcements_video_regex,
+                target_dir=config.assets_by_service_dir,
+                append_date=True,
+                deduplicate=False,
+                overwrite_existing=True,
+                if_missing=Action.parse(config.if_live_announcements_vid_missing),
                 if_many=Action.WARN,
             ),
             AssetCategory(
@@ -239,7 +251,7 @@ class AssetManager:
 
     def locate_announcements_video(self) -> Optional[Path]:
         def is_announcements_video(p: Path) -> bool:
-            pattern = self._config.announcements_video_regex
+            pattern = self._config.livestream_announcements_video_regex
             return (
                 p.is_file()
                 and p.suffix.lower() in self._VIDEO_EXTENSIONS
