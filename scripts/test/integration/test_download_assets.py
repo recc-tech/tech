@@ -115,21 +115,31 @@ _SERIES_TITLE_IMG_FAKE = _DATA_DIR.joinpath("WORTHY Title Slide.PNG")
 _SERIES_TITLE_NEW_CONTENT_FAKE = _DATA_DIR.joinpath(
     "WORTHY Title Slide Different Content.PNG"
 )
-_ANNOUNCEMENT_VID = Attachment(
-    id="169505461",
-    filename="Announcement Video.mov",
-    num_bytes=48274579,
+_LIVESTREAM_ANNOUNCEMENT_VID = Attachment(
+    id="223458508",
+    filename="LIVESTREAMING Announcements.mp4",
+    num_bytes=256462319,
     pco_filetype="video",
-    mime_type="video/quicktime",
+    mime_type="application/mp4",
 )
-_ANNOUNCEMENT_VID_COPY = Attachment(
-    id="169505461_copy",
-    filename="Announcement Video.mov",
-    num_bytes=48274579,
+_LIVESTREAM_ANNOUNCEMENT_VID_COPY = Attachment(
+    id="223458508_copy",
+    filename="LIVESTREAMING Announcements.mp4",
+    num_bytes=256462319,
     pco_filetype="video",
-    mime_type="video/quicktime",
+    mime_type="application/mp4",
 )
-_ANNOUNCEMENT_VID_FAKE = _DATA_DIR.joinpath("Announcement Video.mov")
+_LIVESTREAM_ANNOUNCEMENT_VID_FAKE = _DATA_DIR.joinpath(
+    "LIVESTREAMING Announcements.mp4"
+)
+_LIVE_ANNOUNCEMENT_VID = Attachment(
+    id="223458510",
+    filename="LIVE Announcements.mp4",
+    num_bytes=199782557,
+    pco_filetype="video",
+    mime_type="application/mp4",
+)
+_LIVE_ANNOUNCEMENT_VID_FAKE = _DATA_DIR.joinpath("LIVE Announcements.mp4")
 _SERMON_NOTES_DOCX = Attachment(
     id="169508339",
     filename="Notes - Worthy - Week 2 - Worthy Of The Feast.docx",
@@ -210,7 +220,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _BUMPER_VID,
             _OPENER_VID,
             _SERIES_TITLE_IMG,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _SERMON_NOTES_DOCX,
             _HOST_SCRIPT_DOCX,
         }
@@ -242,11 +253,18 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=True,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
+                    deduplicate=False,
+                ),
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=False,
                     deduplicate=False,
                 ),
                 _SERMON_NOTES_DOCX: Download(
@@ -268,7 +286,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _BUMPER_VID,
             _OPENER_VID,
             _SERIES_TITLE_IMG,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _SERMON_NOTES_DOCX,
             _HOST_SCRIPT_DOCX,
         }
@@ -296,7 +315,14 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=True,
                 ),
-                _ANNOUNCEMENT_VID: DownloadSkipped(
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+                _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSkipped(
                     reason='assets in category "livestream announcements video" are not downloaded at this station'
                 ),
                 _SERMON_NOTES_DOCX: DownloadSkipped(
@@ -311,7 +337,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
     # What happens if some expected attachments are missing?
 
     def test_plan_missing_kids_video_mcr(self) -> None:
-        attachments = {_ANNOUNCEMENT_VID, _SERMON_NOTES_DOCX}
+        attachments = {_LIVESTREAM_ANNOUNCEMENT_VID, _SERMON_NOTES_DOCX}
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -322,7 +348,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         )
 
     def test_plan_missing_kids_video_foh(self) -> None:
-        attachments = {_SERIES_TITLE_IMG}
+        attachments = {_LIVE_ANNOUNCEMENT_VID, _SERIES_TITLE_IMG}
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -334,13 +360,20 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=True,
                 ),
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
             }
         )
         self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
-    def test_plan_missing_announcements_mcr(self) -> None:
-        attachments = {_KIDS_VID}
+    def test_plan_missing_livestream_announcements_mcr(self) -> None:
+        attachments = {_KIDS_VID, _LIVE_ANNOUNCEMENT_VID}
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -351,16 +384,74 @@ class DownloadAssetsTestCase(unittest.TestCase):
             str(cm.exception),
         )
 
-    def test_plan_missing_announcements_foh(self) -> None:
+    def test_plan_missing_livestream_announcements_foh(self) -> None:
+        attachments = {_LIVE_ANNOUNCEMENT_VID}
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager.plan_downloads(attachments=set(), messenger=messenger)
-        self.assertEqual(DownloadPlan({}), plan)
+        plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+            }
+        )
+        self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
+    def test_plan_missing_live_announcements_mcr(self) -> None:
+        attachments = {_LIVESTREAM_ANNOUNCEMENT_VID, _KIDS_VID, _SERMON_NOTES_DOCX}
+        config = self._MCR_CONFIG
+        manager = AssetManager(config=config)
+        messenger = create_autospec(Messenger)
+        plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _KIDS_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Kids_OnlineExperience_W2.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+                _SERMON_NOTES_DOCX: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
+                    ),
+                    is_required=False,
+                    deduplicate=False,
+                ),
+            }
+        )
+        self.assertEqual(expected_plan, plan)
+        messenger.log_problem.assert_not_called()
+
+    def test_plan_missing_live_announcements_foh(self) -> None:
+        attachments = {_LIVESTREAM_ANNOUNCEMENT_VID}
+        config = self._FOH_CONFIG
+        manager = AssetManager(config=config)
+        messenger = create_autospec(Messenger)
+        with self.assertRaises(ValueError) as cm:
+            manager.plan_downloads(attachments=attachments, messenger=messenger)
+        self.assertEqual(
+            'No attachments found for category "live announcements video".',
+            str(cm.exception),
+        )
+
     def test_plan_missing_sermon_notes_mcr(self) -> None:
-        attachments = {_KIDS_VID, _ANNOUNCEMENT_VID}
+        attachments = {_KIDS_VID, _LIVESTREAM_ANNOUNCEMENT_VID}
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -374,9 +465,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=True,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -391,17 +482,34 @@ class DownloadAssetsTestCase(unittest.TestCase):
         self.assertEqual(1, messenger.log_problem.call_count)
 
     def test_plan_missing_sermon_notes_foh(self) -> None:
+        attachments = {_LIVE_ANNOUNCEMENT_VID}
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
-        plan = manager.plan_downloads(attachments=set(), messenger=messenger)
-        self.assertEqual(DownloadPlan({}), plan)
+        plan = manager.plan_downloads(attachments=attachments, messenger=messenger)
+        expected_plan = DownloadPlan(
+            {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
+            }
+        )
+        self.assertEqual(expected_plan, plan)
         messenger.log_problem.assert_not_called()
 
     # What happens if there are multiple attachments with the same name?
 
     def test_plan_multiple_kids_videos(self) -> None:
-        attachments = {_KIDS_VID, _ANNOUNCEMENT_VID, _KIDS_VID_COPY, _SERMON_NOTES_DOCX}
+        attachments = {
+            _KIDS_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _KIDS_VID_COPY,
+            _SERMON_NOTES_DOCX,
+        }
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -429,9 +537,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -445,12 +553,12 @@ class DownloadAssetsTestCase(unittest.TestCase):
         )
         self.assertEqual(1, messenger.log_problem.call_count)
 
-    def test_plan_multiple_announcements_videos(self) -> None:
+    def test_plan_multiple_livestream_announcements_videos(self) -> None:
         attachments = {
             _KIDS_VID,
             _SERMON_NOTES_DOCX,
-            _ANNOUNCEMENT_VID,
-            _ANNOUNCEMENT_VID_COPY,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID_COPY,
         }
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
@@ -472,16 +580,16 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID_COPY: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID_COPY: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14 (1).mov"
+                        "LIVESTREAMING Announcements 2024-04-14 (1).mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -498,7 +606,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
     def test_plan_multiple_sermon_notes(self) -> None:
         attachments = {
             _KIDS_VID,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
             _SERMON_NOTES_DOCX,
             _SERMON_NOTES_DOCX_COPY,
         }
@@ -515,9 +623,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=True,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -546,13 +654,24 @@ class DownloadAssetsTestCase(unittest.TestCase):
         self.assertEqual(1, messenger.log_problem.call_count)
 
     def test_plan_multiple_images(self) -> None:
-        attachments = {_SERIES_TITLE_IMG, _SERIES_TITLE_IMG_COPY}
+        attachments = {
+            _LIVE_ANNOUNCEMENT_VID,
+            _SERIES_TITLE_IMG,
+            _SERIES_TITLE_IMG_COPY,
+        }
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
                 _SERIES_TITLE_IMG: Download(
                     destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
                     is_required=False,
@@ -571,13 +690,20 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger.log_problem.assert_not_called()
 
     def test_plan_multiple_videos(self) -> None:
-        attachments = {_OPENER_VID, _OPENER_VID_COPY}
+        attachments = {_LIVE_ANNOUNCEMENT_VID, _OPENER_VID, _OPENER_VID_COPY}
         config = self._FOH_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
                 _OPENER_VID: Download(
                     destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
                     is_required=False,
@@ -599,7 +725,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
     # the computer?
 
     def test_plan_kids_video_name_taken(self) -> None:
-        attachments = {_KIDS_VID, _SERMON_NOTES_DOCX, _ANNOUNCEMENT_VID}
+        attachments = {_KIDS_VID, _SERMON_NOTES_DOCX, _LIVESTREAM_ANNOUNCEMENT_VID}
         config = self._MCR_CONFIG
         existing_vid = config.assets_by_service_dir.joinpath(
             "Kids_OnlineExperience_W2.mp4"
@@ -625,9 +751,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -638,10 +764,10 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger.log_problem.assert_not_called()
 
     def test_plan_announcements_video_name_taken(self) -> None:
-        attachments = {_KIDS_VID, _SERMON_NOTES_DOCX, _ANNOUNCEMENT_VID}
+        attachments = {_KIDS_VID, _SERMON_NOTES_DOCX, _LIVESTREAM_ANNOUNCEMENT_VID}
         config = self._MCR_CONFIG
         existing_vid = config.assets_by_service_dir.joinpath(
-            "Announcement Video 2024-04-14.mov"
+            "LIVESTREAMING Announcements 2024-04-14.mp4"
         )
         existing_vid.parent.mkdir(exist_ok=True, parents=True)
         existing_vid.write_text("")
@@ -664,9 +790,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -677,7 +803,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger.log_problem.assert_not_called()
 
     def test_plan_sermon_notes_name_taken(self) -> None:
-        attachments = {_KIDS_VID, _ANNOUNCEMENT_VID, _SERMON_NOTES_DOCX}
+        attachments = {_KIDS_VID, _LIVESTREAM_ANNOUNCEMENT_VID, _SERMON_NOTES_DOCX}
         config = self._MCR_CONFIG
         existing_docx = config.images_dir.joinpath(
             "Notes - Worthy - Week 2 - Worthy Of The Feast.docx"
@@ -696,9 +822,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=True,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -716,7 +842,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger.log_problem.assert_not_called()
 
     def test_plan_image_name_taken(self) -> None:
-        attachments = {_SERIES_TITLE_IMG}
+        attachments = {_LIVE_ANNOUNCEMENT_VID, _SERIES_TITLE_IMG}
         config = self._FOH_CONFIG
         existing_img1 = config.images_dir.joinpath("WORTHY Title Slide.PNG")
         existing_img1.parent.mkdir(exist_ok=True, parents=True)
@@ -728,6 +854,13 @@ class DownloadAssetsTestCase(unittest.TestCase):
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
                 _SERIES_TITLE_IMG: Download(
                     destination=config.images_dir.joinpath(
                         "WORTHY Title Slide (2).PNG"
@@ -741,7 +874,7 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger.log_problem.assert_not_called()
 
     def test_plan_video_name_taken(self) -> None:
-        attachments = {_OPENER_VID}
+        attachments = {_LIVE_ANNOUNCEMENT_VID, _OPENER_VID}
         config = self._FOH_CONFIG
         existing_vid = config.videos_dir.joinpath("Welcome Opener Video.mp4")
         existing_vid.parent.mkdir(exist_ok=True, parents=True)
@@ -751,6 +884,13 @@ class DownloadAssetsTestCase(unittest.TestCase):
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
+                _LIVE_ANNOUNCEMENT_VID: Download(
+                    destination=config.assets_by_service_dir.joinpath(
+                        "LIVE Announcements 2024-04-14.mp4"
+                    ),
+                    is_required=True,
+                    deduplicate=False,
+                ),
                 _OPENER_VID: Download(
                     destination=config.videos_dir.joinpath(
                         "Welcome Opener Video (1).mp4"
@@ -766,7 +906,11 @@ class DownloadAssetsTestCase(unittest.TestCase):
     # What happens if the kids video has the wrong week number?
 
     def test_plan_kids_video_wrong_week(self) -> None:
-        attachments = {_KIDS_VID_20240421, _SERMON_NOTES_DOCX, _ANNOUNCEMENT_VID}
+        attachments = {
+            _KIDS_VID_20240421,
+            _SERMON_NOTES_DOCX,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+        }
         config = self._MCR_CONFIG
         manager = AssetManager(config=config)
         messenger = create_autospec(Messenger)
@@ -787,9 +931,9 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=False,
                     deduplicate=False,
                 ),
-                _ANNOUNCEMENT_VID: Download(
+                _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
-                        "Announcement Video 2024-04-14.mov"
+                        "LIVESTREAMING Announcements 2024-04-14.mp4"
                     ),
                     is_required=True,
                     deduplicate=False,
@@ -815,7 +959,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _BUMPER_VID,
             _OPENER_VID,
             _SERIES_TITLE_IMG,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _SERMON_NOTES_DOCX,
             _HOST_SCRIPT_DOCX,
         }
@@ -834,10 +979,15 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _SERIES_TITLE_IMG: DownloadSucceeded(
                 config.images_dir.joinpath("WORTHY Title Slide.PNG")
             ),
-            _ANNOUNCEMENT_VID: DownloadSucceeded(
+            _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                    "LIVESTREAMING Announcements 2024-04-14.mp4"
                 )
+            ),
+            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "LIVE Announcements 2024-04-14.mp4"
+                ),
             ),
             _SERMON_NOTES_DOCX: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath(
@@ -870,7 +1020,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _SERMON_NOTES_DOCX,
             _SERIES_TITLE_IMG_COPY_NEW_NAME,
             _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _OPENER_VID_COPY_NEW_NAME,
             _BAPTISM_VID,
         }
@@ -890,9 +1041,14 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: DownloadSucceeded(
                 config.images_dir.joinpath("WORTHY Title Slide (1).PNG")
             ),
-            _ANNOUNCEMENT_VID: DownloadSucceeded(
+            _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath(
-                    "Announcement Video 2024-04-14.mov"
+                    "LIVESTREAMING Announcements 2024-04-14.mp4"
+                )
+            ),
+            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "LIVE Announcements 2024-04-14.mp4"
                 )
             ),
             _OPENER_VID_COPY_NEW_NAME: DownloadDeduplicated(
@@ -929,7 +1085,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _BUMPER_VID,
             _OPENER_VID,
             _SERIES_TITLE_IMG,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _SERMON_NOTES_DOCX,
             _HOST_SCRIPT_DOCX,
         }
@@ -948,8 +1105,13 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _KIDS_VID: DownloadSkipped(
                 reason='assets in category "kids video" are not downloaded at this station'
             ),
-            _ANNOUNCEMENT_VID: DownloadSkipped(
+            _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSkipped(
                 reason='assets in category "livestream announcements video" are not downloaded at this station'
+            ),
+            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "LIVE Announcements 2024-04-14.mp4"
+                ),
             ),
             _SERMON_NOTES_DOCX: DownloadSkipped(
                 reason='assets in category "sermon notes" are not downloaded at this station'
@@ -980,7 +1142,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _SERMON_NOTES_DOCX,
             _SERIES_TITLE_IMG_COPY_NEW_NAME,
             _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT,
-            _ANNOUNCEMENT_VID,
+            _LIVESTREAM_ANNOUNCEMENT_VID,
+            _LIVE_ANNOUNCEMENT_VID,
             _OPENER_VID_COPY_NEW_NAME,
             _BAPTISM_VID,
         }
@@ -995,8 +1158,13 @@ class DownloadAssetsTestCase(unittest.TestCase):
             _KIDS_VID: DownloadSkipped(
                 reason='assets in category "kids video" are not downloaded at this station'
             ),
-            _ANNOUNCEMENT_VID: DownloadSkipped(
+            _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSkipped(
                 reason='assets in category "livestream announcements video" are not downloaded at this station'
+            ),
+            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
+                config.assets_by_service_dir.joinpath(
+                    "LIVE Announcements 2024-04-14.mp4"
+                ),
             ),
             _SERMON_NOTES_DOCX: DownloadSkipped(
                 reason='assets in category "sermon notes" are not downloaded at this station'
@@ -1130,7 +1298,8 @@ async def _fake_download(
             _SERIES_TITLE_IMG_COPY_NEW_NAME: _SERIES_TITLE_IMG_FAKE,
             _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: _SERIES_TITLE_NEW_CONTENT_FAKE,
             _BAPTISM_VID: _BAPTISM_VID_FAKE,
-            _ANNOUNCEMENT_VID: _ANNOUNCEMENT_VID_FAKE,
+            _LIVESTREAM_ANNOUNCEMENT_VID: _LIVESTREAM_ANNOUNCEMENT_VID_FAKE,
+            _LIVE_ANNOUNCEMENT_VID: _LIVE_ANNOUNCEMENT_VID_FAKE,
             _SERMON_NOTES_DOCX: _SERMON_NOTES_DOCX_FAKE,
         }[a]
         shutil.copy(src, p)

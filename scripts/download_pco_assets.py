@@ -50,8 +50,18 @@ class DownloadAssetsConfig(Config):
     # working.
 
     @property
-    def if_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
-        return "warn"
+    def if_livestream_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        result = super().if_livestream_announcements_vid_missing
+        if result == "error":
+            result = "warn"
+        return result
+
+    @property
+    def if_live_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        result = super().if_live_announcements_vid_missing
+        if result == "error":
+            result = "warn"
+        return result
 
     @property
     def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:

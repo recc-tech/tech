@@ -10,33 +10,7 @@ from lib.assets import AssetManager, Attachment
 
 
 class DownloadPcoAssetsTestCase(unittest.TestCase):
-    def test_classify_announcements_0(self) -> None:
-        attachment = Attachment(
-            id="168445080",
-            filename="Announcement Video.mov",
-            num_bytes=65454784,
-            pco_filetype="video",
-            mime_type="video/quicktime",
-        )
-        self.assertEqual(
-            "livestream announcements video",
-            self._classify(attachment),
-        )
-
-    def test_classify_announcements_1(self) -> None:
-        attachment = Attachment(
-            id="168975407",
-            filename="Announcements.mov",
-            num_bytes=9087846,
-            pco_filetype="video",
-            mime_type="video/quicktime",
-        )
-        self.assertEqual(
-            "livestream announcements video",
-            self._classify(attachment),
-        )
-
-    def test_classify_announcements_2(self) -> None:
+    def test_classify_livestream_announcements_2(self) -> None:
         a = Attachment(
             id="192242875",
             filename="Livestream Video Announcements.mp4",
@@ -46,7 +20,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
         )
         self.assertEqual("livestream announcements video", self._classify(a))
 
-    def test_classify_announcements_3(self) -> None:
+    def test_classify_livestream_announcements_3(self) -> None:
         a = Attachment(
             id="193920912",
             filename="Livestreaming Announcements video.mp4",
@@ -55,6 +29,46 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             mime_type="application/mp4",
         )
         self.assertEqual("livestream announcements video", self._classify(a))
+
+    def test_classify_live_announcements_0(self) -> None:
+        a = Attachment(
+            id="223458510",
+            filename="LIVE Announcements.mp4",
+            num_bytes=199782557,
+            pco_filetype="video",
+            mime_type="application/mp4",
+        )
+        self.assertEqual("live announcements video", self._classify(a))
+
+    # If it's really not clear which type of announcements it is, default to
+    # live (not livestream).
+    # Live announcements should be downloaded either way, and it's better to
+    # needlessly download a video than to forget to download it.
+    def test_classify_ambiguous_announcements_0(self) -> None:
+        attachment = Attachment(
+            id="168445080",
+            filename="Announcement Video.mov",
+            num_bytes=65454784,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(
+            "live announcements video",
+            self._classify(attachment),
+        )
+
+    def test_classify_ambiguous_announcements_1(self) -> None:
+        attachment = Attachment(
+            id="168975407",
+            filename="Announcements.mov",
+            num_bytes=9087846,
+            pco_filetype="video",
+            mime_type="video/quicktime",
+        )
+        self.assertEqual(
+            "live announcements video",
+            self._classify(attachment),
+        )
 
     def test_classify_kids_video_0(self) -> None:
         kids_video = Attachment(

@@ -458,8 +458,11 @@ class Config(BaseConfig):
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"
             )
-            self.announcements_video_regex = reader.get_str(
-                "planning_center.announcements_video_regex"
+            self.livestream_announcements_video_regex = reader.get_str(
+                "planning_center.livestream_announcements_video_regex"
+            )
+            self.live_announcements_video_regex = reader.get_str(
+                "planning_center.live_announcements_video_regex"
             )
             self.default_speaker_name = reader.get_str(
                 "planning_center.default_speaker_name"
@@ -717,7 +720,7 @@ class Config(BaseConfig):
         return self._args.start_time
 
     @property
-    def download_announcements_vid(self) -> bool:
+    def download_livestream_announcements_vid(self) -> bool:
         return self.station == "mcr"
 
     @property
@@ -729,8 +732,12 @@ class Config(BaseConfig):
         return self.station == "mcr"
 
     @property
-    def if_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
-        return "error"
+    def if_livestream_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error" if self.station == "mcr" else "ok"
+
+    @property
+    def if_live_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
+        return "error" if self.station == "foh" else "ok"
 
     @property
     def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
