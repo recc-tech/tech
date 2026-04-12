@@ -24,8 +24,9 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
     - "Message" for the sermon notes
     - "No NDI" otherwise, especially for slides like the lyrics backgrounds that are likely to be used immediately after lyrics.
 - [ ] Make sure the walk-in slides all have their "Go to Next Timer" set and the other slides do not have a timer.
-    - For slides with a QR code, set the "Go to Next Timer" to 8 seconds.
-    - Otherwise, set the "Go to Next Timer" to 5 seconds.
+    - For videos, set the "Go to Next Timer" to 0 seconds.
+    - For images with a QR code, set the "Go to Next Timer" to 8 seconds.
+    - For images without a QR code, set the "Go to Next Timer" to 5 seconds.
 - [ ] Look for special events in the plan on Planning Center Online (e.g., baptism, child dedication).
 - Look for special requests or notes (e.g., custom lyrics, scripture to be shown before worship):
     - [ ] On Planning Center
