@@ -400,7 +400,9 @@ class SlideGenerator:
         return ImageFont.truetype(path, size=size)
 
 
-def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
+def _wrap_text(
+    text: str, max_width: float, font: FreeTypeFont, stroke_width: int
+) -> str:
     text = text.strip().replace("\r\n", "\n")
     # Keep line breaks that the user manually chose
     lines = [re.sub(r"\s+", " ", line) for line in text.split("\n") if line]
@@ -409,7 +411,9 @@ def _wrap_text(text: str, max_width: int, font: FreeTypeFont, stroke_width: int)
     )
 
 
-def _wrap_line(line: str, max_width: int, font: FreeTypeFont, stroke_width: int) -> str:
+def _wrap_line(
+    line: str, max_width: float, font: FreeTypeFont, stroke_width: int
+) -> str:
     words = [w for w in line.split(" ") if w]
     output_lines: List[str] = []
     while words:
@@ -421,7 +425,7 @@ def _wrap_line(line: str, max_width: int, font: FreeTypeFont, stroke_width: int)
 
 
 def _extract_max_prefix(
-    words: List[str], max_width: int, font: FreeTypeFont, stroke_width: int
+    words: List[str], max_width: float, font: FreeTypeFont, stroke_width: int
 ) -> Tuple[str, List[str]]:
     """
     Return as many words as can fit on one line, along with the remaining words. At least one word will be taken regardless of its length.
