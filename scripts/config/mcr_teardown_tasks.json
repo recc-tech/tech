@@ -9,9 +9,21 @@
 		},
 		{
 			"name": "stop_broadcast",
-			"description": "If you have not already done so, stop the broadcast on BoxCast and then in vMix.",
 			"prerequisites": [
 				"get_service_info"
+			],
+			"subtasks": [
+				{
+					"name": "stop_broadcast_on_BoxCast",
+					"description": "Stop the broadcast on BoxCast"
+				},
+				{
+					"name": "stop_broadcast_in_vMix",
+					"description": "Stop streaming in vMix (only after ending the BoxCast broadcast)",
+					"prerequisites": [
+						"stop_broadcast_on_BoxCast"
+					]
+				}
 			]
 		},
 		{
