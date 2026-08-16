@@ -14,7 +14,7 @@ from external_services import Credential, CredentialStore, InputPolicy
 from external_services.boxcast import BoxCastApiClient, Broadcast
 
 _BROADCAST_20240505_ID = "orn5qh81x7dojxwlbbng"
-_BROADCAST_20250525_ID = "l2wqebtjkrdg9qdcigx2"
+_BROADCAST_20260809_ID = "mtqa4bm3qchurucqn1il"
 _EXPECTED_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
     "boxcast_api_data", "captions_20240505.vtt"
 )
@@ -24,26 +24,26 @@ _ACTUAL_CAPTIONS_20240505 = Path(__file__).parent.joinpath(
 
 
 class BoxCastTestCase(unittest.TestCase):
-    def test_get_main_broadcast_20250525(self) -> None:
+    def test_get_main_broadcast_20260809(self) -> None:
         (client, log_problem_mock, _) = _set_up_dependencies()
-        broadcast = client.find_main_broadcast_by_date(date(year=2025, month=5, day=25))
+        broadcast = client.find_main_broadcast_by_date(date(year=2026, month=8, day=9))
         expected_start_time = datetime(
-            year=2025, month=5, day=25, hour=14, minute=25, second=0, tzinfo=tzutc()
+            year=2026, month=8, day=9, hour=14, minute=25, second=0, tzinfo=tzutc()
         )
         self.assertEqual(
-            Broadcast(id=_BROADCAST_20250525_ID, start_time=expected_start_time),
+            Broadcast(id=_BROADCAST_20260809_ID, start_time=expected_start_time),
             broadcast,
         )
         log_problem_mock.assert_not_called()
 
-    def test_get_main_broadcast_20250525_lazy(self) -> None:
+    def test_get_main_broadcast_20260809_lazy(self) -> None:
         (client, log_problem_mock, _) = _set_up_dependencies(lazy_login=True)
-        broadcast = client.find_main_broadcast_by_date(date(year=2025, month=5, day=25))
+        broadcast = client.find_main_broadcast_by_date(date(year=2026, month=8, day=9))
         expected_start_time = datetime(
-            year=2025, month=5, day=25, hour=14, minute=25, second=0, tzinfo=tzutc()
+            year=2026, month=8, day=9, hour=14, minute=25, second=0, tzinfo=tzutc()
         )
         self.assertEqual(
-            Broadcast(id=_BROADCAST_20250525_ID, start_time=expected_start_time),
+            Broadcast(id=_BROADCAST_20260809_ID, start_time=expected_start_time),
             broadcast,
         )
         log_problem_mock.assert_not_called()

@@ -16,13 +16,13 @@ FontStyle = Literal["normal", "italic", "oblique"]
 class Bbox:
     """Bounding box."""
 
-    left: int
-    top: int
-    right: int
-    bottom: int
+    left: float
+    top: float
+    right: float
+    bottom: float
 
     @staticmethod
-    def xywh(x: int, y: int, w: int, h: int) -> Bbox:
+    def xywh(x: float, y: float, w: float, h: float) -> Bbox:
         return Bbox(left=x, top=y, right=x + w, bottom=y + h)
 
     def get_horizontal_centre(self) -> float:
@@ -31,10 +31,10 @@ class Bbox:
     def get_vertical_centre(self) -> float:
         return self.top + (self.bottom - self.top) / 2
 
-    def get_width(self) -> int:
+    def get_width(self) -> float:
         return self.right - self.left
 
-    def get_height(self) -> int:
+    def get_height(self) -> float:
         return self.bottom - self.top
 
 
