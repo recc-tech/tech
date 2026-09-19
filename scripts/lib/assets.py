@@ -6,7 +6,7 @@ import os
 import re
 import traceback
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from enum import Enum, auto
 from pathlib import Path
 from typing import Dict, Literal, Optional, Set, Union
@@ -173,22 +173,6 @@ class AssetManager:
                 if_many=Action.WARN,
             ),
             AssetCategory(
-                name="kids video",
-                skip=(
-                    SkipCondition.NEVER
-                    if config.download_kids_vid
-                    else SkipCondition.ALWAYS
-                ),
-                file_type=FileType.VIDEO,
-                filename_regex=config.kids_video_regex,
-                target_dir=config.assets_by_service_dir,
-                append_date=False,
-                deduplicate=False,
-                overwrite_existing=True,
-                if_missing=Action.parse(config.if_kids_vid_missing),
-                if_many=Action.WARN,
-            ),
-            AssetCategory(
                 name="sermon notes",
                 skip=(
                     SkipCondition.NEVER
@@ -229,25 +213,6 @@ class AssetManager:
                 if_many=Action.OK,
             ),
         ]
-        kids_vid_category = [c for c in self._CATEGORIES if c.name == "kids video"]
-        assert len(kids_vid_category) == 1
-        self._KIDS_VID_CATEGORY = kids_vid_category[0]
-
-    def locate_kids_video(self) -> Optional[Path]:
-        def is_kids_video(p: Path) -> bool:
-            pattern = self._config.kids_video_regex
-            return (
-                p.is_file()
-                and p.suffix.lower() in self._VIDEO_EXTENSIONS
-                and bool(re.search(pattern, p.name, flags=re.IGNORECASE))
-            )
-
-        folder = self._config.assets_by_service_dir
-        candidates = [p for p in folder.glob("*") if is_kids_video(p)]
-        if len(candidates) == 1:
-            return candidates[0]
-        else:
-            return None
 
     def locate_announcements_video(self) -> Optional[Path]:
         def is_announcements_video(p: Path) -> bool:
@@ -339,9 +304,6 @@ class AssetManager:
         for a in attachments:
             if a not in downloads:
                 downloads[a] = DownloadSkipped(reason="unknown attachment")
-
-        for a in attachments_by_category[self._KIDS_VID_CATEGORY]:
-            _check_kids_video_week_num(a, today, messenger)
 
         return DownloadPlan(downloads)
 
@@ -498,37 +460,6 @@ def _find_original(p: Path) -> Optional[Path]:
         if filecmp.cmp(p, other, shallow=False):
             return other
     return None
-
-
-def _check_kids_video_week_num(
-    video: Attachment, today: date, messenger: Messenger
-) -> None:
-    m = re.search(r"w(\d)", video.filename, flags=re.IGNORECASE)
-    if not m:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            "Unable to determine week number from Kids Connection video filename.",
-        )
-        return
-    actual_num = int(m[1])
-    expected_num = _get_week_num(today)
-    if actual_num != expected_num:
-        messenger.log_problem(
-            ProblemLevel.WARN,
-            f"The current week number is {expected_num}, but the Kids Connection video seems to be from week {actual_num}.",
-        )
-    else:
-        messenger.log_debug(
-            f"Kids Connection video is from week {actual_num}, as expected."
-        )
-
-
-def _get_week_num(day: date) -> int:
-    for i in range(1, 5):
-        d = day - timedelta(days=7 * i)
-        if d.month != day.month:
-            return i
-    return 5
 
 
 def _handle_missing(c: AssetCategory, messenger: Messenger) -> None:

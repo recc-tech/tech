@@ -35,16 +35,6 @@ def download_assets(
     messenger.log_status(TaskStatus.DONE, msg)
 
 
-def import_Kids_Connection_video(
-    client: VmixClient, config: McrSetupConfig, manager: AssetManager
-) -> None:
-    kids_video_path = manager.locate_kids_video()
-    if kids_video_path is None:
-        raise ValueError("The path to the Kids Connection video is not known.")
-    client.list_remove_all(config.vmix_kids_connection_list_key)
-    client.list_add(config.vmix_kids_connection_list_key, kids_video_path)
-
-
 def import_livestream_announcements_video(
     client: VmixClient, config: McrSetupConfig, manager: AssetManager
 ) -> None:

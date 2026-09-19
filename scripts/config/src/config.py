@@ -451,7 +451,6 @@ class Config(BaseConfig):
             self.pco_skipped_service_types = set(
                 reader.get_str_list("planning_center.skipped_service_types")
             )
-            self.kids_video_regex = reader.get_str("planning_center.kids_video_regex")
             self.sermon_notes_regex = reader.get_str(
                 "planning_center.sermon_notes_regex"
             )
@@ -478,9 +477,6 @@ class Config(BaseConfig):
 
             # vMix
             self.vmix_base_url = reader.get_str("vmix.base_url")
-            self.vmix_kids_connection_list_key = reader.get_str(
-                "vmix.kids_connection_list_key"
-            )
             self.vmix_announcements_list_key = reader.get_str(
                 "vmix.livestream_announcements_list_key"
             )
@@ -721,10 +717,6 @@ class Config(BaseConfig):
         return self.station == "mcr"
 
     @property
-    def download_kids_vid(self) -> bool:
-        return self.station == "mcr"
-
-    @property
     def download_sermon_notes(self) -> bool:
         return self.station == "mcr"
 
@@ -735,10 +727,6 @@ class Config(BaseConfig):
     @property
     def if_live_announcements_vid_missing(self) -> Literal["ok", "warn", "error"]:
         return "error" if self.station == "foh" else "ok"
-
-    @property
-    def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
-        return "error"
 
     @property
     def if_sermon_notes_missing(self) -> Literal["ok", "warn", "error"]:

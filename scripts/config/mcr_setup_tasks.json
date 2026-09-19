@@ -62,18 +62,11 @@
 			"subtasks": [
 				{
 					"name": "download_assets",
-					"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the Kids Connection Video, announcements video, and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
+					"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the livestream announcements video and any other new assets (e.g., new bumper videos, new announcement slides). Move the announcements video to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
 				},
 				{
 					"name": "import_livestream_announcements_video",
-					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
-					"prerequisites": [
-						"download_assets"
-					]
-				},
-				{
-					"name": "import_Kids_Connection_video",
-					"description": "Import this week's Kids Connection video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-kids-video-or-announcements-video|More details]].",
+					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-announcements-video|More details]].",
 					"prerequisites": [
 						"download_assets"
 					]
@@ -82,7 +75,7 @@
 					"name": "restart_videos",
 					"description": "Restart all the videos and loops. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#restarting-a-video|More details]].",
 					"prerequisites": [
-						"import_Kids_Connection_video"
+						"import_livestream_announcements_video"
 					]
 				},
 				{

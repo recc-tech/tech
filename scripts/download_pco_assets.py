@@ -64,10 +64,6 @@ class DownloadAssetsConfig(Config):
         return result
 
     @property
-    def if_kids_vid_missing(self) -> Literal["ok", "warn", "error"]:
-        return "warn"
-
-    @property
     def if_sermon_notes_missing(self) -> Literal["ok", "warn", "error"]:
         return "warn"
 

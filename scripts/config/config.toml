@@ -120,9 +120,6 @@ skipped_service_types = [
 	"130950",  # Rehearsals
 	"130956",  # UTC | 2023-11-11
 ]
-# https://regex101.com/
-# The regex is for the full file name, including the extension
-kids_video_regex = 'kids|(\b|_)W\d\b'
 sermon_notes_regex = "^notes"
 livestream_announcements_video_regex = 'livestream.*announcement|announcement.*livestream'
 live_announcements_video_regex = 'announcement'
@@ -146,7 +143,6 @@ base_url = "http://localhost:8088/api"
 preset_dir = "%{folder.home}%/vMix Presets"
 preset_path = "%{vmix.preset_dir}%/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
-kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
 livestream_announcements_list_key = "3e42ac58-0965-4a10-94a1-41e85be9f2c8"
 pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
 speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
