@@ -45,7 +45,7 @@
 						},
 						{
 							"name": "update_kids_laptop",
-							"description": "Bring back the Kids Connection laptop from the Annex and check for updates."
+							"description": "Bring back the laptop from the Annex and check for updates."
 						}
 					]
 				},
@@ -61,13 +61,6 @@
 							"description": "On BoxCast, export the recording to Vimeo. On the live event page, go to Download or Export Recording > Vimeo.",
 							"prerequisites": [
 								"wait_for_BoxCast_recording"
-							]
-						},
-						{
-							"name": "copy_Vimeo_URL_to_COP",
-							"description": "Take the link to today's Vimeo video and copy it to Church Online Platform. [[url|https://github.com/recc-tech/tech/wiki/Copying-the-Vimeo-Link-to-Church-Online-Platform|More details]].",
-							"prerequisites": [
-								"export_to_Vimeo"
 							]
 						},
 						{

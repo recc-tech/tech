@@ -26,10 +26,6 @@
 			],
 			"subtasks": [
 				{
-					"name": "check_COP_events",
-					"description": "Check that all events on Church Online Platform are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Events-on-Church-Online-Platform|More details]]."
-				},
-				{
 					"name": "check_BoxCast_events",
 					"description": "Check that both events on BoxCast are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
 				}
@@ -66,7 +62,7 @@
 			"subtasks": [
 				{
 					"name": "download_assets",
-					"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the Kids Connection Video, announcements video, sermon notes (if they're present), and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video and sermon notes to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
+					"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the Kids Connection Video, announcements video, and any other new assets (e.g., new bumper videos, new announcements). Move the Kids Connection video to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
 				},
 				{
 					"name": "import_livestream_announcements_video",
@@ -103,11 +99,10 @@
 			]
 		},
 		{
-			"name": "publish_sermon_notes",
-			"description": "Publish the sermon notes to Church Online Platform. ⚠️ [[styled|emph|Check at the bottom of the page that you are ONLY modifying today's event]] ⚠️. [[url|https://github.com/recc-tech/tech/wiki/Publishing-Sermon-Notes-to-Church-Online-Platform|More details]].",
+			"name": "set_up_in_annex",
+			"description": "Set up for Sunday school in the Annex. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]].",
 			"prerequisites": [
-				"download_assets",
-				"check_COP_events"
+				"turn_everything_on"
 			]
 		},
 		{
@@ -118,11 +113,21 @@
 			"subtasks": [
 				{
 					"name": "start_stream",
-					"description": "Once it's time for the Kids Connection broadcast, mute other sounds (e.g., from the sound station and NDI source), play the kids 5 minute countdown loop, and start the stream by pressing the STM button. Check in Church Online Platform's Host Tools that the stream is working."
+					"description": "Once it's time to start streaming, mute other sounds (i.e., the 'Stereo Out' channel in Logic Pro) and play the announcements video."
 				},
 				{
-					"name": "set_up_in_annex",
-					"description": "Set up for Sunday school in the Annex. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]]."
+					"name": "check_STM_and_REC",
+					"description": "Check that vMix is streaming and recording",
+					"prerequisites": [
+						"start_stream"
+					]
+				},
+				{
+					"name": "check_online_stream",
+					"description": "Check that the stream is working ([[url|https://www.youtube.com/@riversmontreal]])",
+					"prerequisites": [
+						"start_stream"
+					]
 				}
 			]
 		},
@@ -173,8 +178,7 @@
 			"prerequisites": [
 				"check_streaming_platforms",
 				"check_live_feeds",
-				"save_vMix_preset",
-				"publish_sermon_notes"
+				"save_vMix_preset"
 			]
 		},
 		{
@@ -183,8 +187,7 @@
 			"prerequisites": [
 				"check_streaming_platforms",
 				"check_live_feeds",
-				"save_vMix_preset",
-				"publish_sermon_notes"
+				"save_vMix_preset"
 			]
 		}
 	]

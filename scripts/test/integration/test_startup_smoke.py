@@ -219,7 +219,6 @@ class PyStartupSmokeTestCase(unittest.TestCase):
                 "",
                 "pco",
                 "boxcast",
-                "cop",
                 "vmix",
                 "mcr_video_setup_checklist",
                 "mcr_video_teardown_checklist",

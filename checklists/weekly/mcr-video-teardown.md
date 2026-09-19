@@ -9,7 +9,6 @@ labels: checklist, mcr_video_teardown_checklist
 - The video is correctly uploaded to Vimeo:
     - [ ] The video is named `{{ date | date('YYYY-MM-DD') }} | Series | Title`, where `Series` is the message series and `Title` is the title of today's message.
     - [ ] The video thumbnail is the pre-stream title loop.
-- [ ] The link to today's video on Vimeo is copied to Church Online Platform.
 - Outdated assets have been handled:
     - [ ] Outdated files were deleted from Planning Center.
     - [ ] Outdated files were removed from vMix and archived locally.
