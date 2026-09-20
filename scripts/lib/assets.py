@@ -173,22 +173,6 @@ class AssetManager:
                 if_many=Action.WARN,
             ),
             AssetCategory(
-                name="sermon notes",
-                skip=(
-                    SkipCondition.NEVER
-                    if config.download_sermon_notes
-                    else SkipCondition.ALWAYS
-                ),
-                file_type=FileType.DOCX,
-                filename_regex=config.sermon_notes_regex,
-                target_dir=config.assets_by_service_dir,
-                append_date=False,
-                deduplicate=False,
-                overwrite_existing=True,
-                if_missing=Action.parse(config.if_sermon_notes_missing),
-                if_many=Action.WARN,
-            ),
-            AssetCategory(
                 name="images",
                 skip=SkipCondition.NEVER,
                 file_type=FileType.IMAGE,

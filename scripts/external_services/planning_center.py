@@ -79,13 +79,7 @@ class Plan:
 class FileType(Enum):
     VIDEO = auto()
     IMAGE = auto()
-    DOCX = auto()
     OTHER = auto()
-
-
-_DOCX_MIME_TYPE = (
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-)
 
 
 @dataclass(frozen=True)
@@ -102,8 +96,6 @@ class Attachment:
             return FileType.VIDEO
         elif self.pco_filetype.lower() == "image":
             return FileType.IMAGE
-        elif self.mime_type.lower() == _DOCX_MIME_TYPE:
-            return FileType.DOCX
         else:
             return FileType.OTHER
 

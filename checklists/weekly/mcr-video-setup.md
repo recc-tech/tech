@@ -21,7 +21,6 @@ labels: checklist, mcr_video_setup_checklist
 ## Nice-To-Have
 
 - [ ] Other assets (e.g., announcements, bumper videos) are imported into vMix in case they can't be sent from the FOH station.
-- [ ] Backup slides for the message notes and Bible verses are ready in vMix in case they can't be sent from the FOH station.
 
 ## General Reminders
 

@@ -70,16 +70,6 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             self._classify(attachment),
         )
 
-    def test_classify_sermon_notes(self) -> None:
-        notes = Attachment(
-            id="163869600",
-            filename="Notes – Clean Slate – Victory Through Dreams.docx",
-            num_bytes=16251,
-            pco_filetype="file",
-            mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        self.assertEqual("sermon notes", self._classify(notes))
-
     def test_classify_jpg(self) -> None:
         image = Attachment(
             id="163862630",

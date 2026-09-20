@@ -17,7 +17,6 @@ from external_services.boxcast import BoxCastApiClient
 from external_services.vimeo import ReccVimeoClient
 
 from .assets import AssetManager
-from .slides import SlideBlueprintReader, SlideGenerator
 
 T = TypeVar("T")
 
@@ -77,8 +76,6 @@ class ReccDependencyProvider(DependencyProvider):
         self._planning_center_client: Optional[PlanningCenterClient] = None
         self._vmix_client: Optional[VmixClient] = None
         self._bible_verse_finder: Optional[BibleVerseFinder] = None
-        self._slide_blueprint_reader: Optional[SlideBlueprintReader] = None
-        self._slide_generator: Optional[SlideGenerator] = None
         self._asset_manager: Optional[AssetManager] = None
         self._vimeo_client: Optional[ReccVimeoClient] = None
         self._boxcast_client: Optional[BoxCastApiClient] = None
@@ -101,8 +98,6 @@ class ReccDependencyProvider(DependencyProvider):
             PlanningCenterClient: self._get_planning_center_client,
             VmixClient: self._get_vmix_client,
             BibleVerseFinder: self._get_bible_verse_finder,
-            SlideBlueprintReader: self._get_slide_blueprint_reader,
-            SlideGenerator: self._get_slide_generator,
             AssetManager: self._get_asset_manager,
             ReccVimeoClient: self._get_vimeo_client,
             BoxCastApiClient: self._get_boxcast_client,
@@ -139,22 +134,6 @@ class ReccDependencyProvider(DependencyProvider):
         if self._bible_verse_finder is None:
             self._bible_verse_finder = BibleVerseFinder()
         return self._bible_verse_finder
-
-    def _get_slide_blueprint_reader(self) -> SlideBlueprintReader:
-        if self._slide_blueprint_reader is None:
-            self._slide_blueprint_reader = SlideBlueprintReader(
-                messenger=self.messenger,
-                bible_verse_finder=self._get_bible_verse_finder(),
-            )
-        return self._slide_blueprint_reader
-
-    def _get_slide_generator(self) -> SlideGenerator:
-        if self._slide_generator is None:
-            self._slide_generator = SlideGenerator(
-                config=self._config,
-                messenger=self.messenger,
-            )
-        return self._slide_generator
 
     def _get_asset_manager(self) -> AssetManager:
         if self._asset_manager is None:
