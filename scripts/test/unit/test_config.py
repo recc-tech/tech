@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import config
 import manage_config
-from config import Colour, ConfigReader, StringTemplate
+from config import ConfigReader, StringTemplate
 
 
 class ConfigTestCase(unittest.TestCase):
@@ -91,8 +91,6 @@ class ConfigTestCase(unittest.TestCase):
                 "fs.docs": "~/Documents",
                 "fs.file": "%{fs.docs}%/hello.txt",
                 "fs.missing": "%{fs.docs}%/!{missing}!",
-                "red": "red",
-                "blue": "#0000ff",
             },
             strict=True,
         )
@@ -125,8 +123,6 @@ class ConfigTestCase(unittest.TestCase):
                 StringTemplate("~/Documents/!{missing}!"),
                 reader.get_template("fs.missing"),
             )
-            self.assertEqual(Colour(r=255, g=0, b=0, a=255), reader.get_colour("red"))
-            self.assertEqual(Colour(r=0, g=0, b=255, a=255), reader.get_colour("blue"))
 
     def test_read_with_unused_keys(self) -> None:
         reader = ConfigReader({"foo": 1, "bar": 2.5}, strict=True)

@@ -438,6 +438,7 @@ _DIFF_MARKER_CLS = "diff-marker"
 _INSERTION_ROW_CLS = "insertion-row"
 _DELETION_ROW_CLS = "deletion-row"
 _NOTES_TITLE_CLS = "notes-title"
+_INCOMPLETENESS_WARNING_CLS = "incompleteness-warning"
 _NOTES_WARNING_CLS = "notes-warning"
 _COPY_BTN_ID = "copy-btn"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
@@ -833,6 +834,13 @@ def plan_summary_diff_to_html(
             .summary-update-error {{
                 color: gold;
             }}
+            .{_INCOMPLETENESS_WARNING_CLS} {{
+                border: 2px solid #b57b0e;
+                color: #b57b0e;
+                background-color: #fffaa0;
+                border-radius: 5px;
+                padding: 0.5em;
+            }}
             .{_NOTES_WARNING_CLS} {{
                 {"display: none;" if summary.num_visuals_notes == 0 else ""}
                 border: 2px solid #b57b0e;
@@ -965,6 +973,11 @@ def plan_summary_diff_to_html(
                 Make sure the visuals notes are visible by clicking on the
                 button at the top right-hand corner with the three vertical bars
                 and ensure the "Visuals" checkbox is checked.
+            </div>
+            <div class="{_INCOMPLETENESS_WARNING_CLS}">
+                Note that this plan summary is <i>not</i> complete.
+                It only shows parts of the service that are the same each week and require setup.
+                Check the full plan for other parts of the service, such as the refreshment break, communion, or baptisms.
             </div>
             <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
 {_indent(walk_in_slides_table.to_html(), 3)}

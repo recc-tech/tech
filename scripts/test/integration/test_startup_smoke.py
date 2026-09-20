@@ -8,7 +8,6 @@ from unittest.mock import create_autospec
 
 import check_credentials
 import download_pco_assets
-import generate_slides
 import keyring
 import keyring.backends.null
 import launch_apps
@@ -26,7 +25,6 @@ from external_services import (
     CredentialUnavailableError,
     InputPolicy,
 )
-from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 from launch_apps import LaunchAppsArgs
 from lib import ReccDependencyProvider
 from mcr_setup import McrSetupArgs
@@ -165,21 +163,6 @@ class PyStartupSmokeTestCase(unittest.TestCase):
             dep.input_messenger.statuses[-1],
         )
 
-    def test_generate_slides(self) -> None:
-        args = GenerateSlidesArgs.parse(["", "--no-run"])
-        config = GenerateSlidesConfig(args, allow_multiple_only_for_testing=True)
-        dep = MockDependencyProvider(args=args, config=config)
-        generate_slides.main(args, config, dep)
-        self.assertEqual([], dep.input_messenger.errors)
-        self.assertEqual(
-            (
-                "SCRIPT MAIN",
-                TaskStatus.DONE,
-                "No tasks were run because no_run = true.",
-            ),
-            dep.input_messenger.statuses[-1],
-        )
-
     def test_launch_apps_all(self) -> None:
         apps = list(launch_apps.App)
         args = LaunchAppsArgs.parse(["", "--no-run"] + [a.value for a in apps])
@@ -219,7 +202,6 @@ class PyStartupSmokeTestCase(unittest.TestCase):
                 "",
                 "pco",
                 "boxcast",
-                "cop",
                 "vmix",
                 "mcr_video_setup_checklist",
                 "mcr_video_teardown_checklist",

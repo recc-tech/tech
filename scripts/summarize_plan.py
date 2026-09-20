@@ -165,12 +165,12 @@ def summarize_plan(
 
 
 @bottle.hook("after_request")
-def _enable_cors() -> None:  # pyright: ignore[reportUnusedFunction]
+def _enable_cors() -> None:
     bottle.response.headers["Access-Control-Allow-Origin"] = "*"
 
 
 @bottle.post("/summaries")
-def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
+def _check_for_updates() -> object:
     try:
         prev_summary_path = _find_latest_summary(global_config.plan_summaries_dir)
         prev_summary = (
@@ -201,7 +201,7 @@ def _check_for_updates() -> object:  # pyright: ignore[reportUnusedFunction]
 
 
 @bottle.get("/plan-summary.html")
-def _get_summary_diff() -> str:  # pyright: ignore[reportUnusedFunction]
+def _get_summary_diff() -> str:
     try:
         old_summary_id = (
             bottle.request.query.old  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]

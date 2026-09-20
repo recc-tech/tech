@@ -99,9 +99,6 @@ auto_edited = "%{folder.captions}%/auto_edited.vtt"
 base_url = "https://api.github.com"
 api_repo_url = "%{github.base_url}%/repos/recc-tech/tech"
 
-[cop]
-host_url = "https://riversedgemtl.online.church/"
-
 [boxcast]
 base_url = "https://rest.boxcast.com"
 auth_base_url = "https://auth.boxcast.com"
@@ -123,9 +120,6 @@ skipped_service_types = [
 	"130950",  # Rehearsals
 	"130956",  # UTC | 2023-11-11
 ]
-# https://regex101.com/
-# The regex is for the full file name, including the extension
-kids_video_regex = 'kids|(\b|_)W\d\b'
 sermon_notes_regex = "^notes"
 livestream_announcements_video_regex = 'livestream.*announcement|announcement.*livestream'
 live_announcements_video_regex = 'announcement'
@@ -149,7 +143,6 @@ base_url = "http://localhost:8088/api"
 preset_dir = "%{folder.home}%/vMix Presets"
 preset_path = "%{vmix.preset_dir}%/%{args.startup_ymd}% Live.vmix"
 # IDs of important inputs
-kids_connection_list_key = "377a5427-91fa-4cbc-80ee-1bb752a5e364"
 livestream_announcements_list_key = "3e42ac58-0965-4a10-94a1-41e85be9f2c8"
 pre_stream_title_key = "002e27ec-9ef5-4f47-9ff3-c49d346a8aaa"
 speaker_title_key = "9d2614a9-26ff-42a0-95f2-220d82370606"
@@ -192,133 +185,3 @@ announcements_to_ignore = [
 	"MC Host On Stage",
 	"Wrap Up",
 ]
-
-[slides]
-message_notes_filename = "message-notes.txt"
-lyrics_filename = "lyrics.txt"
-blueprints_filename = "blueprints.json"
-image_width = 1920
-image_height = 1080
-font_family = ["Helvetica", "Calibri", "sans-serif"]
-
-	[slides.fullscreen_message]
-	background = "white"
-
-		[slides.fullscreen_message.body]
-		x = 100
-		y = 100
-		width = 1720
-		height = 880
-		horiz_align = "center"
-		vert_align = "center"
-		text_colour = "#333333"
-		line_spacing = 1.75
-
-			[slides.fullscreen_message.body.font]
-			style = "normal"
-			bold = true
-			min_size = 36
-			max_size = 72
-
-	[slides.fullscreen_scripture]
-	background = "white"
-
-		[slides.fullscreen_scripture.body]
-		x = 100
-		y = 100
-		width = 1720
-		height = 680
-		horiz_align = "left"
-		vert_align = "top"
-		text_colour = "#333333"
-		line_spacing = 1.75
-
-			[slides.fullscreen_scripture.body.font]
-			style = "normal"
-			bold = true
-			min_size = 36
-			max_size = 72
-
-		[slides.fullscreen_scripture.footer]
-		x = 100
-		y = 880
-		width = 1720
-		height = 100
-		horiz_align = "right"
-		vert_align = "center"
-		text_colour = "dimgrey"
-		line_spacing = 1.75
-
-			[slides.fullscreen_scripture.footer.font]
-			style = "oblique"
-			bold = false
-			min_size = 30
-			max_size = 60
-
-	[slides.lowerthird_message]
-	background = "#00000000"
-
-		[slides.lowerthird_message.rectangle]
-		x = 0
-		y = 850
-		width = 1920
-		height = 200
-		colour = "#00000088"
-
-		[slides.lowerthird_message.body]
-		x = 25
-		y = 850
-		width = 1870
-		height = 200
-		horiz_align = "center"
-		vert_align = "center"
-		text_colour = "white"
-		line_spacing = 2
-
-			[slides.lowerthird_message.body.font]
-			style = "normal"
-			bold = true
-			min_size = 24
-			max_size = 48
-
-	[slides.lowerthird_scripture]
-	background = "#00000000"
-
-		[slides.lowerthird_scripture.rectangle]
-		x = 0
-		y = 825
-		width = 1920
-		height = 225
-		colour = "#00000088"
-
-		[slides.lowerthird_scripture.body]
-		x = 0
-		y = 825
-		width = 1870
-		height = 160
-		horiz_align = "left"
-		vert_align = "top"
-		text_colour = "white"
-		line_spacing = 1.5
-
-			[slides.lowerthird_scripture.body.font]
-			style = "normal"
-			bold = true
-			min_size = 24
-			max_size = 48
-
-		[slides.lowerthird_scripture.footer]
-		x = 25
-		y = 985
-		width = 1870
-		height = 50
-		horiz_align = "right"
-		vert_align = "center"
-		text_colour = "#DDDDDD"
-		line_spacing = 1
-
-			[slides.lowerthird_scripture.footer.font]
-			style = "oblique"
-			bold = false
-			min_size = 20
-			max_size = 40

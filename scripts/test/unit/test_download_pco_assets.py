@@ -70,56 +70,6 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             self._classify(attachment),
         )
 
-    def test_classify_kids_video_0(self) -> None:
-        kids_video = Attachment(
-            id="163865496",
-            filename="Kids_OnlineExperience_W1.mp4",
-            num_bytes=547786017,
-            pco_filetype="video",
-            mime_type="application/mp4",
-        )
-        self.assertEqual("kids video", self._classify(kids_video))
-
-    def test_classify_kids_video_1(self) -> None:
-        kids_video = Attachment(
-            id="163865496",
-            filename="2402_Kids_OnlineExperience_W1.mp4",
-            num_bytes=547786017,
-            pco_filetype="video",
-            mime_type="application/mp4",
-        )
-        self.assertEqual("kids video", self._classify(kids_video))
-
-    def test_classify_kids_video_2(self) -> None:
-        kids_video = Attachment(
-            id="201155267",
-            filename="Live_It_Out_W1.mp4",
-            num_bytes=446005615,
-            pco_filetype="video",
-            mime_type="application/mp4",
-        )
-        self.assertEqual("kids video", self._classify(kids_video))
-
-    def test_classify_kids_video_3(self) -> None:
-        kids_video = Attachment(
-            id="201155267",
-            filename="Live It Out W1.mp4",
-            num_bytes=446005615,
-            pco_filetype="video",
-            mime_type="application/mp4",
-        )
-        self.assertEqual("kids video", self._classify(kids_video))
-
-    def test_classify_sermon_notes(self) -> None:
-        notes = Attachment(
-            id="163869600",
-            filename="Notes – Clean Slate – Victory Through Dreams.docx",
-            num_bytes=16251,
-            pco_filetype="file",
-            mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        self.assertEqual("sermon notes", self._classify(notes))
-
     def test_classify_jpg(self) -> None:
         image = Attachment(
             id="163862630",

@@ -16,7 +16,6 @@ class App(Enum):
     PLANNING_CENTER = "pco"
     PLANNING_CENTER_LIVE = "pco_live"
     BOXCAST = "boxcast"
-    CHURCH_ONLINE_PLATFORM = "cop"
     FOH_VIDEO_SETUP_CHECKLIST = "foh_video_setup_checklist"
     MCR_SOUND_SETUP_CHECKLIST = "mcr_sound_setup_checklist"
     MCR_VIDEO_SETUP_CHECKLIST = "mcr_video_setup_checklist"
@@ -61,12 +60,6 @@ def main(args: LaunchAppsArgs, config: Config, dep: DependencyProvider) -> None:
                     name="launch_BoxCast",
                     description="Open BoxCast.",
                     func=lambda: launch_BoxCast(config),
-                )
-            case App.CHURCH_ONLINE_PLATFORM:
-                t = TaskModel(
-                    name="launch_COP",
-                    description="Open Church Online Platform.",
-                    func=lambda: launch_COP(config),
                 )
             case App.FOH_VIDEO_SETUP_CHECKLIST:
                 t = TaskModel(
@@ -124,10 +117,6 @@ def launch_PCO_live(pco_client: PlanningCenterClient, config: Config) -> None:
 
 def launch_BoxCast(config: Config) -> None:
     external_services.launch_firefox(config.boxcast_broadcasts_html_url)
-
-
-def launch_COP(config: Config) -> None:
-    external_services.launch_firefox(config.cop_host_url)
 
 
 def open_FOH_video_setup_checklist(config: Config) -> None:

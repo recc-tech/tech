@@ -5,7 +5,6 @@ from typing import Optional
 import config
 from args import McrTeardownArgs, ReccArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
-from generate_slides import GenerateSlidesArgs, GenerateSlidesConfig
 
 
 def list_profiles() -> None:
@@ -46,15 +45,6 @@ def test_load_one_config(profile: Optional[str]) -> None:
         )
     except Exception as e:
         raise RuntimeError("Failed to load general configuration.") from e
-    try:
-        GenerateSlidesConfig(
-            GenerateSlidesArgs.parse([]),
-            profile=profile,
-            strict=True,
-            allow_multiple_only_for_testing=True,
-        )
-    except Exception as e:
-        raise RuntimeError("Failed to load configuration for generating slides.") from e
     try:
         McrSetupConfig(
             ReccArgs.parse([]),
