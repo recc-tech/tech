@@ -23,10 +23,6 @@ def save_vMix_preset(client: VmixClient, config: McrSetupConfig) -> None:
     client.save_preset(config.vmix_preset_file)
 
 
-def save_final_vMix_preset(client: VmixClient, config: McrSetupConfig) -> None:
-    client.save_preset(config.vmix_preset_file)
-
-
 def download_assets(
     client: PlanningCenterClient, messenger: Messenger, manager: AssetManager
 ):
