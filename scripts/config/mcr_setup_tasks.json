@@ -3,103 +3,104 @@
 	"name": "mcr_setup",
 	"subtasks": [
 		{
-			"name": "turn_everything_on",
+			"name": "essential_setup",
 			"subtasks": [
 				{
-					"name": "turn_on_sound_computer",
-					"description": "Turn on the sound computer."
+					"name": "turn_everything_on",
+					"subtasks": [
+						{
+							"name": "turn_on_sound_computer",
+							"description": "Turn on the sound computer."
+						},
+						{
+							"name": "activate_external_output",
+							"description": "Open last week's preset in vMix, turn on both monitors, and activate the external output in vMix."
+						},
+						{
+							"name": "turn_on_NDI_controller",
+							"description": "Turn on the NDI controller."
+						}
+					]
 				},
-				{
-					"name": "activate_external_output",
-					"description": "Open last week's preset in vMix, turn on both monitors, and activate the external output in vMix."
-				},
-				{
-					"name": "turn_on_NDI_controller",
-					"description": "Turn on the NDI controller."
-				}
-			]
-		},
-		{
-			"name": "check_streaming_platforms",
-			"prerequisites": [
-				"turn_everything_on"
-			],
-			"subtasks": [
 				{
 					"name": "check_BoxCast_events",
-					"description": "Check that both events on BoxCast are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]]."
-				}
-			]
-		},
-		{
-			"name": "check_live_feeds",
-			"prerequisites": [
-				"turn_everything_on"
-			],
-			"subtasks": [
-				{
-					"name": "check_cameras",
-					"description": "Check that the cameras and the NDI controller are working. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-ptz-cameras-arent-working|troubleshooting page]]. Also, if any of the band members are in a bad position (e.g., blocking someone else), ask them to move."
-				},
-				{
-					"name": "check_sound",
-					"description": "Check that vMix is receiving sound from the MCR sound station. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station|troubleshooting page]]."
-				}
-			]
-		},
-		{
-			"name": "save_new_vMix_preset",
-			"description": "Create a new vMix preset for this week. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
-			"prerequisites": [
-				"turn_everything_on"
-			]
-		},
-		{
-			"name": "create_vMix_preset",
-			"prerequisites": [
-				"save_new_vMix_preset"
-			],
-			"subtasks": [
-				{
-					"name": "download_assets",
-					"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the livestream announcements video and any other new assets (e.g., new bumper videos, new announcement slides). Move the announcements video to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
-				},
-				{
-					"name": "import_livestream_announcements_video",
-					"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-announcements-video|More details]].",
+					"description": "Check that both events on BoxCast are set up properly. [[url|https://github.com/recc-tech/tech/wiki/Creating-Live-Events-on-BoxCast|More details]].",
 					"prerequisites": [
-						"download_assets"
+						"turn_everything_on"
 					]
 				},
 				{
-					"name": "restart_videos",
-					"description": "Restart all the videos and loops. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#restarting-a-video|More details]].",
+					"name": "check_live_feeds",
 					"prerequisites": [
-						"import_livestream_announcements_video"
+						"turn_everything_on"
+					],
+					"subtasks": [
+						{
+							"name": "check_cameras",
+							"description": "Check that the cameras and the NDI controller are working. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#the-ptz-cameras-arent-working|troubleshooting page]]. Also, if any of the band members are in a bad position (e.g., blocking someone else), ask them to move."
+						},
+						{
+							"name": "check_sound",
+							"description": "Check that vMix is receiving sound from the MCR sound station. If not, see the [[url|https://github.com/recc-tech/tech/wiki/MCR-Visuals-Troubleshooting#theres-no-sound-coming-from-the-sound-station|troubleshooting page]]."
+						}
 					]
 				},
 				{
-					"name": "update_titles",
-					"description": "In vMix, update [[styled|emph|all]] the titles. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#editing-titles|More details]]."
+					"name": "save_new_vMix_preset",
+					"description": "Create a new vMix preset for this week. Click 'Save As' and save the new file to %{vmix.preset_path}%.",
+					"prerequisites": [
+						"turn_everything_on"
+					]
+				},
+				{
+					"name": "create_vMix_preset",
+					"prerequisites": [
+						"save_new_vMix_preset"
+					],
+					"subtasks": [
+						{
+							"name": "download_assets",
+							"description": "([[styled|emph|NOTE: If this task failed due to missing assets and you want to continue anyway, try running the standalone \"Download Assets\" script.]]) Download the livestream announcements video and any other new assets (e.g., new bumper videos, new announcement slides). Move the announcements video to %{folder.assets_by_service}%. Move the other new assets to %{folder.assets_by_type}%."
+						},
+						{
+							"name": "import_livestream_announcements_video",
+							"description": "Import this week's announcements video into vMix. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#updating-the-announcements-video|More details]].",
+							"prerequisites": [
+								"download_assets"
+							]
+						},
+						{
+							"name": "restart_videos",
+							"description": "Restart all the videos and loops. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#restarting-a-video|More details]].",
+							"prerequisites": [
+								"import_livestream_announcements_video"
+							]
+						},
+						{
+							"name": "update_titles",
+							"description": "In vMix, update [[styled|emph|all]] the titles. [[url|https://github.com/recc-tech/tech/wiki/vMix-Reference#editing-titles|More details]]."
+						}
+					]
+				},
+				{
+					"name": "save_vMix_preset",
+					"description": "Save the vMix preset.",
+					"prerequisites": [
+						"create_vMix_preset"
+					]
+				},
+				{
+					"name": "set_up_in_annex",
+					"description": "Set up for Sunday school in the Annex. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]].",
+					"prerequisites": [
+						"turn_everything_on"
+					]
 				}
-			]
-		},
-		{
-			"name": "save_vMix_preset",
-			"description": "Save the vMix preset.",
-			"prerequisites": [
-				"create_vMix_preset"
-			]
-		},
-		{
-			"name": "set_up_in_annex",
-			"description": "Set up for Sunday school in the Annex. [[url|https://github.com/recc-tech/tech/wiki/Setting-up-in-the-Annex|More details]].",
-			"prerequisites": [
-				"turn_everything_on"
 			]
 		},
 		{
 			"name": "event_start",
+			"_comment": "This task is deliberately shown quite early to avoid the case where another unfinished task prevents this one from being shown on time.",
 			"prerequisites": [
 				"turn_everything_on"
 			],
@@ -125,6 +126,20 @@
 			]
 		},
 		{
+			"name": "check_GitHub_checklist",
+			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: [[url|https://github.com/recc-tech/tech/issues]].",
+			"prerequisites": [
+				"essential_setup"
+			]
+		},
+		{
+			"name": "follow_Planning_Center_plan",
+			"description": "On Planning Center Online, open the live view of today's plan.",
+			"prerequisites": [
+				"essential_setup"
+			]
+		},
+		{
 			"name": "import_other_assets",
 			"description": "Import the other new assets from %{folder.assets_by_type}% into vMix.",
 			"prerequisites": [
@@ -136,24 +151,6 @@
 			"description": "Save the vMix preset.",
 			"prerequisites": [
 				"import_other_assets"
-			]
-		},
-		{
-			"name": "check_GitHub_checklist",
-			"description": "Once you're done setting up, double-check that all tasks (especially automatic ones) have been completed properly using the checklist on GitHub: [[url|https://github.com/recc-tech/tech/issues]].",
-			"prerequisites": [
-				"check_streaming_platforms",
-				"check_live_feeds",
-				"save_vMix_preset"
-			]
-		},
-		{
-			"name": "follow_Planning_Center_plan",
-			"description": "On Planning Center Online, open the live view of today's plan.",
-			"prerequisites": [
-				"check_streaming_platforms",
-				"check_live_feeds",
-				"save_vMix_preset"
 			]
 		}
 	]
