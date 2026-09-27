@@ -162,7 +162,11 @@ class AssetManager:
             ),
             AssetCategory(
                 name="live announcements video",
-                skip=SkipCondition.NEVER,
+                skip=(
+                    SkipCondition.NEVER
+                    if config.download_live_announcements_vid
+                    else SkipCondition.ALWAYS
+                ),
                 file_type=FileType.VIDEO,
                 filename_regex=config.live_announcements_video_regex,
                 target_dir=config.assets_by_service_dir,
@@ -173,8 +177,12 @@ class AssetManager:
                 if_many=Action.WARN,
             ),
             AssetCategory(
-                name="images",
-                skip=SkipCondition.NEVER,
+                name="other images",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.download_other_images
+                    else SkipCondition.ALWAYS
+                ),
                 file_type=FileType.IMAGE,
                 filename_regex=".*",
                 target_dir=config.images_dir,
@@ -185,8 +193,12 @@ class AssetManager:
                 if_many=Action.OK,
             ),
             AssetCategory(
-                name="videos",
-                skip=SkipCondition.NEVER,
+                name="other videos",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.download_other_videos
+                    else SkipCondition.ALWAYS
+                ),
                 file_type=FileType.VIDEO,
                 filename_regex=".*",
                 target_dir=config.videos_dir,

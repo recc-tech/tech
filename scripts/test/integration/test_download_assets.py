@@ -182,20 +182,14 @@ class DownloadAssetsTestCase(unittest.TestCase):
         plan = manager.plan_downloads(attachments, messenger=messenger)
         expected_plan = DownloadPlan(
             {
-                _BUMPER_VID: Download(
-                    destination=config.videos_dir.joinpath("Worthy Sermon Bumper.mp4"),
-                    is_required=False,
-                    deduplicate=True,
+                _BUMPER_VID: DownloadSkipped(
+                    reason='assets in category "other videos" are not downloaded at this station'
                 ),
-                _OPENER_VID: Download(
-                    destination=config.videos_dir.joinpath("Welcome Opener Video.mp4"),
-                    is_required=False,
-                    deduplicate=True,
+                _OPENER_VID: DownloadSkipped(
+                    reason='assets in category "other videos" are not downloaded at this station'
                 ),
-                _SERIES_TITLE_IMG: Download(
-                    destination=config.images_dir.joinpath("WORTHY Title Slide.PNG"),
-                    is_required=False,
-                    deduplicate=True,
+                _SERIES_TITLE_IMG: DownloadSkipped(
+                    reason='assets in category "other images" are not downloaded at this station'
                 ),
                 _LIVESTREAM_ANNOUNCEMENT_VID: Download(
                     destination=config.assets_by_service_dir.joinpath(
@@ -204,12 +198,8 @@ class DownloadAssetsTestCase(unittest.TestCase):
                     is_required=True,
                     deduplicate=False,
                 ),
-                _LIVE_ANNOUNCEMENT_VID: Download(
-                    destination=config.assets_by_service_dir.joinpath(
-                        "LIVE Announcements 2024-04-14.mp4"
-                    ),
-                    is_required=False,
-                    deduplicate=False,
+                _LIVE_ANNOUNCEMENT_VID: DownloadSkipped(
+                    reason='assets in category "live announcements video" are not downloaded at this station'
                 ),
             }
         )
@@ -537,88 +527,31 @@ class DownloadAssetsTestCase(unittest.TestCase):
         messenger = create_autospec(Messenger)
         results = manager.download_pco_assets(client=pco_client, messenger=messenger)
         expected_results = {
-            _BUMPER_VID: DownloadSucceeded(
-                config.videos_dir.joinpath("Worthy Sermon Bumper.mp4")
+            _BUMPER_VID: DownloadSkipped(
+                reason='assets in category "other videos" are not downloaded at this station'
             ),
-            _OPENER_VID: DownloadSucceeded(
-                config.videos_dir.joinpath("Welcome Opener Video.mp4")
+            _OPENER_VID: DownloadSkipped(
+                reason='assets in category "other videos" are not downloaded at this station'
             ),
-            _SERIES_TITLE_IMG: DownloadSucceeded(
-                config.images_dir.joinpath("WORTHY Title Slide.PNG")
-            ),
-            _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSucceeded(
-                config.assets_by_service_dir.joinpath(
-                    "LIVESTREAMING Announcements 2024-04-14.mp4"
-                )
-            ),
-            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
-                config.assets_by_service_dir.joinpath(
-                    "LIVE Announcements 2024-04-14.mp4"
-                ),
-            ),
-        }
-        self.assertEqual(expected_results, results)
-        expected_files = {d.destination for d in expected_results.values()}
-        actual_files = {
-            p.resolve()
-            for d in {
-                config.images_dir,
-                config.videos_dir,
-                config.assets_by_service_dir,
-            }
-            for p in d.iterdir()
-        }
-        self.assertEqual(expected_files, actual_files)
-        messenger.log_problem.assert_not_called()
-
-        # Check that deduplication works properly
-        pco_client.find_attachments.return_value = {
-            _SERIES_TITLE_IMG_COPY_NEW_NAME,
-            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT,
-            _LIVESTREAM_ANNOUNCEMENT_VID,
-            _LIVE_ANNOUNCEMENT_VID,
-            _OPENER_VID_COPY_NEW_NAME,
-            _BAPTISM_VID,
-        }
-        results = manager.download_pco_assets(client=pco_client, messenger=messenger)
-        expected_results = {
-            _SERIES_TITLE_IMG_COPY_NEW_NAME: DownloadDeduplicated(
-                original=config.images_dir.joinpath("WORTHY Title Slide.PNG")
-            ),
-            _SERIES_TITLE_IMG_SAME_NAME_NEW_CONTENT: DownloadSucceeded(
-                config.images_dir.joinpath("WORTHY Title Slide (1).PNG")
+            _SERIES_TITLE_IMG: DownloadSkipped(
+                reason='assets in category "other images" are not downloaded at this station'
             ),
             _LIVESTREAM_ANNOUNCEMENT_VID: DownloadSucceeded(
                 config.assets_by_service_dir.joinpath(
                     "LIVESTREAMING Announcements 2024-04-14.mp4"
                 )
             ),
-            _LIVE_ANNOUNCEMENT_VID: DownloadSucceeded(
-                config.assets_by_service_dir.joinpath(
-                    "LIVE Announcements 2024-04-14.mp4"
-                )
-            ),
-            _OPENER_VID_COPY_NEW_NAME: DownloadDeduplicated(
-                original=config.videos_dir.joinpath("Welcome Opener Video.mp4")
-            ),
-            _BAPTISM_VID: DownloadSucceeded(
-                config.videos_dir.joinpath("BaptismHD.mp4")
+            _LIVE_ANNOUNCEMENT_VID: DownloadSkipped(
+                reason='assets in category "live announcements video" are not downloaded at this station'
             ),
         }
         self.assertEqual(expected_results, results)
-        expected_files = expected_files | {
-            config.images_dir.joinpath("WORTHY Title Slide (1).PNG"),
-            config.videos_dir.joinpath("BaptismHD.mp4"),
+        expected_files = {
+            d.destination
+            for d in expected_results.values()
+            if isinstance(d, DownloadSucceeded)
         }
-        actual_files = {
-            p.resolve()
-            for d in {
-                config.images_dir,
-                config.videos_dir,
-                config.assets_by_service_dir,
-            }
-            for p in d.iterdir()
-        }
+        actual_files = {p.resolve() for p in config.assets_by_service_dir.iterdir()}
         self.assertEqual(expected_files, actual_files)
         messenger.log_problem.assert_not_called()
 
@@ -729,6 +662,10 @@ class DownloadAssetsTestCase(unittest.TestCase):
         That way, if something is missing in the MCR, the person can fall back
         to using that script to download what's available so far and proceed.
         """
+        self.skipTest(
+            "nowadays there's only one file to download at the MCR,"
+            " so there's no need for this test"
+        )
         args = dpa.DownloadAssetsArgs.parse(["", "--no-run"])
         config = dpa.DownloadAssetsConfig(
             args,

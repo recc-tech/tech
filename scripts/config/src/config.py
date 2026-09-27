@@ -509,6 +509,18 @@ class Config(BaseConfig):
         return self.station == "mcr"
 
     @property
+    def download_live_announcements_vid(self) -> bool:
+        return self.station == "foh"
+
+    @property
+    def download_other_videos(self) -> bool:
+        return self.station == "foh"
+
+    @property
+    def download_other_images(self) -> bool:
+        return self.station == "foh"
+
+    @property
     def download_sermon_notes(self) -> bool:
         return self.station == "mcr"
 

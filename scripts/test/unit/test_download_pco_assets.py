@@ -78,7 +78,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="image",
             mime_type="image/jpeg",
         )
-        self.assertEqual("images", self._classify(image))
+        self.assertEqual("other images", self._classify(image))
 
     def test_classify_png(self) -> None:
         image = Attachment(
@@ -88,7 +88,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="image",
             mime_type="image/png",
         )
-        self.assertEqual("images", self._classify(image))
+        self.assertEqual("other images", self._classify(image))
 
     def test_classify_mov_0(self) -> None:
         video = Attachment(
@@ -98,7 +98,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="video/quicktime",
         )
-        self.assertEqual("videos", self._classify(video))
+        self.assertEqual("other videos", self._classify(video))
 
     def test_classify_mov_1(self) -> None:
         video = Attachment(
@@ -108,7 +108,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="video/quicktime",
         )
-        self.assertEqual("videos", self._classify(video))
+        self.assertEqual("other videos", self._classify(video))
 
     def test_classify_mp4(self) -> None:
         video = Attachment(
@@ -118,7 +118,7 @@ class DownloadPcoAssetsTestCase(unittest.TestCase):
             pco_filetype="video",
             mime_type="application/mp4",
         )
-        self.assertEqual("videos", self._classify(video))
+        self.assertEqual("other videos", self._classify(video))
 
     def test_classify_unknown(self) -> None:
         attachment = Attachment(
