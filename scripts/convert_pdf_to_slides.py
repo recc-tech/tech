@@ -25,7 +25,8 @@ def convert_pdf_to_slides(
 ):
     messenger.log_status(TaskStatus.RUNNING, "Waiting for the file to be selected...")
     pdf_path = tkinter.filedialog.askopenfilename(
-        initialdir=config.assets_by_service_dir
+        initialdir=config.assets_by_service_dir,
+        filetypes=[("PDFs", "*.pdf")],
     )
     if not pdf_path:
         raise ValueError("no file selected")
