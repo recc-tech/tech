@@ -524,6 +524,10 @@ class Config(BaseConfig):
         return self.station == "foh"
 
     @property
+    def download_pdfs(self) -> bool:
+        return self.station == "foh"
+
+    @property
     def download_sermon_notes(self) -> bool:
         return self.station == "mcr"
 
