@@ -9,6 +9,11 @@ from autochecklist import TaskModel
 _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent.joinpath("config")
 _MCR_SETUP_TASKS = _CONFIG_DIR.joinpath("mcr_setup_tasks.json")
 _MCR_TEARDOWN_TASKS = _CONFIG_DIR.joinpath("mcr_teardown_tasks.json")
+_URLS_TO_SKIP = [
+    # The link is good (at least, as of 2026-10-11).
+    # But I guess you need to be logged in for it to actually work.
+    "https://services.planningcenteronline.com/files",
+]
 
 
 class ParseTaskDescriptionsTestCase(unittest.TestCase):
@@ -60,6 +65,8 @@ class ParseTaskDescriptionsTestCase(unittest.TestCase):
             self._check_model(st)
 
     def _check_url(self, url: str) -> None:
+        if url in _URLS_TO_SKIP:
+            return
         response = requests.head(url)
         if response.status_code != 200:
             raise ValueError(f"The link {url} appears to be dead.")

@@ -20,6 +20,7 @@ archived_assets = "%{folder.assets_by_type}%/Archive"
 [logging]
 apply_cam_settings  = "%{folder.logs}%/%{args.startup_timestamp}% apply_cam_settings.log"
 check_credentials   = "%{folder.logs}%/%{args.startup_timestamp}% check_credentials.log"
+convert_pdf_to_slides = "%{folder.logs}%/%{args.startup_timestamp}% convert_pdf_to_slides.log"
 download_pco_assets = "%{folder.logs}%/%{args.startup_timestamp}% download_pco_assets.log"
 generate_slides     = "%{folder.logs}%/%{args.startup_timestamp}% generate_slides.log"
 launch_apps         = "%{folder.logs}%/%{args.startup_timestamp}% launch_apps.log"

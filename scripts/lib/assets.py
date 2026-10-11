@@ -208,6 +208,22 @@ class AssetManager:
                 if_missing=Action.OK,
                 if_many=Action.OK,
             ),
+            AssetCategory(
+                name="PDFs",
+                skip=(
+                    SkipCondition.NEVER
+                    if config.download_pdfs
+                    else SkipCondition.ALWAYS
+                ),
+                file_type=FileType.OTHER,
+                filename_regex=r".*\.(pdf|PDF)",
+                target_dir=config.assets_by_service_dir,
+                append_date=True,
+                deduplicate=False,
+                overwrite_existing=True,
+                if_missing=Action.OK,
+                if_many=Action.OK,
+            ),
         ]
 
     def locate_announcements_video(self) -> Optional[Path]:

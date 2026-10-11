@@ -756,6 +756,10 @@ def plan_summary_diff_to_html(
             h2 {{
                 font-size: large;
             }}
+            h3 {{
+                margin-top: 0.5em;
+                margin-bottom: 0.5em;
+            }}
             .notes-title {{
                 font-weight: bolder;
             }}
@@ -963,21 +967,18 @@ def plan_summary_diff_to_html(
             </div>
         </div>
         <div id='main-content'>
+            <div class="{_INCOMPLETENESS_WARNING_CLS}">
+                <h3>Also check <a href="{summary.plan.web_page_url}" target="_blank" rel="noopener noreferrer">the full plan</a> on Planning Center.</h3>
+                This summary is <i>not</i> complete.
+            </div>
             <div class="{_NOTES_WARNING_CLS}">
-                Heads up!
-                There {is_or_are} {summary.num_visuals_notes} {note_or_notes}
-                for the visuals team in the plan.
+                <h3>There {is_or_are} {summary.num_visuals_notes} {note_or_notes} for the visuals team in the plan.</h3>
                 {it_or_they.capitalize()} might call for adjustments to the
                 presentations, such as changes to songs lyrics.
-                If fewer notes are shown here, check Planning Center.
+                If fewer notes are shown here, check <a href="{summary.plan.web_page_url}" target="_blank" rel="noopener noreferrer">the full plan</a> on Planning Center.
                 Make sure the visuals notes are visible by clicking on the
                 button at the top right-hand corner with the three vertical bars
                 and ensure the "Visuals" checkbox is checked.
-            </div>
-            <div class="{_INCOMPLETENESS_WARNING_CLS}">
-                Note that this plan summary is <i>not</i> complete.
-                It only shows parts of the service that are the same each week and require setup.
-                Check the full plan for other parts of the service, such as the refreshment break, communion, or baptisms.
             </div>
             <div class="{_SUPERHEADER_CLS}">Walk-in Slides</div>
 {_indent(walk_in_slides_table.to_html(), 3)}

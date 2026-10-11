@@ -12,7 +12,6 @@ from external_services import (
     PlanningCenterClient,
     VmixClient,
 )
-from external_services.bible import BibleVerseFinder
 from external_services.boxcast import BoxCastApiClient
 from external_services.vimeo import ReccVimeoClient
 
@@ -75,7 +74,6 @@ class ReccDependencyProvider(DependencyProvider):
         self._credential_store: Optional[CredentialStore] = None
         self._planning_center_client: Optional[PlanningCenterClient] = None
         self._vmix_client: Optional[VmixClient] = None
-        self._bible_verse_finder: Optional[BibleVerseFinder] = None
         self._asset_manager: Optional[AssetManager] = None
         self._vimeo_client: Optional[ReccVimeoClient] = None
         self._boxcast_client: Optional[BoxCastApiClient] = None
@@ -97,7 +95,6 @@ class ReccDependencyProvider(DependencyProvider):
             CredentialStore: self._get_credential_store,
             PlanningCenterClient: self._get_planning_center_client,
             VmixClient: self._get_vmix_client,
-            BibleVerseFinder: self._get_bible_verse_finder,
             AssetManager: self._get_asset_manager,
             ReccVimeoClient: self._get_vimeo_client,
             BoxCastApiClient: self._get_boxcast_client,
@@ -129,11 +126,6 @@ class ReccDependencyProvider(DependencyProvider):
         if self._vmix_client is None:
             self._vmix_client = VmixClient(config=self._config)
         return self._vmix_client
-
-    def _get_bible_verse_finder(self) -> BibleVerseFinder:
-        if self._bible_verse_finder is None:
-            self._bible_verse_finder = BibleVerseFinder()
-        return self._bible_verse_finder
 
     def _get_asset_manager(self) -> AssetManager:
         if self._asset_manager is None:
