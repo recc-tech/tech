@@ -386,6 +386,9 @@ class Config(BaseConfig):
             # Logging
             self.apply_cam_settings_log = reader.get_file("logging.apply_cam_settings")
             self.check_credentials_log = reader.get_file("logging.check_credentials")
+            self.convert_pdf_to_slides_log = reader.get_file(
+                "logging.convert_pdf_to_slides"
+            )
             self.download_assets_log = reader.get_file("logging.download_pco_assets")
             self.generate_slides_log = reader.get_file("logging.generate_slides")
             self.launch_apps_log = reader.get_file("logging.launch_apps")

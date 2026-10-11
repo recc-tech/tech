@@ -7,6 +7,7 @@ from typing import Any, TypeVar
 from unittest.mock import create_autospec
 
 import check_credentials
+import convert_pdf_to_slides
 import download_pco_assets
 import keyring
 import keyring.backends.null
@@ -18,6 +19,7 @@ from args import McrTeardownArgs, ReccArgs
 from autochecklist import FileMessenger, Messenger, ProblemLevel, TaskStatus
 from check_credentials import CheckCredentialsArgs
 from config import Config, McrSetupConfig, McrTeardownConfig
+from convert_pdf_to_slides import ConvertPdfToSlidesArgs
 from download_pco_assets import DownloadAssetsArgs, DownloadAssetsConfig
 from external_services import (
     Credential,
@@ -138,6 +140,21 @@ class PyStartupSmokeTestCase(unittest.TestCase):
         config = Config(args, allow_multiple_only_for_testing=True)
         dep = MockDependencyProvider(args=args, config=config)
         check_credentials.main(args, config, dep)
+        self.assertEqual([], dep.input_messenger.errors)
+        self.assertEqual(
+            (
+                "SCRIPT MAIN",
+                TaskStatus.DONE,
+                "No tasks were run because no_run = true.",
+            ),
+            dep.input_messenger.statuses[-1],
+        )
+
+    def test_convert_pdf_to_slides(self) -> None:
+        args = ConvertPdfToSlidesArgs.parse(["", "--no-run"])
+        config = Config(args, allow_multiple_only_for_testing=True)
+        dep = MockDependencyProvider(args=args, config=config)
+        convert_pdf_to_slides.main(args, config, dep)
         self.assertEqual([], dep.input_messenger.errors)
         self.assertEqual(
             (
