@@ -121,7 +121,7 @@
 			"subtasks": [
 				{
 					"name": "delete_outdated_PCO_assets",
-					"description": "On Planning Center, delete outdated assets. [[url|https://github.com/recc-tech/tech/wiki/Deleting-Outdated-Assets-on-Planning-Center-Online|More details]]."
+					"description": "On [[url|https://services.planningcenteronline.com/files|the \"Files\" page]] on Planning Center, delete outdated assets. [[url|https://github.com/recc-tech/tech/wiki/Deleting-Outdated-Assets-on-Planning-Center-Online|More details]]."
 				},
 				{
 					"name": "archive_outdated_local_assets",
