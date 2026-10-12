@@ -23,8 +23,17 @@ def convert_pdf_to_slides(
     messenger: Messenger,
 ):
     messenger.log_status(TaskStatus.RUNNING, "Waiting for the file to be selected...")
+    pdf_path_candidates = config.assets_by_service_dir.glob("*.pdf")
+    pdf_path_candidate = min(
+        pdf_path_candidates, default=None, key=lambda p: p.stat().st_mtime
+    )
+    if pdf_path_candidate:
+        pdf_path_candidate = pdf_path_candidate.relative_to(
+            config.assets_by_service_dir
+        )
     pdf_path = messenger.input_filename(
         initial_dir=config.assets_by_service_dir,
+        initial_file=pdf_path_candidate,
         file_types=[("PDF documents", "*.pdf")],
     )
     if not pdf_path:

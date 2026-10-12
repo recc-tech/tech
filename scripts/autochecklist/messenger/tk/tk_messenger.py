@@ -386,6 +386,7 @@ class TkMessenger(InputMessenger):
     def input_filename(
         self,
         initial_dir: Optional[Path],
+        initial_file: Optional[Path],
         file_types: List[Tuple[str, str]],
     ) -> Optional[Path]:
         choice = None
@@ -396,6 +397,7 @@ class TkMessenger(InputMessenger):
             try:
                 choice = tkinter.filedialog.askopenfilename(
                     initialdir=initial_dir,
+                    initialfile=initial_file,
                     filetypes=file_types,
                 )
                 if choice:

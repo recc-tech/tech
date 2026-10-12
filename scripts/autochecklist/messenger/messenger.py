@@ -141,10 +141,12 @@ class Messenger:
     def input_filename(
         self,
         initial_dir: Optional[Path] = None,
+        initial_file: Optional[Path] = None,
         file_types: List[Tuple[str, str]] = [],
     ) -> Optional[Path]:
         return self._input_messenger.input_filename(
             initial_dir=initial_dir,
+            initial_file=initial_file,
             file_types=file_types,
         )
 

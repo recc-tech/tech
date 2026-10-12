@@ -83,6 +83,7 @@ class InputMessenger:
     def input_filename(
         self,
         initial_dir: Optional[Path],
+        initial_file: Optional[Path],
         file_types: List[Tuple[str, str]],
     ) -> Optional[Path]:
         raise NotImplementedError()
