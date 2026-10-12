@@ -1,7 +1,6 @@
 import shutil
 import subprocess
 import sys
-import tkinter.filedialog
 from pathlib import Path
 from subprocess import Popen
 
@@ -24,9 +23,9 @@ def convert_pdf_to_slides(
     messenger: Messenger,
 ):
     messenger.log_status(TaskStatus.RUNNING, "Waiting for the file to be selected...")
-    pdf_path = tkinter.filedialog.askopenfilename(
-        initialdir=config.assets_by_service_dir,
-        filetypes=[("PDFs", "*.pdf")],
+    pdf_path = messenger.input_filename(
+        initial_dir=config.assets_by_service_dir,
+        file_types=[("PDF documents", "*.pdf")],
     )
     if not pdf_path:
         raise ValueError("no file selected")
