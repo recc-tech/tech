@@ -440,6 +440,7 @@ _DELETION_ROW_CLS = "deletion-row"
 _NOTES_TITLE_CLS = "notes-title"
 _INCOMPLETENESS_WARNING_CLS = "incompleteness-warning"
 _NOTES_WARNING_CLS = "notes-warning"
+_ANNOUNCEMENTS_VID_WARNING_CLS = "announcements-vid-warning"
 _COPY_BTN_ID = "copy-btn"
 _ICON_PATH = Path(__file__).resolve().parent.parent.parent.joinpath("icon_32x32.png")
 
@@ -853,6 +854,14 @@ def plan_summary_diff_to_html(
                 border-radius: 5px;
                 padding: 0.5em;
             }}
+            .{_ANNOUNCEMENTS_VID_WARNING_CLS} {{
+                border: 2px solid #b57b0e;
+                color: #b57b0e;
+                background-color: #fffaa0;
+                border-radius: 5px;
+                padding: 0.5em;
+                margin-top: 10px;
+            }}
 {_indent(walk_in_slides_table.to_css(), 3)}
 {_indent(announcements_table.to_css(), 3)}
 {_indent(videos_table.to_css(), 3)}
@@ -985,6 +994,10 @@ def plan_summary_diff_to_html(
             <div class="{_SUPERHEADER_CLS}">Announcements</div>
 {_indent(announcements_table.to_html(), 3)}
             <div class="{_SUPERHEADER_CLS}">Videos</div>
+            <div class="{_ANNOUNCEMENTS_VID_WARNING_CLS}">
+                <h3>Remember to import the new announcements video.</h3>
+                Remember to import the live announcements video for this week into ProPresenter.
+            </div>
 {_indent(videos_table.to_html(), 3)}
             <div class='{_SUPERHEADER_CLS}'>Songs</div>
 {_indent(songs_table.to_html(), 3)}

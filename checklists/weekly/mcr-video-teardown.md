@@ -9,6 +9,9 @@ labels: checklist, mcr_video_teardown_checklist
 - The video is correctly uploaded to Vimeo:
     - [ ] The video is named `{{ date | date('YYYY-MM-DD') }} | Series | Title`, where `Series` is the message series and `Title` is the title of today's message.
     - [ ] The video thumbnail is the pre-stream title loop.
+- The vMix MultiCorder recording is correctly uploaded to Google Drive:
+    - [ ] The recording (in [file://D:/Users/Tech/Documents/vMixStorage](Documents/vMixStorage)) has been cropped and uploaded to Google Drive.
+    - [ ] Last week's recording on Google Drive has been deleted.
 - Outdated assets have been handled:
     - [ ] Outdated files were deleted from Planning Center.
     - [ ] Outdated files were removed from vMix and archived locally.

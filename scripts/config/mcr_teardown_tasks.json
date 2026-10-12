@@ -23,6 +23,13 @@
 					"prerequisites": [
 						"stop_broadcast_on_BoxCast"
 					]
+				},
+				{
+					"name": "stop_vMix_MultiCorder",
+					"description": "In vMix, stop the MultiCorder recording (at the bottom of the screen)",
+					"prerequisites": [
+						"stop_broadcast_on_BoxCast"
+					]
 				}
 			]
 		},
@@ -108,6 +115,29 @@
 								"disable_automatic_captions"
 							],
 							"_comment": "This task depends on disable_automatic_captions due to the way the automation is implemented. This dependency may no longer be necessary if https://github.com/recc-tech/tech/issues/274 is fixed."
+						}
+					]
+				},
+				{
+					"name": "MultiCorder",
+					"subtasks": [
+						{
+							"name": "crop_MultiCorder",
+							"description": "Crop the MultiCorder recording to only show the sermon."
+						},
+						{
+							"name": "upload_MultiCorder_recording",
+							"description": "Upload the MultiCorder recording to Google Drive.",
+							"prerequisites": [
+								"crop_MultiCorder"
+							]
+						},
+						{
+							"name": "delete_previous_MultiCorder_recording",
+							"description": "Delete last week's MultiCorder recording from Google Drive",
+							"prerequisites": [
+								"upload_MultiCorder_recording"
+							]
 						}
 					]
 				}

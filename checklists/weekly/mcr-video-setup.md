@@ -14,6 +14,7 @@ labels: checklist, mcr_video_setup_checklist
 - [ ] The tech for the kids is set up in the Annex. (Do this even if there is no kids video on Planning Center.)
 - [ ] The Next Steps iPad is set up.
 - [ ] vMix is streaming and recording (this should be triggered automatically, but check anyway).
+- [ ] vMix's MultiCorder is set up to record cam 4.
 - [ ] The stream is running smoothly on YouTube (https://www.youtube.com/@riversmontreal).
 
 ## General Reminders

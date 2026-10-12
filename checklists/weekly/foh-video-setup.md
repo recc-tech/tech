@@ -12,7 +12,8 @@ For more details, see the [ProPresenter quick start guide](https://github.com/re
 
 - Set up the standard playlist elements:
     - [ ] Walk-in slides and announcements
-    - [ ] Videos (opener, bumper, announcements)
+    - [ ] Videos (opener, bumper)
+        - [ ] Import the new live announcements video; remove the old one from the ProPresenter playlist
     - [ ] Songs
     - [ ] Message
 - [ ] Make sure the projectors are lined up well and in focus.
