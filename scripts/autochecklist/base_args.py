@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, Namespace
-from typing import Callable, Dict, List, Literal, Optional, Set, Type, TypeVar
+from typing import Callable, List, Optional, Set, Type, TypeVar
 
 T = TypeVar("T", bound="BaseArgs")
 
@@ -20,8 +20,6 @@ class BaseArgs:
             if args.auto == ["none"]:
                 args.auto = typing.cast(Set[str], set())
 
-        self.ui: Literal["console", "tk"] = args.ui
-        self.verbose: bool = args.verbose
         self.no_run: bool = args.no_run
         self.auto_tasks: Optional[Set[str]] = args.auto
         """
@@ -32,17 +30,6 @@ class BaseArgs:
     @classmethod
     def set_up_parser(cls, parser: ArgumentParser) -> None:
         common_args = parser.add_argument_group("Common arguments")
-        common_args.add_argument(
-            "--ui",
-            choices=["console", "tk"],
-            default="tk",
-            help="User interface to use.",
-        )
-        common_args.add_argument(
-            "--verbose",
-            action="store_true",
-            help="This flag is only applicable when the console UI is used. It makes the script show updates on the status of each task. Otherwise, the script will only show messages for warnings or errors.",
-        )
         common_args.add_argument(
             "--no-run",
             action="store_true",
@@ -67,6 +54,3 @@ class BaseArgs:
             # Skip the program name
             args = args[1:]
         return cls(parser.parse_args(args), parser.error)
-
-    def dump(self) -> Dict[str, str]:
-        return {"UI": self.ui}

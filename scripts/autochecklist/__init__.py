@@ -8,7 +8,6 @@ from .base_args import BaseArgs
 from .base_config import BaseConfig
 from .messenger import (
     CancellationToken,
-    ConsoleMessenger,
     FileMessenger,
     InputMessenger,
     ListChoice,
