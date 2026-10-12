@@ -80,7 +80,14 @@ def convert_pdf_to_slides(
                     messenger.log_status(
                         TaskStatus.RUNNING, "Generating PNGs" + "." * num_dots
                     )
-    messenger.log_status(TaskStatus.DONE, f"Slides generated in {target_dir.resolve()}")
+    target_dir_uri = target_dir.resolve().as_uri()
+    target_dir_name = target_dir.relative_to(
+        config.assets_by_service_dir.parent.resolve()
+    )
+    messenger.log_status(
+        TaskStatus.DONE,
+        f"Slides generated in [[url|{target_dir_uri}|{target_dir_name}]]",
+    )
 
 
 def main(
