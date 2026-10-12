@@ -4,7 +4,7 @@ import logging
 from logging import FileHandler
 from pathlib import Path
 from threading import Lock, local
-from typing import Callable, Dict, Iterable, List, Optional, TypeVar
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 
 from autochecklist.messenger.input_messenger import (
     InputMessenger,
@@ -137,6 +137,18 @@ class Messenger:
         self, choices: List[ListChoice[T]], prompt: str, title: str = ""
     ) -> Optional[T]:
         return self._input_messenger.input_from_list(choices, prompt, title)
+
+    def input_filename(
+        self,
+        initial_dir: Optional[Path] = None,
+        initial_file: Optional[Path] = None,
+        file_types: List[Tuple[str, str]] = [],
+    ) -> Optional[Path]:
+        return self._input_messenger.input_filename(
+            initial_dir=initial_dir,
+            initial_file=initial_file,
+            file_types=file_types,
+        )
 
     def wait(
         self,

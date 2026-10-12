@@ -15,7 +15,7 @@ class TkMessengerTestCase(unittest.TestCase):
         env = os.environ.copy()
         env["PYTHONPATH"] = _SCRIPTS_DIR.resolve().as_posix()
         subprocess.run(
-            [python, script_path.resolve().as_posix(), "--ui", "tk", "--auto-close"],
+            [python, script_path.resolve().as_posix(), "--auto-close"],
             timeout=5,
             check=True,
             env=env,

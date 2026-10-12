@@ -7,8 +7,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 from threading import Thread
-from typing import Callable, Dict, Generic, List, Optional, Set, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 T = TypeVar("T")
 
@@ -77,6 +78,14 @@ class InputMessenger:
     def input_from_list(
         self, choices: List[ListChoice[T]], prompt: str, title: str = ""
     ) -> Optional[T]:
+        raise NotImplementedError()
+
+    def input_filename(
+        self,
+        initial_dir: Optional[Path],
+        initial_file: Optional[Path],
+        file_types: List[Tuple[str, str]],
+    ) -> Optional[Path]:
         raise NotImplementedError()
 
     def wait(

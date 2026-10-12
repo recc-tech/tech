@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import tkinter
+import tkinter.filedialog
 import typing
 from argparse import ArgumentTypeError
 from dataclasses import dataclass
@@ -375,6 +376,36 @@ class TkMessenger(InputMessenger):
                 submit_event.set()
                 if w:
                     w.destroy()
+
+        self._queue.put(_GuiTask(create_dialog, update_scrollregion=False))
+        self._tk.event_generate(self._QUEUE_EVENT)
+
+        self._wait_and_clear_event(submit_event)
+        return choice
+
+    def input_filename(
+        self,
+        initial_dir: Optional[Path],
+        initial_file: Optional[Path],
+        file_types: List[Tuple[str, str]],
+    ) -> Optional[Path]:
+        choice = None
+        submit_event = threading.Event()
+
+        def create_dialog() -> None:
+            nonlocal choice
+            try:
+                choice = tkinter.filedialog.askopenfilename(
+                    initialdir=initial_dir,
+                    initialfile=initial_file,
+                    filetypes=file_types,
+                )
+                if choice:
+                    choice = Path(choice)
+                else:
+                    choice = None
+            finally:
+                submit_event.set()
 
         self._queue.put(_GuiTask(create_dialog, update_scrollregion=False))
         self._tk.event_generate(self._QUEUE_EVENT)

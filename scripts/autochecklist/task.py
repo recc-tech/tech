@@ -14,7 +14,6 @@ from typing import Callable, Dict, List, Literal, Optional, Set, Type, Union
 from .base_args import BaseArgs
 from .base_config import BaseConfig
 from .messenger import (
-    ConsoleMessenger,
     FileMessenger,
     Messenger,
     ProblemLevel,
@@ -375,22 +374,15 @@ class DependencyProvider:
 
     def _make_messenger(self, s: MessengerSettings) -> Messenger:
         file_messenger = FileMessenger(log_file=s.log_file)
-        input_messenger = (
-            ConsoleMessenger(
-                description=f"{s.description}\n\nIf you need to stop the script, press CTRL+C or close the terminal window.",
-                show_task_status=self._args.verbose,
-            )
-            if self._args.ui == "console"
-            else TkMessenger(
-                title=s.script_name,
-                description=s.description,
-                confirm_exit_message=s.confirm_exit_message,
-                config=self._config,
-                theme=s.ui_theme,
-                show_statuses_by_default=s.show_statuses_by_default,
-                icon=s.icon,
-                auto_close=s.auto_close,
-            )
+        input_messenger = TkMessenger(
+            title=s.script_name,
+            description=s.description,
+            confirm_exit_message=s.confirm_exit_message,
+            config=self._config,
+            theme=s.ui_theme,
+            show_statuses_by_default=s.show_statuses_by_default,
+            icon=s.icon,
+            auto_close=s.auto_close,
         )
         return Messenger(file_messenger=file_messenger, input_messenger=input_messenger)
 

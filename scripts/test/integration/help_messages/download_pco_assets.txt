@@ -1,6 +1,6 @@
 usage: download_pco_assets [-h] [--dry-run] [--home-dir HOME_DIR]
-                           [--date DATE] [--auto-close] [--ui {console,tk}]
-                           [--verbose] [--no-run] [--auto AUTO]
+                           [--date DATE] [--auto-close] [--no-run]
+                           [--auto AUTO]
 
 This script will download the assets from today's plan in Planning Center
 Online.
@@ -18,11 +18,6 @@ RECC common arguments:
                        no warnings or errors. (default: False)
 
 Common arguments:
-  --ui {console,tk}    User interface to use. (default: tk)
-  --verbose            This flag is only applicable when the console UI is
-                       used. It makes the script show updates on the status of
-                       each task. Otherwise, the script will only show
-                       messages for warnings or errors. (default: False)
   --no-run             If this flag is provided, the task graph will be loaded
                        but the tasks will not be run. This may be useful for
                        checking that the JSON task file and command-line

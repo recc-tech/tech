@@ -84,6 +84,9 @@ def demo_input(messenger: Messenger) -> None:
     )
     messenger.log_status(TaskStatus.DONE, f"You choose the option with value {choice}.")
 
+    choice = messenger.input_filename()
+    messenger.log_status(TaskStatus.DONE, f"You chose '{choice}'")
+
 
 def demo_errors(messenger: Messenger) -> None:
     messenger.log_problem(ProblemLevel.WARN, "This is what a warning looks like.")

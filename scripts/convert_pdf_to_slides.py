@@ -1,7 +1,6 @@
 import shutil
 import subprocess
 import sys
-import tkinter.filedialog
 from pathlib import Path
 from subprocess import Popen
 
@@ -24,9 +23,18 @@ def convert_pdf_to_slides(
     messenger: Messenger,
 ):
     messenger.log_status(TaskStatus.RUNNING, "Waiting for the file to be selected...")
-    pdf_path = tkinter.filedialog.askopenfilename(
-        initialdir=config.assets_by_service_dir,
-        filetypes=[("PDFs", "*.pdf")],
+    pdf_path_candidates = config.assets_by_service_dir.glob("*.pdf")
+    pdf_path_candidate = min(
+        pdf_path_candidates, default=None, key=lambda p: p.stat().st_mtime
+    )
+    if pdf_path_candidate:
+        pdf_path_candidate = pdf_path_candidate.relative_to(
+            config.assets_by_service_dir
+        )
+    pdf_path = messenger.input_filename(
+        initial_dir=config.assets_by_service_dir,
+        initial_file=pdf_path_candidate,
+        file_types=[("PDF documents", "*.pdf")],
     )
     if not pdf_path:
         raise ValueError("no file selected")
@@ -72,7 +80,14 @@ def convert_pdf_to_slides(
                     messenger.log_status(
                         TaskStatus.RUNNING, "Generating PNGs" + "." * num_dots
                     )
-    messenger.log_status(TaskStatus.DONE, f"Slides generated in {target_dir.resolve()}")
+    target_dir_uri = target_dir.resolve().as_uri()
+    target_dir_name = target_dir.relative_to(
+        config.assets_by_service_dir.parent.resolve()
+    )
+    messenger.log_status(
+        TaskStatus.DONE,
+        f"Slides generated in [[url|{target_dir_uri}|{target_dir_name}]]",
+    )
 
 
 def main(

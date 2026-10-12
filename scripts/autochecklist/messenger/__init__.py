@@ -1,6 +1,5 @@
 # pyright: reportUnusedImport=false
 
-from .console_messenger import ConsoleMessenger
 from .input_messenger import (
     InputMessenger,
     ListChoice,
