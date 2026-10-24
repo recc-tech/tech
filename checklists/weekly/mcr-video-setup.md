@@ -11,10 +11,13 @@ labels: checklist, mcr_video_setup_checklist
 - [ ] Titles are up to date in vMix.
 - [ ] The pre-stream title loop looks good (e.g., the text is not overlapping with the logo).
 - [ ] All videos and loops have been restarted.
-- [ ] The tech for the kids is set up in the Annex. (Do this even if there is no kids video on Planning Center.)
+- [ ] The tech for the kids is set up in the Annex.
+    - Do this even if there is no kids video on Planning Center.
 - [ ] The Next Steps iPad is set up.
 - [ ] vMix is streaming and recording (this should be triggered automatically, but check anyway).
-- [ ] vMix's MultiCorder is set up to record cam 4.
+- [ ] vMix's MultiCorder is set up to record cam 4 ([more details](https://github.com/recc-tech/tech/wiki/vMix-MultiCorder-Settings)).
+    - It is not necessary to start the MultiCorder manually; it should happen automatically when the announcements video starts.
+    - The full name of the input to record is "NDI BIRDDOG-B2354 (HDMI)"
 - [ ] The stream is running smoothly on YouTube (https://www.youtube.com/@riversmontreal).
 
 ## General Reminders

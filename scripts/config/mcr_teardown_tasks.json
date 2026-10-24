@@ -122,14 +122,14 @@
 					"name": "MultiCorder",
 					"subtasks": [
 						{
-							"name": "crop_MultiCorder",
-							"description": "Crop the MultiCorder recording to only show the sermon."
+							"name": "trim_MultiCorder",
+							"description": "Trim the MultiCorder recording to only show the sermon."
 						},
 						{
 							"name": "upload_MultiCorder_recording",
 							"description": "Upload the MultiCorder recording to Google Drive.",
 							"prerequisites": [
-								"crop_MultiCorder"
+								"trim_MultiCorder"
 							]
 						},
 						{
