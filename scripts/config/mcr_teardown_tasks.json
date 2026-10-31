@@ -123,18 +123,18 @@
 					"subtasks": [
 						{
 							"name": "trim_MultiCorder",
-							"description": "Trim the MultiCorder recording to only show the sermon."
+							"description": "Trim the MultiCorder recording to only show the sermon. [[url|https://github.com/recc-tech/tech/wiki/vMix-MultiCorder-Settings#trimming-the-video|More details]]."
 						},
 						{
 							"name": "upload_MultiCorder_recording",
-							"description": "Upload the MultiCorder recording to Google Drive.",
+							"description": "Upload the MultiCorder recording to Google Drive and delete the previous week's recording. [[url|https://github.com/recc-tech/tech/wiki/vMix-MultiCorder-Settings#uploading-to-google-drive|More details]].",
 							"prerequisites": [
 								"trim_MultiCorder"
 							]
 						},
 						{
-							"name": "delete_previous_MultiCorder_recording",
-							"description": "Delete last week's MultiCorder recording from Google Drive",
+							"name": "share_MultiCorder_with_Dei",
+							"description": "Share the MultiCorder recording with Dei. [[url|https://github.com/recc-tech/tech/wiki/vMix-MultiCorder-Settings#sharing-with-david|More details]].",
 							"prerequisites": [
 								"upload_MultiCorder_recording"
 							]
