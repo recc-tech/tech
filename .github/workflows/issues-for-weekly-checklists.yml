@@ -3,8 +3,8 @@
 
 on:
   schedule:
-    # https://crontab.guru/#42_3_*_*_SUN
-    - cron: '42 3 * * SUN'
+    # https://crontab.guru/#42_0_*_*_SUN
+    - cron: '42 0 * * SUN'
       timezone: "America/Montreal"
   # Let people trigger the workflow manually (for testing or for gatherings that are not on a Sunday)
   workflow_dispatch:
