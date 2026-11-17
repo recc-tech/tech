@@ -5,6 +5,7 @@
 htmlcov/
 __pycache__/
 .coverage
+bin/
 
 /scripts/error.log
 /scripts/startup.txt
